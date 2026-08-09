@@ -5,8 +5,6 @@ substitutions:
   # 1–4 settings must be exposed. Sharing that identity can replace the real
   # remote's pairing on the projector.
   ble_remote_name: M5Stack Atom Lite
-  # Original-remote taps measured approximately 100 ms from key-down to key-up.
-  tap_duration_ms: "100"
   # Labels only: change these to match the four functions assigned in the
   # projector's Shortcut settings. The button IDs remain stable in HA.
   shortcut_1_name: Shortcut 1 - HDMI 1
@@ -20,7 +18,15 @@ esphome:
   comment: General-purpose M5Stack Atom Lite with XGIMI BLE wake and remote emulation
   project:
     name: xgimi.titan-noir-max-atom-lite-rc
-    version: 2.22.0
+    version: 2.23.0
+  on_boot:
+    # Template-number restoration happens during setup; apply its restored value
+    # to the HID component after every component has initialised.
+    - priority: -100
+      then:
+        - lambda: |-
+            id(xgimi_remote_controller).set_tap_duration_ms(
+                static_cast<uint16_t>(id(tap_duration).state));
 
 external_components:
   - source:
@@ -151,7 +157,7 @@ esp32_ble_server:
 xgimi_remote:
   id: xgimi_remote_controller
   remote_name: "${ble_remote_name}"
-  tap_duration_ms: ${tap_duration_ms}
+  tap_duration_ms: 100
   wake_token: !secret xgimi_wake_token
   ble_id: atom_ble
   ble_server_id: atom_ble_server
@@ -202,6 +208,24 @@ number:
     restore_value: true
     initial_value: 0
     entity_category: config
+
+  - platform: template
+    name: "Tap Duration"
+    id: tap_duration
+    icon: mdi:gesture-tap-button
+    unit_of_measurement: ms
+    min_value: 20
+    max_value: 1000
+    step: 10
+    mode: box
+    optimistic: true
+    restore_value: true
+    initial_value: 100
+    entity_category: config
+    set_action:
+      - lambda: |-
+          id(xgimi_remote_controller).set_tap_duration_ms(
+              static_cast<uint16_t>(x));
 
   - platform: template
     name: "Wake Counter Dwell"

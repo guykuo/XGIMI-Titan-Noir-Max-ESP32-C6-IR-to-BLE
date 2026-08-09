@@ -2,13 +2,25 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.23.0] - 2026-08-09
+
+### Added
+
+- Expose **Tap Duration** as a restored Home Assistant configuration number
+  from 20–1000 ms, defaulting to the measured 100 ms original-remote timing.
+
+### Changed
+
+- Document every projector configuration entity and compile-time identity or
+  Shortcut-label substitution, including ranges, defaults and interactions.
+
 ## [2.22.0] - 2026-08-09
 
 ### Fixed
 
-- Hold ordinary keyboard and consumer-control taps for 100 ms by default,
-  matching the measured original remote instead of sending key-down and key-up
-  reports back-to-back. The duration is configurable with `tap_duration_ms`.
+- Hold ordinary keyboard and consumer-control taps for 100 ms by default using
+  a non-blocking release timer, matching the measured original remote instead
+  of sending key-down and key-up reports back-to-back.
 
 ## [2.21.0] - 2026-08-09
 

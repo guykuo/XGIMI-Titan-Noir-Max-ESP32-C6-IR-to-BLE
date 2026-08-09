@@ -55,13 +55,49 @@ until connection, then honours a newer desired-off request.
 It also exposes Bluetooth connection/authentication diagnostics. The Atom's
 front button sends Power On.
 
+## Configuration
+
+The following Home Assistant entities appear under the projector device. Values
+marked as restored survive an Atom restart:
+
+- **Tap Duration** — how long ordinary keyboard and consumer-control reports
+  remain pressed before their release report. It accepts 20–1000 ms in 10 ms
+  steps, restores its previous value and defaults to the measured 100 ms median
+  of the original remote. It does not change the separate 1500 ms held-Power
+  action.
+- **Wake Counter** — the exact rolling-counter byte, 0–255, used only by
+  **Power On (Counter)** for diagnostics. It is restored and does not affect the
+  ordinary self-recovering Power On sweep.
+- **Wake Counter Dwell** — how long ordinary Power On advertises each counter,
+  1500–5000 ms in 10 ms steps. It is restored; firmware enforces the 1500 ms
+  minimum measured to be reliable.
+- **Wake Advertisement Gap** — the genuine off-air interval between ordinary
+  wake counters, 500–1000 ms in 10 ms steps. It is restored; firmware enforces
+  at least 500 ms to avoid the projector rejecting a continuously changing
+  advertisement.
+- **Exact Wake Duration** — how long **Power On (Counter)** advertises its one
+  selected counter, 20–5000 ms in 10 ms steps. It is restored and defaults to
+  4000 ms.
+
+Some identity and presentation settings must remain compile-time ESPHome
+substitutions because changing the Bluetooth identity at runtime can invalidate
+the projector's bond:
+
+- `ble_remote_name` defaults to `M5Stack Atom Lite`, allowing the Atom and the
+  original remote to coexist. Choosing `XGIMI RC` exposes the projector's
+  Shortcut 1–4 assignment settings, but that shared identity clashes with the
+  original remote and can replace its pairing.
+- `shortcut_1_name` through `shortcut_4_name` change only the labels presented
+  in Home Assistant. Their stable ESPHome IDs and Home Assistant entity IDs do
+  not change.
+
 ## How it works
 
 When the projector is awake, the Atom maintains a bonded Bluetooth HID
 connection and sends the same keyboard or consumer-control reports captured
 from the original remote. Ordinary taps remain active for 100 ms by default,
-matching the measured original remote; `tap_duration_ms` can tune this without
-blocking the ESPHome loop. Settings Menu and Focus use the two distinct
+matching the measured original remote; **Tap Duration** can tune this from Home
+Assistant without blocking the ESPHome loop. Settings Menu and Focus use the two distinct
 short/alternate reports produced by the physical remote. **Power Off** sends one
 ordinary power-key tap; **Power Off (Held)** holds the same report for the
 confirmed 1500 ms duration and bypasses the shutdown confirmation. The
@@ -287,7 +323,7 @@ Please do the following:
    USB serial port unambiguously (`COM…` on Windows or `/dev/…` on
    macOS/Linux), show me which port you found, then flash it. Do not flash any
    unrelated serial device.
-7. Confirm from serial logs that version 2.20.0 boots, remains named
+7. Confirm from serial logs that version 2.23.0 boots, remains named
    "M5Stack Atom Lite" in ESPHome, and advertises over Bluetooth with that name.
    Do not press remote buttons during verification.
 8. Tell me to join the "M5Stack Atom Lite Setup" Wi-Fi using the fallback AP
@@ -298,7 +334,7 @@ Please do the following:
    paired too.
 10. Tell me how to add the discovered ESPHome device in Home Assistant and use
     the generated API key if asked. If network access is available, verify the
-    device reports project version 2.21.0, the desired-state "Power" switch,
+    device reports project version 2.23.0, the desired-state "Power" switch,
     the read-only "Power" binary sensor, and all 24 expected remote buttons,
     including "Settings Menu" and
     "Game Menu", without activating any button.

@@ -381,7 +381,7 @@ void XgimiRemote::start_wake_counter(uint8_t counter) {
     return;
   }
 
-  this->set_advertised_name_(WAKE_NAME);
+  this->set_advertised_name_(this->remote_name_.c_str());
   const esp_err_t err = esp_ble_gap_stop_advertising();
   if (err != ESP_OK)
     ESP_LOGW(TAG, "Could not stop advertising before the exact-counter press: %s", esp_err_to_name(err));
