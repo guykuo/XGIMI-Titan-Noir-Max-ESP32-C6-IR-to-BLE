@@ -3,7 +3,7 @@
 This project turns an M5Stack Atom Lite into a Wi-Fi-connected Bluetooth remote
 for an XGIMI Titan Noir Max projector. It appears in Home Assistant through the
 native ESPHome integration and appears to the projector as a Bluetooth HID
-remote named **M5Stack Atom Lite**.
+remote named **M5Stack Atom Lite** by default.
 
 The Bluetooth identity is configurable with the `ble_remote_name` YAML
 substitution and defaults to **M5Stack Atom Lite**, allowing the Atom to coexist
@@ -26,7 +26,8 @@ Home Assistant gets ready-to-use buttons for:
 - Settings Menu and the captured alternate Game Menu action
 - Focus (Auto) and the captured alternate Focus (Manual) action
 - Shortcut 1–4
-- separate self-recovering Power On, tapped Power Off and held Power Off actions
+- separate self-recovering Power On, exact-counter Power On, tapped Power Off and held
+  Power Off actions
 
 It also provides two Home Assistant entities named **Power**. The `switch.*`
 entity is the writable desired state; the read-only `binary_sensor.*` entity is
@@ -88,11 +89,38 @@ each successive value, creating a press boundary, and stopping only on actual
 connection lets the projector accept a later counter without Home Assistant
 retry logic.
 
-**Wake Counter Last Sent** reports the latest value submitted by Power On and is
-persisted across Atom restarts.
+The diagnostic **Wake Counter** number selects one exact decimal value from 0
+to 255. **Power On (Counter)** advertises only that value for **Exact Wake
+Duration** (4000 ms by default), after first creating an off-air boundary, and
+does not increment it. This allows identical, lower, higher and wraparound
+values to be tested deliberately. **Wake Counter Last Sent** reports the latest
+value submitted by either wake path and is persisted across Atom restarts.
 **Wake Sweep Values Sent** and **Wake Sweep Cycles** report progress for the
-current ordinary Power On attempt. The editable timing values restore their
+current ordinary Power On attempt. The editable diagnostic values restore
 previous Home Assistant values.
+
+To observe what the original remote is broadcasting without printing its
+private token, run the counter observer while the projector is disconnected or
+fully asleep and press the original remote's Power button:
+
+```sh
+.venv/bin/python scripts/observe_wake_counters.py --duration 120
+```
+
+```powershell
+.venv\Scripts\python.exe scripts\observe_wake_counters.py --duration 120
+```
+
+It prints each observed counter in decimal and hexadecimal with the advertiser
+name, operating-system device identifier and a non-secret token hash prefix.
+Repeated lines may be multiple BLE advertisements from one physical press, so
+use their timestamps when correlating them with button presses.
+
+For a sweep summary, add `--coverage-only`. A passive desktop scan is useful
+evidence but is not a packet-complete verifier: CoreBluetooth and other host BLE
+stacks can omit or coalesce callbacks even when the Atom advances correctly.
+Use **Wake Sweep Values Sent** and **Wake Sweep Cycles** for the firmware-side
+count, and increase **Wake Counter Dwell** when testing observer coverage.
 
 The firmware contains the tested Titan Noir Max HID descriptor and button map.
 The token lives in the ignored `secrets.yaml`, not in the shareable source.
@@ -228,7 +256,7 @@ Important project contract:
   15-byte wake token.
 - Never print or commit Wi-Fi credentials, API keys, OTA passwords or the final
   token unnecessarily. Ensure secrets.yaml remains ignored by Git.
-- Do not change the device or Bluetooth name from "M5Stack Atom Lite".
+- Keep the ESPHome device and default Bluetooth name as "M5Stack Atom Lite".
 
 Please do the following:
 1. Inspect README.md, the ESPHome YAML and scripts before acting.
@@ -251,8 +279,9 @@ Please do the following:
    USB serial port unambiguously (`COM…` on Windows or `/dev/…` on
    macOS/Linux), show me which port you found, then flash it. Do not flash any
    unrelated serial device.
-7. Confirm from serial logs that version 2.18.0 boots and advertises as
-   "M5Stack Atom Lite". Do not press remote buttons during verification.
+7. Confirm from serial logs that version 2.20.0 boots, remains named
+   "M5Stack Atom Lite" in ESPHome, and advertises over Bluetooth with that name.
+   Do not press remote buttons during verification.
 8. Tell me to join the "M5Stack Atom Lite Setup" Wi-Fi using the fallback AP
    password, select my main Wi-Fi in the captive portal, and wait for the Atom
    to appear on the network.
@@ -261,7 +290,7 @@ Please do the following:
    paired too.
 10. Tell me how to add the discovered ESPHome device in Home Assistant and use
     the generated API key if asked. If network access is available, verify the
-    device reports project version 2.18.0, the desired-state "Power" switch,
+    device reports project version 2.20.0, the desired-state "Power" switch,
     the read-only "Power" binary sensor, and all 24 expected remote buttons,
     including "Settings Menu" and
     "Game Menu", without activating any button.
@@ -280,6 +309,7 @@ captured token validation, but redact the token itself from the final summary.
 - `components/xgimi_remote/` — persistent wake sequencing, connection guard and HID reports
 - `components/esp32_ble_server/` — BLE server support adapted for this HID peripheral
 - `scripts/capture_wake_token.py` — captures and validates only the per-remote token
+- `scripts/observe_wake_counters.py` — observes counters without revealing tokens
 - `scripts/create_secrets.py` — creates cross-platform credentials and token config
 - `docs/protocol.md` — sanitised, model-wide HID capture reference
 - `secrets.example.yaml` — safe template; copy to ignored `secrets.yaml`

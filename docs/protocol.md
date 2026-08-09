@@ -73,5 +73,10 @@ payloads were changed continuously as mains
 returned. This also avoids relying on one rapid burst when shutdown, CEC or
 another remote has left the receiver's rolling state out of sync.
 
-The firmware records the most recently submitted counter and exposes per-attempt
-value and full-cycle counts for diagnostics.
+A separate exact-counter action first creates an off-air boundary, then holds
+one selected payload in the BLE advertisement for a configurable duration
+(4000 ms by default) without changing the selected value. The firmware records
+the most recently submitted counter and exposes per-attempt value and full-cycle
+counts for diagnostics. Passive desktop BLE observation is not packet-complete:
+host stacks may omit callbacks even when advertisements were submitted by the
+ESP32.

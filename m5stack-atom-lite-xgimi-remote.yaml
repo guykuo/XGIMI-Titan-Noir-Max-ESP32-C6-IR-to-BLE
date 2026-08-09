@@ -12,7 +12,7 @@ esphome:
   comment: General-purpose M5Stack Atom Lite with XGIMI BLE wake and remote emulation
   project:
     name: xgimi.titan-noir-max-atom-lite-rc
-    version: 2.18.0
+    version: 2.20.0
 
 external_components:
   - source:
@@ -182,6 +182,19 @@ sensor:
 
 number:
   - platform: template
+    name: "Wake Counter"
+    id: wake_counter
+    icon: mdi:counter
+    min_value: 0
+    max_value: 255
+    step: 1
+    mode: box
+    optimistic: true
+    restore_value: true
+    initial_value: 0
+    entity_category: config
+
+  - platform: template
     name: "Wake Counter Dwell"
     id: wake_counter_dwell
     icon: mdi:timer-outline
@@ -207,6 +220,20 @@ number:
     optimistic: true
     restore_value: true
     initial_value: 500
+    entity_category: config
+
+  - platform: template
+    name: "Exact Wake Duration"
+    id: exact_wake_duration
+    icon: mdi:timer-outline
+    unit_of_measurement: ms
+    min_value: 20
+    max_value: 5000
+    step: 10
+    mode: box
+    optimistic: true
+    restore_value: true
+    initial_value: 4000
     entity_category: config
 
 binary_sensor:
@@ -390,6 +417,17 @@ button:
           id(xgimi_remote_controller).set_wake_advertisement_gap_ms(
               static_cast<uint16_t>(id(wake_advertisement_gap).state));
           id(xgimi_remote_controller).request_power_on();
+
+  - platform: template
+    name: "Power On (Counter)"
+    id: power_on_counter
+    icon: mdi:power
+    on_press:
+      - lambda: |-
+          id(xgimi_remote_controller).set_single_wake_duration_ms(
+              static_cast<uint16_t>(id(exact_wake_duration).state));
+          id(xgimi_remote_controller).start_wake_counter(
+              static_cast<uint8_t>(id(wake_counter).state));
 
   - platform: template
     name: "Power Off"

@@ -93,6 +93,26 @@ void XgimiRemote::loop() {
   if (!this->wake_active_ || this->server_ == nullptr)
     return;
 
+  if (this->single_wake_active_) {
+    if (static_cast<int32_t>(millis() - this->single_wake_until_ms_) < 0)
+      return;
+
+    if (this->single_wake_gap_active_) {
+      this->single_wake_gap_active_ = false;
+      this->server_->set_manufacturer_data(this->make_wake_packet_(this->single_wake_counter_));
+      this->record_last_wake_counter_(this->single_wake_counter_, true);
+      this->single_wake_until_ms_ = millis() + this->single_wake_duration_ms_;
+      ESP_LOGI(TAG, "Advertising exact XGIMI wake counter %u (0x%02X) for %u ms after an off-air gap",
+               this->single_wake_counter_, this->single_wake_counter_,
+               static_cast<unsigned>(this->single_wake_duration_ms_));
+      return;
+    }
+
+    this->stop_wake_advertising_();
+    ESP_LOGI(TAG, "Completed exact-counter wake advertisement");
+    return;
+  }
+
   if (static_cast<int32_t>(millis() - this->next_wake_counter_at_ms_) < 0)
     return;
 
@@ -119,6 +139,7 @@ void XgimiRemote::dump_config() {
                 "  Power-on retry: once transmitted, continuous until HID connects\n"
                 "  Wake-counter dwell: %u ms\n"
                 "  Off-air gap between wake-counter advertisements: %u ms\n"
+                "  Exact-counter advertisement duration: %u ms\n"
                 "  Last wake counter: %s\n"
                 "  Captured buttons: 19",
                 this->remote_name_.c_str(), this->remote_name_.c_str(),
@@ -129,6 +150,7 @@ void XgimiRemote::dump_config() {
                 static_cast<unsigned>(ACTUAL_OFF_DEBOUNCE_MS),
                 static_cast<unsigned>(this->wake_counter_dwell_ms_),
                 static_cast<unsigned>(this->wake_advertisement_gap_ms_),
+                static_cast<unsigned>(this->single_wake_duration_ms_),
                 this->last_wake_counter_valid_ ? str_sprintf("%u (0x%02X)", this->last_wake_counter_,
                                                               this->last_wake_counter_).c_str()
                                                : "not yet sent");
@@ -284,7 +306,9 @@ void XgimiRemote::start_wake_sweep_() {
     ESP_LOGI(TAG, "Projector Power On ignored: wake advertising is already in progress");
     return;
   }
-    this->set_advertised_name_(this->remote_name_.c_str());
+  this->set_advertised_name_(this->remote_name_.c_str());
+  this->single_wake_active_ = false;
+  this->single_wake_gap_active_ = false;
   this->wake_advertising_gap_active_ = false;
   this->wake_active_ = true;
   this->wake_values_sent_ = 0;
@@ -301,6 +325,8 @@ void XgimiRemote::stop_wake_advertising_() {
   if (this->server_ != nullptr)
     this->server_->set_manufacturer_data({0x46, 0x00});
   this->set_advertised_name_(this->remote_name_.c_str());
+  this->single_wake_active_ = false;
+  this->single_wake_gap_active_ = false;
   this->wake_advertising_gap_active_ = false;
   this->wake_active_ = false;
   this->next_wake_counter_at_ms_ = 0;
@@ -328,6 +354,34 @@ void XgimiRemote::advertise_next_wake_counter_() {
              static_cast<unsigned>(this->wake_cycles_completed_));
   }
   this->next_wake_counter_at_ms_ = millis() + this->wake_counter_dwell_ms_;
+}
+
+void XgimiRemote::start_wake_counter(uint8_t counter) {
+  if (!this->ble_ready_ || this->server_ == nullptr) {
+    ESP_LOGW(TAG, "Cannot send an exact wake counter before BLE is ready");
+    return;
+  }
+  if (this->connected_) {
+    ESP_LOGI(TAG, "Exact-counter Power On ignored: HID link is already connected");
+    return;
+  }
+  if (this->wake_active_) {
+    ESP_LOGI(TAG, "Exact-counter Power On ignored: wake advertising is already in progress");
+    return;
+  }
+
+  this->set_advertised_name_(WAKE_NAME);
+  const esp_err_t err = esp_ble_gap_stop_advertising();
+  if (err != ESP_OK)
+    ESP_LOGW(TAG, "Could not stop advertising before the exact-counter press: %s", esp_err_to_name(err));
+  this->single_wake_counter_ = counter;
+  this->single_wake_active_ = true;
+  this->single_wake_gap_active_ = true;
+  this->wake_advertising_gap_active_ = false;
+  this->single_wake_until_ms_ = millis() + 100;
+  this->wake_active_ = true;
+  ESP_LOGI(TAG, "Starting exact-counter wake press %u (0x%02X) with a %u ms off-air gap",
+           counter, counter, 100U);
 }
 
 void XgimiRemote::request_power_on() {

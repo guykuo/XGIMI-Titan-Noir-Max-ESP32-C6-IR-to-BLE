@@ -26,11 +26,15 @@ class XgimiRemote : public Component {
   void loop() override;
   void dump_config() override;
 
+  void start_wake_counter(uint8_t counter);
   void set_wake_counter_dwell_ms(uint16_t dwell_ms) {
     this->wake_counter_dwell_ms_ = dwell_ms < 1500 ? 1500 : dwell_ms;
   }
   void set_wake_advertisement_gap_ms(uint16_t gap_ms) {
     this->wake_advertisement_gap_ms_ = gap_ms < 500 ? 500 : gap_ms;
+  }
+  void set_single_wake_duration_ms(uint16_t duration_ms) {
+    this->single_wake_duration_ms_ = duration_ms < 20 ? 20 : duration_ms;
   }
   void request_power_on();
   void request_immediate_power_off();
@@ -106,10 +110,15 @@ class XgimiRemote : public Component {
   uint16_t peer_conn_id_{0};
 
   bool wake_active_{false};
+  bool single_wake_active_{false};
+  bool single_wake_gap_active_{false};
   bool wake_advertising_gap_active_{false};
+  uint8_t single_wake_counter_{0};
+  uint32_t single_wake_until_ms_{0};
   uint32_t next_wake_counter_at_ms_{0};
   uint16_t wake_counter_dwell_ms_{1500};
   uint16_t wake_advertisement_gap_ms_{500};
+  uint16_t single_wake_duration_ms_{4000};
   uint32_t wake_values_sent_{0};
   uint32_t wake_cycles_completed_{0};
   std::vector<uint8_t> wake_token_{};

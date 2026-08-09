@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.20.0] - 2026-08-09
+
+### Added
+
+- Add a selectable exact-counter wake action with a configurable advertisement
+  duration and a privacy-preserving desktop counter observer.
+
 ## [2.18.0] - 2026-08-04
 
 ### Added
