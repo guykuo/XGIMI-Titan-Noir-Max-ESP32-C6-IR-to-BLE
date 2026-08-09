@@ -49,10 +49,29 @@ alternate report as a short tap after the threshold; the ordinary code is not
 sent first. Power stays active until release and is held by this firmware for
 the confirmed 1500 ms duration to skip the shutdown confirmation.
 
+The held-power button and Home Assistant's stateful Power switch both request
+desired Power off. Once the command is transmitted, the firmware waits 500 ms
+after key-up and repeats the 1500 ms hold while BLE-derived actual Power remains
+on, even if desired changes back to on. It stops when the HID link disconnects,
+waits 15 seconds for shutdown to settle, then reconciles the latest desired
+state. A transmitted wake likewise completes before a newer desired-off request
+is applied. This makes missed commands self-recovering without overlapping
+transitions.
+
 ## Wake advertisement
 
 The BLE manufacturer company ID is `0x0046`. Bleak exposes a 16-byte value for
 that company ID: one rolling counter byte followed by a stable 15-byte token.
 The token is specific to the user's original remote and belongs only in
-`secrets.yaml`. Power On broadcasts the complete counter range `0x00`–`0xFF`
-with that stable tail.
+`secrets.yaml`. Ordinary Power On begins after the persisted last-sent counter,
+holds each successive value for a configurable dwell (1500 ms by default),
+stops advertising for a genuine off-air gap of at least 500 ms, wraps after
+`0xFF`, and continues until the projector establishes its HID connection. A
+newer desired-off request is applied after that transition. The off-air
+boundary prevents a projector standby scan/rejection state observed when
+payloads were changed continuously as mains
+returned. This also avoids relying on one rapid burst when shutdown, CEC or
+another remote has left the receiver's rolling state out of sync.
+
+The firmware records the most recently submitted counter and exposes per-attempt
+value and full-cycle counts for diagnostics.

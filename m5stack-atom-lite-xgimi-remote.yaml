@@ -12,7 +12,7 @@ esphome:
   comment: General-purpose M5Stack Atom Lite with XGIMI BLE wake and remote emulation
   project:
     name: xgimi.titan-noir-max-atom-lite-rc
-    version: 2.10.0
+    version: 2.18.0
 
 external_components:
   - source:
@@ -149,7 +149,74 @@ xgimi_remote:
   keyboard_report_id: xgimi_keyboard_report
   consumer_report_id: xgimi_consumer_report
 
+sensor:
+  - platform: template
+    name: "Wake Counter Last Sent"
+    id: wake_counter_last_sent
+    icon: mdi:counter
+    accuracy_decimals: 0
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      if (!id(xgimi_remote_controller).has_last_wake_counter())
+        return NAN;
+      return id(xgimi_remote_controller).last_wake_counter();
+
+  - platform: template
+    name: "Wake Sweep Values Sent"
+    id: wake_sweep_values_sent
+    icon: mdi:counter
+    accuracy_decimals: 0
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: return id(xgimi_remote_controller).wake_values_sent();
+
+  - platform: template
+    name: "Wake Sweep Cycles"
+    id: wake_sweep_cycles
+    icon: mdi:sync
+    accuracy_decimals: 0
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: return id(xgimi_remote_controller).wake_cycles_completed();
+
+number:
+  - platform: template
+    name: "Wake Counter Dwell"
+    id: wake_counter_dwell
+    icon: mdi:timer-outline
+    unit_of_measurement: ms
+    min_value: 1500
+    max_value: 5000
+    step: 10
+    mode: box
+    optimistic: true
+    restore_value: true
+    initial_value: 1500
+    entity_category: config
+
+  - platform: template
+    name: "Wake Advertisement Gap"
+    id: wake_advertisement_gap
+    icon: mdi:timer-pause-outline
+    unit_of_measurement: ms
+    min_value: 500
+    max_value: 1000
+    step: 10
+    mode: box
+    optimistic: true
+    restore_value: true
+    initial_value: 500
+    entity_category: config
+
 binary_sensor:
+  - platform: template
+    name: "Power"
+    id: actual_power
+    icon: mdi:power
+    device_class: power
+    lambda: return id(xgimi_remote_controller).actual_power_state();
+
   - platform: template
     name: "Projector Remote Connected"
     id: projector_remote_connected
@@ -187,7 +254,31 @@ binary_sensor:
     filters:
       - delayed_on: 20ms
     on_press:
-      - lambda: id(xgimi_remote_controller).start_wake_burst();
+      - lambda: |-
+          id(xgimi_remote_controller).set_wake_counter_dwell_ms(
+              static_cast<uint16_t>(id(wake_counter_dwell).state));
+          id(xgimi_remote_controller).set_wake_advertisement_gap_ms(
+              static_cast<uint16_t>(id(wake_advertisement_gap).state));
+          id(xgimi_remote_controller).request_power_on();
+
+switch:
+  - platform: template
+    name: "Power"
+    id: projector_power
+    icon: mdi:power
+    restore_mode: DISABLED
+    lambda: return id(xgimi_remote_controller).desired_power_state();
+    turn_on_action:
+      - lambda: |-
+          id(xgimi_remote_controller).set_wake_counter_dwell_ms(
+              static_cast<uint16_t>(id(wake_counter_dwell).state));
+          id(xgimi_remote_controller).set_wake_advertisement_gap_ms(
+              static_cast<uint16_t>(id(wake_advertisement_gap).state));
+          id(xgimi_remote_controller).request_power_on();
+    turn_off_action:
+      # A stateful switch must actually reach Off, so use the confirmed
+      # immediate-shutdown hold rather than opening the confirmation dialog.
+      - lambda: id(xgimi_remote_controller).request_immediate_power_off();
 
 button:
   - platform: template
@@ -289,25 +380,30 @@ button:
       - lambda: id(xgimi_remote_controller).press_consumer(0x0223);
 
   - platform: template
-    name: "Power Off"
-    id: power_off
-    icon: mdi:power
-    on_press:
-      - lambda: id(xgimi_remote_controller).request_power_off();
-
-  - platform: template
     name: "Power On"
     id: power_on
     icon: mdi:power
     on_press:
-      - lambda: id(xgimi_remote_controller).start_wake_burst();
+      - lambda: |-
+          id(xgimi_remote_controller).set_wake_counter_dwell_ms(
+              static_cast<uint16_t>(id(wake_counter_dwell).state));
+          id(xgimi_remote_controller).set_wake_advertisement_gap_ms(
+              static_cast<uint16_t>(id(wake_advertisement_gap).state));
+          id(xgimi_remote_controller).request_power_on();
 
   - platform: template
-    name: "Power Off (Immediately)"
-    id: power_off_immediately
+    name: "Power Off"
+    id: power_off
     icon: mdi:power
     on_press:
-      - lambda: id(xgimi_remote_controller).hold_keyboard(0x7F);
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x7F);
+
+  - platform: template
+    name: "Power Off (Held)"
+    id: power_off_held
+    icon: mdi:power
+    on_press:
+      - lambda: id(xgimi_remote_controller).request_immediate_power_off();
 
   - platform: template
     name: "Shortcut 1"

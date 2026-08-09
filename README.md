@@ -26,7 +26,24 @@ Home Assistant gets ready-to-use buttons for:
 - Settings Menu and the captured alternate Game Menu action
 - Focus (Auto) and the captured alternate Focus (Manual) action
 - Shortcut 1–4
-- separate Power On, Power Off and Power Off (Immediately) actions
+- separate self-recovering Power On, tapped Power Off and held Power Off actions
+
+It also provides two Home Assistant entities named **Power**. The `switch.*`
+entity is the writable desired state; the read-only `binary_sensor.*` entity is
+the observed state, using BLE HID connectivity as its proxy. An explicit switch
+change stays pending until the corresponding sensor transition. A newer target
+replaces an unsent command, while a transmitted command is allowed to finish
+before the latest target is reconciled.
+
+An observed Power change without a queued or transmitted command is treated as
+external—for example, shutdown from the original remote or CEC—and the desired
+switch adopts it without sending a counter-command. Bluetooth-off observations
+are debounced for 500 ms. Once Power Off has been transmitted, it holds Power
+for 1500 ms, waits 500 ms after release, and repeats until the HID connection
+drops—even if desired has since changed back to on. The firmware then waits 15
+seconds for shutdown to settle before completing the reverse Power On
+transition. Power On behaves symmetrically: once transmitted, it continues
+until connection, then honours a newer desired-off request.
 
 It also exposes Bluetooth connection/authentication diagnostics. The Atom's
 front button sends Power On.
@@ -36,14 +53,46 @@ front button sends Power On.
 When the projector is awake, the Atom maintains a bonded Bluetooth HID
 connection and sends the same keyboard or consumer-control reports captured
 from the original remote. Settings Menu and Focus use the two distinct
-short/alternate reports produced by the physical remote. Immediate power-off
-holds the Power report for the confirmed 1500 ms duration.
+short/alternate reports produced by the physical remote. **Power Off** sends one
+ordinary power-key tap; **Power Off (Held)** holds the same report for the
+confirmed 1500 ms duration and bypasses the shutdown confirmation. The
+held button and the stateful **Power** switch both request desired Power off and
+repeat the hold after a 500 ms released interval until actual Power becomes off.
+A transmitted transition completes before the latest opposite desired state is
+reconciled.
 
-When the projector is fully asleep, Power On broadcasts all 256 rolling-counter
-values with the original remote's stable 15-byte wake token. There is no
-deliberate delay between advertisements. A connection-state guard prevents a
-wake burst while the projector is already connected, avoiding advancement of
-the projector's rolling-code state at the wrong time.
+When the projector is fully asleep, Power On starts at the value after **Wake
+Counter Last Sent** and advertises sequential rolling-counter values until the
+projector establishes its HID connection. The sequence wraps after `0xFF` and
+continues for as many cycles as necessary; it has no arbitrary wake timeout.
+**Wake Counter Dwell** controls how long each value is advertised and defaults
+to 1500 ms. Each value is followed by a genuine off-air **Wake Advertisement
+Gap** of 500 ms. The firmware constrains those values to at least 1500 ms and
+500 ms respectively. A connection-state guard prevents wake advertising while the projector is
+already connected, avoiding advancement at the wrong time.
+
+The real off-air boundary is required for reliability. Controlled testing found
+that changing counters continuously while mains returned could make the
+projector's standby Bluetooth subsystem ignore every later advertisement from
+the Atom's BLE identity, even when the token, counter, name and duration matched
+the original remote. Rebooting the Atom and 30 seconds of silence did not clear
+that state; a silent projector mains power-cycle did. A different advertiser—the
+original remote—was accepted immediately. A genuine 100 ms gap prevented this
+state in testing; the production cadence uses a 500 ms safety margin.
+
+This continuing, bounded sequence is deliberately different from a rapid
+one-shot `0x00`–`0xFF` burst. Projector shutdown, CEC and competing remote
+activity can leave the rolling state out of sync, while the BLE controller may
+coalesce values changed faster than an advertisement reaches the air. Holding
+each successive value, creating a press boundary, and stopping only on actual
+connection lets the projector accept a later counter without Home Assistant
+retry logic.
+
+**Wake Counter Last Sent** reports the latest value submitted by Power On and is
+persisted across Atom restarts.
+**Wake Sweep Values Sent** and **Wake Sweep Cycles** report progress for the
+current ordinary Power On attempt. The editable timing values restore their
+previous Home Assistant values.
 
 The firmware contains the tested Titan Noir Max HID descriptor and button map.
 The token lives in the ignored `secrets.yaml`, not in the shareable source.
@@ -138,6 +187,22 @@ The supplied versions were tested with ESPHome 2026.7.3 and Bleak 2.1.1.
 8. Turn the projector off, wait until the Atom's **Projector Remote Connected**
    diagnostic becomes false, then test **Power On**.
 
+### Remote 3
+
+Share **Power** with Remote 3 when an activity needs discrete power on, power
+off and toggle handling. It represents the requested target, so it does not
+bounce during slow startup or shutdown. The **Power** binary sensor can be
+imported separately when observed projector state is useful for display or
+automation, but it is deliberately read-only.
+
+The firmware already supplies meaningful `mdi:` icons for every button, and
+Home Assistant displays them. The official Unfolded Circle Home Assistant
+driver currently sets the icon field to no value when it converts HA button and
+switch entities. Consequently, Remote 3 may show the same generic power icon
+for every imported button. This is a Remote 3 integration limitation, not an
+ESPHome setting; use Remote 3's own icon selection where available, otherwise
+the integration needs an upstream change to pass through supported HA icons.
+
 Do not commit `secrets.yaml` or a personalised firmware binary: both contain
 device credentials, and the binary also embeds the wake token.
 
@@ -186,7 +251,7 @@ Please do the following:
    USB serial port unambiguously (`COM…` on Windows or `/dev/…` on
    macOS/Linux), show me which port you found, then flash it. Do not flash any
    unrelated serial device.
-7. Confirm from serial logs that version 2.9.0 boots and advertises as
+7. Confirm from serial logs that version 2.18.0 boots and advertises as
    "M5Stack Atom Lite". Do not press remote buttons during verification.
 8. Tell me to join the "M5Stack Atom Lite Setup" Wi-Fi using the fallback AP
    password, select my main Wi-Fi in the captive portal, and wait for the Atom
@@ -196,8 +261,10 @@ Please do the following:
    paired too.
 10. Tell me how to add the discovered ESPHome device in Home Assistant and use
     the generated API key if asked. If network access is available, verify the
-    device reports project version 2.9.0 and all 23 expected remote buttons,
-    including "Settings Menu" and "Game Menu", without activating any button.
+    device reports project version 2.18.0, the desired-state "Power" switch,
+    the read-only "Power" binary sensor, and all 24 expected remote buttons,
+    including "Settings Menu" and
+    "Game Menu", without activating any button.
 11. Finish with a concise test: turn the projector off, wait for "Projector
     Remote Connected" to become false, then press "Power On" once.
 
@@ -210,7 +277,7 @@ captured token validation, but redact the token itself from the final summary.
 ## Project layout
 
 - `m5stack-atom-lite-xgimi-remote.yaml` — ESPHome device, HID services and HA entities
-- `components/xgimi_remote/` — wake sequencing, connection guard and HID reports
+- `components/xgimi_remote/` — persistent wake sequencing, connection guard and HID reports
 - `components/esp32_ble_server/` — BLE server support adapted for this HID peripheral
 - `scripts/capture_wake_token.py` — captures and validates only the per-remote token
 - `scripts/create_secrets.py` — creates cross-platform credentials and token config
