@@ -1,6 +1,10 @@
 substitutions:
   device_name: m5stack-atom-lite
   friendly_name: M5Stack Atom Lite
+  # Use "XGIMI RC" only when replacing the original remote and its Shortcut
+  # 1–4 settings must be exposed. Sharing that identity can replace the real
+  # remote's pairing on the projector.
+  ble_remote_name: M5Stack Atom Lite
 
 esphome:
   name: ${device_name}
@@ -8,7 +12,7 @@ esphome:
   comment: General-purpose M5Stack Atom Lite with XGIMI BLE wake and remote emulation
   project:
     name: xgimi.titan-noir-max-atom-lite-rc
-    version: 2.9.0
+    version: 2.10.0
 
 external_components:
   - source:
@@ -43,7 +47,7 @@ improv_serial:
 
 esp32_ble:
   id: atom_ble
-  name: "M5Stack Atom Lite"
+  name: "${ble_remote_name}"
   io_capability: none
   auth_req_mode: bond
   min_key_size: 7
@@ -64,7 +68,7 @@ esp32_ble_server:
           value: "Seneasy"
         - uuid: 0x2A24
           read: true
-          value: "XGIMI RC"
+          value: "${ble_remote_name}"
         - uuid: 0x2A25
           read: true
           value: "20260205"
@@ -138,6 +142,7 @@ esp32_ble_server:
 
 xgimi_remote:
   id: xgimi_remote_controller
+  remote_name: "${ble_remote_name}"
   wake_token: !secret xgimi_wake_token
   ble_id: atom_ble
   ble_server_id: atom_ble_server

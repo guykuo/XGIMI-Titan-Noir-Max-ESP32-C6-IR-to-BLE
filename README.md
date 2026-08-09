@@ -5,6 +5,13 @@ for an XGIMI Titan Noir Max projector. It appears in Home Assistant through the
 native ESPHome integration and appears to the projector as a Bluetooth HID
 remote named **M5Stack Atom Lite**.
 
+The Bluetooth identity is configurable with the `ble_remote_name` YAML
+substitution and defaults to **M5Stack Atom Lite**, allowing the Atom to coexist
+with the original remote. Use `XGIMI RC` only when the Atom will replace the
+original remote: that identity exposes the projector's Shortcut 1–4 assignment
+menu, but pairing it can replace or clash with the original remote's pairing.
+The ESPHome and Home Assistant device name is unaffected.
+
 The original Titan Noir Max remote has already been captured and mapped. A new
 user does **not** need to learn its buttons, HID descriptor, names or Home
 Assistant entities. The only per-remote value required is the original remote's

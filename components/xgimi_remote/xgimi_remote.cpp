@@ -12,8 +12,6 @@
 namespace esphome::xgimi_remote {
 
 static const char *const TAG = "xgimi_remote";
-static const char *const HID_NAME = "M5Stack Atom Lite";
-static const char *const WAKE_NAME = "M5Stack Atom Lite";
 static constexpr uint16_t IMMEDIATE_POWER_OFF_HOLD_MS = 1500;
 
 void XgimiRemote::setup() {
@@ -23,7 +21,7 @@ void XgimiRemote::setup() {
 void XgimiRemote::loop() {
   if (!this->ble_ready_ && this->ble_ != nullptr && this->ble_->is_active()) {
     this->ble_ready_ = true;
-    this->set_advertised_name_(HID_NAME);
+    this->set_advertised_name_(this->remote_name_.c_str());
   }
 
   if (this->held_keyboard_active_ &&
@@ -47,7 +45,7 @@ void XgimiRemote::loop() {
   }
 
   this->server_->set_manufacturer_data({0x46, 0x00});
-  this->set_advertised_name_(HID_NAME);
+  this->set_advertised_name_(this->remote_name_.c_str());
   this->wake_active_ = false;
   ESP_LOGI(TAG, "Completed XGIMI wake burst (256 rolling counter values)");
 }
@@ -61,7 +59,8 @@ void XgimiRemote::dump_config() {
                 "  Tap timing: no deliberate delays\n"
                 "  Immediate power-off hold: %u ms\n"
                 "  Captured buttons: 19",
-                HID_NAME, WAKE_NAME, static_cast<unsigned>(this->wake_token_.size()),
+                this->remote_name_.c_str(), this->remote_name_.c_str(),
+                static_cast<unsigned>(this->wake_token_.size()),
                 static_cast<unsigned>(IMMEDIATE_POWER_OFF_HOLD_MS));
 }
 
@@ -78,7 +77,7 @@ void XgimiRemote::start_wake_burst() {
     ESP_LOGI(TAG, "Projector Power On ignored: wake burst is already in progress");
     return;
   }
-  this->set_advertised_name_(WAKE_NAME);
+  this->set_advertised_name_(this->remote_name_.c_str());
   this->wake_counter_ = 0;
   this->wake_active_ = true;
   ESP_LOGI(TAG, "Starting XGIMI wake burst with no deliberate inter-value delay");
@@ -98,9 +97,9 @@ void XgimiRemote::start_pairing_mode() {
     ESP_LOGW(TAG, "Cannot start pairing mode before BLE is ready");
     return;
   }
-  this->set_advertised_name_(HID_NAME);
+  this->set_advertised_name_(this->remote_name_.c_str());
   this->server_->set_manufacturer_data({0x46, 0x00});
-  ESP_LOGI(TAG, "Advertising BLE HID device as %s", HID_NAME);
+  ESP_LOGI(TAG, "Advertising BLE HID device as %s", this->remote_name_.c_str());
 }
 
 void XgimiRemote::notify_keyboard_(const uint8_t data[8]) {
@@ -239,7 +238,7 @@ void XgimiRemote::gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t 
       if (this->wake_active_) {
         this->wake_active_ = false;
         this->server_->set_manufacturer_data({0x46, 0x00});
-        this->set_advertised_name_(HID_NAME);
+        this->set_advertised_name_(this->remote_name_.c_str());
         ESP_LOGI(TAG, "Stopped wake burst because the projector connected");
       }
       ESP_LOGI(TAG, "Projector HID client connected; requesting bonded encryption");
