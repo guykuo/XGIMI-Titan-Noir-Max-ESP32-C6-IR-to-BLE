@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.21.0] - 2026-08-09
+
+### Changed
+
+- Make the four Home Assistant Shortcut button labels configurable without
+  changing their stable entity IDs. Defaults describe the current projector
+  assignments: HDMI 1, HDMI 2, HDMI 3 and 3D Settings.
+
 ## [2.20.0] - 2026-08-09
 
 ### Added

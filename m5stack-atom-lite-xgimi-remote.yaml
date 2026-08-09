@@ -5,6 +5,12 @@ substitutions:
   # 1–4 settings must be exposed. Sharing that identity can replace the real
   # remote's pairing on the projector.
   ble_remote_name: M5Stack Atom Lite
+  # Labels only: change these to match the four functions assigned in the
+  # projector's Shortcut settings. The button IDs remain stable in HA.
+  shortcut_1_name: Shortcut 1 - HDMI 1
+  shortcut_2_name: Shortcut 2 - HDMI 2
+  shortcut_3_name: Shortcut 3 - HDMI 3
+  shortcut_4_name: Shortcut 4 - 3D Settings
 
 esphome:
   name: ${device_name}
@@ -12,7 +18,7 @@ esphome:
   comment: General-purpose M5Stack Atom Lite with XGIMI BLE wake and remote emulation
   project:
     name: xgimi.titan-noir-max-atom-lite-rc
-    version: 2.20.0
+    version: 2.21.0
 
 external_components:
   - source:
@@ -444,28 +450,28 @@ button:
       - lambda: id(xgimi_remote_controller).request_immediate_power_off();
 
   - platform: template
-    name: "Shortcut 1"
+    name: "${shortcut_1_name}"
     id: shortcut_1
     icon: mdi:numeric-1-box
     on_press:
       - lambda: id(xgimi_remote_controller).press_consumer(0x021D);
 
   - platform: template
-    name: "Shortcut 2"
+    name: "${shortcut_2_name}"
     id: shortcut_2
     icon: mdi:numeric-2-box
     on_press:
       - lambda: id(xgimi_remote_controller).press_consumer(0x021F);
 
   - platform: template
-    name: "Shortcut 3"
+    name: "${shortcut_3_name}"
     id: shortcut_3
     icon: mdi:numeric-3-box
     on_press:
       - lambda: id(xgimi_remote_controller).press_consumer(0x0221);
 
   - platform: template
-    name: "Shortcut 4"
+    name: "${shortcut_4_name}"
     id: shortcut_4
     icon: mdi:numeric-4-box
     on_press:

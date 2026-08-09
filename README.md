@@ -12,6 +12,12 @@ original remote: that identity exposes the projector's Shortcut 1–4 assignment
 menu, but pairing it can replace or clash with the original remote's pairing.
 The ESPHome and Home Assistant device name is unaffected.
 
+The `shortcut_1_name` through `shortcut_4_name` substitutions control the
+labels shown in Home Assistant. Their defaults reflect this installation:
+**Shortcut 1 - HDMI 1**, **Shortcut 2 - HDMI 2**, **Shortcut 3 - HDMI 3** and
+**Shortcut 4 - 3D Settings**. Changing a label does not change the button's
+stable ESPHome ID or its existing Home Assistant entity ID.
+
 The original Titan Noir Max remote has already been captured and mapped. A new
 user does **not** need to learn its buttons, HID descriptor, names or Home
 Assistant entities. The only per-remote value required is the original remote's
@@ -25,7 +31,7 @@ Home Assistant gets ready-to-use buttons for:
 - Home, Input, Mute, Picture and volume
 - Settings Menu and the captured alternate Game Menu action
 - Focus (Auto) and the captured alternate Focus (Manual) action
-- Shortcut 1–4
+- Shortcut 1–4, with configurable labels describing their assigned functions
 - separate self-recovering Power On, exact-counter Power On, tapped Power Off and held
   Power Off actions
 
@@ -290,7 +296,7 @@ Please do the following:
    paired too.
 10. Tell me how to add the discovered ESPHome device in Home Assistant and use
     the generated API key if asked. If network access is available, verify the
-    device reports project version 2.20.0, the desired-state "Power" switch,
+    device reports project version 2.21.0, the desired-state "Power" switch,
     the read-only "Power" binary sensor, and all 24 expected remote buttons,
     including "Settings Menu" and
     "Game Menu", without activating any button.
