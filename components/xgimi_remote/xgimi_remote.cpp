@@ -47,6 +47,16 @@ void XgimiRemote::loop() {
     this->release_held_keyboard_();
   }
 
+  if (this->keyboard_tap_active_ &&
+      static_cast<int32_t>(millis() - this->keyboard_tap_release_ms_) >= 0) {
+    this->release_keyboard_tap_();
+  }
+
+  if (this->consumer_tap_active_ &&
+      static_cast<int32_t>(millis() - this->consumer_tap_release_ms_) >= 0) {
+    this->release_consumer_tap_();
+  }
+
   if (this->actual_off_debounce_pending_ &&
       static_cast<int32_t>(millis() - this->actual_off_debounce_at_ms_) >= 0) {
     this->actual_off_debounce_pending_ = false;
@@ -130,7 +140,7 @@ void XgimiRemote::dump_config() {
                 "  BLE HID name: %s\n"
                 "  Wake advertisement name: %s\n"
                 "  Wake token length: %u bytes\n"
-                "  Tap timing: no deliberate delays\n"
+                "  Tap duration: %u ms\n"
                 "  Immediate power-off hold: %u ms\n"
                 "  Power-off retry interval after release: %u ms\n"
                 "  Power-on settle after an ON-to-OFF transition: %u ms\n"
@@ -144,6 +154,7 @@ void XgimiRemote::dump_config() {
                 "  Captured buttons: 19",
                 this->remote_name_.c_str(), this->remote_name_.c_str(),
                 static_cast<unsigned>(this->wake_token_.size()),
+                static_cast<unsigned>(this->tap_duration_ms_),
                 static_cast<unsigned>(IMMEDIATE_POWER_OFF_HOLD_MS),
                 static_cast<unsigned>(POWER_OFF_RETRY_INTERVAL_MS),
                 static_cast<unsigned>(POWER_ON_AFTER_OFF_SETTLE_MS),
@@ -434,9 +445,13 @@ void XgimiRemote::press_keyboard(uint8_t usage) {
     return;
   }
   uint8_t press[8] = {0x00, 0x00, usage, 0x00, 0x00, 0x00, 0x00, 0x00};
-  uint8_t release[8] = {};
+  if (this->keyboard_tap_active_)
+    this->release_keyboard_tap_();
   this->notify_keyboard_(press);
-  this->notify_keyboard_(release);
+  this->keyboard_tap_active_ = true;
+  this->keyboard_tap_release_ms_ = millis() + this->tap_duration_ms_;
+  ESP_LOGI(TAG, "Holding keyboard tap 0x%02X for %u ms", usage,
+           static_cast<unsigned>(this->tap_duration_ms_));
 }
 
 void XgimiRemote::hold_keyboard(uint8_t usage) {
@@ -449,6 +464,8 @@ void XgimiRemote::hold_keyboard(uint8_t usage) {
              this->held_keyboard_usage_);
     return;
   }
+  if (this->keyboard_tap_active_)
+    this->release_keyboard_tap_();
 
   uint8_t press[8] = {0x00, 0x00, usage, 0x00, 0x00, 0x00, 0x00, 0x00};
   this->notify_keyboard_(press);
@@ -457,6 +474,12 @@ void XgimiRemote::hold_keyboard(uint8_t usage) {
   this->held_release_ms_ = millis() + IMMEDIATE_POWER_OFF_HOLD_MS;
   ESP_LOGI(TAG, "Holding keyboard usage 0x%02X for %u ms", usage,
            static_cast<unsigned>(IMMEDIATE_POWER_OFF_HOLD_MS));
+}
+
+void XgimiRemote::release_keyboard_tap_() {
+  uint8_t release[8] = {};
+  this->notify_keyboard_(release);
+  this->keyboard_tap_active_ = false;
 }
 
 void XgimiRemote::release_held_keyboard_() {
@@ -482,9 +505,19 @@ void XgimiRemote::press_consumer(uint16_t usage) {
   }
   uint8_t press[6] = {static_cast<uint8_t>(usage & 0xFF), static_cast<uint8_t>((usage >> 8) & 0xFF),
                       0x00, 0x00, 0x00, 0x00};
-  uint8_t release[6] = {};
+  if (this->consumer_tap_active_)
+    this->release_consumer_tap_();
   this->notify_consumer_(press);
+  this->consumer_tap_active_ = true;
+  this->consumer_tap_release_ms_ = millis() + this->tap_duration_ms_;
+  ESP_LOGI(TAG, "Holding consumer tap 0x%04X for %u ms", usage,
+           static_cast<unsigned>(this->tap_duration_ms_));
+}
+
+void XgimiRemote::release_consumer_tap_() {
+  uint8_t release[6] = {};
   this->notify_consumer_(release);
+  this->consumer_tap_active_ = false;
 }
 
 std::vector<uint8_t> XgimiRemote::make_wake_packet_(uint8_t counter) const {
@@ -599,6 +632,8 @@ void XgimiRemote::gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t 
         this->peer_known_ = false;
         this->held_keyboard_active_ = false;
         this->held_keyboard_usage_ = 0;
+        this->keyboard_tap_active_ = false;
+        this->consumer_tap_active_ = false;
         this->actual_off_debounce_pending_ = true;
         this->actual_off_debounce_at_ms_ = millis() + ACTUAL_OFF_DEBOUNCE_MS;
         ESP_LOGI(TAG, "Projector HID client disconnected; debouncing actual Power off for %u ms",

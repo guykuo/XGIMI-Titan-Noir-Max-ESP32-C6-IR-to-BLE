@@ -20,6 +20,7 @@ class XgimiRemote : public Component {
   void set_keyboard_report(esp32_ble_server::BLECharacteristic *report) { this->keyboard_report_ = report; }
   void set_consumer_report(esp32_ble_server::BLECharacteristic *report) { this->consumer_report_ = report; }
   void set_remote_name(const std::string &name) { this->remote_name_ = name; }
+  void set_tap_duration_ms(uint16_t duration_ms) { this->tap_duration_ms_ = duration_ms; }
   void set_wake_token(const std::vector<uint8_t> &token) { this->wake_token_ = token; }
 
   void setup() override;
@@ -84,6 +85,8 @@ class XgimiRemote : public Component {
   void begin_wake_advertising_gap_();
   void advertise_next_wake_counter_();
   void restore_hid_subscriptions_();
+  void release_keyboard_tap_();
+  void release_consumer_tap_();
   void release_held_keyboard_();
   void notify_keyboard_(const uint8_t data[8]);
   void notify_consumer_(const uint8_t data[6]);
@@ -131,6 +134,11 @@ class XgimiRemote : public Component {
   bool held_keyboard_active_{false};
   uint8_t held_keyboard_usage_{0};
   uint32_t held_release_ms_{0};
+  uint16_t tap_duration_ms_{100};
+  bool keyboard_tap_active_{false};
+  uint32_t keyboard_tap_release_ms_{0};
+  bool consumer_tap_active_{false};
+  uint32_t consumer_tap_release_ms_{0};
 
   bool desired_power_on_{false};
   bool desired_power_initialised_{false};

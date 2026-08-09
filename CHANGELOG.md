@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.22.0] - 2026-08-09
+
+### Fixed
+
+- Hold ordinary keyboard and consumer-control taps for 100 ms by default,
+  matching the measured original remote instead of sending key-down and key-up
+  reports back-to-back. The duration is configurable with `tap_duration_ms`.
+
 ## [2.21.0] - 2026-08-09
 
 ### Changed

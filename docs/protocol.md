@@ -49,6 +49,23 @@ alternate report as a short tap after the threshold; the ordinary code is not
 sent first. Power stays active until release and is held by this firmware for
 the confirmed 1500 ms duration to skip the shutdown confirmation.
 
+### Original remote tap timing
+
+A timestamped HID-host capture on 2026-08-09 measured natural presses of the
+original remote. Each tap produced one key-down report followed by one all-zero
+release report; a held arrow produced no repeated reports.
+
+| Button | Natural taps | Observed key-down durations | Mean |
+| ------ | ------------ | --------------------------- | ---- |
+| Right  | 10           | 90, 100, 90, 100, 90, 90, 110, 110, 90, 90 ms | 96 ms |
+| Left   | 10           | 90, 90, 130, 130, 150, 100, 150, 150, 140, 150 ms | 128 ms |
+| Up     | 5            | 90, 90, 90, 90, 100 ms | 92 ms |
+
+The combined median is 100 ms and the combined mean is 108 ms. A separate
+800 ms Right hold consisted only of the initial key-down and final release.
+Ordinary cloned taps therefore preserve 100 ms of active key-down time rather
+than sending press and release notifications back-to-back.
+
 The held-power button and Home Assistant's stateful Power switch both request
 desired Power off. Once the command is transmitted, the firmware waits 500 ms
 after key-up and repeats the 1500 ms hold while BLE-derived actual Power remains

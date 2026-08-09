@@ -59,7 +59,9 @@ front button sends Power On.
 
 When the projector is awake, the Atom maintains a bonded Bluetooth HID
 connection and sends the same keyboard or consumer-control reports captured
-from the original remote. Settings Menu and Focus use the two distinct
+from the original remote. Ordinary taps remain active for 100 ms by default,
+matching the measured original remote; `tap_duration_ms` can tune this without
+blocking the ESPHome loop. Settings Menu and Focus use the two distinct
 short/alternate reports produced by the physical remote. **Power Off** sends one
 ordinary power-key tap; **Power Off (Held)** holds the same report for the
 confirmed 1500 ms duration and bypasses the shutdown confirmation. The
