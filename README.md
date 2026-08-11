@@ -4,12 +4,12 @@
 
 ## What This Does
 
-This project turns an ESP32-C6 into an infrared remote to Bluetooth translator
-for XGIMI Titan Noir projectors. The Titan Noir projectors lack IR input and
+This project turns an ESP32-C6 into an IR remote to Bluetooth translator
+for XGIMI Titan Noir projectors. Titan Noir projectors lack IR input and
 can only accept bluetooth signals. This translator works around that limitation
 by enabling use of a TiVO Roamio or Hisense 50U6G infrared remote.
 
-You choose which IR codes are accepted by installing the software version the desired remote.
+You choose which IR codes are accepted by installing the software version for desired remote.
 
 Once IR control is enabled, universal remotes that communicate via IR, like the
 Logitech Harmony Elite, can control your Titan Noir projector through use
@@ -21,12 +21,12 @@ However, Home Assistant integration capability has been preserved.
 
 *** This fork does NOT require presence nor use of a Home Assistant Server ***
 
-Please see the original mrmachine github for Home Assistant usage information
+Please see the original mrmachine github for Home Assistant related information.
 
 ## Requirements
 
 - XGIMI Titan Noir Max and its original Bluetooth remote
-- ESP32-C6 with a data-capable USB cable
+- ESP32-C6-WROOM-1 (or equivalent ESP32) with a data-capable USB cable
 - IR sensor module
 - Windows, macOS or Linux computer with Bluetooth and Python 3.14 or newer
 
@@ -40,22 +40,23 @@ Here are pinouts of two styles of IR sensors and the respective connection point
 on a ESP32-C6-WROOM-1 board. 
 
 The IR sensor style that has the small pc board includes a feedback LED that 
-flashes red when the sensor detect IR. The feedback LED can be useful during
-troubleshooting whether the sensor is working, but may be less sensitive to IR.
-Either style of sensor will work.
+flashes red when the sensor detect IR. That feedback LED can be useful during
+troubleshooting whether the sensor is working, but that style sensor may be 
+less sensitive to IR. Either style of sensor will work for this project
 
 <img width="1406" height="1164" alt="pinouts" src="https://github.com/user-attachments/assets/36d02d3a-eb5e-479e-a601-ad8ae361fd3b" />
 
-** IMPORTANT ** If you use another ESP32 board, be certain it has at least bluetooth
+** IMPORTANT ** If you use a different ESP32 board, be certain it has at least bluetooth
 version 4.2 AND Bluetooth Low Energy (BLE) capability. Otherwise, power-on broadcast to 
 Xgimi projector will not work. 
 
 - Should work with: ESP32-S3, ESP32-C (C3, C6), esp32 pico d4, possibly ESP32-H2 / H4
+  
 - Avoid original ESP32 (WROOM-32 /DevKitC), and ESP32-S2 Series
 
-If a board, other than the ESP32-C6-WROOM-1 is used, you must change board definition and specify
-the actual GPIO pin you use in my YAML. For simplicity, I suggest using same type as the 
-ESP32-C6-WROOM-1 board is used to avoid need to edit my YAML.
+If a board, other than the ESP32-C6-WROOM-1 is used, you MUST change board definition and specify
+the actual GPIO pin you use in my YAMLs. For simplicity, I suggest using exactly the 
+ESP32-C6-WROOM-1 to avoid any need to edit my YAML or find your own pinouts.
 
 Pinout for the ESP32-C6-WROOM-1 board I used is below. I have marked the connectors of interest.
 <img width="1000" height="540" alt="ESP32-C6 -WROOM-1" src="https://github.com/user-attachments/assets/c19da29d-63c3-4620-8664-57e0bb5918c4" />
@@ -64,21 +65,25 @@ Pinout for the ESP32-C6-WROOM-1 board I used is below. I have marked the connect
 Here is a completed translator wired with IR sensor that does not have feedback LED
 <img width="1200" height="900" alt="completed esp32IR" src="https://github.com/user-attachments/assets/15c51e16-8e48-4e8f-91a3-542f1145a961" />
 
+
 If using another board, check its pinouts for location of GPIO-10, 5V, and GND. Don't assume
-they are in same location between different boards. For instance, below is a
-pinout for a different EPS32-C6 board
+they are in same physical location between differing boards. For instance, below is a
+pinout for another EPS32-C6 board
 
 <img width="896" height="990" alt="71CVmIKYAyL _AC_SL1080_" src="https://github.com/user-attachments/assets/02ca05f1-13a3-41c3-8e4e-64bf1c060016" />
 
-Or perhaps something like this ESP32-C3 Super Mini. You find the equivalent connectors to
+
+Even more different is something like this ESP32-C3 Super Mini. Again, you must find its equivalent connectors to
 wire and also change the board id in the YAML.
 
 <img width="751" height="328" alt="ESP32-C3 Super Mini" src="https://github.com/user-attachments/assets/b19183ec-ffcd-4a47-a2fe-47ba49832875" />
 
 
-Easiest is to use the same exact board as mine, but it is possible to user other boards.
+Easiest is to use the same exact same board as mine, but it is possible to user other boards.
 
-You will need a small USB-C power supply for your ESP32-C6, [this one works well.](https://www.amazon.com/dp/B0DZ6J62C3)
+To power the ESP32, you will need a small USB-C power supply for your ESP32-C6.
+[This one works well.](https://www.amazon.com/dp/B0DZ6J62C3)
+
 
 Mrmachine already captured and mapped an original Titan Noir Max remote. We do not
 need to learn its buttons, HID descriptor, names or Home Assistant entities. That
@@ -88,7 +93,7 @@ has already been done for us by mrmachine.
 15-byte BLE wake token.
 
 
-## How it works
+## How Bluetooth to Titan Noir Works
 
 When the projector is awake, the ESP32 maintains a bonded Bluetooth HID
 connection and sends the same keyboard or consumer-control reports captured
