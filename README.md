@@ -28,7 +28,7 @@ Please see the original mrmachine github for Home Assistant usage information
 - XGIMI Titan Noir Max and its original Bluetooth remote
 - ESP32-C6 with a data-capable USB cable
 - IR sensor module
-- Windows, macOS or Linux computer with Bluetooth and Python 3.11 or newer
+- Windows, macOS or Linux computer with Bluetooth and Python 3.14 or newer
 
 The ESP32-C6 gets wired to your 3 pin IR sensor via three connections. 
 
@@ -303,10 +303,10 @@ device credentials, and the binary also embeds the wake token.
 - Logging output from ESP32-C6-WROOM is only out its USB port. THe COMS port can be used
 for programming the ESP32, but will not output any log data.
 
-- Currently, builds on MacOS completes flashing ESP32 successfully, but does not
-start logging. Instead an architecture error appears in terminal. The ESP32 is
-succesfully flashed, but for the time being viewing of logs must be manually started
-via screen command
+- If older Python is on your Mac, complete flashing ESP32 successfully, but do not
+start logging. Instead an architecture error appears in terminal.
+
+Fix this issue by updating Python to python-3.14.7-macos11 before building firmware.
 
 
 ## Scope and safety
