@@ -23,14 +23,6 @@ However, Home Assistant integration capability has been preserved.
 
 Please see the original mrmachine github for Home Assistant usage information
 
-Recent Notes:
-- Thanks to techjmw at AVSforum for work re Hisense 50U6G code mapping from Harmony library.
-
-- Logging output from ESP32-C6-WROOM is only out its USB port. THe COMS port can be used
-for programming the ESP32, but will not output any log data.
-
-
-
 ## Requirements
 
 - XGIMI Titan Noir Max and its original Bluetooth remote
@@ -249,8 +241,8 @@ device credentials, and the binary also embeds the wake token.
 |game_menu	|address=0x3085, command=0xC036	|guide |
 |mute	|address=0x3085, command=0xE01B	|mute |
 |picture	|address=0x3085, command=0xE013	|info |
-|power_on	|address=0x3085, command=0xE010	|tv power (Discrete Power On)|
-|power_off_immediately	|address=0x3085, command=0xE011	|Live tv (Discrete Power Off)|
+|power_on	|address=0x3085, command=0xE010	|TV Power (Use as Discrete Power On)|
+|power_off_immediately	|address=0x3085, command=0xE011	|Live TV (Use as Discrete Power Off)|
 |power_off	|address=0x3085, command=0xC031	|0 (Do NOT USE)|
 |shortcut_1	|address=0x3085, command=0x9060	|A yellow |
 |shortcut_2	|address=0x3085, command=0x9061	|B blue |
@@ -294,14 +286,28 @@ device credentials, and the binary also embeds the wake token.
 
 ## Project layout
 
-- `esp32c6-IR-to-xgimiBLE-KuoHisense.yaml` — HisenseIR version ESPHome device, HID services and HA entities
-- `esp32c6-IR-to-xgimiBLE-KuoTiVo` — TiVO IR version ESPHome device, HID services and HA entities
+- `esp32c6-IR-to-xgimiBLE-KuoHisense.yaml` — Hisense version of ESP32 IR remote
+- `esp32c6-IR-to-xgimiBLE-KuoTiVo.yaml` — TiVO IR Hisense version of ESP32 IR remote
 - `components/xgimi_remote/` — wake sequencing, connection guard and HID reports
 - `components/esp32_ble_server/` — BLE server support adapted for this HID peripheral
 - `scripts/capture_wake_token.py` — captures and validates only the per-remote token
 - `scripts/create_secrets.py` — creates cross-platform credentials and token config
 - `docs/protocol.md` — sanitised, model-wide HID capture reference
 - `secrets.example.yaml` — safe template; copy to ignored `secrets.yaml`
+
+## Recent Notes:
+- Latest bluetooth stack from mrmachine incorporated into fork
+
+- Thanks to techjmw at AVSforum for work re Hisense 50U6G code mapping from Harmony library.
+
+- Logging output from ESP32-C6-WROOM is only out its USB port. THe COMS port can be used
+for programming the ESP32, but will not output any log data.
+
+- Currently, builds on MacOS completes flashing ESP32 successfully, but does not
+start logging. Instead an architecture error appears in terminal. The ESP32 is
+succesfully flashed, but for the time being viewing of logs must be manually started
+via screen command
+
 
 ## Scope and safety
 
