@@ -85,14 +85,6 @@ To power the ESP32, you will need a small USB-C power supply for your ESP32-C6.
 [This one works well.](https://www.amazon.com/dp/B0DZ6J62C3)
 
 
-Mrmachine already captured and mapped an original Titan Noir Max remote. We do not
-need to learn its buttons, HID descriptor, names or Home Assistant entities. That
-has already been done for us by mrmachine.
-
-** The only per-remote value required is the original remote's
-15-byte BLE wake token.
-
-
 ## How Bluetooth to Titan Noir Works
 
 When the projector is awake, the ESP32 maintains a bonded Bluetooth HID
@@ -110,14 +102,19 @@ the projector's rolling-code state at the wrong time.
 The firmware contains the tested Titan Noir Max HID descriptor and button map.
 Your specific token lives in the `secrets.yaml`, not in the shareable source.
 
+Mrmachine already captured and mapped an original Titan Noir Max remote. We do not
+need to learn its buttons, HID descriptor, names or Home Assistant entities. That
+has already been done for us by mrmachine.
+
+** The only per-remote value we must acquire is the original remote's
+15-byte BLE wake token.
 
 ## Installing This Software on ESP32
 
 1. Clone or copy this directory to your computer. 
    (Under MacOS, compiling works better if directory is on desktop.)
    
-   Create a virtual environment, and install the
-   pinned tools:
+   Create a virtual environment, and install the pinned tools:
 
    On macOS or Linux, cd to directory of this project. You can readily do so
    by type "cd " and then dragging your director into terminal.
