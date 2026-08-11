@@ -469,13 +469,22 @@ binary_sensor:
         - button.press: picture
                          
   - platform: remote_receiver
-    name: "power_on" # discrete power on
+    name: "power_on" # discrete power on (TiVo TV Power)
     nec:
       address: 0x3085
       command: 0xE010
     on_press:
       then:
         - button.press: power_on
+                
+  - platform: remote_receiver
+    name: "power_off_immediately" # discrete power off (TiVo Live TV)
+    nec:
+      address: 0x3085
+      command: 0xE011
+    on_press:
+      then:
+        - button.press: power_off_held
                 
   - platform: remote_receiver
     name: "power_off" # 0 on TiVo remote. Normally, never use this off option.
@@ -486,15 +495,6 @@ binary_sensor:
       then:
         - button.press: power_off    
 
-  - platform: remote_receiver
-    name: "power_off_immediately" # discrete power off
-    nec:
-      address: 0x3085
-      command: 0xE011
-    on_press:
-      then:
-        - button.press: power_off_held
-                
   - platform: remote_receiver
     name: "shortcut_1"
     nec:
