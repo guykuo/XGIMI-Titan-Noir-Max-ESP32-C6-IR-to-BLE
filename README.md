@@ -1,211 +1,158 @@
-# XGIMI Titan Noir Max remote on an M5Stack Atom Lite
+# Infrared XGIMI Titan Noir Max Remote via an ESP32-C6
 
-This project turns an M5Stack Atom Lite into a Wi-Fi-connected Bluetooth remote
-for an XGIMI Titan Noir Max projector. It appears in Home Assistant through the
-native ESPHome integration and appears to the projector as a Bluetooth HID
-remote named **M5Stack Atom Lite** by default.
+<img width="1200" height="312" alt="ir-esp32-ble-xgimi" src="https://github.com/user-attachments/assets/c805cb25-0852-43c9-b07e-095054d24b49" />
 
-The Bluetooth identity is configurable with the `ble_remote_name` YAML
-substitution and defaults to **M5Stack Atom Lite**, allowing the Atom to coexist
-with the original remote. Use `XGIMI RC` only when the Atom will replace the
-original remote: that identity exposes the projector's Shortcut 1–4 assignment
-menu, but pairing it can replace or clash with the original remote's pairing.
-The ESPHome and Home Assistant device name is unaffected.
+## What This Does
 
-The `shortcut_1_name` through `shortcut_4_name` substitutions control the
-labels shown in Home Assistant. Their defaults reflect this installation:
-**Shortcut 1 - HDMI 1**, **Shortcut 2 - HDMI 2**, **Shortcut 3 - HDMI 3** and
-**Shortcut 4 - 3D Settings**. Changing a label does not change the button's
-stable ESPHome ID or its existing Home Assistant entity ID.
+This project turns an ESP32-C6 into an infrared remote to Bluetooth translator
+for XGIMI Titan Noir projectors. The Titan Noir projectors lack IR input and
+can only accept bluetooth signals. This translator works around that limitation
+by enabling use of a TiVO Roamio or Hisense 50U6G infrared remote.
 
-The original Titan Noir Max remote has already been captured and mapped. A new
-user does **not** need to learn its buttons, HID descriptor, names or Home
-Assistant entities. The only per-remote value required is the original remote's
-15-byte BLE wake token.
+You choose which IR codes are accepted by installing the software version the desired remote.
 
-## What it provides
+Once IR control is enabled, universal remotes that communicate via IR, like the
+Logitech Harmony Elite, can control your Titan Noir projector through use
+of TiVo or Hisens IR codes.
 
-Home Assistant gets ready-to-use buttons for:
+This fork is based upon mrmachine's github which focuses on Home Assistant
+control of the projector. Instead, this fork concentrates on IR control.
+However, Home Assistant integration capability has been preserved.
 
-- Back and all cursor directions/Enter
-- Home, Input, Mute, Picture and volume
-- Settings Menu and the captured alternate Game Menu action
-- Focus (Auto) and the captured alternate Focus (Manual) action
-- Shortcut 1–4, with configurable labels describing their assigned functions
-- separate self-recovering Power On, exact-counter Power On, tapped Power Off and held
-  Power Off actions
+*** This fork does NOT require presence nor use of a Home Assistant Server ***
 
-It also provides two Home Assistant entities named **Power**. The `switch.*`
-entity is the writable desired state; the read-only `binary_sensor.*` entity is
-the observed state, using BLE HID connectivity as its proxy. An explicit switch
-change stays pending until the corresponding sensor transition. A newer target
-replaces an unsent command, while a transmitted command is allowed to finish
-before the latest target is reconciled.
+Please see the original mrmachine github for Home Assistant usage information
 
-An observed Power change without a queued or transmitted command is treated as
-external—for example, shutdown from the original remote or CEC—and the desired
-switch adopts it without sending a counter-command. Bluetooth-off observations
-are debounced for 500 ms. Once Power Off has been transmitted, it holds Power
-for 1500 ms, waits 500 ms after release, and repeats until the HID connection
-drops—even if desired has since changed back to on. The firmware then waits 15
-seconds for shutdown to settle before completing the reverse Power On
-transition. Power On behaves symmetrically: once transmitted, it continues
-until connection, then honours a newer desired-off request.
+Recent Notes:
+- Thanks to techjmw at AVSforum for work re Hisense 50U6G code mapping from Harmony library.
 
-It also exposes Bluetooth connection/authentication diagnostics. The Atom's
-front button sends Power On.
+- Logging output from ESP32-C6-WROOM is only out its USB port. THe COMS port can be used
+for programming the ESP32, but will not output any log data.
 
-## Configuration
 
-The following Home Assistant entities appear under the projector device. Values
-marked as restored survive an Atom restart:
-
-- **Tap Duration** — how long ordinary keyboard and consumer-control reports
-  remain pressed before their release report. It accepts 20–1000 ms in 10 ms
-  steps, restores its previous value and defaults to the measured 100 ms median
-  of the original remote. It does not change the separate 1500 ms held-Power
-  action.
-- **Wake Counter** — the exact rolling-counter byte, 0–255, used only by
-  **Power On (Counter)** for diagnostics. It is restored and does not affect the
-  ordinary self-recovering Power On sweep.
-- **Wake Counter Dwell** — how long ordinary Power On advertises each counter,
-  1500–5000 ms in 10 ms steps. It is restored; firmware enforces the 1500 ms
-  minimum measured to be reliable.
-- **Wake Advertisement Gap** — the genuine off-air interval between ordinary
-  wake counters, 500–1000 ms in 10 ms steps. It is restored; firmware enforces
-  at least 500 ms to avoid the projector rejecting a continuously changing
-  advertisement.
-- **Exact Wake Duration** — how long **Power On (Counter)** advertises its one
-  selected counter, 20–5000 ms in 10 ms steps. It is restored and defaults to
-  4000 ms.
-
-Some identity and presentation settings must remain compile-time ESPHome
-substitutions because changing the Bluetooth identity at runtime can invalidate
-the projector's bond:
-
-- `ble_remote_name` defaults to `M5Stack Atom Lite`, allowing the Atom and the
-  original remote to coexist. Choosing `XGIMI RC` exposes the projector's
-  Shortcut 1–4 assignment settings, but that shared identity clashes with the
-  original remote and can replace its pairing.
-- `shortcut_1_name` through `shortcut_4_name` change only the labels presented
-  in Home Assistant. Their stable ESPHome IDs and Home Assistant entity IDs do
-  not change.
-
-## How it works
-
-When the projector is awake, the Atom maintains a bonded Bluetooth HID
-connection and sends the same keyboard or consumer-control reports captured
-from the original remote. Ordinary taps remain active for 100 ms by default,
-matching the measured original remote; **Tap Duration** can tune this from Home
-Assistant without blocking the ESPHome loop. Settings Menu and Focus use the two distinct
-short/alternate reports produced by the physical remote. **Power Off** sends one
-ordinary power-key tap; **Power Off (Held)** holds the same report for the
-confirmed 1500 ms duration and bypasses the shutdown confirmation. The
-held button and the stateful **Power** switch both request desired Power off and
-repeat the hold after a 500 ms released interval until actual Power becomes off.
-A transmitted transition completes before the latest opposite desired state is
-reconciled.
-
-When the projector is fully asleep, Power On starts at the value after **Wake
-Counter Last Sent** and advertises sequential rolling-counter values until the
-projector establishes its HID connection. The sequence wraps after `0xFF` and
-continues for as many cycles as necessary; it has no arbitrary wake timeout.
-**Wake Counter Dwell** controls how long each value is advertised and defaults
-to 1500 ms. Each value is followed by a genuine off-air **Wake Advertisement
-Gap** of 500 ms. The firmware constrains those values to at least 1500 ms and
-500 ms respectively. A connection-state guard prevents wake advertising while the projector is
-already connected, avoiding advancement at the wrong time.
-
-The real off-air boundary is required for reliability. Controlled testing found
-that changing counters continuously while mains returned could make the
-projector's standby Bluetooth subsystem ignore every later advertisement from
-the Atom's BLE identity, even when the token, counter, name and duration matched
-the original remote. Rebooting the Atom and 30 seconds of silence did not clear
-that state; a silent projector mains power-cycle did. A different advertiser—the
-original remote—was accepted immediately. A genuine 100 ms gap prevented this
-state in testing; the production cadence uses a 500 ms safety margin.
-
-This continuing, bounded sequence is deliberately different from a rapid
-one-shot `0x00`–`0xFF` burst. Projector shutdown, CEC and competing remote
-activity can leave the rolling state out of sync, while the BLE controller may
-coalesce values changed faster than an advertisement reaches the air. Holding
-each successive value, creating a press boundary, and stopping only on actual
-connection lets the projector accept a later counter without Home Assistant
-retry logic.
-
-The diagnostic **Wake Counter** number selects one exact decimal value from 0
-to 255. **Power On (Counter)** advertises only that value for **Exact Wake
-Duration** (4000 ms by default), after first creating an off-air boundary, and
-does not increment it. This allows identical, lower, higher and wraparound
-values to be tested deliberately. **Wake Counter Last Sent** reports the latest
-value submitted by either wake path and is persisted across Atom restarts.
-**Wake Sweep Values Sent** and **Wake Sweep Cycles** report progress for the
-current ordinary Power On attempt. The editable diagnostic values restore
-previous Home Assistant values.
-
-To observe what the original remote is broadcasting without printing its
-private token, run the counter observer while the projector is disconnected or
-fully asleep and press the original remote's Power button:
-
-```sh
-.venv/bin/python scripts/observe_wake_counters.py --duration 120
-```
-
-```powershell
-.venv\Scripts\python.exe scripts\observe_wake_counters.py --duration 120
-```
-
-It prints each observed counter in decimal and hexadecimal with the advertiser
-name, operating-system device identifier and a non-secret token hash prefix.
-Repeated lines may be multiple BLE advertisements from one physical press, so
-use their timestamps when correlating them with button presses.
-
-For a sweep summary, add `--coverage-only`. A passive desktop scan is useful
-evidence but is not a packet-complete verifier: CoreBluetooth and other host BLE
-stacks can omit or coalesce callbacks even when the Atom advances correctly.
-Use **Wake Sweep Values Sent** and **Wake Sweep Cycles** for the firmware-side
-count, and increase **Wake Counter Dwell** when testing observer coverage.
-
-The firmware contains the tested Titan Noir Max HID descriptor and button map.
-The token lives in the ignored `secrets.yaml`, not in the shareable source.
 
 ## Requirements
 
 - XGIMI Titan Noir Max and its original Bluetooth remote
-- M5Stack Atom Lite with a data-capable USB cable
+- ESP32-C6 with a data-capable USB cable
+- IR sensor module
 - Windows, macOS or Linux computer with Bluetooth and Python 3.11 or newer
-- Wi-Fi reachable by Home Assistant
-- Home Assistant with the ESPHome integration
 
-The supplied versions were tested with ESPHome 2026.7.3 and Bleak 2.1.1.
+The ESP32-C6 gets wired to your 3 pin IR sensor via three connections. 
 
-## Manual setup
+- GPIO10 <- IR receiver signal
+- Gnd <- IR receiver Gnd
+- 5V <- IR reciver Vcc
 
-1. Clone or copy this directory, create a virtual environment, and install the
+Here are pinouts of two styles of IR sensors and the respective connection points 
+on a ESP32-C6-WROOM-1 board. 
+
+The IR sensor style that has the small pc board includes a feedback LED that 
+flashes red when the sensor detect IR. The feedback LED can be useful during
+troubleshooting whether the sensor is working, but may be less sensitive to IR.
+Either style of sensor will work.
+
+<img width="1406" height="1164" alt="pinouts" src="https://github.com/user-attachments/assets/36d02d3a-eb5e-479e-a601-ad8ae361fd3b" />
+
+** IMPORTANT ** If you use another ESP32 board, be certain it has at least bluetooth
+version 4.2 AND Bluetooth Low Energy (BLE) capability. Otherwise, power-on broadcast to 
+Xgimi projector will not work. 
+
+- Should work with: ESP32-S3, ESP32-C (C3, C6), esp32 pico d4, possibly ESP32-H2 / H4
+- Avoid original ESP32 (WROOM-32 /DevKitC), and ESP32-S2 Series
+
+If a board, other than the ESP32-C6-WROOM-1 is used, you must change board definition and specify
+the actual GPIO pin you use in my YAML. For simplicity, I suggest using same type as the 
+ESP32-C6-WROOM-1 board is used to avoid need to edit my YAML.
+
+Pinout for the ESP32-C6-WROOM-1 board I used is below. I have marked the connectors of interest.
+<img width="1000" height="540" alt="ESP32-C6 -WROOM-1" src="https://github.com/user-attachments/assets/c19da29d-63c3-4620-8664-57e0bb5918c4" />
+
+
+Here is a completed translator wired with IR sensor that does not have feedback LED
+<img width="1200" height="900" alt="completed esp32IR" src="https://github.com/user-attachments/assets/15c51e16-8e48-4e8f-91a3-542f1145a961" />
+
+If using another board, check its pinouts for location of GPIO-10, 5V, and GND. Don't assume
+they are in same location between different boards. For instance, below is a
+pinout for a different EPS32-C6 board
+
+<img width="896" height="990" alt="71CVmIKYAyL _AC_SL1080_" src="https://github.com/user-attachments/assets/02ca05f1-13a3-41c3-8e4e-64bf1c060016" />
+
+Or perhaps something like this ESP32-C3 Super Mini. You find the equivalent connectors to
+wire and also change the board id in the YAML.
+
+<img width="751" height="328" alt="ESP32-C3 Super Mini" src="https://github.com/user-attachments/assets/b19183ec-ffcd-4a47-a2fe-47ba49832875" />
+
+
+Easiest is to use the same exact board as mine, but it is possible to user other boards.
+
+You will need a small USB-C power supply for your ESP32-C6, [this one works well.](https://www.amazon.com/dp/B0DZ6J62C3)
+
+Mrmachine already captured and mapped an original Titan Noir Max remote. We do not
+need to learn its buttons, HID descriptor, names or Home Assistant entities. That
+has already been done for us by mrmachine.
+
+** The only per-remote value required is the original remote's
+15-byte BLE wake token.
+
+
+## How it works
+
+When the projector is awake, the ESP32 maintains a bonded Bluetooth HID
+connection and sends the same keyboard or consumer-control reports captured
+from the original remote. Settings Menu and Focus use the two distinct
+short/alternate reports produced by the physical remote. Immediate power-off
+holds the Power report for the confirmed 1500 ms duration.
+
+When the projector is fully asleep, Power On broadcasts all 256 rolling-counter
+values with the original remote's stable 15-byte wake token. There is no
+deliberate delay between advertisements. A connection-state guard prevents a
+wake burst while the projector is already connected, avoiding advancement of
+the projector's rolling-code state at the wrong time.
+
+The firmware contains the tested Titan Noir Max HID descriptor and button map.
+Your specific token lives in the `secrets.yaml`, not in the shareable source.
+
+
+## Installing This Software on ESP32
+
+1. Clone or copy this directory to your computer. 
+   (Under MacOS, compiling works better if directory is on desktop.)
+   
+   Create a virtual environment, and install the
    pinned tools:
 
-   On macOS or Linux:
+   On macOS or Linux, cd to directory of this project. You can readily do so
+   by type "cd " and then dragging your director into terminal.
 
+   Once your terminal is at the correct working directory, you can proceed
+   with below scripts.
+
+   Install Python environment
+   On MacOS or Linux
    ```sh
    python3 -m venv .venv
    .venv/bin/python -m pip install -r requirements.txt
    ```
 
    On Windows PowerShell or Command Prompt:
-
    ```powershell
    py -3 -m venv .venv
    .venv\Scripts\python.exe -m pip install -r requirements.txt
    ```
 
-2. Physically unplug the projector so it cannot reconnect to the original
+3. Capture Your Remote's Token
+
+   Physically unplug the projector so it cannot reconnect to the original
    remote. Turn Bluetooth on and grant the terminal Bluetooth access if the
    operating system asks. Run one of:
 
+   On MacOS or Linux
    ```sh
    .venv/bin/python scripts/capture_wake_token.py --duration 30
    ```
 
+   On Windows Powershell
    ```powershell
    .venv\Scripts\python.exe scripts\capture_wake_token.py --duration 30
    ```
@@ -214,146 +161,144 @@ The supplied versions were tested with ESPHome 2026.7.3 and Bleak 2.1.1.
    times during the scan. A trustworthy capture has a stable 15-byte tail and
    at least two distinct first-byte rolling-counter values.
 
-3. Create `secrets.yaml` with the captured token. The helper generates the API
-   key and strong OTA/fallback-access-point passwords using Python's secure
+4. Create `secrets.yaml` with the captured token.
+   The helper generates the API key and strong OTA/fallback-access-point passwords using Python's secure
    random generator:
 
+   Replace the below script token with the 15-byte token printed by the capture
+
+   MacOS or Linux
    ```sh
    .venv/bin/python scripts/create_secrets.py --token "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88"
    ```
 
+   Windows Powershell
    ```powershell
    .venv\Scripts\python.exe scripts\create_secrets.py --token "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88"
    ```
 
-   Replace the example argument with the 15-byte token printed by the capture
-   script. The helper refuses to overwrite an existing `secrets.yaml`.
+   Now you have a secrets.yaml file containing your specific token.
+   
+   The helper refuses to overwrite an existing `secrets.yaml`.
+   
+5. Build Firmware for Your Choice of IR Remote (TiVo vs Hisense)
+   
+   4a (Build Firmware for TIVO) Connect the new ESP32-C6 by USB, validate, compile and flash:
 
-4. Connect the new Atom Lite by USB, validate, compile and flash:
-
+   MacOS or Linux
    ```sh
-   .venv/bin/esphome config m5stack-atom-lite-xgimi-remote.yaml
-   .venv/bin/esphome run m5stack-atom-lite-xgimi-remote.yaml
+   .venv/bin/esphome config esp32c6-IR-to-xgimiBLE-KuoTiVo.yaml
+   .venv/bin/esphome run esp32c6-IR-to-xgimiBLE-KuoTiVo.yaml
    ```
 
+   Windows Powershell
    ```powershell
-   .venv\Scripts\esphome.exe config m5stack-atom-lite-xgimi-remote.yaml
-   .venv\Scripts\esphome.exe run m5stack-atom-lite-xgimi-remote.yaml
+   .venv\Scripts\esphome.exe config esp32c6-IR-to-xgimiBLE-KuoTiVo.yaml
+   .venv\Scripts\esphome.exe run esp32c6-IR-to-xgimiBLE-KuoTiVo.yaml
    ```
 
-   Select the Atom's USB serial port when prompted (`COM…` on Windows or
+
+   4b (Build Firmware for HISENSE) Connect the new ESP32-C6 by USB, validate, compile and flash:
+
+   MacOS or Linux
+   ```sh
+   .venv/bin/esphome config esp32c6-IR-to-xgimiBLE-KuoHisense.yaml
+   .venv/bin/esphome run esp32c6-IR-to-xgimiBLE-KuoHisense.yaml
+   ```
+
+   Windows Powershell
+   ```powershell
+   .venv\Scripts\esphome.exe config esp32c6-IR-to-xgimiBLE-KuoHisense.yaml
+   .venv\Scripts\esphome.exe run esp32c6-IR-to-xgimiBLE-KuoHisense.yaml
+   ```
+
+
+   Select the ESP32's USB serial port when prompted (`COM…` on Windows or
    `/dev/…` on macOS/Linux). If no port appears, install the USB serial driver
-   required by the Atom's USB interface and reconnect it.
+   required by the ESP32 USB interface and reconnect it.
+   
+6.  Power on the projector and add your ESP32C6 as another Bluetooth remote.
+   Keep the original remote paired as well.
+   
+7. Test the TiVo or Hisense IR remote's ability to control your Titan Noir projector. 
+   If you are using a universal remote, add a TiVo Roamio or Hisense 50U6G device to your remoted.
+   Tables listing Xgimi button and corresponding TiVO or Hisense remote button are below.
 
-5. After reboot, join the **M5Stack Atom Lite Setup** Wi-Fi network from a phone
-   or laptop, enter the fallback AP password from `secrets.yaml`, then use the
-   captive portal to put the Atom on the same network as Home Assistant.
+   Note: MyHarmony library TiVo Roamio has a faulty TiVo button stored.
+   Recommend relearning that TiVo button on your Harmony Elite (Fix button in MyHarmony)
 
-6. Power on the projector and pair **M5Stack Atom Lite** in its Bluetooth remote
-   or accessory settings. Keep the original remote paired as well.
-
-7. In Home Assistant, open **Settings → Devices & services**, add the discovered
-   **M5Stack Atom Lite** ESPHome device, and supply the API encryption key from
-   `secrets.yaml` if requested.
-
-8. Turn the projector off, wait until the Atom's **Projector Remote Connected**
-   diagnostic becomes false, then test **Power On**.
-
-### Remote 3
-
-Share **Power** with Remote 3 when an activity needs discrete power on, power
-off and toggle handling. It represents the requested target, so it does not
-bounce during slow startup or shutdown. The **Power** binary sensor can be
-imported separately when observed projector state is useful for display or
-automation, but it is deliberately read-only.
-
-The firmware already supplies meaningful `mdi:` icons for every button, and
-Home Assistant displays them. The official Unfolded Circle Home Assistant
-driver currently sets the icon field to no value when it converts HA button and
-switch entities. Consequently, Remote 3 may show the same generic power icon
-for every imported button. This is a Remote 3 integration limitation, not an
-ESPHome setting; use Remote 3's own icon selection where available, otherwise
-the integration needs an upstream change to pass through supported HA icons.
-
-Do not commit `secrets.yaml` or a personalised firmware binary: both contain
+Do not commit your `secrets.yaml` or a personalised firmware binary: both contain
 device credentials, and the binary also embeds the wake token.
 
-## Prompt for Codex, Claude or another coding agent
 
-Copy the prompt below into an agent that can use your terminal and USB device.
-Start it from this project directory with a new Atom Lite connected. The agent
-should perform the computer-side work and pause only for the stated physical or
-Home Assistant actions.
+## Tivo IR code and Xgimi Titan code table
 
-```text
-Set up the XGIMI Titan Noir Max M5Stack Atom Lite remote project in the current
-directory on Windows, macOS or Linux. A new M5Stack Atom Lite is connected to
-this computer by a data-capable USB cable. You may inspect files, create a local
-Python virtual environment, install the pinned requirements, use this
-computer's Bluetooth, and compile and flash the connected Atom.
+|Xgimi Remote Command | NEC IR code of Tivo Roamio Remote | Tivo Remote |
+|-------- | -------------------- | -------- |
+|back	|address=0x3085, command=0xB044	|zoom |
+|cursor_down	|address=0x3085, command=0xE016	|arrow down
+|cursor_enter	|address=0x3085, command=0xE019	|select |
+|cursor_left	|address=0x3085, command=0xE017	|arrow left |
+|cursor_right	|address=0x3085, command=0xE015	|arrow right |
+|cursor_up	|address=0x3085, command=0xE014	|arrow up |
+|focus_auto	|address=0x3085, command=0xD02E	|7 |
+|focus_manual	|address=0x3085, command=0xD02F	|8 |
+|home	|address=0x3085, command=0xE01E	|channel up |
+|input	|address=0x3085, command=0xC034	|input |
+|settings_menu	|address=0x3085, command=0xF00C	|tivo |
+|game_menu	|address=0x3085, command=0xC036	|guide |
+|mute	|address=0x3085, command=0xE01B	|mute |
+|picture	|address=0x3085, command=0xE013	|info |
+|power_on	|address=0x3085, command=0xE010	|tv power (Discrete Power On)|
+|power_off_immediately	|address=0x3085, command=0xE011	|Live tv (Discrete Power Off)|
+|power_off	|address=0x3085, command=0xC031	|0 (Do NOT USE)|
+|shortcut_1	|address=0x3085, command=0x9060	|A yellow |
+|shortcut_2	|address=0x3085, command=0x9061	|B blue |
+|shortcut_3	|address=0x3085, command=0x9062	|C red |
+|shortcut_4	|address=0x3085, command=0x9063	|D green |
+|volume_down	|address=0x3085, command=0xE01D	|volume down |
+|volume_up	|address=0x3085, command=0xE01C	|volume up |
+|bluetooth_pairing_start	|address=0x3085, command=0xC033	|enter |
+|bluetooth_pairing_clear	|address=0x3085, command=0xC032	|clear |
 
-Important project contract:
-- The Titan Noir Max HID descriptor, all button codes, entity names, icons and
-  alternate actions are already captured and implemented. Do not flash a HID
-  learner and do not ask me to recapture or map any buttons.
-- The only XGIMI-specific value you must learn is my original remote's stable
-  15-byte wake token.
-- Never print or commit Wi-Fi credentials, API keys, OTA passwords or the final
-  token unnecessarily. Ensure secrets.yaml remains ignored by Git.
-- Keep the ESPHome device and default Bluetooth name as "M5Stack Atom Lite".
 
-Please do the following:
-1. Inspect README.md, the ESPHome YAML and scripts before acting.
-2. Detect the operating system. Create .venv and install requirements.txt using
-   the correct executable paths: .venv/bin on macOS/Linux or .venv\Scripts on
-   Windows. Do not assume POSIX shell commands on Windows.
-3. Ask me to physically unplug the projector and place the original remote near
-   this computer. Then run scripts/capture_wake_token.py for long enough to
-   capture multiple advertisements while I press Power several times. Help me
-   enable Bluetooth and grant permission if the operating system requires it.
-4. Accept the token only when the XGIMI company ID 0x0046 payload is 16 bytes,
-   multiple observations have different first-byte counter values, and the
-   remaining 15 bytes are identical. Retry rather than guessing if that check
-   fails.
-5. Run scripts/create_secrets.py with that 15-byte token so it creates
-   secrets.yaml with a 32-byte base64 ESPHome API encryption key and strong
-   random OTA and fallback-AP passwords. Do not modify secrets.example.yaml
-   with my values and do not overwrite an existing secrets.yaml without asking.
-6. Validate and compile m5stack-atom-lite-xgimi-remote.yaml. Resolve the Atom's
-   USB serial port unambiguously (`COM…` on Windows or `/dev/…` on
-   macOS/Linux), show me which port you found, then flash it. Do not flash any
-   unrelated serial device.
-7. Confirm from serial logs that version 2.23.0 boots, remains named
-   "M5Stack Atom Lite" in ESPHome, and advertises over Bluetooth with that name.
-   Do not press remote buttons during verification.
-8. Tell me to join the "M5Stack Atom Lite Setup" Wi-Fi using the fallback AP
-   password, select my main Wi-Fi in the captive portal, and wait for the Atom
-   to appear on the network.
-9. Tell me to power on the projector and pair "M5Stack Atom Lite" in its
-   Bluetooth accessory/remote settings. The original remote should remain
-   paired too.
-10. Tell me how to add the discovered ESPHome device in Home Assistant and use
-    the generated API key if asked. If network access is available, verify the
-    device reports project version 2.23.0, the desired-state "Power" switch,
-    the read-only "Power" binary sensor, and all 24 expected remote buttons,
-    including "Settings Menu" and
-    "Game Menu", without activating any button.
-11. Finish with a concise test: turn the projector off, wait for "Projector
-    Remote Connected" to become false, then press "Power On" once.
+## Hisense IR code and Xgimi Titan code table
 
-Stop and ask me before any step that requires a physical action, Bluetooth or
-serial permission, choosing between multiple serial devices, Wi-Fi credentials,
-projector interaction, or Home Assistant interaction. Preserve evidence of the
-captured token validation, but redact the token itself from the final summary.
-```
+|Xgimi Remote Command | Pioneer IR code of Hisense 50U6G Remote | Hisense Remote Button |
+|-------- | -------------------- | -------- |
+|back	|rc_code_X=0x2004	|back |
+|cursor_down	|rc_code_X=0x2057	|arrow down
+|cursor_enter	|rc_code_X=0x205A	|select |
+|cursor_left	|rc_code_X=0x2058	|arrow left |
+|cursor_right	|rc_code_X=0x2059	|arrow right |
+|cursor_up	|rc_code_X=0x2056	|arrow up |
+|focus_auto	|rc_code_X=0x2017	|7 |
+|focus_manual	|rc_code_X=0x2018	|8 |
+|home	|rc_code_X=0x208E	|home |
+|input	|rc_code_X=0x200B	|input |
+|settings_menu	|rc_code_X=0x204A	|menu |
+|game_menu	|rc_code_X=0x200F	|apps |
+|mute	|rc_code_X=0x2009	|mute |
+|picture	|rc_code_X=0x2000	|channel up |
+|power_on	|rc_code_X=0x2071	|discrete power on |
+|power_off_immediately	|rc_code_X=0x2072	|discrete power off |
+|power_off	|rc_code_X=0x2010	| 0 (Do NOT USE)|
+|shortcut_1	|rc_code_X=0x2054	|yellow |
+|shortcut_2	|rc_code_X=0x2055	|blue |
+|shortcut_3	|rc_code_X=0x2052	|red |
+|shortcut_4	|rc_code_X=0x2053	|green |
+|volume_down	|rc_code_X=0x2003	|volume down |
+|volume_up	|rc_code_X=0x2002	|volume up |
+|bluetooth_pairing_start	|rc_code_X=0x2047	|prime video |
+|bluetooth_pairing_clear	|rc_code_X=0x2049	|youtube |
 
 ## Project layout
 
-- `m5stack-atom-lite-xgimi-remote.yaml` — ESPHome device, HID services and HA entities
-- `components/xgimi_remote/` — persistent wake sequencing, connection guard and HID reports
+- `esp32c6-IR-to-xgimiBLE-KuoHisense.yaml` — HisenseIR version ESPHome device, HID services and HA entities
+- `esp32c6-IR-to-xgimiBLE-KuoTiVo` — TiVO IR version ESPHome device, HID services and HA entities
+- `components/xgimi_remote/` — wake sequencing, connection guard and HID reports
 - `components/esp32_ble_server/` — BLE server support adapted for this HID peripheral
 - `scripts/capture_wake_token.py` — captures and validates only the per-remote token
-- `scripts/observe_wake_counters.py` — observes counters without revealing tokens
 - `scripts/create_secrets.py` — creates cross-platform credentials and token config
 - `docs/protocol.md` — sanitised, model-wide HID capture reference
 - `secrets.example.yaml` — safe template; copy to ignored `secrets.yaml`
