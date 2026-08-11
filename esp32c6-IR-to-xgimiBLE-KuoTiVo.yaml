@@ -1,0 +1,789 @@
+substitutions:
+  device_name: esp32-xgimi # KUO name for generic esp32
+  friendly_name: "esp32 xgimi" # KUO name for generic esp32
+  # Use "XGIMI RC" only when replacing the original remote and its Shortcut
+  # 1–4 settings must be exposed. Sharing that identity can replace the real
+  # remote's pairing on the projector.
+  ble_remote_name: "Tivo IR to Xgimi"  # KUO name indicating Tivo IR
+  # Labels only: change these to match the four functions assigned in the
+  # projector's Shortcut settings. The button IDs remain stable in HA.
+  shortcut_1_name: Shortcut 1 - HDMI 1
+  shortcut_2_name: Shortcut 2 - HDMI 2
+  shortcut_3_name: Shortcut 3 - HDMI 3
+  shortcut_4_name: Shortcut 4 - 3D Settings
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  comment: General-purpose ESP32 with XGIMI BLE wake and remote emulation # KUO name for generic ESP32
+  project:
+    name: xgimi.titan-noir-max-esp32-rc # KUO name for generic ESP32
+    version: 2.23.0
+  on_boot:
+    # Template-number restoration happens during setup; apply its restored value
+    # to the HID component after every component has initialised.
+    - priority: -100
+      then:
+        - lambda: |-
+            id(xgimi_remote_controller).set_tap_duration_ms(
+                static_cast<uint16_t>(id(tap_duration).state));
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [esp32_ble_server, xgimi_remote]
+
+esp32:
+  board: esp32-c6-devkitc-1 # KUO for esp32-c6 board
+  framework:
+    type: esp-idf
+
+logger:
+  level: DEBUG # KUO verbose logging
+  
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  reboot_timeout: 0s
+  ap:
+    ssid: "ESP32 Xgimi Setup" # Kuo generic ESP 32 rename
+    password: !secret fallback_ap_password
+    ap_timeout: 15s
+
+captive_portal:
+improv_serial:
+
+esp32_ble:
+  id: atom_ble
+  name: "${ble_remote_name}"
+  io_capability: none
+  auth_req_mode: bond
+  min_key_size: 7
+  max_key_size: 16
+  max_connections: 1
+
+esp32_ble_server:
+  id: atom_ble_server
+  appearance: 0x0180
+  manufacturer_data: [0x46, 0x00]
+  max_clients: 1
+  services:
+    # Exact identity fields reported by the original remote.
+    - uuid: 0x180A
+      characteristics:
+        - uuid: 0x2A29
+          read: true
+          value: "Seneasy"
+        - uuid: 0x2A24
+          read: true
+          value: "${ble_remote_name}"
+        - uuid: 0x2A25
+          read: true
+          value: "20260205"
+        - uuid: 0x2A26
+          read: true
+          value: "V1.0.0"
+        - uuid: 0x2A50
+          read: true
+          # USB VID source, VID 000D, PID 3843, version 0003 (little-endian).
+          value: [0x02, 0x0D, 0x00, 0x43, 0x38, 0x03, 0x00]
+
+    - uuid: 0x180F
+      characteristics:
+        - uuid: 0x2A19
+          read: true
+          notify: true
+          value: [100]
+
+    - uuid: 0x1812
+      advertise: true
+      characteristics:
+        - uuid: 0x2A4A
+          read: true
+          # HID 1.11, no country code, normally connectable + remote wake.
+          value: [0x11, 0x01, 0x00, 0x03]
+
+        - uuid: 0x2A4B
+          read: true
+          # Byte-for-byte descriptor captured from the original XGIMI remote.
+          value:
+            [
+              0x05, 0x01, 0x09, 0x06, 0xA1, 0x01, 0x05, 0x07,
+              0x09, 0x06, 0xA1, 0x01, 0x85, 0x01, 0x95, 0x08,
+              0x75, 0x08, 0x15, 0x00, 0x25, 0xFF, 0x19, 0x00,
+              0x29, 0xFF, 0x81, 0x00, 0xC0, 0x05, 0x0C, 0x09,
+              0x01, 0xA1, 0x01, 0x85, 0x02, 0x95, 0x03, 0x75,
+              0x10, 0x15, 0x00, 0x26, 0x9C, 0x02, 0x19, 0x00,
+              0x2A, 0x9C, 0x02, 0x81, 0x00, 0xC0, 0xC0
+            ]
+
+        - uuid: 0x2A4C
+          write_no_response: true
+          value: [0x00]
+
+        - uuid: 0x2A4E
+          read: true
+          write_no_response: true
+          value: [0x01]
+
+        - uuid: 0x2A4D
+          id: xgimi_keyboard_report
+          read: true
+          notify: true
+          value: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+          descriptors:
+            - uuid: 0x2908
+              read: true
+              write: false
+              value: [0x01, 0x01]
+
+        - uuid: 0x2A4D
+          id: xgimi_consumer_report
+          read: true
+          notify: true
+          value: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+          descriptors:
+            - uuid: 0x2908
+              read: true
+              write: false
+              value: [0x02, 0x01]
+
+xgimi_remote:
+  id: xgimi_remote_controller
+  remote_name: "${ble_remote_name}"
+  tap_duration_ms: 100
+  wake_token: !secret xgimi_wake_token
+  ble_id: atom_ble
+  ble_server_id: atom_ble_server
+  keyboard_report_id: xgimi_keyboard_report
+  consumer_report_id: xgimi_consumer_report
+
+
+# ======= KUO Begin remote_receiver on GPIO10 ============
+remote_receiver:
+  id: ir_receiver
+  pin:
+    number: GPIO10
+    inverted: true
+    mode:
+      input: true
+      pullup: true
+  filter: 50us
+  idle: 10ms
+  tolerance: 25%
+  dump: nec
+# ======= KUO End remote_receiver ============
+
+
+sensor:
+  - platform: template
+    name: "Wake Counter Last Sent"
+    id: wake_counter_last_sent
+    icon: mdi:counter
+    accuracy_decimals: 0
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      if (!id(xgimi_remote_controller).has_last_wake_counter())
+        return NAN;
+      return id(xgimi_remote_controller).last_wake_counter();
+
+  - platform: template
+    name: "Wake Sweep Values Sent"
+    id: wake_sweep_values_sent
+    icon: mdi:counter
+    accuracy_decimals: 0
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: return id(xgimi_remote_controller).wake_values_sent();
+
+  - platform: template
+    name: "Wake Sweep Cycles"
+    id: wake_sweep_cycles
+    icon: mdi:sync
+    accuracy_decimals: 0
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: return id(xgimi_remote_controller).wake_cycles_completed();
+
+number:
+  - platform: template
+    name: "Wake Counter"
+    id: wake_counter
+    icon: mdi:counter
+    min_value: 0
+    max_value: 255
+    step: 1
+    mode: box
+    optimistic: true
+    restore_value: true
+    initial_value: 0
+    entity_category: config
+
+  - platform: template
+    name: "Tap Duration"
+    id: tap_duration
+    icon: mdi:gesture-tap-button
+    unit_of_measurement: ms
+    min_value: 20
+    max_value: 1000
+    step: 10
+    mode: box
+    optimistic: true
+    restore_value: true
+    initial_value: 100
+    entity_category: config
+    set_action:
+      - lambda: |-
+          id(xgimi_remote_controller).set_tap_duration_ms(
+              static_cast<uint16_t>(x));
+
+  - platform: template
+    name: "Wake Counter Dwell"
+    id: wake_counter_dwell
+    icon: mdi:timer-outline
+    unit_of_measurement: ms
+    min_value: 1500
+    max_value: 5000
+    step: 10
+    mode: box
+    optimistic: true
+    restore_value: true
+    initial_value: 1500
+    entity_category: config
+
+  - platform: template
+    name: "Wake Advertisement Gap"
+    id: wake_advertisement_gap
+    icon: mdi:timer-pause-outline
+    unit_of_measurement: ms
+    min_value: 500
+    max_value: 1000
+    step: 10
+    mode: box
+    optimistic: true
+    restore_value: true
+    initial_value: 500
+    entity_category: config
+
+  - platform: template
+    name: "Exact Wake Duration"
+    id: exact_wake_duration
+    icon: mdi:timer-outline
+    unit_of_measurement: ms
+    min_value: 20
+    max_value: 5000
+    step: 10
+    mode: box
+    optimistic: true
+    restore_value: true
+    initial_value: 4000
+    entity_category: config
+
+binary_sensor:
+  - platform: template
+    name: "Power"
+    id: actual_power
+    icon: mdi:power
+    device_class: power
+    lambda: return id(xgimi_remote_controller).actual_power_state();
+
+  - platform: template
+    name: "Projector Remote Connected"
+    id: projector_remote_connected
+    device_class: connectivity
+    entity_category: diagnostic
+    lambda: return id(xgimi_remote_controller).is_connected();
+
+  - platform: template
+    name: "Projector Remote Authenticated"
+    id: projector_remote_authenticated
+    device_class: connectivity
+    entity_category: diagnostic
+    lambda: return id(xgimi_remote_controller).is_authenticated();
+
+  - platform: template
+    name: "Projector Keyboard Notifications"
+    id: projector_keyboard_notifications
+    device_class: connectivity
+    entity_category: diagnostic
+    lambda: return id(xgimi_remote_controller).is_keyboard_subscribed();
+
+  - platform: template
+    name: "Projector Consumer Notifications"
+    id: projector_consumer_notifications
+    device_class: connectivity
+    entity_category: diagnostic
+    lambda: return id(xgimi_remote_controller).is_consumer_subscribed();
+
+  - platform: gpio
+    id: optional_wake_button # KUO no front button on generic ESP32
+    internal: true
+    pin:
+      number: GPIO11 # KUO implement on GPIO11 if user adds a buttton
+      inverted: true
+    filters:
+      - delayed_on: 20ms
+    on_press:
+      - lambda: |-
+          id(xgimi_remote_controller).set_wake_counter_dwell_ms(
+              static_cast<uint16_t>(id(wake_counter_dwell).state));
+          id(xgimi_remote_controller).set_wake_advertisement_gap_ms(
+              static_cast<uint16_t>(id(wake_advertisement_gap).state));
+          id(xgimi_remote_controller).request_power_on();
+
+
+ # ========== KUO BEGIN IR Receiver Actions TiVo Roamio ========== 
+
+  - platform: remote_receiver
+    name: "back"
+    nec:
+      address: 0x3085
+      command: 0xB044
+    on_press:
+      then:
+        - button.press: back
+                
+  - platform: remote_receiver
+    name: "cursor_down"
+    nec:
+      address: 0x3085
+      command: 0xE016
+    on_press:
+      then:
+        - button.press: cursor_down
+        
+  - platform: remote_receiver
+    name: "cursor_enter"
+    nec:
+      address: 0x3085
+      command: 0xE019
+    on_press:
+      then:
+        - button.press: cursor_enter
+                                
+  - platform: remote_receiver
+    name: "cursor_left"
+    nec:
+      address: 0x3085
+      command: 0xE017
+    on_press:
+      then:
+        - button.press: cursor_left
+        
+  - platform: remote_receiver
+    name: "cursor_right"
+    nec:
+      address: 0x3085
+      command: 0xE015
+    on_press:
+      then:
+        - button.press: cursor_right
+                
+  - platform: remote_receiver
+    name: "cursor_up"
+    nec:
+      address: 0x3085
+      command: 0xE014
+    on_press:
+      then:
+        - button.press: cursor_up
+        
+  - platform: remote_receiver
+    name: "focus_auto"
+    nec:
+      address: 0x3085
+      command: 0xD02E
+    on_press:
+      then:
+        - button.press: focus_auto                
+                
+  - platform: remote_receiver
+    name: "focus_manual"
+    nec:
+      address: 0x3085
+      command: 0xD02F
+    on_press:
+      then:
+        - button.press: focus_manual
+        
+  - platform: remote_receiver
+    name: "home"
+    nec:
+      address: 0x3085
+      command: 0xE01E
+    on_press:
+      then:
+        - button.press: home
+                
+  - platform: remote_receiver
+    name: "input"
+    nec:
+      address: 0x3085
+      command: 0xC034
+    on_press:
+      then:
+        - button.press: input
+        
+  - platform: remote_receiver
+    name: "settings_menu"
+    nec:
+      address: 0x3085
+      command: 0xF00C
+    on_press:
+      then:
+        - button.press: settings_menu    
+        
+  - platform: remote_receiver
+    name: "game_menu"
+    nec:
+      address: 0x3085
+      command: 0xC036
+    on_press:
+      then:
+        - button.press: game_menu
+        
+  - platform: remote_receiver
+    name: "mute"
+    nec:
+      address: 0x3085
+      command: 0xE01B
+    on_press:
+      then:
+        - button.press: mute
+                
+  - platform: remote_receiver
+    name: "picture"
+    nec:
+      address: 0x3085
+      command: 0xE013
+    on_press:
+      then:
+        - button.press: picture
+                         
+  - platform: remote_receiver
+    name: "power_on" # discrete power on
+    nec:
+      address: 0x3085
+      command: 0xE010
+    on_press:
+      then:
+        - button.press: power_on
+                
+  - platform: remote_receiver
+    name: "power_off" # 0 on TiVo remote. Normally, never use this off option.
+    nec:
+      address: 0x3085
+      command: 0xC031
+    on_press:
+      then:
+        - button.press: power_off    
+
+  - platform: remote_receiver
+    name: "power_off_immediately" # discrete power off
+    nec:
+      address: 0x3085
+      command: 0xE011
+    on_press:
+      then:
+        - button.press: power_off_held
+                
+  - platform: remote_receiver
+    name: "shortcut_1"
+    nec:
+      address: 0x3085
+      command: 0x9060
+    on_press:
+      then:
+        - button.press: shortcut_1
+        
+  - platform: remote_receiver
+    name: "shortcut_2"
+    nec:
+      address: 0x3085
+      command: 0x9061
+    on_press:
+      then:
+        - button.press: shortcut_2
+        
+  - platform: remote_receiver
+    name: "shortcut_3"
+    nec:
+      address: 0x3085
+      command: 0x9062
+    on_press:
+      then:
+        - button.press: shortcut_3
+        
+  - platform: remote_receiver
+    name: "shortcut_4"
+    nec:
+      address: 0x3085
+      command: 0x9063
+    on_press:
+      then:
+        - button.press: shortcut_4
+                
+  - platform: remote_receiver
+    name: "volume_down"
+    nec:
+      address: 0x3085
+      command: 0xE01D
+    on_press:
+      then:
+        - button.press: volume_down
+        
+  - platform: remote_receiver
+    name: "volume_up"
+    nec:
+      address: 0x3085
+      command: 0xE01C
+    on_press:
+      then:
+        - button.press: volume_up       
+        
+  - platform: remote_receiver
+    name: "bluetooth_pairing_start"
+    nec:
+      address: 0x3085
+      command: 0xC033
+    on_press:
+      then:
+        - button.press: bluetooth_pairing_start
+                
+  - platform: remote_receiver
+    name: "bluetooth_pairing_clear"
+    nec:
+      address: 0x3085
+      command: 0xC032
+    on_press:
+      then:
+        - button.press: bluetooth_pairing_clear
+         
+  # ========== KUO END IR Receiver Actions TiVo Roamio ========== 
+      
+
+
+
+
+
+switch:
+  - platform: template
+    name: "Power"
+    id: projector_power
+    icon: mdi:power
+    restore_mode: DISABLED
+    lambda: return id(xgimi_remote_controller).desired_power_state();
+    turn_on_action:
+      - lambda: |-
+          id(xgimi_remote_controller).set_wake_counter_dwell_ms(
+              static_cast<uint16_t>(id(wake_counter_dwell).state));
+          id(xgimi_remote_controller).set_wake_advertisement_gap_ms(
+              static_cast<uint16_t>(id(wake_advertisement_gap).state));
+          id(xgimi_remote_controller).request_power_on();
+    turn_off_action:
+      # A stateful switch must actually reach Off, so use the confirmed
+      # immediate-shutdown hold rather than opening the confirmation dialog.
+      - lambda: id(xgimi_remote_controller).request_immediate_power_off();
+
+button:
+  - platform: template
+    name: "Back"
+    id: back
+    icon: mdi:arrow-left
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x29);
+
+  - platform: template
+    name: "Cursor Down"
+    id: cursor_down
+    icon: mdi:chevron-down
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x51);
+
+  - platform: template
+    name: "Cursor Enter"
+    id: cursor_enter
+    icon: mdi:checkbox-blank-circle-outline
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x28);
+
+  - platform: template
+    name: "Cursor Left"
+    id: cursor_left
+    icon: mdi:chevron-left
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x50);
+
+  - platform: template
+    name: "Cursor Right"
+    id: cursor_right
+    icon: mdi:chevron-right
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x4F);
+
+  - platform: template
+    name: "Cursor Up"
+    id: cursor_up
+    icon: mdi:chevron-up
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x52);
+
+  - platform: template
+    name: "Focus (Auto)"
+    id: focus_auto
+    icon: mdi:focus-field
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x44);
+
+  - platform: template
+    name: "Focus (Manual)"
+    id: focus_manual
+    icon: mdi:focus-field
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x3D);
+
+  - platform: template
+    name: "Home"
+    id: home
+    icon: mdi:home
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x4A);
+
+  - platform: template
+    name: "Input"
+    id: input
+    icon: mdi:login
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_consumer(0x01BC);
+
+  - platform: template
+    name: "Settings Menu"
+    id: settings_menu
+    icon: mdi:cog
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x41);
+
+  - platform: template
+    name: "Game Menu"
+    id: game_menu
+    icon: mdi:gamepad-variant
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x65);
+
+  - platform: template
+    name: "Mute"
+    id: mute
+    icon: mdi:volume-mute
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_consumer(0x01BD);
+
+  - platform: template
+    name: "Picture"
+    id: picture
+    icon: mdi:image-outline
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_consumer(0x0223);
+
+  - platform: template
+    name: "Power On"
+    id: power_on
+    icon: mdi:power
+    on_press:
+      - lambda: |-
+          id(xgimi_remote_controller).set_wake_counter_dwell_ms(
+              static_cast<uint16_t>(id(wake_counter_dwell).state));
+          id(xgimi_remote_controller).set_wake_advertisement_gap_ms(
+              static_cast<uint16_t>(id(wake_advertisement_gap).state));
+          id(xgimi_remote_controller).request_power_on();
+
+  - platform: template
+    name: "Power On (Counter)"
+    id: power_on_counter
+    icon: mdi:power
+    on_press:
+      - lambda: |-
+          id(xgimi_remote_controller).set_single_wake_duration_ms(
+              static_cast<uint16_t>(id(exact_wake_duration).state));
+          id(xgimi_remote_controller).start_wake_counter(
+              static_cast<uint8_t>(id(wake_counter).state));
+
+  - platform: template
+    name: "Power Off"
+    id: power_off
+    icon: mdi:power
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x7F);
+
+  - platform: template
+    name: "Power Off (Held)"
+    id: power_off_held
+    icon: mdi:power
+    on_press:
+      - lambda: id(xgimi_remote_controller).request_immediate_power_off();
+
+  - platform: template
+    name: "${shortcut_1_name}"
+    id: shortcut_1
+    icon: mdi:numeric-1-box
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_consumer(0x021D);
+
+  - platform: template
+    name: "${shortcut_2_name}"
+    id: shortcut_2
+    icon: mdi:numeric-2-box
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_consumer(0x021F);
+
+  - platform: template
+    name: "${shortcut_3_name}"
+    id: shortcut_3
+    icon: mdi:numeric-3-box
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_consumer(0x0221);
+
+  - platform: template
+    name: "${shortcut_4_name}"
+    id: shortcut_4
+    icon: mdi:numeric-4-box
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_consumer(0x0222);
+
+  - platform: template
+    name: "Volume Down"
+    id: volume_down
+    icon: mdi:volume-minus
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x81);
+
+  - platform: template
+    name: "Volume Up"
+    id: volume_up
+    icon: mdi:volume-plus
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x80);
+
+  - platform: template
+    name: "Bluetooth Pairing Mode"
+    id: bluetooth_pairing_start # KUO add button ID
+    icon: mdi:bluetooth-connect
+    entity_category: config
+    on_press:
+      - lambda: id(xgimi_remote_controller).start_pairing_mode();
+
+  - platform: template
+    name: "Clear Bluetooth Pairings"
+    id: bluetooth_pairing_clear # KUO add button ID
+    icon: mdi:bluetooth-off
+    entity_category: config
+    disabled_by_default: true
+    on_press:
+      - lambda: id(xgimi_remote_controller).clear_bonds();
