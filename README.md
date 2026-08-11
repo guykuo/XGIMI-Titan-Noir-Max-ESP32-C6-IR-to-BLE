@@ -155,6 +155,7 @@ has already been done for us by mrmachine.
    times during the scan. A trustworthy capture has a stable 15-byte tail and
    at least two distinct first-byte rolling-counter values.
 
+
 4. Create `secrets.yaml` with the captured token.
    The helper generates the API key and strong OTA/fallback-access-point passwords using Python's secure
    random generator:
@@ -174,6 +175,7 @@ has already been done for us by mrmachine.
    Now you have a secrets.yaml file containing your specific token.
    
    The helper refuses to overwrite an existing `secrets.yaml`.
+
    
 5. Build Firmware for Your Choice of IR Remote (TiVo vs Hisense)
    
@@ -210,16 +212,20 @@ has already been done for us by mrmachine.
    Select the ESP32's USB serial port when prompted (`COM…` on Windows or
    `/dev/…` on macOS/Linux). If no port appears, install the USB serial driver
    required by the ESP32 USB interface and reconnect it.
-   
-6.  Power on the projector and add your ESP32C6 as another Bluetooth remote.
+
+  
+6. Power on the projector and add your ESP32C6 as another Bluetooth remote.
    Keep the original remote paired as well.
+
    
 7. Test the TiVo or Hisense IR remote's ability to control your Titan Noir projector. 
-   If you are using a universal remote, add a TiVo Roamio or Hisense 50U6G device to your remoted.
+   If you are using a universal remote, add a TiVo Roamio or Hisense 50U6G device to your remote.
+   
    Tables listing Xgimi button and corresponding TiVO or Hisense remote button are below.
 
-   Note: MyHarmony library TiVo Roamio has a faulty TiVo button stored.
-   Recommend relearning that TiVo button on your Harmony Elite (Fix button in MyHarmony)
+   Note: My Harmony library TiVo Roamio has a faulty TiVo button stored.
+   Recommend relearning that TiVo button on your Harmony Elite (Fix button in My Harmony)
+
 
 Do not commit your `secrets.yaml` or a personalised firmware binary: both contain
 device credentials, and the binary also embeds the wake token.
