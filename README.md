@@ -303,10 +303,10 @@ device credentials, and the binary also embeds the wake token.
 - Logging output from ESP32-C6-WROOM is only out its USB port. THe COMS port can be used
 for programming the ESP32, but will not output any log data.
 
-- If older Python is on your Mac, complete flashing ESP32 successfully, but do not
+- If older Python is on your Mac, completes flashing ESP32 successfully, but does not
 start logging. Instead an architecture error appears in terminal.
 
-Fix this issue by updating Python to python-3.14.7-macos11 before building firmware.
+Fix this issue by updating to python-3.14.7 before building firmware.
 
 
 ## Scope and safety
