@@ -78,7 +78,7 @@ OLED display has a recommendation of GPIO04 for IR sensor.
 Again, you must find its equivalent connectors to wire and also change the board id in the YAML.
 <img width="1500" height="1194" alt="esp32-c3 with OLEDd" src="https://github.com/user-attachments/assets/a5a1b437-23d3-4db0-abfc-8ed8d99c2364" />
 
-This project supports the esp32-c3 OLED display to add information about received IR signals.
+This project supports the esp32-c3 OLED display to show information about received IR signals.
 <img width="1300" height="620" alt="oled esp32-c3" src="https://github.com/user-attachments/assets/e1fbe2bf-8b2d-46c1-8c74-4ffbb251cc33" />
 
 Easiest is to use the same exact same board as mine, but it is possible to user other boards.
