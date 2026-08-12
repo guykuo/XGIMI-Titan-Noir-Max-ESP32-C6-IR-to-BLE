@@ -314,9 +314,13 @@ device credentials, and the binary also embeds the wake token.
 - `secrets.example.yaml` — safe template; copy to ignored `secrets.yaml`
 
 ## Recent Notes:
+- Refactored to support of other ESP32 boards via adjusting a few entries in "make" file.
+
 - Latest bluetooth stack from mrmachine incorporated into fork
 
-- Thanks to techjmw at AVSforum for work re Hisense 50U6G code mapping from Harmony library.
+- Reworked IR code mapping to work around errors in remote definitions stored
+  at MyHarmony. With new mappings, should work with codes learned from actual
+  remote or downloaded from MyHarmony library.
 
 - Logging output from ESP32-C6-WROOM is only out its USB port. THe COMS port can be used
 for programming the ESP32, but will not output any log data.
