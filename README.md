@@ -274,7 +274,7 @@ device credentials, and the binary also embeds the wake token.
 
 |Xgimi Remote Command | NEC IR code of Hisense 50U6G Remote | Hisense Remote Button |
 |-------- | -------------------- | -------- |
-|back	|rc_code_X=0x2004	|back |
+|back	|0xFB04	|back |
 |cursor_down	|0xFB04	|arrow down
 |cursor_enter	|0xA55A	|select |
 |cursor_left	|0xA758	|arrow left |
