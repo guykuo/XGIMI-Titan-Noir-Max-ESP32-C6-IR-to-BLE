@@ -183,7 +183,7 @@ has already been done for us by mrmachine.
 
    YAML files are supplied to directly support two boards and either TiVo Roamio or Hisense 50U6G Remote 
 
-   Substitute namem of "make" file for the one listed in below example scripts to create the version
+   Substitute name of "make" file for the one listed in below example scripts to create the version
    desired.
 
    4a (Build Firmware for TIVO on ESP32-C6) Connect the new ESP32-C6 by USB, validate, compile and flash:
