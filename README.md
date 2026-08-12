@@ -72,12 +72,14 @@ pinout for another EPS32-C6 board
 
 <img width="896" height="990" alt="71CVmIKYAyL _AC_SL1080_" src="https://github.com/user-attachments/assets/02ca05f1-13a3-41c3-8e4e-64bf1c060016" />
 
+Sometimes, there is not GPIO10 to use and you must use another GPIO pin. This ESP32-C3 with 
+OLED display has a recommendation of GPIO04 for IR sensor. 
 
-Even more different is something like this ESP32-C3 Super Mini. Again, you must find its equivalent connectors to
-wire and also change the board id in the YAML.
+Again, you must find its equivalent connectors to wire and also change the board id in the YAML.
+<img width="1500" height="1194" alt="esp32-c3 with OLEDd" src="https://github.com/user-attachments/assets/a5a1b437-23d3-4db0-abfc-8ed8d99c2364" />
 
-<img width="751" height="328" alt="ESP32-C3 Super Mini" src="https://github.com/user-attachments/assets/b19183ec-ffcd-4a47-a2fe-47ba49832875" />
-
+This project supports the esp32-c3 OLED display to add information about received IR signals.
+<img width="1300" height="620" alt="oled esp32-c3" src="https://github.com/user-attachments/assets/e1fbe2bf-8b2d-46c1-8c74-4ffbb251cc33" />
 
 Easiest is to use the same exact same board as mine, but it is possible to user other boards.
 
@@ -178,34 +180,39 @@ has already been done for us by mrmachine.
 
    
 5. Build Firmware for Your Choice of IR Remote (TiVo vs Hisense)
-   
-   4a (Build Firmware for TIVO) Connect the new ESP32-C6 by USB, validate, compile and flash:
+
+   YAML files are supplied to directly support two boards and either TiVo Roamio or Hisense 50U6G Remote 
+
+   Substitute namem of "make" file for the one listed in below example scripts to create the version
+   desired.
+
+   4a (Build Firmware for TIVO on ESP32-C6) Connect the new ESP32-C6 by USB, validate, compile and flash:
 
    MacOS or Linux
    ```sh
-   .venv/bin/esphome config esp32c6-IR-to-xgimiBLE-KuoTiVo.yaml
-   .venv/bin/esphome run esp32c6-IR-to-xgimiBLE-KuoTiVo.yaml
+   .venv/bin/esphome config make-IR-TiVo-esp32-c6-wroom-1.yaml
+   .venv/bin/esphome run make-IR-TiVo-esp32-c6-wroom-1.yaml
    ```
 
    Windows Powershell
    ```powershell
-   .venv\Scripts\esphome.exe config esp32c6-IR-to-xgimiBLE-KuoTiVo.yaml
-   .venv\Scripts\esphome.exe run esp32c6-IR-to-xgimiBLE-KuoTiVo.yaml
+   .venv\Scripts\esphome.exe config make-IR-TiVo-esp32-c6-wroom-1.yaml
+   .venv\Scripts\esphome.exe run make-IR-TiVo-esp32-c6-wroom-1.yaml
    ```
 
 
-   4b (Build Firmware for HISENSE) Connect the new ESP32-C6 by USB, validate, compile and flash:
+   4b (Build Firmware for HISENSE on ESP32-C3 OLED) Connect the new ESP32-C3 by USB, validate, compile and flash:
 
    MacOS or Linux
    ```sh
-   .venv/bin/esphome config esp32c6-IR-to-xgimiBLE-KuoHisense.yaml
-   .venv/bin/esphome run esp32c6-IR-to-xgimiBLE-KuoHisense.yaml
+   .venv/bin/esphome config make-IR-Hisense-esp32-c6-wroom-1.yaml
+   .venv/bin/esphome run make-IR-Hisense-esp32-c6-wroom-1.yaml
    ```
 
    Windows Powershell
    ```powershell
-   .venv\Scripts\esphome.exe config esp32c6-IR-to-xgimiBLE-KuoHisense.yaml
-   .venv\Scripts\esphome.exe run esp32c6-IR-to-xgimiBLE-KuoHisense.yaml
+   .venv\Scripts\esphome.exe config make-IR-Hisense-esp32-c6-wroom-1.yaml
+   .venv\Scripts\esphome.exe run make-IR-Hisense-esp32-c6-wroom-1.yaml
    ```
 
 
@@ -214,11 +221,11 @@ has already been done for us by mrmachine.
    required by the ESP32 USB interface and reconnect it.
 
   
-6. Power on the projector and add your ESP32C6 as another Bluetooth remote.
+7. Power on the projector and add your TiVo/dHisense to Xgimi as another Bluetooth remote.
    Keep the original remote paired as well.
 
    
-7. Test the TiVo or Hisense IR remote's ability to control your Titan Noir projector. 
+8. Test the TiVo or Hisense IR remote's ability to control your Titan Noir projector. 
    If you are using a universal remote, add a TiVo Roamio or Hisense 50U6G device to your remote.
    
    Tables listing Xgimi button and corresponding TiVO or Hisense remote button are below.
@@ -245,13 +252,14 @@ device credentials, and the binary also embeds the wake token.
 |focus_manual	|address=0x3085, command=0xD02F	|8 |
 |home	|address=0x3085, command=0xE01E	|channel up |
 |input	|address=0x3085, command=0xC034	|input |
-|settings_menu	|address=0x3085, command=0xF00C	|tivo |
+|settings_menu	|address=0x3085, command=0xF00C	|tivo (actual remote) |
+|settings_menu	|address=0x3085, command=0xF00D	|tivo (incorrectly on MyHarmony) ||
 |game_menu	|address=0x3085, command=0xC036	|guide |
 |mute	|address=0x3085, command=0xE01B	|mute |
 |picture	|address=0x3085, command=0xE013	|info |
 |power_on	|address=0x3085, command=0xE010	|TV Power (Use as Discrete Power On)|
-|power_off_immediately	|address=0x3085, command=0xE011	|Live TV (Use as Discrete Power Off)|
-|power_off	|address=0x3085, command=0xC031	|0 (Do NOT USE)|
+|power_off	|address=0x3085, command=0xE011	|Live TV (Use as Discrete Off)|
+|power_off	|address=0x3085, command=0xC031	|0 (equivalent as Discrete OFF)|
 |shortcut_1	|address=0x3085, command=0x9060	|A yellow |
 |shortcut_2	|address=0x3085, command=0x9061	|B blue |
 |shortcut_3	|address=0x3085, command=0x9062	|C red |
@@ -264,33 +272,35 @@ device credentials, and the binary also embeds the wake token.
 
 ## Hisense IR code and Xgimi Titan code table
 
-|Xgimi Remote Command | Pioneer IR code of Hisense 50U6G Remote | Hisense Remote Button |
+|Xgimi Remote Command | NEC IR code of Hisense 50U6G Remote | Hisense Remote Button |
 |-------- | -------------------- | -------- |
 |back	|rc_code_X=0x2004	|back |
-|cursor_down	|rc_code_X=0x2057	|arrow down
-|cursor_enter	|rc_code_X=0x205A	|select |
-|cursor_left	|rc_code_X=0x2058	|arrow left |
-|cursor_right	|rc_code_X=0x2059	|arrow right |
-|cursor_up	|rc_code_X=0x2056	|arrow up |
-|focus_auto	|rc_code_X=0x2017	|7 |
-|focus_manual	|rc_code_X=0x2018	|8 |
-|home	|rc_code_X=0x208E	|home |
-|input	|rc_code_X=0x200B	|input |
-|settings_menu	|rc_code_X=0x204A	|menu |
-|game_menu	|rc_code_X=0x200F	|apps |
-|mute	|rc_code_X=0x2009	|mute |
-|picture	|rc_code_X=0x2000	|channel up |
-|power_on	|rc_code_X=0x2071	|discrete power on |
-|power_off_immediately	|rc_code_X=0x2072	|discrete power off |
-|power_off	|rc_code_X=0x2010	| 0 (Do NOT USE)|
-|shortcut_1	|rc_code_X=0x2054	|yellow |
-|shortcut_2	|rc_code_X=0x2055	|blue |
-|shortcut_3	|rc_code_X=0x2052	|red |
-|shortcut_4	|rc_code_X=0x2053	|green |
-|volume_down	|rc_code_X=0x2003	|volume down |
-|volume_up	|rc_code_X=0x2002	|volume up |
-|bluetooth_pairing_start	|rc_code_X=0x2047	|prime video |
-|bluetooth_pairing_clear	|rc_code_X=0x2049	|youtube |
+|cursor_down	|0xFB04	|arrow down
+|cursor_enter	|0xA55A	|select |
+|cursor_left	|0xA758	|arrow left |
+|cursor_right	|0xA659	|arrow right |
+|cursor_up	|0xA956	|arrow up |
+|focus_auto	|0xE817	|7 |
+|focus_manual	|0xE718	|8 |
+|settings_menu	|0xBC43	|menu (on actual remote) |
+|settings_menu	|0xB54A	|menu (incorrectly in MyHarmony ) |
+|home	|0xB54A	|home (on actual remote)|
+|home	|0x718E	|home (on My Harmony)|
+|input	|0xF609	|input |
+|game_menu	|0x35CA	|apps |
+|mute	|0xF609	|mute |
+|picture	|0xFF00	|channel up |
+|power_on	|0x8E71	|discrete power on |
+|power_off	|0xEF10	|discrete power off |
+|power_off	|0x8D72	| 0 (Do NOT USE)|
+|shortcut_1	|0xAB54	|yellow |
+|shortcut_2	|0xAA55	|blue |
+|shortcut_3	|0xAD52	|red |
+|shortcut_4	|0xAC53	|green |
+|volume_down	|0xFC03 |
+|volume_up	|0xFD02	|
+|bluetooth_pairing_start	0xB847	|prime video |
+|bluetooth_pairing_clear	|0xB649	|youtube |
 
 ## Project layout
 
