@@ -72,8 +72,8 @@ pinout for another EPS32-C6 board
 
 <img width="896" height="990" alt="71CVmIKYAyL _AC_SL1080_" src="https://github.com/user-attachments/assets/02ca05f1-13a3-41c3-8e4e-64bf1c060016" />
 
-Sometimes, there is not GPIO10 to use and you must use another GPIO pin. This ESP32-C3 with 
-OLED display has a recommendation of GPIO04 for IR sensor. 
+Sometimes, there is no GPIO10 to use and you must use another GPIO pin. 
+[The ESP32-C3 with OLED display I used](https://www.amazon.com/dp/B0G6YT4ZQ3) has a recommendation of GPIO04 for IR sensor. 
 
 Again, you must find its equivalent connectors to wire and also change the board id in the YAML.
 <img width="1500" height="1194" alt="esp32-c3 with OLEDd" src="https://github.com/user-attachments/assets/a5a1b437-23d3-4db0-abfc-8ed8d99c2364" />
