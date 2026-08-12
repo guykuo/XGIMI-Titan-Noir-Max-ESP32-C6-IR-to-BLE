@@ -1,0 +1,88 @@
+substitutions:
+# ============ set name for remote, ESP32 board, board framework, and pin for IR receiver KUO
+# also see end of this file and set included package for IR reciver and button action mapping to be correct for desired IR remote.
+
+  ble_remote_name: "Hisense IR to Xgimi"  # Name remote to indicate IR remote expected. KUO
+  
+  board_type: "esp32-c6-devkitc-1" # set board type here. KUO
+  framework_type: "esp-idf" # set board framewark. Kuo
+  pin_ir_receiver: GPIO10 # define which pin is used by IR sensor. KUO
+
+
+  ssid_name: "ESP32 Xgimi Setup" # KUO name for generic esp32
+  device_name: esp32-xgimi # KUO name for generic esp32
+  friendly_name: "esp32 xgimi" # KUO name for generic esp32
+ 
+  pin_optional_wake_btn: GPIO11
+
+# ============ 
+
+  shortcut_1_name: Shortcut 1 - HDMI 1
+  shortcut_2_name: Shortcut 2 - HDMI 2
+  shortcut_3_name: Shortcut 3 - HDMI 3
+  shortcut_4_name: Shortcut 4 - 3D Settings
+
+  
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  comment: General-purpose ESP32 with XGIMI BLE wake and remote emulation # KUO name for generic ESP32
+  includes:
+    - <sstream>
+    - <iomanip>
+  project:
+    name: xgimi.titan-noir-max-esp32-rc # KUO name for generic ESP32
+    version: 2.23.0
+  on_boot:
+    # Template-number restoration happens during setup; apply its restored value
+    # to the HID component after every component has initialised.
+    - priority: -100
+      then:
+        - lambda: |-
+            id(xgimi_remote_controller).set_tap_duration_ms(
+                static_cast<uint16_t>(id(tap_duration).state));
+        - script.execute: display_timeout_handler
+        
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [esp32_ble_server, xgimi_remote]
+
+esp32:
+  board: ${board_type} #Kuo sub for board type
+  framework:
+    type: ${framework_type} #Kuo sub for board framework
+
+logger:
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+
+
+# Global variable to save the latest parsed IR data
+globals:
+  - id: last_xgimi_TN_command
+    type: std::string  
+    initial_value: '"IR to BLE Kuo"'
+
+  - id: last_IR_address
+    type: std::string  
+    initial_value: '"Hisense to Xgimi"'
+    
+  - id: last_IR_instruction
+    type: std::string  
+    initial_value: '"READY"'
+
+        
+            
+packages: 
+  main_package: !include ir-common-kuo/core_bluetooth.yaml # core bluetooth stack implementaton base upon mrmachine
+  irmap_package: !include ir-common-kuo/ir-map-hisense-nec-protocol.yaml # hisense IR reciver and button action mapping
+  
