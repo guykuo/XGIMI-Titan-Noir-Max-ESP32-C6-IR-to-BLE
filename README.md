@@ -83,8 +83,8 @@ start of file need be adjusted for your board.
 # file typically needs no further changes to adapt to board and wiring
 # ============= End of settings for configurig board KUO
 ```
-Also, at the bottom of the make file is where you select which remote (TiVo vs Hisense)
-you want the translator to understand. That selection is done by uncommenting one
+Also, at the bottom of the make file is where you select which remote (TiVo vs Hisense vs JVC VCR)
+you want the translator to understand. That selection is done by uncommenting one (and ONLY one)
 line specifying which irmap_package to include as IR map.
 
 
@@ -275,7 +275,8 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 device credentials, and the binary also embeds the wake token.
 
 
-## Tivo IR code and Xgimi Titan code table
+
+## Tivo to Xgimi Titan Noir Mapping
 
 |Xgimi Remote Command | NEC IR code of Tivo Roamio Remote | Tivo Remote |
 |-------- | -------------------- | -------- |
@@ -307,7 +308,8 @@ device credentials, and the binary also embeds the wake token.
 |bluetooth_pairing_clear	|address=0x3085, command=0xC032	|clear |
 
 
-## Hisense IR code and Xgimi Titan code table
+
+## Hisense to Xgimi Titan Noir Mapping
 
 |Xgimi Remote Command | NEC IR code of Hisense 50U6G Remote | Hisense Remote Button |
 |-------- | -------------------- | -------- |
@@ -339,6 +341,46 @@ device credentials, and the binary also embeds the wake token.
 |bluetooth_pairing_start	0xB847	|prime video |
 |bluetooth_pairing_clear	|0xB649	|youtube |
 
+
+
+## JVC-VCR to Xgimi Titan Noir Mapping
+
+# Remote Control Mapping
+
+Below is the IR code mapping between Xgimi remote commands and JVC VCR remote buttons.
+
+| Xgimi Remote Command | JVC IR code from JVC VCR | JVC VCR Remote Btn |
+| :--- | :--- | :--- |
+| back | 0xC2C3 | rewind |
+| cursor_down | 0xC218 | arrow down actual |
+| cursor_down | 0xC261 | arrow down harmony |
+| cursor_enter | 0xC23C | OK |
+| cursor_left | 0xC2A8 | arrow left |
+| cursor_right | 0xC228 | arrow right |
+| cursor_up | 0xC241 | arrow up harmony |
+| cursor_up | 0xC298 | arrow up actual |
+| focus_auto | 0xC2E4 | 7 |
+| focus_manual | 0xC214 | 8 |
+| home | 0xC26C | cancel |
+| input | 0xC2C8 | tv/vcr |
+| settings_menu | 0xC2EC | menu actual remote |
+| settings_menu | 0xC207 | menu harmony |
+| game_menu | 0xC230 | play |
+| mute | 0xC2B0 | pause |
+| picture | 0xC260 | fast forward |
+| power_on | 0xC2D0 | power toggle |
+| power_on | 0xC2B8 | power on |
+| power_off | 0xC258 | power off |
+| power_off | 0xC2CC | 0 |
+| shortcut_1 | 0xC283 | Prog |
+| shortcut_2 | 0xC2BC | Prog Check |
+| shortcut_3 | 0xC28C | SP/EP |
+| shortcut_4 | 0xC269 | Skip Search |
+| volume_down | 0xC293 | Start - |
+| volume_up | 0xC213 | Start + |
+| bluetooth_pairing_start | 0xC284 | 1 |
+| bluetooth_pairing_clear | 0xC244 | 2 |
+
 ## Project layout
 
 - `esp32c6-IR-to-xgimiBLE-KuoHisense.yaml` — Hisense version of ESP32 IR remote
@@ -351,6 +393,10 @@ device credentials, and the binary also embeds the wake token.
 - `secrets.example.yaml` — safe template; copy to ignored `secrets.yaml`
 
 ## Recent Notes:
+- Added support for JVC VCR remote IR codes
+
+- Changed file naming convention to board-GPIOpin-IRmapping
+  
 - WARNING - I learned that using 5v for Vcc on IR sensors may endanger the ESP32 boards.
   Changed pinout diagrams and instructions to use the 3 volt board connection.
   
