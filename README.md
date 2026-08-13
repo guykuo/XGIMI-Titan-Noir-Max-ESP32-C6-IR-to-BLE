@@ -159,7 +159,7 @@ Mrmachine already captured and mapped an original Titan Noir Max remote. We do n
 
 **_The only per-remote value we must acquire is the original remote's 15-byte BLE wake token._**
 
-Installing This Software on ESP32
+## Installing This Software on ESP32
 ---------------------------------
 
 ### 1\. Clone or copy this directory to your computer.
@@ -249,7 +249,7 @@ For your convenience, YAML "make" files have been created to directly support th
 Substitute name of specific "make" file for the one listed in below example scripts to create the version desired.  
 If you create a "make" file for a different board, GPIO, or IR code, substitute your make filename in the scripts.
 
-##### 5a. Build firmware for TIVO on ESP32-C6
+#### 5a. Build firmware for TIVO on ESP32-C6
 
 Connect the new ESP32-C6 by USB, validate, compile and flash:
 
@@ -273,7 +273,7 @@ Windows Powershell
 
 ```
 
-##### 5b. Build Firmware for HISENSE on ESP32-C3 with OLED display)
+#### 5b. Build Firmware for HISENSE on ESP32-C3 with OLED display)
 
 Connect the new ESP32-C3 by USB, validate, compile and flash:
 
@@ -307,7 +307,7 @@ Select the ESP32's USB serial port when prompted `COM…` on Windows or
 
 required by the ESP32 USB interface and try again.
 
-### 6\. Power on the projector and Add Your ESP32 Remote as another Bluetooth remote.
+## 6\. Power on the projector and Add Your ESP32 Remote as another Bluetooth remote.
 
 The provided make files name your new ESP32 as readily recognizable when adding as another Bluetooth remote.
 
@@ -320,6 +320,7 @@ For universal remotes, add a TiVo Roamio or Hisense 50U6G device to your remote.
 CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: both contain
 
 device credentials, and the binary also embeds the wake token.
+
 
 Xgimi Command and IR Remote Button Tables
 -----------------------------------------
@@ -355,6 +356,8 @@ Xgimi Command and IR Remote Button Tables
 |bluetooth\_pairing\_start |address=0x3085, command=0xC033 |enter |
 |bluetooth\_pairing\_clear |address=0x3085, command=0xC032 |clear |
 
+
+
 ### Hisense to Xgimi Titan Noir Mapping
 
 |Xgimi Remote Command | NEC IR code of Hisense 50U6G Remote | Hisense Remote Button |
@@ -386,6 +389,7 @@ Xgimi Command and IR Remote Button Tables
 |volume\_up |0xFD02 |
 |bluetooth\_pairing\_start 0xB847 |prime video |
 |bluetooth\_pairing\_clear |0xB649 |youtube |
+
 
 ### JVC-VCR to Xgimi Titan Noir Mapping
 
@@ -420,6 +424,7 @@ Xgimi Command and IR Remote Button Tables
 | volume\_up | 0xC213 | Start + |
 | bluetooth\_pairing\_start | 0xC284 | 1 |
 | bluetooth\_pairing\_clear | 0xC244 | 2 |
+
 
 ## Recent Notes:
 -------------
