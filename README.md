@@ -98,7 +98,7 @@ Typically only three values in the configuration section at start of file need b
 3.  pin\_optional\_wake\_btn
     
 
-```YAML
+```yaml
 # ============= Begin Configuration to Match Physical ESP32 Board and Wiring. KUO
 # Also see end of this file where include package sets which IR remote is to be decoded
 
