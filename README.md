@@ -116,7 +116,7 @@ Typically only three values in the configuration section at start of file need b
 
 Also, At the bottom of the make file is where you choose the IR remote code set desired (TiVo vs Hisense vs JVC VCR).
 
-IR code set selection is via uncommenting **_one and ONLY one_** line specifying the irmap\_package to include as IR map.
+IR code selection is via uncommenting **_one and ONLY one_** line specifying the irmap\_package to include as IR map.
 
 #### ESP32-C6-WROOM-1 Pinout and GPIO Pin Selection Example
 
@@ -163,8 +163,13 @@ Mrmachine already captured and mapped an original Titan Noir Max remote. We do n
 ---------------------------------
 
 ### 1\. Clone or copy this directory to your computer.
+Cloning and downloading controls are within Gitbub green "<> Code" button.
+<img width="856" height="802" alt="gihub directory clone" src="https://github.com/user-attachments/assets/f7c4ce8f-e0fb-49c3-a893-f6e6023dad4e" />
 
-##### Create a virtual environment, and install the pinned tools:
+
+
+
+#### Create a virtual environment, and install the pinned tools:
 
 On macOS or Linux, cd to directory of this project. You can readily do so by typing "cd " and dragging your directory into terminal.
 
@@ -220,7 +225,7 @@ Keep the remote close to the computer and press its Power button several times d
 
 The helper generates the API key and strong OTA/fallback-access-point passwords using Python's securerandom generator:
 
-Replace the below script token with the 15-byte token printed by the capture
+Replace the below script's token with the 15-byte token printed by the capture
 
 MacOS or Linux
 
@@ -308,14 +313,17 @@ Select the ESP32's USB serial port when prompted `COM…` on Windows or
 The provided make files name your new ESP32 as readily recognizable when adding as another Bluetooth remote.
 
 Keep the original remote paired as well.
-
+<br>
+<br>
+<br>
 ### 7\. Test your TiVo / Hisense IR remote's ability to control your Titan Noir projector.
 
 For universal remotes, add a TiVo Roamio or Hisense 50U6G device to your remote.
 
 CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: both contain device credentials, and the binary also embeds the wake token.
 
-
+<br>
+<br>
 Xgimi Command and IR Remote Button Tables
 -----------------------------------------
 
@@ -351,7 +359,8 @@ Xgimi Command and IR Remote Button Tables
 |bluetooth\_pairing\_clear |address=0x3085, command=0xC032 |clear |
 
 
-
+<br>
+<br>
 ### Hisense to Xgimi Titan Noir Mapping
 
 |Xgimi Remote Command | NEC IR code of Hisense 50U6G Remote | Hisense Remote Button |
@@ -384,7 +393,8 @@ Xgimi Command and IR Remote Button Tables
 |bluetooth\_pairing\_start 0xB847 |prime video |
 |bluetooth\_pairing\_clear |0xB649 |youtube |
 
-
+<br>
+<br>
 ### JVC-VCR to Xgimi Titan Noir Mapping
 
 | Xgimi Remote Command | JVC IR code from JVC VCR | JVC VCR Remote Btn |
@@ -419,7 +429,8 @@ Xgimi Command and IR Remote Button Tables
 | bluetooth\_pairing\_start | 0xC284 | 1 |
 | bluetooth\_pairing\_clear | 0xC244 | 2 |
 
-
+<br>
+<br>
 ## Recent Notes:
 -------------
 
@@ -445,7 +456,8 @@ Xgimi Command and IR Remote Button Tables
     but does not start logging. Instead an architecture error appears in terminal.  
     Fix this issue by updating to python-3.14.7 before building firmware.
     
-
+<br>
+<br>
 ## Scope and safety
 ----------------
 
