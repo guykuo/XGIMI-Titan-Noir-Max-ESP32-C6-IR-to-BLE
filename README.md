@@ -227,14 +227,14 @@ has already been done for us by mrmachine.
 
    MacOS or Linux
    ```sh
-   .venv/bin/esphome config make-IR-TiVo-esp32-c6-wroom-1-GPIO10.yaml
-   .venv/bin/esphome run make-IR-TiVo-esp32-c6-wroom-1-GPIO10.yaml
+   .venv/bin/esphome config make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
+   .venv/bin/esphome run make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
    ```
 
    Windows Powershell
    ```powershell
-   .venv\Scripts\esphome.exe config make-IR-TiVo-esp32-c6-wroom-1-GPIO10.yaml
-   .venv\Scripts\esphome.exe run make-IR-TiVo-esp32-c6-wroom-1-GPIO10.yaml
+   .venv\Scripts\esphome.exe config make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
+   .venv\Scripts\esphome.exe run make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
    ```
 
 
@@ -242,14 +242,14 @@ has already been done for us by mrmachine.
 
    MacOS or Linux
    ```sh
-   .venv/bin/esphome config make-IR-Hisense-esp32-c3-OLED-GPIO1.yaml
-   .venv/bin/esphome run make-IR-Hisense-esp32-c3-OLED-GPIO1.yaml
+   .venv/bin/esphome config make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
+   .venv/bin/esphome run make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
    ```
 
    Windows Powershell
    ```powershell
-   .venv\Scripts\esphome.exe config make-IR-Hisense-esp32-c3-OLED-GPIO1.yaml
-   .venv\Scripts\esphome.exe run make-IR-Hisense-esp32-c3-OLED-GPIO1.yaml
+   .venv\Scripts\esphome.exe make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
+   .venv\Scripts\esphome.exe make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
    ```
 
 
