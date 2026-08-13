@@ -297,15 +297,11 @@ Windows Powershell
 
 ```
 
-Once firmware is built, you should be presented with a choice of how to
-
-flash your ESP32 board.
+Once firmware is built, you should be presented with a choice of how to flash your ESP32 board.
 
 Select the ESP32's USB serial port when prompted `COM…` on Windows or
 
-`/dev/…` on macOS/Linux). If no port appears, install the USB serial driver
-
-required by the ESP32 USB interface and try again.
+`/dev/…` on macOS/Linux). If no port appears, install the USB serial driver required by the ESP32 USB interface and try again.
 
 ## 6\. Power on the projector and Add Your ESP32 Remote as another Bluetooth remote.
 
@@ -317,9 +313,7 @@ Keep the original remote paired as well.
 
 For universal remotes, add a TiVo Roamio or Hisense 50U6G device to your remote.
 
-CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: both contain
-
-device credentials, and the binary also embeds the wake token.
+CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: both contain device credentials, and the binary also embeds the wake token.
 
 
 Xgimi Command and IR Remote Button Tables
