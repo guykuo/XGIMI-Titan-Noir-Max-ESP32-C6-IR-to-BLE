@@ -1,0 +1,128 @@
+substitutions:
+
+# ============= Begin Configuration to Match Physical ESP32 Board and Wiring. KUO
+# Also see end of this file where include package sets which IR remote is to be decoded (TiVo v Hisens)
+
+  ble_remote_name: "TiVo IR to Xgimi"  # Name remote to indicate IR remote expected. KUO
+  
+  board_type: "esp32-c3-devkitm-1" # <== set board type here
+  framework_type: "esp-idf" # <====  set board framewark. 
+  pin_ir_receiver: GPIO1 # <======= set GPIO pin for IR sensor. 
+  pin_optional_wake_btn: GPIO3 # <= set GPIO pin for optional wake button. 
+
+# Except for selection of IR mapping file at end, the remainder of this
+# file typically needs no further changes to adapt to board and wiring
+# ============= End of settings for configurig board KUO
+
+  ssid_name: "ESP32 Xgimi Setup" # KUO name for generic esp32
+  device_name: esp32-xgimi # KUO name for generic esp32
+  friendly_name: "esp32 xgimi" # KUO name for generic esp32
+
+# ============ 
+
+  shortcut_1_name: Shortcut 1 - HDMI 1
+  shortcut_2_name: Shortcut 2 - HDMI 2
+  shortcut_3_name: Shortcut 3 - HDMI 3
+  shortcut_4_name: Shortcut 4 - 3D Settings
+
+  
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  comment: General-purpose ESP32 with XGIMI BLE wake and remote emulation # KUO name for generic ESP32
+  includes:
+    - <sstream>
+    - <iomanip>
+  project:
+    name: xgimi.titan-noir-max-esp32-rc # KUO name for generic ESP32
+    version: 2.23.0
+  on_boot:
+    # Template-number restoration happens during setup; apply its restored value
+    # to the HID component after every component has initialised.
+    - priority: -100
+      then:
+        - lambda: |-
+            id(xgimi_remote_controller).set_tap_duration_ms(
+                static_cast<uint16_t>(id(tap_duration).state));
+        - script.execute: display_timeout_handler
+        
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [esp32_ble_server, xgimi_remote]
+
+esp32:
+  board: ${board_type} #Kuo sub for board type
+  framework:
+    type: ${framework_type} #Kuo sub for board framework
+
+logger:
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+
+# OLED timeout handler script
+script:
+  - id: display_timeout_handler
+    mode: restart 
+    then:
+      - display.page.show: active_page
+      - delay: 10s
+      - display.page.show: blank_page   
+
+ 
+# Configures the built-in I2C bus for the OLED display
+i2c:
+  sda: GPIO5
+  scl: GPIO6
+  scan: true
+  id: bus_a
+
+# Download font for text rendering
+font:
+  - file: "gfonts://Roboto"
+    id: my_fontSmall
+    size: 10
+  - file: "gfonts://Roboto"
+    id: my_fontMedium
+    size: 12
+
+# Built-in 72x40 SSD1306 OLED screen
+display:
+  - platform: ssd1306_i2c
+    model: "SSD1306 72x40"
+    address: 0x3C
+    id: oled_display
+    update_interval: 0.5s
+    offset_x: 0
+    offset_y: 0
+    rotation: 0
+    pages:
+      - id: active_page
+        lambda: |-
+          it.print(0, 0, id(my_fontSmall), id(last_xgimi_TN_command).c_str());
+          it.print(0, 11, id(my_fontMedium), id(last_IR_address).c_str());
+          it.print(0, 24, id(my_fontMedium), id(last_IR_instruction).c_str());
+      - id: blank_page
+        lambda: |-
+          // Leaving lambda completely blank turns all pixels off safely
+         
+            
+packages: 
+  main_package: !include ir-common-kuo/mrmachine_bluetooth.yaml # core bluetooth stack implementaton base upon mrmachine
+  
+  # Select which IR code mapping is desired by leaving the desired one uncommented. Choice is between
+  # TiVo Roamio, Hisense 50U6G, or JVC VCR remote IR code mapping
+  # One and only one irmap_package should be uncommented.
+  
+  irmap_package: !include ir-common-kuo/ir-map-tivo.yaml  # TiVo Roamio IR mapping
+  #  irmap_package: !include ir-common-kuo/ir-map-jvc-vcr.yaml # JVC VCR IR mapping
+  #  irmap_package: !include ir-common-kuo/ir-map-hisense.yaml # Hisense 50U6G IR mapping
+  
