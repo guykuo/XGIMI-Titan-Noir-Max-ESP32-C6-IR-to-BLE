@@ -7,13 +7,13 @@
 This project turns an ESP32-C6 into an IR remote to Bluetooth translator
 for XGIMI Titan Noir projectors. Titan Noir projectors lack IR input and
 can only accept bluetooth signals. This translator works around that limitation
-by enabling use of a TiVO Roamio or Hisense 50U6G infrared remote.
+by enabling use of a TiVO Roamio, Hisense 50U6G, or JVC-VCR infrared remote.
 
 You choose which IR codes are accepted by installing the software version for desired remote.
 
 Once IR control is enabled, universal remotes that communicate via IR, like the
 Logitech Harmony Elite, can control your Titan Noir projector through use
-of TiVo or Hisens IR codes.
+of TiVo, Hisense, or JVC-VCR IR codes.
 
 This fork is based upon mrmachine's github which focuses on Home Assistant
 control of the projector. Instead, this fork concentrates on IR control.
