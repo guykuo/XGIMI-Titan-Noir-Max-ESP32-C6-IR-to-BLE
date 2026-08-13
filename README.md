@@ -1,429 +1,558 @@
-# Infrared XGIMI Titan Noir Max Remote via an ESP32-C6
+XGIMI Titan Noir IR Remote via ESP32
+====================================
 
-<img width="1200" height="312" alt="ir-esp32-ble-xgimi" src="https://github.com/user-attachments/assets/c805cb25-0852-43c9-b07e-095054d24b49" />
+![banner.jpg](blob:https://live-editor-next-tiptap.vercel.app/662e3523-ab71-422f-9118-2f7da47bbd6e "banner.jpg")
 
-## What This Does
+This project makes an ESP32 board into an IR remote to Bluetooth translator for XGIMI Titan Noir projectors. Titan Noir projectors lack IR control capability and only accept bluetooth signals. This translator works around that limitation by translating infrared signals into bluetooth commands the projector accepts.
 
-This project turns an ESP32-C6 into an IR remote to Bluetooth translator
-for XGIMI Titan Noir projectors. Titan Noir projectors lack IR input and
-can only accept bluetooth signals. This translator works around that limitation
-by enabling use of a TiVO Roamio, Hisense 50U6G, or JVC-VCR infrared remote.
+Three different IR remotes are supported for translation. Typically, users add one of these devices definitions to a universal remote rather than employing the actual physical remote . Once the translator is active, you can control your Titan Noir projector via IR signals from your universal remote.
 
-You choose which IR codes are accepted by installing the software version for desired remote.
+The IR code sets translated are:
 
-Once IR control is enabled, universal remotes that communicate via IR, like the
-Logitech Harmony Elite, can control your Titan Noir projector through use
-of TiVo, Hisense, or JVC-VCR IR codes.
+1.  TiVO Roamio
+    
+2.  Hisense 50U6G
+    
+3.  VC-VCR HR-S9600U
+    
 
-This fork is based upon mrmachine's github which focuses on Home Assistant
-control of the projector. Instead, this fork concentrates on IR control.
-However, Home Assistant integration capability has been preserved.
+#### \*\*\* This fork does **NOT** require presence nor use of a Home Assistant Server \*\*\*
 
-*** This fork does NOT require presence nor use of a Home Assistant Server ***
+This fork concentrates on direct IR translation to Xgimi Titan Noir bluetooth and HA usage is not documented here. However, _Home Assistant_ integration capability has been preserved and can also be used.. See mrmachine's original github for _Home Assistant_ related information.
 
-Please see the original mrmachine github for Home Assistant related information.
+Requirements
+------------
 
-## Requirements
+*   A BlueTooth BLE Capable ESP32 Board. Two boards detailed here are...
+    
 
-- XGIMI Titan Noir Max and its original Bluetooth remote
-- A BlueTooth BLE Capable ESP32 Board such as...
-   - ESP32-C6-WROOM-1 
-   - ESP32-C3 SuperMini development board with integrated 0.42-inch OLED display
-- Data capable USB cable
-- IR sensor module (three pin)
-- Windows, macOS or Linux computer with Bluetooth and Python 3.14 or newer
+\- ESP32-C6-WROOM-1
 
-The ESP32-C6 gets wired to your 3 pin IR sensor via three connections. 
+\- ESP32-C3 SuperMini development board with integrated 0.42-inch OLED display
 
-- GPIO pin <- IR receiver signal (actual pin varies with board)
-- Gnd <- IR receiver Gnd
-- 3V <- IR reciver Vcc (Avoid connecting Vcc to 5V for ESP32 chip safety)
+*   IR sensor module (three pin) for ESP32
+    
+*   XGIMI Titan Noir Max and its original Bluetooth remote
+    
+*   Windows, macOS or Linux computer with Bluetooth and Python 3.14 or newer
+    
+*   Data capable USB cable
+    
 
-Here are pinouts of two styles of IR sensors and the respective connection points 
-on a ESP32-C6-WROOM-1 board. 
+Your IR sensor module needs three connections to your ESP32 board.
 
-<img width="1000" height="827" alt="pinouts ir sensor and esp32-c6-wroom-1" src="https://github.com/user-attachments/assets/37c8a749-6a99-43d8-a89c-f2404c5ad8be" />
+1.  IR signal --> GPIO pin (actual pin varies with board)
+    
+2.  IR Gnd --> Ground
+    
+3.  IR Vcc --> 3V (Avoid connecting Vcc to 5V to avoid risk of ESP32 board damage)
+    
 
-The IR sensor style that has the small pc board includes a red LED that 
-flashes when the sensor detect IR. That feedback LED may be useful during
-troubleshooting, but is not required. Either style of sensor will work.
+Here are pinouts of two styles of IR sensors and the correct connection points on a ESP32-C6-WROOM-1 board.
 
-** IMPORTANT ** If you want to use a different ESP32 board than the ones illustrated herein, 
-be certain it has at least bluetooth version 4.2 and Bluetooth Low Energy (BLE) capability. 
-Otherwise, power-on broadcast to Xgimi projector will not work. 
+![pinouts ir sensor and esp32-c6-wroom-1.jpg](blob:https://live-editor-next-tiptap.vercel.app/b910d270-e329-4c86-8f77-ddbd90638885 "pinouts ir sensor and esp32-c6-wroom-1.jpg")
 
-- These Should Work: ESP32-S3, ESP32-C (C3, C6), esp32 pico d4, possibly ESP32-H2 / H4
-  
-- Avoid These board: Original ESP32 (WROOM-32 /DevKitC), and ESP32-S2 Series
+The IR sensor style that has the small pc board includes a red LED which lights with IR presence. That feedback LED may be useful during troubleshooting, but is not required. Either style of IR sensor will work.
 
-You MUST know your board's pinout and which GPIO pins are suitable for IR signal input.
-I have included the pinouts for the two specific boards used in my testing.
-The files provided here have already been configured for those two boards.
+### Selecting an ESP32 Board
 
-If you use another board, you will need to modify the beginning of one my "make" files
-to match your board. Typically only three values in the configuration section at
-start of file need be adjusted for your board.
+If you want to use an ESP32 board than the two examples illustrated herein, be certain it has at least bluetooth version 4.2 and BLE (Bluetooth Low Energy) capability. Otherwise, power-on broadcast to Xgimi projector will not work.
 
-- board_type
-- pin_ir_receiver
-- pin_optional_wake_btn 
+Boards that should work:
 
-```YAML
-# ============= Begin Configuration to Match Physical ESP32 Board and Wiring. KUO
-# Also see end of this file where include package sets which IR remote is to be decoded (TiVo v Hisens)
+*   ESP32-S3
+    
+*   ESP32-C3
+    
+*   ESP32-C6
+    
+*   ESP32 pico d4
+    
+*   ESP32-H2
+    
+*   ESP32-H4
+    
 
-  ble_remote_name: "Hisense IR to Xgimi"  # Name remote to indicate IR remote expected. KUO
-  
-  board_type: "esp32-c6-devkitc-1" # <== set board type here
-  framework_type: "esp-idf" # <====  set board framewark. 
-  pin_ir_receiver: GPIO10 # <======= set GPIO pin for IR sensor. 
-  pin_optional_wake_btn: GPIO11 # <= set GPIO pin for optional wake button. 
+Boards that will NOT work
 
-# Except for selection of IR mapping file at end, the remainder of this
-# file typically needs no further changes to adapt to board and wiring
-# ============= End of settings for configurig board KUO
-```
-Also, at the bottom of the make file is where you select which remote (TiVo vs Hisense vs JVC VCR)
-you want the translator to understand. That selection is done by uncommenting one (and ONLY one)
-line specifying which irmap_package to include as IR map.
+*   Original ESP32 (WROOM-32 /DevKitC)
+    
+*   ESP32-S2 series
+    
 
+Each variation of ESP board has its own pinout and specific GPIO pins suitable for for IR signal input. It is particularly important to obtain pinout information and know which GPIO pins are actually free for use (not strapping pins or already assigned to other board functions)  
 
-Pinout for the ESP32-C6-WROOM-1 board I used is below. I have marked the connectors of interest.
-<img width="1326" height="712" alt="pinouts esp32-c6-wroom-1-marked" src="https://github.com/user-attachments/assets/a876da02-1484-45f8-9585-a5f9fb1a7d7a" />
+I have pre-selected appropriate GPIO pins for the two specific boards used during creation of this project. The example "make" files provided have already been configured for those specific boards. Easiest way to proceed is to use one of the exact same boards as I have for this project. If you follow the same board selection and pin wiring that I made, you can directly use one of the supplied make files to create an IR to Bluetooth translator.
 
-Here is the pinout for the Lonely Binary ESP32-C3 SuperMini development board with integrated 0.42-inch OLED display used.
-<img width="1500" height="983" alt="esp32-c3 with OLED pins marked" src="https://github.com/user-attachments/assets/cebbac3d-2199-4a22-8d92-2a6312e32242" />
+#### Using Other ESP Boards
 
+To use a different board, obtain its pinout diagram and identify a free GPIO pin suitable for IR input. Beware that some GPIO pins are used for special functions such as boot strapping, timing signals, or may be allocated to devices on the PC board.  
+Once you know the board pinout and identify an appropriate GPIO pin, make a copy of one of my "make" files and customize it for your particula board.
 
+Typically only three values in the configuration section at start of file need be adjusted for your board.
 
-Here are ESP32 boards wired with two different style IR sensors. 
+1.  board\_type
+    
+2.  pin\_ir\_receiver
+    
+3.  pin\_optional\_wake\_btn
+    
 
-** NB: Connecting 5V to Vcc of IR sensor may cause damage to 
-ESP32 boards. Rather than wiring as in this pict, wire Vcc to 3 volt pin.
-<img width="1000" height="624" alt="ir to xgimi BLE translators" src="https://github.com/user-attachments/assets/cd51003f-41d2-4311-a372-37cbe5ec166d" />
+\`\`\`YAML
 
+\# ============= Begin Configuration to Match Physical ESP32 Board and Wiring. KUO
 
+\# Also see end of this file where include package sets which IR remote is to be decoded
 
-If using another board, check its pinouts for location of GPIO-10, 3V, and GND. Don't assume
-they are in same physical location between differing boards.
+ble\_remote\_name: "Hisense IR to Xgimi" # Name remote to indicate IR remote expected. KUO
 
-You must find equivalent connectors to wire and/or change the board id in a make YAML.
-<img width="1500" height="1194" alt="esp32-c3 with OLEDd" src="https://github.com/user-attachments/assets/a5a1b437-23d3-4db0-abfc-8ed8d99c2364" />
+board\_type: "esp32-c3-devkitm-1" # <== set board type here
 
-I particularly enjoy the ESP32-C3 OLED board version. I programmed the board to show display 
-commands and underlying IR codes.
-<img width="1300" height="620" alt="oled esp32-c3" src="https://github.com/user-attachments/assets/e1fbe2bf-8b2d-46c1-8c74-4ffbb251cc33" />
+framework\_type: "esp-idf" # <==== set board framewark.
 
-Easiest way to proceed is to useone of the exact same boards as mine. If you follow the same
-pin wiring and board choices that I made, you can directlyuse one of the four make files to create
-either a TiVo or Hisense ready translator with either ESP32 board.
+pin\_ir\_receiver: GPIO1 # <======= set GPIO pin for IR sensor.
 
-However, it is fairly simple to edit one of make files to to use other ESP32 boards.
+pin\_optional\_wake\_btn: GPIO3 # <= set GPIO pin for optional wake button.
 
-To power the ESP32, you will need a small USB-C power supply for your ESP32-C6.
-[This one works well.](https://www.amazon.com/dp/B0DZ6J62C3)
+\# Except for selection of IR mapping file at end, the remainder of this
 
+\# file typically needs no further changes to adapt to board and wiring
 
-## How Bluetooth to Titan Noir Works
+\# ============= End of settings for configurig board KUO
 
-When the projector is awake, the ESP32 maintains a bonded Bluetooth HID
-connection and sends the same keyboard or consumer-control reports captured
-from the original remote. Settings Menu and Focus use the two distinct
-short/alternate reports produced by the physical remote. Immediate power-off
-holds the Power report for the confirmed 1500 ms duration.
+\`\`\`
 
-When the projector is fully asleep, Power On broadcasts all 256 rolling-counter
-values with the original remote's stable 15-byte wake token. There is no
-deliberate delay between advertisements. A connection-state guard prevents a
-wake burst while the projector is already connected, avoiding advancement of
-the projector's rolling-code state at the wrong time.
+Also, At the bottom of the make file is where you choose the IR remote code set desired (TiVo vs Hisense vs JVC VCR).
+
+IR code set selection is via uncommenting **_one and ONLY one_** line specifying the irmap\_package to include as IR map.
+
+#### ESP32-C6-WROOM-1 Pinout and GPIO Pin Selection Example
+
+ESP32-C6-WROOM-1 board has GPIO10 freely usable as input for I used as IR signal input. Pin GPIO10 has already been specified in the "make" files provided in this project. I have marked the connectors of interest on its pinout diagram.
+
+![pinouts esp32-c6-wroom-1-marked.jpg](blob:https://live-editor-next-tiptap.vercel.app/2e07b5b6-8f49-4173-921b-1fb6ce588296 "pinouts esp32-c6-wroom-1-marked.jpg")
+
+#### ESP32-C3 SuperMini Dev Board with Integrated 0.42-inch OLED Display Example
+
+Lonely Binary's ESP32-C3 OLED board has GPIO01 usable for IR signal input. GPIO01 is on same side as its 3V and Gnd connectos, making wiring simpler than GPIO pins on the opposing edge of the board.
+
+![esp32-c3 with OLED pins marked.jpg](blob:https://live-editor-next-tiptap.vercel.app/86ca2600-3a00-40b3-8036-efa3f67f5d29 "esp32-c3 with OLED pins marked.jpg")
+
+#### Completed ESP32 Boards
+
+Here are two ESP32-C6-WROOM-1 boards wired with two different style IR sensors.
+
+![ir to xgimi BLE completed.jpg](blob:https://live-editor-next-tiptap.vercel.app/49db6d8c-5faf-4ac2-aac8-9e014a375e26 "ir to xgimi BLE completed.jpg")
+
+Here is ESP32-C3 OLED board which I have programmed to show display inbound IR codes and equivalent Xgimi projector translation.
+
+![oled esp32-c3.jpg](blob:https://live-editor-next-tiptap.vercel.app/cb307854-7af1-49e0-aa52-c73b52a6cc39 "oled esp32-c3.jpg")
+
+#### Powering Your ESP32 Board
+
+ESP32 boards require very modest poewr for operation. Any stable USB-C power supply should suffice.
+
+\[This one works well.\]([https://www.amazon.com/dp/B0DZ6J62C3](https://www.amazon.com/dp/B0DZ6J62C3))
+
+### How Bluetooth to Titan Noir Works
+
+When the projector is awake, the ESP32 maintains a bonded Bluetooth HID connection and sends the same keyboard or consumer-control reports captured from the original remote. Settings Menu and Focus use the two distinct short/alternate reports produced by the physical remote. Immediate power-off holds the Power report for the confirmed 1500 ms duration.
+
+When the projector is fully asleep, Power On broadcasts all 256 rolling-counter values with the original remote's stable 15-byte wake token. There is no deliberate delay between advertisements. A connection-state guard prevents a wake burst while the projector is already connected, avoiding advancement of the projector's rolling-code state at the wrong time.
 
 The firmware contains the tested Titan Noir Max HID descriptor and button map.
+
 Your specific token lives in the `secrets.yaml`, not in the shareable source.
 
-Mrmachine already captured and mapped an original Titan Noir Max remote. We do not
-need to learn its buttons, HID descriptor, names or Home Assistant entities. That
-has already been done for us by mrmachine.
+Mrmachine already captured and mapped an original Titan Noir Max remote. We do not need to learn its buttons, HID descriptor, names or Home Assistant entities. That has already been done for us by mrmachine.
 
-** The only per-remote value we must acquire is the original remote's
-15-byte BLE wake token.
+**_The only per-remote value we must acquire is the original remote's 15-byte BLE wake token._**
 
-## Installing This Software on ESP32
+Installing This Software on ESP32
+---------------------------------
 
-1. Clone or copy this directory to your computer. 
-   (Under MacOS, compiling works better if directory is on desktop.)
-   
-   Create a virtual environment, and install the pinned tools:
+### 1\. Clone or copy this directory to your computer.
 
-   On macOS or Linux, cd to directory of this project. You can readily do so
-   by type "cd " and then dragging your director into terminal.
+##### Create a virtual environment, and install the pinned tools:
 
-   Once your terminal is at the correct working directory, you can proceed
-   with below scripts.
+On macOS or Linux, cd to directory of this project. You can readily do so by typing "cd " and dragging your directory into terminal.
 
-   Install Python environment
-   On MacOS or Linux
-   ```sh
-   python3 -m venv .venv
-   .venv/bin/python -m pip install -r requirements.txt
-   ```
+Once terminal is at the correct working directory, you can proceed with below scripts.
 
-   On Windows PowerShell or Command Prompt:
-   ```powershell
-   py -3 -m venv .venv
-   .venv\Scripts\python.exe -m pip install -r requirements.txt
-   ```
+### 2\. Install Python environment
 
-3. Capture Your Remote's Token
+On MacOS or Linux
 
-   Physically unplug the projector so it cannot reconnect to the original
-   remote. Turn Bluetooth on and grant the terminal Bluetooth access if the
-   operating system asks. Run one of:
+\`\`\`sh
 
-   On MacOS or Linux
-   ```sh
-   .venv/bin/python scripts/capture_wake_token.py --duration 30
-   ```
+python3 -m venv .venv
 
-   On Windows Powershell
-   ```powershell
-   .venv\Scripts\python.exe scripts\capture_wake_token.py --duration 30
-   ```
+.venv/bin/python -m pip install -r requirements.txt
 
-   Keep the remote close to the computer and press its Power button several
-   times during the scan. A trustworthy capture has a stable 15-byte tail and
-   at least two distinct first-byte rolling-counter values.
+\`\`\`
 
+On Windows PowerShell or Command Prompt:
 
-4. Create `secrets.yaml` with the captured token.
-   The helper generates the API key and strong OTA/fallback-access-point passwords using Python's secure
-   random generator:
+\`\`\`powershell
 
-   Replace the below script token with the 15-byte token printed by the capture
+py -3 -m venv .venv
 
-   MacOS or Linux
-   ```sh
-   .venv/bin/python scripts/create_secrets.py --token "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88"
-   ```
+.venv\\Scripts\\python.exe -m pip install -r requirements.txt
 
-   Windows Powershell
-   ```powershell
-   .venv\Scripts\python.exe scripts\create_secrets.py --token "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88"
-   ```
+\`\`\`
 
-   Now you have a secrets.yaml file containing your specific token.
-   
-   The helper refuses to overwrite an existing `secrets.yaml`.
+### 3\. Capture Your Remote's Token
 
-   
-5. Build Firmware for Your Choice of IR Remote (TiVo vs Hisense)
+Physically unplug the projector so it cannot reconnect to the original remote. Turn Bluetooth on and grant the terminal Bluetooth access if the operating system asks.
 
-   YAML files are supplied to directly support two boards and either TiVo Roamio or Hisense 50U6G Remote 
+Run one of:
 
-   Substitute name of "make" file for the one listed in below example scripts to create the version
-   desired.
+On MacOS or Linux
 
-   4a (Example build firmware for TIVO on ESP32-C6) Connect the new ESP32-C6 by USB, validate, compile and flash:
+\`\`\`sh
 
-   MacOS or Linux
-   ```sh
-   .venv/bin/esphome config make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
-   .venv/bin/esphome run make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
-   ```
+.venv/bin/python scripts/capture\_wake\_[token.py](http://token.py) --duration 30
 
-   Windows Powershell
-   ```powershell
-   .venv\Scripts\esphome.exe config make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
-   .venv\Scripts\esphome.exe run make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
-   ```
+\`\`\`
 
+On Windows Powershell
 
-   4b (Example build firmware for HISENSE on ESP32-C3 with OLED display) Connect the new ESP32-C3 by USB, validate, compile and flash:
+\`\`\`powershell
 
-   MacOS or Linux
-   ```sh
-   .venv/bin/esphome config make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
-   .venv/bin/esphome run make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
-   ```
+.venv\\Scripts\\python.exe scripts\\capture\_wake\_[token.py](http://token.py) --duration 30
 
-   Windows Powershell
-   ```powershell
-   .venv\Scripts\esphome.exe make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
-   .venv\Scripts\esphome.exe make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
-   ```
+\`\`\`
 
+Keep the remote close to the computer and press its Power button several times during the scan. A trustworthy capture has a stable 15-byte tail and at least two distinct first-byte rolling-counter values.
 
-   Once firmware is built, you should be presented with a choice of how to
-   flash your ESP32 board.
+### 4\. Create `secrets.yaml` with the captured token.
 
-   Select the ESP32's USB serial port when prompted (`COM…` on Windows or
-   `/dev/…` on macOS/Linux). If no port appears, install the USB serial driver
-   required by the ESP32 USB interface and try again.
+The helper generates the API key and strong OTA/fallback-access-point passwords using Python's securerandom generator:
 
+Replace the below script token with the 15-byte token printed by the capture
+
+MacOS or Linux
+
+\`\`\`sh
+
+.venv/bin/python scripts/create\_[secrets.py](http://secrets.py) --token "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88"
+
+\`\`\`
+
+Windows Powershell
+
+\`\`\`powershell
+
+.venv\\Scripts\\python.exe scripts\\create\_[secrets.py](http://secrets.py) --token "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88"
+
+\`\`\`
+
+Now you have a secrets.yaml file containing your specific token.
+
+The helper refuses to overwrite an existing `secrets.yaml`.
+
+### 5\. Build and Flash Firmware for Your Choice of IR Remote
+
+For your convenience, YAML "make" files have been created to directly support the two example ESP32 boards with any of three IR code sets. The name of provided make files indicate board type, GPIO pin, and IR code set.  
   
-7. Power on the projector and add your TiVo / Hisense to Xgimi as another Bluetooth remote.
-   Keep the original remote paired as well.
+Substitute name of specific "make" file for the one listed in below example scripts to create the version desired.  
+If you create a "make" file for a different board, GPIO, or IR code, substitute your make filename in the scripts.
 
-   
-8. Test your TiVo / Hisense IR remote's ability to control your Titan Noir projector. 
-   For universal remotes, add a TiVo Roamio or Hisense 50U6G device to your remote.
-   
-   Tables listing Xgimi button and corresponding TiVO or Hisense remote button are below.
+##### 5a. Build firmware for TIVO on ESP32-C6
 
+Connect the new ESP32-C6 by USB, validate, compile and flash:
+
+MacOS or Linux
+
+\`\`\`sh
+
+.venv/bin/esphome config make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
+
+.venv/bin/esphome run make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
+
+\`\`\`
+
+Windows Powershell
+
+\`\`\`powershell
+
+.venv\\Scripts\\esphome.exe config make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
+
+.venv\\Scripts\\esphome.exe run make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
+
+\`\`\`
+
+##### 5b. Build Firmware for HISENSE on ESP32-C3 with OLED display)
+
+Connect the new ESP32-C3 by USB, validate, compile and flash:
+
+MacOS or Linux
+
+\`\`\`sh
+
+.venv/bin/esphome config make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
+
+.venv/bin/esphome run make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
+
+\`\`\`
+
+Windows Powershell
+
+\`\`\`powershell
+
+.venv\\Scripts\\esphome.exe make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
+
+.venv\\Scripts\\esphome.exe make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
+
+\`\`\`
+
+Once firmware is built, you should be presented with a choice of how to
+
+flash your ESP32 board.
+
+Select the ESP32's USB serial port when prompted `COM…` on Windows or
+
+`/dev/…` on macOS/Linux). If no port appears, install the USB serial driver
+
+required by the ESP32 USB interface and try again.
+
+### 6\. Power on the projector and Add Your ESP32 Remote as another Bluetooth remote.
+
+The provided make files name your new ESP32 as readily recognizable when adding as another Bluetooth remote.
+
+Keep the original remote paired as well.
+
+### 7\. Test your TiVo / Hisense IR remote's ability to control your Titan Noir projector.
+
+For universal remotes, add a TiVo Roamio or Hisense 50U6G device to your remote.
 
 CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: both contain
+
 device credentials, and the binary also embeds the wake token.
 
+Xgimi Command and IR Remote Button Tables
+-----------------------------------------
 
-
-## Tivo to Xgimi Titan Noir Mapping
+### Tivo to Xgimi Titan Noir Mapping
 
 |Xgimi Remote Command | NEC IR code of Tivo Roamio Remote | Tivo Remote |
+
 |-------- | -------------------- | -------- |
-|back	|address=0x3085, command=0xB044	|zoom |
-|cursor_down	|address=0x3085, command=0xE016	|arrow down
-|cursor_enter	|address=0x3085, command=0xE019	|select |
-|cursor_left	|address=0x3085, command=0xE017	|arrow left |
-|cursor_right	|address=0x3085, command=0xE015	|arrow right |
-|cursor_up	|address=0x3085, command=0xE014	|arrow up |
-|focus_auto	|address=0x3085, command=0xD02E	|7 |
-|focus_manual	|address=0x3085, command=0xD02F	|8 |
-|home	|address=0x3085, command=0xE01E	|channel up |
-|input	|address=0x3085, command=0xC034	|input |
-|settings_menu	|address=0x3085, command=0xF00C	|tivo (actual remote) |
-|settings_menu	|address=0x3085, command=0xF00D	|tivo (incorrectly on MyHarmony) ||
-|game_menu	|address=0x3085, command=0xC036	|guide |
-|mute	|address=0x3085, command=0xE01B	|mute |
-|picture	|address=0x3085, command=0xE013	|info |
-|power_on	|address=0x3085, command=0xE010	|TV Power (Use as Discrete Power On)|
-|power_off	|address=0x3085, command=0xE011	|Live TV (Use as Discrete Off)|
-|power_off	|address=0x3085, command=0xC031	|0 (equivalent as Discrete OFF)|
-|shortcut_1	|address=0x3085, command=0x9060	|A yellow |
-|shortcut_2	|address=0x3085, command=0x9061	|B blue |
-|shortcut_3	|address=0x3085, command=0x9062	|C red |
-|shortcut_4	|address=0x3085, command=0x9063	|D green |
-|volume_down	|address=0x3085, command=0xE01D	|volume down |
-|volume_up	|address=0x3085, command=0xE01C	|volume up |
-|bluetooth_pairing_start	|address=0x3085, command=0xC033	|enter |
-|bluetooth_pairing_clear	|address=0x3085, command=0xC032	|clear |
 
+|back |address=0x3085, command=0xB044 |zoom |
 
+|cursor\_down |address=0x3085, command=0xE016 |arrow down
 
-## Hisense to Xgimi Titan Noir Mapping
+|cursor\_enter |address=0x3085, command=0xE019 |select |
+
+|cursor\_left |address=0x3085, command=0xE017 |arrow left |
+
+|cursor\_right |address=0x3085, command=0xE015 |arrow right |
+
+|cursor\_up |address=0x3085, command=0xE014 |arrow up |
+
+|focus\_auto |address=0x3085, command=0xD02E |7 |
+
+|focus\_manual |address=0x3085, command=0xD02F |8 |
+
+|home |address=0x3085, command=0xE01E |channel up |
+
+|input |address=0x3085, command=0xC034 |input |
+
+|settings\_menu |address=0x3085, command=0xF00C |tivo (actual remote) |
+
+|settings\_menu |address=0x3085, command=0xF00D |tivo (incorrectly on MyHarmony) ||
+
+|game\_menu |address=0x3085, command=0xC036 |guide |
+
+|mute |address=0x3085, command=0xE01B |mute |
+
+|picture |address=0x3085, command=0xE013 |info |
+
+|power\_on |address=0x3085, command=0xE010 |TV Power (Use as Discrete Power On)|
+
+|power\_off |address=0x3085, command=0xE011 |Live TV (Use as Discrete Off)|
+
+|power\_off |address=0x3085, command=0xC031 |0 (equivalent as Discrete OFF)|
+
+|shortcut\_1 |address=0x3085, command=0x9060 |A yellow |
+
+|shortcut\_2 |address=0x3085, command=0x9061 |B blue |
+
+|shortcut\_3 |address=0x3085, command=0x9062 |C red |
+
+|shortcut\_4 |address=0x3085, command=0x9063 |D green |
+
+|volume\_down |address=0x3085, command=0xE01D |volume down |
+
+|volume\_up |address=0x3085, command=0xE01C |volume up |
+
+|bluetooth\_pairing\_start |address=0x3085, command=0xC033 |enter |
+
+|bluetooth\_pairing\_clear |address=0x3085, command=0xC032 |clear |
+
+### Hisense to Xgimi Titan Noir Mapping
 
 |Xgimi Remote Command | NEC IR code of Hisense 50U6G Remote | Hisense Remote Button |
+
 |-------- | -------------------- | -------- |
-|back	|0xFB04	|back |
-|cursor_down	|0xFB04	|arrow down
-|cursor_enter	|0xA55A	|select |
-|cursor_left	|0xA758	|arrow left |
-|cursor_right	|0xA659	|arrow right |
-|cursor_up	|0xA956	|arrow up |
-|focus_auto	|0xE817	|7 |
-|focus_manual	|0xE718	|8 |
-|settings_menu	|0xBC43	|menu (on actual remote) |
-|settings_menu	|0xB54A	|menu (incorrectly in MyHarmony ) |
-|home	|0xB54A	|home (on actual remote)|
-|home	|0x718E	|home (on My Harmony)|
-|input	|0xF609	|input |
-|game_menu	|0x35CA	|apps |
-|mute	|0xF609	|mute |
-|picture	|0xFF00	|channel up |
-|power_on	|0x8E71	|discrete power on |
-|power_off	|0xEF10	|discrete power off |
-|power_off	|0x8D72	| 0 (Do NOT USE)|
-|shortcut_1	|0xAB54	|yellow |
-|shortcut_2	|0xAA55	|blue |
-|shortcut_3	|0xAD52	|red |
-|shortcut_4	|0xAC53	|green |
-|volume_down	|0xFC03 |
-|volume_up	|0xFD02	|
-|bluetooth_pairing_start	0xB847	|prime video |
-|bluetooth_pairing_clear	|0xB649	|youtube |
 
+|back |0xFB04 |back |
 
+|cursor\_down |0xFB04 |arrow down|
 
-## JVC-VCR to Xgimi Titan Noir Mapping
+|cursor\_enter |0xA55A |select |
 
-# Remote Control Mapping
+|cursor\_left |0xA758 |arrow left |
 
-Below is the IR code mapping between Xgimi remote commands and JVC VCR remote buttons.
+|cursor\_right |0xA659 |arrow right |
+
+|cursor\_up |0xA956 |arrow up |
+
+|focus\_auto |0xE817 |7 |
+
+|focus\_manual |0xE718 |8 |
+
+|settings\_menu |0xBC43 |menu (on actual remote) |
+
+|settings\_menu |0xB54A |menu (incorrectly in MyHarmony ) |
+
+|home |0xB54A |home (on actual remote)|
+
+|home |0x718E |home (on My Harmony)|
+
+|input |0xF609 |input |
+
+|game\_menu |0x35CA |apps |
+
+|mute |0xF609 |mute |
+
+|picture |0xFF00 |channel up |
+
+|power\_on |0x8E71 |discrete power on |
+
+|power\_off |0xEF10 |discrete power off |
+
+|power\_off |0x8D72 | 0 (Do NOT USE)|
+
+|shortcut\_1 |0xAB54 |yellow |
+
+|shortcut\_2 |0xAA55 |blue |
+
+|shortcut\_3 |0xAD52 |red |
+
+|shortcut\_4 |0xAC53 |green |
+
+|volume\_down |0xFC03 |
+
+|volume\_up |0xFD02 |
+
+|bluetooth\_pairing\_start 0xB847 |prime video |
+
+|bluetooth\_pairing\_clear |0xB649 |youtube |
+
+### JVC-VCR to Xgimi Titan Noir Mapping
 
 | Xgimi Remote Command | JVC IR code from JVC VCR | JVC VCR Remote Btn |
+
 | :--- | :--- | :--- |
+
 | back | 0xC2C3 | rewind |
-| cursor_down | 0xC218 | arrow down actual |
-| cursor_down | 0xC261 | arrow down harmony |
-| cursor_enter | 0xC23C | OK |
-| cursor_left | 0xC2A8 | arrow left |
-| cursor_right | 0xC228 | arrow right |
-| cursor_up | 0xC241 | arrow up harmony |
-| cursor_up | 0xC298 | arrow up actual |
-| focus_auto | 0xC2E4 | 7 |
-| focus_manual | 0xC214 | 8 |
+
+| cursor\_down | 0xC218 | arrow down actual |
+
+| cursor\_down | 0xC261 | arrow down harmony |
+
+| cursor\_enter | 0xC23C | OK |
+
+| cursor\_left | 0xC2A8 | arrow left |
+
+| cursor\_right | 0xC228 | arrow right |
+
+| cursor\_up | 0xC241 | arrow up harmony |
+
+| cursor\_up | 0xC298 | arrow up actual |
+
+| focus\_auto | 0xC2E4 | 7 |
+
+| focus\_manual | 0xC214 | 8 |
+
 | home | 0xC26C | cancel |
+
 | input | 0xC2C8 | tv/vcr |
-| settings_menu | 0xC2EC | menu actual remote |
-| settings_menu | 0xC207 | menu harmony |
-| game_menu | 0xC230 | play |
+
+| settings\_menu | 0xC2EC | menu actual remote |
+
+| settings\_menu | 0xC207 | menu harmony |
+
+| game\_menu | 0xC230 | play |
+
 | mute | 0xC2B0 | pause |
+
 | picture | 0xC260 | fast forward |
-| power_on | 0xC2D0 | power toggle |
-| power_on | 0xC2B8 | power on |
-| power_off | 0xC258 | power off |
-| power_off | 0xC2CC | 0 |
-| shortcut_1 | 0xC283 | Prog |
-| shortcut_2 | 0xC2BC | Prog Check |
-| shortcut_3 | 0xC28C | SP/EP |
-| shortcut_4 | 0xC269 | Skip Search |
-| volume_down | 0xC293 | Start - |
-| volume_up | 0xC213 | Start + |
-| bluetooth_pairing_start | 0xC284 | 1 |
-| bluetooth_pairing_clear | 0xC244 | 2 |
 
-## Project layout
+| power\_on | 0xC2D0 | power toggle |
 
-- `esp32c6-IR-to-xgimiBLE-KuoHisense.yaml` — Hisense version of ESP32 IR remote
-- `esp32c6-IR-to-xgimiBLE-KuoTiVo.yaml` — TiVO IR Hisense version of ESP32 IR remote
-- `components/xgimi_remote/` — wake sequencing, connection guard and HID reports
-- `components/esp32_ble_server/` — BLE server support adapted for this HID peripheral
-- `scripts/capture_wake_token.py` — captures and validates only the per-remote token
-- `scripts/create_secrets.py` — creates cross-platform credentials and token config
-- `docs/protocol.md` — sanitised, model-wide HID capture reference
-- `secrets.example.yaml` — safe template; copy to ignored `secrets.yaml`
+| power\_on | 0xC2B8 | power on |
 
-## Recent Notes:
-- Added support for JVC VCR remote IR codes
+| power\_off | 0xC258 | power off |
 
-- Changed file naming convention to board-GPIOpin-IRmapping
-  
-- WARNING - I learned that using 5v for Vcc on IR sensors may endanger the ESP32 boards.
-  Changed pinout diagrams and instructions to use the 3 volt board connection.
-  
-- Refactored to support of other ESP32 boards via adjusting a few entries in "make" file.
+| power\_off | 0xC2CC | 0 |
 
-- Latest bluetooth stack from mrmachine incorporated into fork
+| shortcut\_1 | 0xC283 | Prog |
 
-- Adjusted IR code mapping to work around errors in remote definitions stored
-  at MyHarmony's library. With new mappings, translator should work with codes learned from actual
-  remote or (flawed ones) downloaded from MyHarmony library.
+| shortcut\_2 | 0xC2BC | Prog Check |
 
-- Logging output from ESP32-C6-WROOM is only on its USB port. THe COMS port can be used
-for programming the ESP32, but will not output any log data.
+| shortcut\_3 | 0xC28C | SP/EP |
 
-- If older Python is on your Mac, completes flashing ESP32 successfully, but does not
-start logging. Instead an architecture error appears in terminal.
+| shortcut\_4 | 0xC269 | Skip Search |
 
-Fix this issue by updating to python-3.14.7 before building firmware.
+| volume\_down | 0xC293 | Start - |
 
+| volume\_up | 0xC213 | Start + |
 
-## Scope and safety
+| bluetooth\_pairing\_start | 0xC284 | 1 |
+
+| bluetooth\_pairing\_clear | 0xC244 | 2 |
+
+Recent Notes:
+-------------
+
+*   Added support for JVC VCR remote IR codes
+    
+*   Changed file naming convention to board-GPIOpin-IRmapping
+    
+*   WARNING - Using 5v for Vcc on IR sensors may endanger the ESP32 boards.  
+    Changed pinout diagrams and instructions to use the 3 volt board connection.
+    
+*   Refactored to support of other ESP32 boards via adjusting a few entries in "make" file.
+    
+*   Latest bluetooth stack from mrmachine incorporated into fork
+    
+*   Adjusted IR code mapping to work around errors in remote definitions stored  
+    at MyHarmony's library. With new mappings, translator works with codes learned from  
+    actual remote or ones downloaded from MyHarmony library.
+    
+*   Logging output from ESP32-C6-WROOM is only on its USB port. THe COMS port can  
+    be used for programming the ESP32, but will not output any log data.
+    
+*   If older Python is on your Mac, completes flashing ESP32 successfully,  
+    but does not start logging. Instead an architecture error appears in terminal.  
+    Fix this issue by updating to python-3.14.7 before building firmware.
+    
+
+Scope and safety
+----------------
 
 This was captured and tested on an XGIMI Titan Noir Max. Other XGIMI models or
+
 remote revisions may use a different HID map or wake format. This project is
+
 independent and is not affiliated with XGIMI, M5Stack, ESPHome or Home Assistant.
 
-## Licence
+License
+-------
 
 This project is distributed under GPLv3 because its adapted ESPHome C++ runtime
+
 code is GPLv3. See `LICENSE` and `THIRD_PARTY_NOTICES.md`.
