@@ -103,11 +103,10 @@ images after I get mine rewired to 3 volt supply pin ****
 <img width="1200" height="900" alt="completed esp32IR" src="https://github.com/user-attachments/assets/15c51e16-8e48-4e8f-91a3-542f1145a961" />
 
 
-If using another board, check its pinouts for location of GPIO-10, 5V, and GND. Don't assume
-they are in same physical location between differing boards. For instance, below is a
-pinout for another EPS32-C6 board
+If using another board, check its pinouts for location of GPIO-10, 3V, and GND. Don't assume
+they are in same physical location between differing boards.
 
-Again, you must find its equivalent connectors to wire and also change the board id in the YAML.
+You must find equivalent connectors to wire and/or change the board id in a make YAML.
 <img width="1500" height="1194" alt="esp32-c3 with OLEDd" src="https://github.com/user-attachments/assets/a5a1b437-23d3-4db0-abfc-8ed8d99c2364" />
 
 I particularly enjoy the ESP32-C3 OLED board version. I programmed the board to show display 
