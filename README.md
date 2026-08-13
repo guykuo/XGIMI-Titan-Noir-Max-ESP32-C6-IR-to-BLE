@@ -26,43 +26,80 @@ Please see the original mrmachine github for Home Assistant related information.
 ## Requirements
 
 - XGIMI Titan Noir Max and its original Bluetooth remote
-- ESP32-C6-WROOM-1 (or equivalent ESP32) with a data-capable USB cable
-- IR sensor module
+- A BlueTooth BLE Capable ESP32 Board such as...
+   - ESP32-C6-WROOM-1 
+   - ESP32-C3 SuperMini development board with integrated 0.42-inch OLED display
+- Data capable USB cable
+- IR sensor module (three pin)
 - Windows, macOS or Linux computer with Bluetooth and Python 3.14 or newer
 
 The ESP32-C6 gets wired to your 3 pin IR sensor via three connections. 
 
-- GPIO10 <- IR receiver signal
+- GPIO pin <- IR receiver signal (actual pin varies with board)
 - Gnd <- IR receiver Gnd
-- 5V <- IR reciver Vcc
+- 3V <- IR reciver Vcc (Avoid connecting Vcc to 5V for ESP32 chip safety)
 
 Here are pinouts of two styles of IR sensors and the respective connection points 
 on a ESP32-C6-WROOM-1 board. 
 
-The IR sensor style that has the small pc board includes a feedback LED that 
-flashes red when the sensor detect IR. That feedback LED can be useful during
-troubleshooting whether the sensor is working, but that style sensor may be 
-less sensitive to IR. Either style of sensor will work for this project
+<img width="1000" height="827" alt="pinouts ir sensor and esp32-c6-wroom-1" src="https://github.com/user-attachments/assets/37c8a749-6a99-43d8-a89c-f2404c5ad8be" />
 
-<img width="1406" height="1164" alt="pinouts" src="https://github.com/user-attachments/assets/36d02d3a-eb5e-479e-a601-ad8ae361fd3b" />
+The IR sensor style that has the small pc board includes a red LED that 
+flashes when the sensor detect IR. That feedback LED may be useful during
+troubleshooting, but is not required. Either style of sensor will work.
 
-** IMPORTANT ** If you use a different ESP32 board, be certain it has at least bluetooth
-version 4.2 AND Bluetooth Low Energy (BLE) capability. Otherwise, power-on broadcast to 
-Xgimi projector will not work. 
+** IMPORTANT ** If you want to use a different ESP32 board than the ones illustrated herein, 
+be certain it has at least bluetooth version 4.2 and Bluetooth Low Energy (BLE) capability. 
+Otherwise, power-on broadcast to Xgimi projector will not work. 
 
-- Should work with: ESP32-S3, ESP32-C (C3, C6), esp32 pico d4, possibly ESP32-H2 / H4
+- These Should Work: ESP32-S3, ESP32-C (C3, C6), esp32 pico d4, possibly ESP32-H2 / H4
   
-- Avoid original ESP32 (WROOM-32 /DevKitC), and ESP32-S2 Series
+- Avoid These board: Original ESP32 (WROOM-32 /DevKitC), and ESP32-S2 Series
 
-If a board, other than the ESP32-C6-WROOM-1 is used, you MUST change board definition and specify
-the actual GPIO pin you use in my YAMLs. For simplicity, I suggest using exactly the 
-ESP32-C6-WROOM-1 to avoid any need to edit my YAML or find your own pinouts.
+You MUST know your board's pinout and which GPIO pins are suitable for IR signal input.
+I have included the pinouts for the two specific boards used in my testing.
+The files provided here have already been configured for those two boards.
+
+If you use another board, you will need to modify the beginning of one my "make" files
+to match your board. Typically only three values in the configuration section at
+start of file need be adjusted for your board.
+
+- board_type
+- pin_ir_receiver
+- pin_optional_wake_btn 
+
+```YAML
+# ============= Begin Configuration to Match Physical ESP32 Board and Wiring. KUO
+# Also see end of this file where include package sets which IR remote is to be decoded (TiVo v Hisens)
+
+  ble_remote_name: "Hisense IR to Xgimi"  # Name remote to indicate IR remote expected. KUO
+  
+  board_type: "esp32-c6-devkitc-1" # <== set board type here
+  framework_type: "esp-idf" # <====  set board framewark. 
+  pin_ir_receiver: GPIO10 # <======= set GPIO pin for IR sensor. 
+  pin_optional_wake_btn: GPIO11 # <= set GPIO pin for optional wake button. 
+
+# Except for selection of IR mapping file at end, the remainder of this
+# file typically needs no further changes to adapt to board and wiring
+# ============= End of settings for configurig board KUO
+```
+Also, at the bottom of the make file is where you select which remote (TiVo vs Hisense)
+you want the translator to understand. That selection is done by uncommenting one
+line specifying which irmap_package to include as IR map.
+
 
 Pinout for the ESP32-C6-WROOM-1 board I used is below. I have marked the connectors of interest.
-<img width="1000" height="540" alt="ESP32-C6 -WROOM-1" src="https://github.com/user-attachments/assets/c19da29d-63c3-4620-8664-57e0bb5918c4" />
+<img width="1326" height="712" alt="pinouts esp32-c6-wroom-1-marked" src="https://github.com/user-attachments/assets/a876da02-1484-45f8-9585-a5f9fb1a7d7a" />
+
+Here is the pinout for the Lonely Binary ESP32-C3 SuperMini development board with integrated 0.42-inch OLED display used.
+<img width="1500" height="983" alt="esp32-c3 with OLED pins marked" src="https://github.com/user-attachments/assets/cebbac3d-2199-4a22-8d92-2a6312e32242" />
 
 
-Here is a completed translator wired with IR sensor that does not have feedback LED
+
+Here is a completed translator wired with IR sensor that does not have feedback LED. 
+*** WARNING: This was made before I learned 5V to Vcc of IR sensor may cause damage to 
+ESP32 boards. Rather than wiring as in this pict, wire Vcc to 3 volt pin. I will update
+images after I get mine rewired to 3 volt supply pin ****
 <img width="1200" height="900" alt="completed esp32IR" src="https://github.com/user-attachments/assets/15c51e16-8e48-4e8f-91a3-542f1145a961" />
 
 
@@ -70,18 +107,18 @@ If using another board, check its pinouts for location of GPIO-10, 5V, and GND. 
 they are in same physical location between differing boards. For instance, below is a
 pinout for another EPS32-C6 board
 
-<img width="896" height="990" alt="71CVmIKYAyL _AC_SL1080_" src="https://github.com/user-attachments/assets/02ca05f1-13a3-41c3-8e4e-64bf1c060016" />
-
-Sometimes, there is no GPIO10 to use and you must use another GPIO pin. 
-[The ESP32-C3 with OLED display I used](https://www.amazon.com/dp/B0G6YT4ZQ3) has a recommendation of GPIO04 for IR sensor. 
-
 Again, you must find its equivalent connectors to wire and also change the board id in the YAML.
 <img width="1500" height="1194" alt="esp32-c3 with OLEDd" src="https://github.com/user-attachments/assets/a5a1b437-23d3-4db0-abfc-8ed8d99c2364" />
 
-This project supports the esp32-c3 OLED display to show information about received IR signals.
+I particularly enjoy the ESP32-C3 OLED board version. I programmed the board to show display 
+commands and underlying IR codes.
 <img width="1300" height="620" alt="oled esp32-c3" src="https://github.com/user-attachments/assets/e1fbe2bf-8b2d-46c1-8c74-4ffbb251cc33" />
 
-Easiest is to use the same exact same board as mine, but it is possible to user other boards.
+Easiest way to proceed is to useone of the exact same boards as mine. If you follow the same
+pin wiring and board choices that I made, you can directlyuse one of the four make files to create
+either a TiVo or Hisense ready translator with either ESP32 board.
+
+However, it is fairly simple to edit one of make files to to use other ESP32 boards.
 
 To power the ESP32, you will need a small USB-C power supply for your ESP32-C6.
 [This one works well.](https://www.amazon.com/dp/B0DZ6J62C3)
@@ -186,55 +223,55 @@ has already been done for us by mrmachine.
    Substitute name of "make" file for the one listed in below example scripts to create the version
    desired.
 
-   4a (Build Firmware for TIVO on ESP32-C6) Connect the new ESP32-C6 by USB, validate, compile and flash:
+   4a (Example build firmware for TIVO on ESP32-C6) Connect the new ESP32-C6 by USB, validate, compile and flash:
 
    MacOS or Linux
    ```sh
-   .venv/bin/esphome config make-IR-TiVo-esp32-c6-wroom-1.yaml
-   .venv/bin/esphome run make-IR-TiVo-esp32-c6-wroom-1.yaml
+   .venv/bin/esphome config make-IR-TiVo-esp32-c6-wroom-1-GPIO10.yaml
+   .venv/bin/esphome run make-IR-TiVo-esp32-c6-wroom-1-GPIO10.yaml
    ```
 
    Windows Powershell
    ```powershell
-   .venv\Scripts\esphome.exe config make-IR-TiVo-esp32-c6-wroom-1.yaml
-   .venv\Scripts\esphome.exe run make-IR-TiVo-esp32-c6-wroom-1.yaml
+   .venv\Scripts\esphome.exe config make-IR-TiVo-esp32-c6-wroom-1-GPIO10.yaml
+   .venv\Scripts\esphome.exe run make-IR-TiVo-esp32-c6-wroom-1-GPIO10.yaml
    ```
 
 
-   4b (Build Firmware for HISENSE on ESP32-C3 OLED) Connect the new ESP32-C3 by USB, validate, compile and flash:
+   4b (Example build firmware for HISENSE on ESP32-C3 with OLED display) Connect the new ESP32-C3 by USB, validate, compile and flash:
 
    MacOS or Linux
    ```sh
-   .venv/bin/esphome config make-IR-Hisense-esp32-c6-wroom-1.yaml
-   .venv/bin/esphome run make-IR-Hisense-esp32-c6-wroom-1.yaml
+   .venv/bin/esphome config make-IR-Hisense-esp32-c3-OLED-GPIO1.yaml
+   .venv/bin/esphome run make-IR-Hisense-esp32-c3-OLED-GPIO1.yaml
    ```
 
    Windows Powershell
    ```powershell
-   .venv\Scripts\esphome.exe config make-IR-Hisense-esp32-c6-wroom-1.yaml
-   .venv\Scripts\esphome.exe run make-IR-Hisense-esp32-c6-wroom-1.yaml
+   .venv\Scripts\esphome.exe config make-IR-Hisense-esp32-c3-OLED-GPIO1.yaml
+   .venv\Scripts\esphome.exe run make-IR-Hisense-esp32-c3-OLED-GPIO1.yaml
    ```
 
+
+   Once firmware is built, you should be presented with a choice of how to
+   flash your ESP32 board.
 
    Select the ESP32's USB serial port when prompted (`COM…` on Windows or
    `/dev/…` on macOS/Linux). If no port appears, install the USB serial driver
-   required by the ESP32 USB interface and reconnect it.
+   required by the ESP32 USB interface and try again.
 
   
-7. Power on the projector and add your TiVo/dHisense to Xgimi as another Bluetooth remote.
+7. Power on the projector and add your TiVo / Hisense to Xgimi as another Bluetooth remote.
    Keep the original remote paired as well.
 
    
-8. Test the TiVo or Hisense IR remote's ability to control your Titan Noir projector. 
-   If you are using a universal remote, add a TiVo Roamio or Hisense 50U6G device to your remote.
+8. Test your TiVo / Hisense IR remote's ability to control your Titan Noir projector. 
+   For universal remotes, add a TiVo Roamio or Hisense 50U6G device to your remote.
    
    Tables listing Xgimi button and corresponding TiVO or Hisense remote button are below.
 
-   Note: My Harmony library TiVo Roamio has a faulty TiVo button stored.
-   Recommend relearning that TiVo button on your Harmony Elite (Fix button in My Harmony)
 
-
-Do not commit your `secrets.yaml` or a personalised firmware binary: both contain
+CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: both contain
 device credentials, and the binary also embeds the wake token.
 
 
@@ -314,15 +351,18 @@ device credentials, and the binary also embeds the wake token.
 - `secrets.example.yaml` — safe template; copy to ignored `secrets.yaml`
 
 ## Recent Notes:
+- WARNING - I learned that using 5v for Vcc on IR sensors may endanger the ESP32 boards.
+  Changed pinout diagrams and instructions to use the 3 volt board connection.
+  
 - Refactored to support of other ESP32 boards via adjusting a few entries in "make" file.
 
 - Latest bluetooth stack from mrmachine incorporated into fork
 
-- Reworked IR code mapping to work around errors in remote definitions stored
-  at MyHarmony. With new mappings, should work with codes learned from actual
-  remote or downloaded from MyHarmony library.
+- Adjusted IR code mapping to work around errors in remote definitions stored
+  at MyHarmony's library. With new mappings, translator should work with codes learned from actual
+  remote or (flawed ones) downloaded from MyHarmony library.
 
-- Logging output from ESP32-C6-WROOM is only out its USB port. THe COMS port can be used
+- Logging output from ESP32-C6-WROOM is only on its USB port. THe COMS port can be used
 for programming the ESP32, but will not output any log data.
 
 - If older Python is on your Mac, completes flashing ESP32 successfully, but does not
