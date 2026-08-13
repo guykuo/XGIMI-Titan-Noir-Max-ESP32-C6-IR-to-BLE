@@ -96,11 +96,12 @@ Here is the pinout for the Lonely Binary ESP32-C3 SuperMini development board wi
 
 
 
-Here is a completed translator wired with IR sensor that does not have feedback LED. 
-*** WARNING: This was made before I learned 5V to Vcc of IR sensor may cause damage to 
-ESP32 boards. Rather than wiring as in this pict, wire Vcc to 3 volt pin. I will update
-images after I get mine rewired to 3 volt supply pin ****
-<img width="1200" height="900" alt="completed esp32IR" src="https://github.com/user-attachments/assets/15c51e16-8e48-4e8f-91a3-542f1145a961" />
+Here are ESP32 boards wired with two different style IR sensors. 
+
+** NB: Connecting 5V to Vcc of IR sensor may cause damage to 
+ESP32 boards. Rather than wiring as in this pict, wire Vcc to 3 volt pin.
+<img width="1000" height="624" alt="ir to xgimi BLE translators" src="https://github.com/user-attachments/assets/cd51003f-41d2-4311-a372-37cbe5ec166d" />
+
 
 
 If using another board, check its pinouts for location of GPIO-10, 3V, and GND. Don't assume
