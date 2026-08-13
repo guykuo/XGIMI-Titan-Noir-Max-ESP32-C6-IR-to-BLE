@@ -99,27 +99,19 @@ Typically only three values in the configuration section at start of file need b
     
 
 ```YAML
+# ============= Begin Configuration to Match Physical ESP32 Board and Wiring. KUO
+# Also see end of this file where include package sets which IR remote is to be decoded
 
-\# ============= Begin Configuration to Match Physical ESP32 Board and Wiring. KUO
+  ble_remote_name: "Hisense IR to Xgimi"  # Name remote to indicate IR remote expected. KUO
+  
+  board_type: "esp32-c3-devkitm-1" # <== set board type here
+  framework_type: "esp-idf" # <====  set board framewark. 
+  pin_ir_receiver: GPIO1 # <======= set GPIO pin for IR sensor. 
+  pin_optional_wake_btn: GPIO3 # <= set GPIO pin for optional wake button. 
 
-\# Also see end of this file where include package sets which IR remote is to be decoded
-
-ble\_remote\_name: "Hisense IR to Xgimi" # Name remote to indicate IR remote expected. KUO
-
-board\_type: "esp32-c3-devkitm-1" # <== set board type here
-
-framework\_type: "esp-idf" # <==== set board framewark.
-
-pin\_ir\_receiver: GPIO1 # <======= set GPIO pin for IR sensor.
-
-pin\_optional\_wake\_btn: GPIO3 # <= set GPIO pin for optional wake button.
-
-\# Except for selection of IR mapping file at end, the remainder of this
-
-\# file typically needs no further changes to adapt to board and wiring
-
-\# ============= End of settings for configurig board KUO
-
+# Except for selection of IR mapping file at end, the remainder of this
+# file typically needs no further changes to adapt to board and wiring
+# ============= End of settings for configurig board KUO
 ```
 
 Also, At the bottom of the make file is where you choose the IR remote code set desired (TiVo vs Hisense vs JVC VCR).
