@@ -391,8 +391,7 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 | bluetooth\_pairing\_start | 0xC284 | 1 |
 | bluetooth\_pairing\_clear | 0xC244 | 2 |
 
-<br>
-<br>
+
 ## Recent Notes:
 *   Added support for LG Cinebeam HU810P IR codes
 
@@ -418,14 +417,11 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
     but does not start logging. Instead an architecture error appears in terminal.  
     Fix this issue by updating to python-3.14.7 before building firmware.
     
-<br>
-<br>
+
 ## Scope and safety
 
 This was captured and tested on an XGIMI Titan Noir Max. Other XGIMI models or remote revisions may use a different HID map or wake format. This project is independent and is not affiliated with XGIMI, M5Stack, ESPHome or Home Assistant.
 
-<br>
-<br>
 ## License
 
 This project is distributed under GPLv3 because its adapted ESPHome C++ runtime code is GPLv3. See `LICENSE` and `THIRD_PARTY_NOTICES.md`.
