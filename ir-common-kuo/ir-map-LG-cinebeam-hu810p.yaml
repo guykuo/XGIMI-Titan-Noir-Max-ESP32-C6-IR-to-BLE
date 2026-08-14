@@ -1,0 +1,107 @@
+# LG HU810P Cinebeam
+
+# Global variables to save the latest parsed IR data
+globals:
+  - id: last_xgimi_TN_command
+    type: std::string  
+    initial_value: '"IR to BLE Kuo"'
+
+  - id: last_IR_address
+    type: std::string  
+    initial_value: '"LG Cinebeam"'
+    
+  - id: last_IR_instruction
+    type: std::string  
+    initial_value: '"To Xgimi Ready"'
+
+
+# ======= KUO Begin remote_receiver =========
+remote_receiver:
+  id: ir_receiver
+  pin:
+    number: ${pin_ir_receiver}
+    inverted: true
+    mode:
+      input: true
+      pullup: true
+  filter: 50us
+  idle: 10ms
+  tolerance: 25%
+  dump: 
+    - lg
+    
+  on_lg:
+      then:
+        - script.execute: display_timeout_handler
+        - lambda: |-
+            struct IRCommand {
+              std::string name;
+              esphome::template_::TemplateButton* button_obj;
+            };
+ 
+            static const std::map<uint32_t, IRCommand> nec_codes = {
+              { 0x14EB,       { "back",          id(back) } }, // Back / Return
+              { 0x827D,       { "cursor_down",   id(cursor_down) } },
+              { 0x22DD,       { "cursor_enter",  id(cursor_enter) } }, // OK / Select
+              { 0xE01F,       { "cursor_left",   id(cursor_left) } },
+              { 0x609F,       { "cursor_right",  id(cursor_right) } },
+              { 0x02FD,       { "cursor_up",     id(cursor_up) } },
+              { 0x9E61,       { "focus_auto",    id(focus_auto) } }, // aspect Ratio
+              { 0x0DF2,       { "focus_manual",  id(focus_manual) } }, // play
+              { 0x3EC1,       { "home",          id(home) } }, // Home Menu as Home
+              { 0xD02F,       { "input",         id(input) } }, // Input Toggle
+              { 0xC23D,       { "settings_menu", id(settings_menu) } }, // Quick Menu as Menu
+              { 0xB24D,       { "settings_menu", id(settings_menu) } }, // Picture Mode as Menu alternate
+              { 0x807F,       { "game_menu",     id(game_menu) } }, // channel down
+              { 0x906F,       { "mute",          id(mute) } },
+              { 0xA956,       { "picture",       id(picture) } }, // Picture / Energy Saving mode
+              { 0xA35C,       { "power_on",      id(power_on) } }, // Discrete Power On
+              { 0x10EF,       { "power_on",      id(power_on) } }, // Power Toggle fallback
+              { 0x23DC,       { "power_off",     id(power_off_held) } }, // Discrete Power Off
+              { 0x08F7,       { "power_off",     id(power_off_held) } }, // 0 as Power Toggle fallback
+              { 0x8877,       { "shortcut_1",    id(shortcut_1) } }, // 1
+              { 0x48B7,       { "shortcut_2",    id(shortcut_2) } }, // 2
+              { 0xC837,       { "shortcut_3",    id(shortcut_3) } }, // 3
+              { 0x28D7,       { "shortcut_4",    id(shortcut_4) } }, // 4
+              { 0x4EB1,       { "shortcut_1",    id(shortcut_1) } }, // red as user 1 alternate
+              { 0x8E71,       { "shortcut_2",    id(shortcut_2) } }, // green as user 2 alternate
+              { 0xC639,       { "shortcut_3",    id(shortcut_3) } }, // yellow as user 3 alternate
+              { 0x8679,       { "shortcut_4",    id(shortcut_4) } }, // blue as user 3 alternate
+              { 0xC03F,       { "volume_down",   id(volume_down) } },
+              { 0x40BF,       { "volume_up",     id(volume_up) } },
+              { 0x6A95,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // netflix
+              { 0x3AC5,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }, // prime video
+
+            };
+            
+            // Isolate the numerical chunks using bitwise operations
+            uint16_t device_num = x.data >> 16;       // Shifts away the last 4 hex characters
+            uint16_t command_num = x.data & 0xFFFF;   // Masks out the first 4 hex characters
+
+            std::stringstream ss1;
+            ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << device_num;
+            std::string rc_device_str = ss1.str(); 
+          
+            std::stringstream ss2;
+            ss2 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << command_num;
+            std::string rc_command_str = ss2.str(); 
+
+            if (device_num == 0x20DF) {
+              rc_device_str = "LG Cinebeam"; 
+              auto it = nec_codes.find(command_num); 
+            
+              if (it != nec_codes.end()) {
+                id(last_xgimi_TN_command) = it->second.name; 
+                if (it->second.button_obj != nullptr) {
+                  it->second.button_obj->press(); 
+                }
+              } else {
+                id(last_xgimi_TN_command) = "Unassigned";
+              }
+            } else {
+              id(last_xgimi_TN_command) = "Not Cinebeam IR";
+            }
+          
+            id(last_IR_address) = rc_device_str;
+            id(last_IR_instruction) = rc_command_str;
+# ======= KUO End remote_receiver ============
