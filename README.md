@@ -287,9 +287,8 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 
 <br>
 <br>
-Xgimi Command and IR Remote Button Tables
------------------------------------------
-
+## Xgimi Command and IR Remote Button Tables
+<br>
 ### Tivo to Xgimi Titan Noir Mapping
 
 |Xgimi Remote Command | NEC IR code of Tivo Roamio Remote | Tivo Remote |
@@ -422,14 +421,12 @@ Xgimi Command and IR Remote Button Tables
     
 <br>
 <br>
-Scope and safety
--------------------
+## Scope and safety
 
 This was captured and tested on an XGIMI Titan Noir Max. Other XGIMI models or remote revisions may use a different HID map or wake format. This project is independent and is not affiliated with XGIMI, M5Stack, ESPHome or Home Assistant.
 
 <br>
 <br>
-License
-----------
+## License
 
 This project is distributed under GPLv3 because its adapted ESPHome C++ runtime code is GPLv3. See `LICENSE` and `THIRD_PARTY_NOTICES.md`.
