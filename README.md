@@ -201,11 +201,13 @@ The helper generates the API key and strong OTA/fallback-access-point passwords 
 Replace the below script's token with the 15-byte token printed by the capture
 
 MacOS or Linux
+
 ```sh
 .venv/bin/python scripts/create\_[secrets.py](http://secrets.py) --token "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88"
 ```
-<br>
+
 Windows Powershell
+
 ```powershell
 .venv\\Scripts\\python.exe scripts\\create\_[secrets.py](http://secrets.py) --token "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88"
 ```
