@@ -291,105 +291,111 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 <br>
 ### Tivo to Xgimi Titan Noir Mapping
 
-|Xgimi Remote Command | NEC IR code of Tivo Roamio Remote | Tivo Remote |
-|-------- | -------------------- | -------- |
-|back |address=0x3085, command=0xB044 |zoom |
-|cursor\_down |address=0x3085, command=0xE016 |arrow down
-|cursor\_enter |address=0x3085, command=0xE019 |select |
-|cursor\_left |address=0x3085, command=0xE017 |arrow left |
-|cursor\_right |address=0x3085, command=0xE015 |arrow right |
-|cursor\_up |address=0x3085, command=0xE014 |arrow up |
-|focus\_auto |address=0x3085, command=0xD02E |7 |
-|focus\_manual |address=0x3085, command=0xD02F |8 |
-|home |address=0x3085, command=0xE01E |channel up |
-|input |address=0x3085, command=0xC034 |input |
-|settings\_menu |address=0x3085, command=0xF00C |tivo (actual remote) |
-|settings\_menu |address=0x3085, command=0xF00D |tivo (incorrectly on MyHarmony) ||
-|game\_menu |address=0x3085, command=0xC036 |guide |
-|mute |address=0x3085, command=0xE01B |mute |
-|picture |address=0x3085, command=0xE013 |info |
-|power\_on |address=0x3085, command=0xE010 |TV Power (Use as Discrete Power On)|
-|power\_off |address=0x3085, command=0xE011 |Live TV (Use as Discrete Off)|
-|power\_off |address=0x3085, command=0xC031 |0 (equivalent as Discrete OFF)|
-|shortcut\_1 |address=0x3085, command=0x9060 |A yellow |
-|shortcut\_2 |address=0x3085, command=0x9061 |B blue |
-|shortcut\_3 |address=0x3085, command=0x9062 |C red |
-|shortcut\_4 |address=0x3085, command=0x9063 |D green |
-|volume\_down |address=0x3085, command=0xE01D |volume down |
-|volume\_up |address=0x3085, command=0xE01C |volume up |
-|bluetooth\_pairing\_start |address=0x3085, command=0xC033 |enter |
-|bluetooth\_pairing\_clear |address=0x3085, command=0xC032 |clear |
+
+|Xgimi Remote Command | Tivo Remote | NEC IR code of Tivo Roamio Remote |
+|-------- | -------- | -------------------- |
+|back |zoom |address=0x3085, command=0xB044 |
+|cursor\_down |arrow down |address=0x3085, command=0xE016 |
+|cursor\_enter |select |address=0x3085, command=0xE019 |
+|cursor\_left |arrow left |address=0x3085, command=0xE017 |
+|cursor\_right |arrow right |address=0x3085, command=0xE015 |
+|cursor\_up |arrow up |address=0x3085, command=0xE014 |
+|focus\_auto |7 |address=0x3085, command=0xD02E |
+|focus\_manual |8 |address=0x3085, command=0xD02F |
+|home |channel up |address=0x3085, command=0xE01E |
+|input |input |address=0x3085, command=0xC034 |
+|settings\_menu |tivo (actual remote) |address=0x3085, command=0xF00C |
+|settings\_menu |tivo (incorrectly on MyHarmony) |address=0x3085, command=0xF00D |
+|game\_menu |guide |address=0x3085, command=0xC036 |
+|mute |mute |address=0x3085, command=0xE01B |
+|picture |info |address=0x3085, command=0xE013 |
+|power\_on |TV Power (Use as Discrete Power On) |address=0x3085, command=0xE010 |
+|power\_off |Live TV (Use as Discrete Off) |address=0x3085, command=0xE011 |
+|power\_off |0 (equivalent as Discrete OFF) |address=0x3085, command=0xC031 |
+|shortcut\_1 |A yellow |address=0x3085, command=0x9060 |
+|shortcut\_2 |B blue |address=0x3085, command=0x9061 |
+|shortcut\_3 |C red |address=0x3085, command=0x9062 |
+|shortcut\_4 |D green |address=0x3085, command=0x9063 |
+|volume\_down |volume down |address=0x3085, command=0xE01D |
+|volume\_up |volume up |address=0x3085, command=0xE01C |
+|bluetooth\_pairing\_start |enter |address=0x3085, command=0xC033 |
+|bluetooth\_pairing\_clear |clear |address=0x3085, command=0xC032 |
+
 
 
 <br>
 <br>
 ### Hisense to Xgimi Titan Noir Mapping
 
-|Xgimi Remote Command | NEC IR code of Hisense 50U6G Remote | Hisense Remote Button |
-|-------- | -------------------- | -------- |
-|back |0xFB04 |back |
-|cursor\_down |0xFB04 |arrow down|
-|cursor\_enter |0xA55A |select |
-|cursor\_left |0xA758 |arrow left |
-|cursor\_right |0xA659 |arrow right |
-|cursor\_up |0xA956 |arrow up |
-|focus\_auto |0xE817 |7 |
-|focus\_manual |0xE718 |8 |
-|settings\_menu |0xBC43 |menu (on actual remote) |
-|settings\_menu |0xB54A |menu (incorrectly in MyHarmony ) |
-|home |0xB54A |home (on actual remote)|
-|home |0x718E |home (on My Harmony)|
-|input |0xF609 |input |
-|game\_menu |0x35CA |apps |
-|mute |0xF609 |mute |
-|picture |0xFF00 |channel up |
-|power\_on |0x8E71 |discrete power on |
-|power\_off |0xEF10 |discrete power off |
-|power\_off |0x8D72 | 0 (Do NOT USE)|
-|shortcut\_1 |0xAB54 |yellow |
-|shortcut\_2 |0xAA55 |blue |
-|shortcut\_3 |0xAD52 |red |
-|shortcut\_4 |0xAC53 |green |
-|volume\_down |0xFC03 |
-|volume\_up |0xFD02 |
-|bluetooth\_pairing\_start 0xB847 |prime video |
-|bluetooth\_pairing\_clear |0xB649 |youtube |
+
+|Xgimi Remote Command | Hisense Remote Button | NEC IR code of Hisense 50U6G Remote |
+|-------- | -------- | -------------------- |
+|back |back |0xFB04 |
+|cursor\_down |arrow down |0xFB04 |
+|cursor\_enter |select |0xA55A |
+|cursor\_left |arrow left |0xA758 |
+|cursor\_right |arrow right |0xA659 |
+|cursor\_up |arrow up |0xA956 |
+|focus\_auto |7 |0xE817 |
+|focus\_manual |8 |0xE718 |
+|settings\_menu |menu (on actual remote) |0xBC43 |
+|settings\_menu |menu (incorrectly in MyHarmony ) |0xB54A |
+|home |home (on actual remote) |0xB54A |
+|home |home (on My Harmony) |0x718E |
+|input |input |0xF609 |
+|game\_menu |apps |0x35CA |
+|mute |mute |0xF609 |
+|picture |channel up |0xFF00 |
+|power\_on |discrete power on |0x8E71 |
+|power\_off |discrete power off |0xEF10 |
+|power\_off |0 (Do NOT USE) |0x8D72 |
+|shortcut\_1 |yellow |0xAB54 |
+|shortcut\_2 |blue |0xAA55 |
+|shortcut\_3 |red |0xAD52 |
+|shortcut\_4 |green |0xAC53 |
+|volume\_down |volume down |0xFC03 |
+|volume\_up |volume up |0xFD02 |
+|bluetooth\_pairing\_start |prime video |0xB847 |
+|bluetooth\_pairing\_clear |youtube |0xB649 |
+
 
 <br>
 <br>
 ### JVC-VCR to Xgimi Titan Noir Mapping
 
-| Xgimi Remote Command | JVC IR code from JVC VCR | JVC VCR Remote Btn |
+
+| Xgimi Remote Command | JVC VCR Remote Btn | JVC IR code from JVC VCR |
 | :--- | :--- | :--- |
-| back | 0xC2C3 | rewind |
-| cursor\_down | 0xC218 | arrow down actual |
-| cursor\_down | 0xC261 | arrow down harmony |
-| cursor\_enter | 0xC23C | OK |
-| cursor\_left | 0xC2A8 | arrow left |
-| cursor\_right | 0xC228 | arrow right |
-| cursor\_up | 0xC241 | arrow up harmony |
-| cursor\_up | 0xC298 | arrow up actual |
-| focus\_auto | 0xC2E4 | 7 |
-| focus\_manual | 0xC214 | 8 |
-| home | 0xC26C | cancel |
-| input | 0xC2C8 | tv/vcr |
-| settings\_menu | 0xC2EC | menu actual remote |
-| settings\_menu | 0xC207 | menu harmony |
-| game\_menu | 0xC230 | play |
-| mute | 0xC2B0 | pause |
-| picture | 0xC260 | fast forward |
-| power\_on | 0xC2D0 | power toggle |
-| power\_on | 0xC2B8 | power on |
-| power\_off | 0xC258 | power off |
-| power\_off | 0xC2CC | 0 |
-| shortcut\_1 | 0xC283 | Prog |
-| shortcut\_2 | 0xC2BC | Prog Check |
-| shortcut\_3 | 0xC28C | SP/EP |
-| shortcut\_4 | 0xC269 | Skip Search |
-| volume\_down | 0xC293 | Start - |
-| volume\_up | 0xC213 | Start + |
-| bluetooth\_pairing\_start | 0xC284 | 1 |
-| bluetooth\_pairing\_clear | 0xC244 | 2 |
+| back | rewind | 0xC2C3 |
+| cursor\_down | arrow down actual | 0xC218 |
+| cursor\_down | arrow down harmony | 0xC261 |
+| cursor\_enter | OK | 0xC23C |
+| cursor\_left | arrow left | 0xC2A8 |
+| cursor\_right | arrow right | 0xC228 |
+| cursor\_up | arrow up harmony | 0xC241 |
+| cursor\_up | arrow up actual | 0xC298 |
+| focus\_auto | 7 | 0xC2E4 |
+| focus\_manual | 8 | 0xC214 |
+| home | cancel | 0xC26C |
+| input | tv/vcr | 0xC2C8 |
+| settings\_menu | menu actual remote | 0xC2EC |
+| settings\_menu | menu harmony | 0xC207 |
+| game\_menu | play | 0xC230 |
+| mute | pause | 0xC2B0 |
+| picture | fast forward | 0xC260 |
+| power\_on | power toggle | 0xC2D0 |
+| power\_on | power on | 0xC2B8 |
+| power\_off | power off | 0xC258 |
+| power\_off | 0 | 0xC2CC |
+| shortcut\_1 | Prog | 0xC283 |
+| shortcut\_2 | Prog Check | 0xC2BC |
+| shortcut\_3 | SP/EP | 0xC28C |
+| shortcut\_4 | Skip Search | 0xC269 |
+| volume\_down | Start - | 0xC293 |
+| volume\_up | Start + | 0xC213 |
+| bluetooth\_pairing\_start | 1 | 0xC284 |
+| bluetooth\_pairing\_clear | 2 | 0xC244 |
+
 
 
 ## Recent Notes:
