@@ -153,7 +153,7 @@ Cloning and downloading controls are within Gitbub green "<> Code" button.
 
 <br>
 <br>
-### Create a virtual environment, and install the pinned tools:
+### Create a virtual environment, and install the pinned tools
 
 On macOS or Linux, cd to directory of this project. You can readily do so by typing "cd " and dragging your directory into terminal.
 Once terminal is at the correct working directory, you can proceed with below scripts.
@@ -163,19 +163,15 @@ Once terminal is at the correct working directory, you can proceed with below sc
 On MacOS or Linux
 
 ```sh
-
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
-
 ```
 
 On Windows PowerShell or Command Prompt:
 
 ```powershell
-
 py -3 -m venv .venv
 .venv\\Scripts\\python.exe -m pip install -r requirements.txt
-
 ```
 
 ### 3\. Capture Your Remote's Token
@@ -205,17 +201,13 @@ The helper generates the API key and strong OTA/fallback-access-point passwords 
 Replace the below script's token with the 15-byte token printed by the capture
 
 MacOS or Linux
-
 ```sh
 .venv/bin/python scripts/create\_[secrets.py](http://secrets.py) --token "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88"
 ```
 <br>
 Windows Powershell
-
 ```powershell
-
 .venv\\Scripts\\python.exe scripts\\create\_[secrets.py](http://secrets.py) --token "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88"
-
 ```
 
 Now you have a secrets.yaml file containing your specific token.
@@ -247,7 +239,6 @@ Windows Powershell
 ```powershell
 
 .venv\\Scripts\\esphome.exe config make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
-
 .venv\\Scripts\\esphome.exe run make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
 
 ```
@@ -261,7 +252,6 @@ MacOS or Linux
 ```sh
 
 .venv/bin/esphome config make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
-
 .venv/bin/esphome run make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
 
 ```
@@ -271,7 +261,6 @@ Windows Powershell
 ```powershell
 
 .venv\\Scripts\\esphome.exe make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
-
 .venv\\Scripts\\esphome.exe make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
 
 ```
