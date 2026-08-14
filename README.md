@@ -1,5 +1,4 @@
-XGIMI Titan Noir IR Remote via ESP32
-====================================
+# XGIMI Titan Noir IR Remote via ESP32
 
 <img width="1200" height="312" alt="banner" src="https://github.com/user-attachments/assets/0817c01b-239d-4115-843b-b0c1d7a0783f" />
 
@@ -11,23 +10,18 @@ Three different IR remotes are supported for translation. Typically, users add o
 The IR code sets translated are:
 
 1.  TiVO Roamio
-    
 2.  Hisense 50U6G
-    
 3.  VC-VCR HR-S9600U
-
 4.  LG Cinebeam HU810P
 
 #### \*\*\* This fork does **NOT** require presence nor use of a Home Assistant Server \*\*\*
 
 This fork concentrates on direct IR translation to Xgimi Titan Noir bluetooth and HA usage is not documented here. However, _Home Assistant_ integration capability has been preserved and can also be used.. See mrmachine's original github for _Home Assistant_ related information.
 
-Requirements
-------------
+## Requirements
 
 *   A BlueTooth BLE Capable ESP32 Board. Two boards detailed here are...
     
-
 \- ESP32-C6-WROOM-1
 
 \- ESP32-C3 SuperMini development board with integrated 0.42-inch OLED display
@@ -44,9 +38,7 @@ Requirements
 Your IR sensor module needs three connections to your ESP32 board.
 
 1.  IR signal --> GPIO pin (actual pin varies with board)
-    
 2.  IR Gnd --> Ground
-    
 3.  IR Vcc --> 3V (Avoid connecting Vcc to 5V to avoid risk of ESP32 board damage)
     
 
@@ -62,30 +54,24 @@ If you want to use an ESP32 board than the two examples illustrated herein, be c
 Boards that should work:
 
 *   ESP32-S3
-    
 *   ESP32-C3
-    
 *   ESP32-C6
-    
 *   ESP32 pico d4
-    
 *   ESP32-H2
-    
 *   ESP32-H4
     
-
+<br>
 Boards that will NOT work
 
 *   Original ESP32 (WROOM-32 /DevKitC)
-    
 *   ESP32-S2 series
     
-
+<br>
 Each variation of ESP board has its own pinout and specific GPIO pins suitable for for IR signal input. It is particularly important to obtain pinout information and know which GPIO pins are actually free for use (not strapping pins or already assigned to other board functions)  
 
 I have pre-selected appropriate GPIO pins for the two specific boards used during creation of this project. The example "make" files provided have already been configured for those specific boards. Easiest way to proceed is to use one of the exact same boards as I have for this project. If you follow the same board selection and pin wiring that I made, you can directly use one of the supplied make files to create an IR to Bluetooth translator.
 
-#### Using Other ESP Boards
+### Using Other ESP Boards
 
 To use a different board, obtain its pinout diagram and identify a free GPIO pin suitable for IR input. Beware that some GPIO pins are used for special functions such as boot strapping, timing signals, or may be allocated to devices on the PC board.  
 Once you know the board pinout and identify an appropriate GPIO pin, make a copy of one of my "make" files and customize it for your particula board.
@@ -93,9 +79,7 @@ Once you know the board pinout and identify an appropriate GPIO pin, make a copy
 Typically only three values in the configuration section at start of file need be adjusted for your board.
 
 1.  board\_type
-    
 2.  pin\_ir\_receiver
-    
 3.  pin\_optional\_wake\_btn
     
 
@@ -161,19 +145,17 @@ Mrmachine already captured and mapped an original Titan Noir Max remote. We do n
 **_The only per-remote value we must acquire is the original remote's 15-byte BLE wake token._**
 
 ## Installing This Software on ESP32
----------------------------------
 
 ### 1\. Clone or copy this directory to your computer.
 Cloning and downloading controls are within Gitbub green "<> Code" button.
 <img width="856" height="802" alt="gihub directory clone" src="https://github.com/user-attachments/assets/f7c4ce8f-e0fb-49c3-a893-f6e6023dad4e" />
 
 
-
-
-#### Create a virtual environment, and install the pinned tools:
+<br>
+<br>
+### Create a virtual environment, and install the pinned tools:
 
 On macOS or Linux, cd to directory of this project. You can readily do so by typing "cd " and dragging your directory into terminal.
-
 Once terminal is at the correct working directory, you can proceed with below scripts.
 
 ### 2\. Install Python environment
@@ -183,7 +165,6 @@ On MacOS or Linux
 ```sh
 
 python3 -m venv .venv
-
 .venv/bin/python -m pip install -r requirements.txt
 
 ```
@@ -193,7 +174,6 @@ On Windows PowerShell or Command Prompt:
 ```powershell
 
 py -3 -m venv .venv
-
 .venv\\Scripts\\python.exe -m pip install -r requirements.txt
 
 ```
@@ -207,17 +187,13 @@ Run one of:
 On MacOS or Linux
 
 ```sh
-
 .venv/bin/python scripts/capture\_wake\_[token.py](http://token.py) --duration 30
-
 ```
 
 On Windows Powershell
 
 ```powershell
-
 .venv\\Scripts\\python.exe scripts\\capture\_wake\_[token.py](http://token.py) --duration 30
-
 ```
 
 Keep the remote close to the computer and press its Power button several times during the scan. A trustworthy capture has a stable 15-byte tail and at least two distinct first-byte rolling-counter values.
@@ -231,11 +207,9 @@ Replace the below script's token with the 15-byte token printed by the capture
 MacOS or Linux
 
 ```sh
-
 .venv/bin/python scripts/create\_[secrets.py](http://secrets.py) --token "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88"
-
 ```
-
+<br>
 Windows Powershell
 
 ```powershell
@@ -264,7 +238,6 @@ MacOS or Linux
 ```sh
 
 .venv/bin/esphome config make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
-
 .venv/bin/esphome run make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
 
 ```
