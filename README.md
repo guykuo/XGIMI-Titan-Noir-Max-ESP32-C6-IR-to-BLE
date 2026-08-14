@@ -362,37 +362,37 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 | Xgimi Remote Command | LG Cinebeam Button | NEC IR Code |
 | :--- | :--- | :--- |
 | back | back | 0x14EB |
-| cursor\_down | cursor_down | 0x827D |
-| cursor\_enter | cursor_enter | 0x22DD |
-| cursor\_left | cursor_left | 0xE01F |
-| cursor\_right | cursor_right | 0x609F |
-| cursor\_up | cursor_up | 0x02FD |
-| focus\_auto | focus_auto | 0x9E61 |
-| focus\_manual | focus_manual | 0x0DF2 |
-| home | home | 0x3EC1 |
+| cursor_down | cursor_down | 0x827D |
+| cursor_enter |OK  | 0x22DD |
+| cursor_left | cursor_left | 0xE01F |
+| cursor_right | cursor_right | 0x609F |
+| cursor_up | cursor_up | 0x02FD |
+| focus_auto | aspect ratio | 0x9E61 |
+| focus_manual | play | 0x0DF2 |
+| home | home menu | 0x3EC1 |
 | input | input | 0xD02F |
-| settings\_menu | settings_menu | 0xC23D |
-| settings\_menu | settings_menu | 0xB24D |
-| game\_menu | game_menu | 0x807F |
+| settings_menu | Quick Menu | 0xC23D |
+| settings_menu | Picture Mode | 0xB24D |
+| game_menu | channel down | 0x807F |
 | mute | mute | 0x906F |
 | picture | picture | 0xA956 |
-| power\_on | power_on | 0xB34C |
-| power\_on | power_on | 0x23DC |
-| power\_on | power_on | 0x10EF |
-| power\_off | power_off_held | 0xA53C |
-| power\_off | power_off_held | 0x08F7 |
-| shortcut\_1 | shortcut_1 | 0x8877 |
-| shortcut\_2 | shortcut_2 | 0x48B7 |
-| shortcut\_3 | shortcut_3 | 0xC837 |
-| shortcut\_4 | shortcut_4 | 0x28D7 |
-| shortcut\_1 | shortcut_1 | 0x4EB1 |
-| shortcut\_2 | shortcut_2 | 0x8E71 |
-| shortcut\_3 | shortcut_3 | 0xC639 |
-| shortcut\_4 | shortcut_4 | 0x8679 |
-| volume\_down | volume_down | 0xC03F |
-| volume\_up | volume_up | 0x40BF |
-| BT\_start\_pair | bluetooth_pairing_start | 0x6A95 |
-| BT\_clear\_pair | bluetooth_pairing_clear | 0x3AC5 |
+| power_on | Discrete Power On | 0xB34C |
+| power_on | Discrete Power On | 0x23DC |
+| power_on | Power Toggle | 0x10EF |
+| power_off_held | Discrete Power Off | 0xA53C |
+| power_off_held | 0 | 0x08F7 |
+| shortcut 1 | 1 | 0x8877 |
+| shortcut 2 | 2 | 0x48B7 |
+| shortcut 3 | 3 | 0xC837 |
+| shortcut 4 | 4 | 0x28D7 |
+| shortcut 1 | red | 0x4EB1 |
+| shortcut 2 | green | 0x8E71 |
+| shortcut 3 | yellow | 0xC639 |
+| shortcut 4 | blue | 0x8679 |
+| volume down | volume down | 0xC03F |
+| volume up | volume up | 0x40BF |
+| BT start pairing | netflix | 0x6A95 |
+| BT clear pairing | prime | 0x3AC5 |
 
 <br>
 <br>
