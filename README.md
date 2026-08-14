@@ -394,7 +394,6 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 <br>
 <br>
 ## Recent Notes:
--------------
 *   Added support for LG Cinebeam HU810P IR codes
 
 *   Added support for JVC VCR remote IR codes
