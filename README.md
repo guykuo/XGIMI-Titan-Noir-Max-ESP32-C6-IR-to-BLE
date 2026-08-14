@@ -359,16 +359,18 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 <br>
 
 ### LG Cinebeam HU810P to Xgimi Titan Noir Mapping
+
+(Some items duplicated to accept alternative buttons)
 | Xgimi Remote Command | LG Cinebeam Button | NEC IR Code |
 | :--- | :--- | :--- |
 | back | back | 0x14EB |
-| cursor_down | cursor_down | 0x827D |
-| cursor_enter |OK  | 0x22DD |
-| cursor_left | cursor_left | 0xE01F |
-| cursor_right | cursor_right | 0x609F |
-| cursor_up | cursor_up | 0x02FD |
-| focus_auto | aspect ratio | 0x9E61 |
-| focus_manual | play | 0x0DF2 |
+| cursor down | cursor down | 0x827D |
+| cursor enter |OK  | 0x22DD |
+| cursor left | cursor left | 0xE01F |
+| cursor right | cursor right | 0x609F |
+| cursor up | cursor up | 0x02FD |
+| focus auto | aspect ratio | 0x9E61 |
+| focus manual | play | 0x0DF2 |
 | home | home menu | 0x3EC1 |
 | input | input | 0xD02F |
 | settings_menu | Quick Menu | 0xC23D |
@@ -376,11 +378,11 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 | game_menu | channel down | 0x807F |
 | mute | mute | 0x906F |
 | picture | picture | 0xA956 |
-| power_on | Discrete Power On | 0xB34C |
-| power_on | Discrete Power On | 0x23DC |
-| power_on | Power Toggle | 0x10EF |
-| power_off_held | Discrete Power Off | 0xA53C |
-| power_off_held | 0 | 0x08F7 |
+| power on | Discrete Power On | 0xB34C |
+| power on | Discrete Power On | 0x23DC |
+| power on | Power Toggle | 0x10EF |
+| power off | Discrete Power Off | 0xA53C |
+| power off | 0 | 0x08F7 |
 | shortcut 1 | 1 | 0x8877 |
 | shortcut 2 | 2 | 0x48B7 |
 | shortcut 3 | 3 | 0xC837 |
