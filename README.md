@@ -287,11 +287,11 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 
 <br>
 <br>
+
 ## Xgimi Command and IR Remote Button Tables
 <br>
+
 ### Tivo to Xgimi Titan Noir Mapping
-
-
 |Xgimi Remote Command | Tivo Remote | NEC IR code of Tivo Roamio Remote |
 |-------- | -------- | -------------------- |
 |back |zoom |address=0x3085, command=0xB044 |
@@ -321,13 +321,10 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 |bluetooth\_pairing\_start |enter |address=0x3085, command=0xC033 |
 |bluetooth\_pairing\_clear |clear |address=0x3085, command=0xC032 |
 
-
-
 <br>
 <br>
+
 ### Hisense to Xgimi Titan Noir Mapping
-
-
 |Xgimi Remote Command | Hisense Remote Button | NEC IR code of Hisense 50U6G Remote |
 |-------- | -------- | -------------------- |
 |back |back |0xFB04 |
@@ -358,12 +355,49 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 |bluetooth\_pairing\_start |prime video |0xB847 |
 |bluetooth\_pairing\_clear |youtube |0xB649 |
 
+<br>
+<br>
+
+### LG Cinebeam HU810P to Xgimi Titan Noir Mapping
+| Xgimi Remote Command | LG Cinebeam Button | NEC IR Code |
+| :--- | :--- | :--- |
+| back | back | 0x14EB |
+| cursor\_down | cursor_down | 0x827D |
+| cursor\_enter | cursor_enter | 0x22DD |
+| cursor\_left | cursor_left | 0xE01F |
+| cursor\_right | cursor_right | 0x609F |
+| cursor\_up | cursor_up | 0x02FD |
+| focus\_auto | focus_auto | 0x9E61 |
+| focus\_manual | focus_manual | 0x0DF2 |
+| home | home | 0x3EC1 |
+| input | input | 0xD02F |
+| settings\_menu | settings_menu | 0xC23D |
+| settings\_menu | settings_menu | 0xB24D |
+| game\_menu | game_menu | 0x807F |
+| mute | mute | 0x906F |
+| picture | picture | 0xA956 |
+| power\_on | power_on | 0xB34C |
+| power\_on | power_on | 0x23DC |
+| power\_on | power_on | 0x10EF |
+| power\_off | power_off_held | 0xA53C |
+| power\_off | power_off_held | 0x08F7 |
+| shortcut\_1 | shortcut_1 | 0x8877 |
+| shortcut\_2 | shortcut_2 | 0x48B7 |
+| shortcut\_3 | shortcut_3 | 0xC837 |
+| shortcut\_4 | shortcut_4 | 0x28D7 |
+| shortcut\_1 | shortcut_1 | 0x4EB1 |
+| shortcut\_2 | shortcut_2 | 0x8E71 |
+| shortcut\_3 | shortcut_3 | 0xC639 |
+| shortcut\_4 | shortcut_4 | 0x8679 |
+| volume\_down | volume_down | 0xC03F |
+| volume\_up | volume_up | 0x40BF |
+| BT\_start\_pair | bluetooth_pairing_start | 0x6A95 |
+| BT\_clear\_pair | bluetooth_pairing_clear | 0x3AC5 |
 
 <br>
 <br>
+
 ### JVC-VCR to Xgimi Titan Noir Mapping
-
-
 | Xgimi Remote Command | JVC VCR Remote Btn | JVC IR code from JVC VCR |
 | :--- | :--- | :--- |
 | back | rewind | 0xC2C3 |
