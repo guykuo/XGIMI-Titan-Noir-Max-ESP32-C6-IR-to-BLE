@@ -15,7 +15,8 @@ The IR code sets translated are:
 2.  Hisense 50U6G
     
 3.  VC-VCR HR-S9600U
-    
+
+4.  LG Cinebeam HU810P
 
 #### \*\*\* This fork does **NOT** require presence nor use of a Home Assistant Server \*\*\*
 
@@ -433,6 +434,7 @@ Xgimi Command and IR Remote Button Tables
 <br>
 ## Recent Notes:
 -------------
+*   Added support for LG Cinebeam HU810P IR codes
 
 *   Added support for JVC VCR remote IR codes
     
