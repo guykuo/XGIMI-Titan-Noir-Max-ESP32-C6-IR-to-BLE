@@ -183,13 +183,13 @@ Run one of:
 On MacOS or Linux
 
 ```sh
-.venv/bin/python scripts/capture\_wake\_[token.py](http://token.py) --duration 30
+.venv/bin/python scripts/capture_wake_token.py --duration 30
 ```
 
 On Windows Powershell
 
 ```powershell
-.venv\\Scripts\\python.exe scripts\\capture\_wake\_[token.py](http://token.py) --duration 30
+.venv\Scripts\python.exe scripts\capture_wake_token.py --duration 30
 ```
 
 Keep the remote close to the computer and press its Power button several times during the scan. A trustworthy capture has a stable 15-byte tail and at least two distinct first-byte rolling-counter values.
@@ -203,13 +203,13 @@ Replace the below script's token with the 15-byte token printed by the capture
 MacOS or Linux
 
 ```sh
-.venv/bin/python scripts/create\_[secrets.py](http://secrets.py) --token "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88"
+.venv/bin/python scripts/create_secrets.py --token "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88"
 ```
 
 Windows Powershell
 
 ```powershell
-.venv\\Scripts\\python.exe scripts\\create\_[secrets.py](http://secrets.py) --token "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88"
+.venv\Scripts\python.exe scripts\create_secrets.py --token "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88"
 ```
 
 Now you have a secrets.yaml file containing your specific token.
