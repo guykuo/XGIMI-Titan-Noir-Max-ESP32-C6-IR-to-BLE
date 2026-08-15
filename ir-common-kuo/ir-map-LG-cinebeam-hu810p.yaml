@@ -4,13 +4,16 @@
 globals:
   - id: last_xgimi_TN_command
     type: std::string  
+    restore_value: no
     initial_value: '"IR to BLE Kuo"'
 
   - id: last_IR_address
+    restore_value: no
     type: std::string  
     initial_value: '"LG Cinebeam"'
     
   - id: last_IR_instruction
+    restore_value: no
     type: std::string  
     initial_value: '"To Xgimi Ready"'
 
@@ -55,10 +58,9 @@ remote_receiver:
               { 0x807F,       { "game_menu",     id(game_menu) } }, // channel down
               { 0x906F,       { "mute",          id(mute) } },
               { 0xA956,       { "picture",       id(picture) } }, // Picture / Energy Saving mode
-              { 0xB34C,       { "power_on",      id(power_on) } }, // Discrete Power On
-              { 0x23DC,       { "power_on",      id(power_on) } }, // Discrete Power On (alternative)
+              { 0xA35C,       { "power_on",      id(power_on) } }, // Discrete Power On
               { 0x10EF,       { "power_on",      id(power_on) } }, // Power Toggle fallback
-              { 0xA53C,       { "power_off",     id(power_off_held) } }, // Discrete Power Off
+              { 0x23DC,       { "power_off",     id(power_off_held) } }, // Discrete Power Off
               { 0x08F7,       { "power_off",     id(power_off_held) } }, // 0 as Power Toggle fallback
               { 0x8877,       { "shortcut_1",    id(shortcut_1) } }, // 1
               { 0x48B7,       { "shortcut_2",    id(shortcut_2) } }, // 2
