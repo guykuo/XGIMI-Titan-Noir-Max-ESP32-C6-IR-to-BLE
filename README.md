@@ -21,8 +21,8 @@ This fork concentrates on direct IR translation to Xgimi Titan Noir bluetooth an
 ## Requirements
 
 *   A BlueTooth BLE Capable ESP32 Board. Two boards detailed here are...
-    * ESP32-C6-WROOM-1
-    * ESP32-C3 SuperMini development board with integrated 0.42-inch OLED display
+    * ESP32-C3 SuperMini dev board with integrated 0.42-inch OLED display (current preferred)
+    * ESP32-C6-WROOM-1 (good choice)
 
 *   IR sensor module (three pin) for ESP32
     
@@ -435,6 +435,14 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 
 
 ## Recent Notes:
+*   Sniffing of Xgimi token is working. Functions by starting token capture upon
+press of specific IR or Home Assistant button. Already capturess the token in testing.
+The only barrier left is passing learned token into mrmachine's bluetooth stack. 
+
+ESP Board preference is now OLED display bearing ESP32-C3 SuperMini dev board.
+OLED display nicely shows when board begins token sniffing and completes capture.
+Non-display ESP32 will still work, but gives feedback only via log.
+
 *   Added support for LG Cinebeam HU810P IR codes
 
 *   Added support for JVC VCR remote IR codes
