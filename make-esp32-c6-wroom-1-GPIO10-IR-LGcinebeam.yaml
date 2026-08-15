@@ -84,7 +84,7 @@ packages:
   # TiVo Roamio, Hisense 50U6G, LG Cinebeam HU810P, or JVC VCR remote IR code mapping
   # One and only one irmap_package should be uncommented.
   
-  #  irmap_package: !include ir-common-kuo/ir-map-tivo.yaml  # TiVo Roamio IR mapping
-  #  irmap_package: !include ir-common-kuo/ir-map-hisense.yaml # Hisense 50U6G IR mapping
-  irmap_package: !include ir-common-kuo/ir-map-LG-cinebeam-hu810p.yaml # LG Cinebeam IR mapping
-  #  irmap_package: !include ir-common-kuo/ir-map-jvc-vcr.yaml # JVC VCR IR mapping
+  #  irmap_package: !include ir-common-kuo/ir-map-tivo-roamio # TiVo Roamio IR mapping
+  #  irmap_package: !include ir-common-kuo/ir-map-hisense-50u6g.yaml # Hisense 50U6G IR mapping
+  irmap_package: !include ir-common-kuo/ir-map-LG-cinebeam-hu810p.yaml # LG Cinebeam HU810P IR mapping
+  #  irmap_package: !include ir-common-kuo/ir-map-jvc-hr-S9600u.yaml.yaml # JVC HR-9600 VCR IR mapping

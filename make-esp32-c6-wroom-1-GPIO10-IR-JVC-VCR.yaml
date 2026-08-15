@@ -81,9 +81,10 @@ packages:
   main_package: !include ir-common-kuo/mrmachine_bluetooth.yaml # core bluetooth stack implementaton base upon mrmachine
   
   # Select which IR code mapping is desired by leaving the desired one uncommented. Choice is between
-  # TiVo Roamio, Hisense 50U6G, or JVC VCR remote IR code mapping
+  # TiVo Roamio, Hisense 50U6G, LG Cinebeam HU810P, or JVC VCR remote IR code mapping
   # One and only one irmap_package should be uncommented.
   
-  #  irmap_package: !include ir-common-kuo/ir-map-tivo.yaml  # TiVo Roamio IR mapping
-  irmap_package: !include ir-common-kuo/ir-map-jvc-vcr.yaml # JVC VCR IR mapping
-  #  irmap_package: !include ir-common-kuo/ir-map-hisense.yaml # Hisense 50U6G IR mapping
+  #  irmap_package: !include ir-common-kuo/ir-map-tivo-roamio # TiVo Roamio IR mapping
+  #  irmap_package: !include ir-common-kuo/ir-map-hisense-50u6g.yaml # Hisense 50U6G IR mapping
+  #  irmap_package: !include ir-common-kuo/ir-map-LG-cinebeam-hu810p.yaml # LG Cinebeam HU810P IR mapping
+  irmap_package: !include ir-common-kuo/ir-map-jvc-hr-S9600u.yaml.yaml # JVC HR-9600 VCR IR mapping
