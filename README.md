@@ -21,10 +21,8 @@ This fork concentrates on direct IR translation to Xgimi Titan Noir bluetooth an
 ## Requirements
 
 *   A BlueTooth BLE Capable ESP32 Board. Two boards detailed here are...
-    
-\- ESP32-C6-WROOM-1
-
-\- ESP32-C3 SuperMini development board with integrated 0.42-inch OLED display
+    * ESP32-C6-WROOM-1
+    * ESP32-C3 SuperMini development board with integrated 0.42-inch OLED display
 
 *   IR sensor module (three pin) for ESP32
     
