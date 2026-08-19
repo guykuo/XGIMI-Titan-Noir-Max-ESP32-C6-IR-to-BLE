@@ -1,24 +1,6 @@
 # Hisense 50U6G
 
-# Global variables to save the latest parsed IR data
-globals:
-  - id: last_xgimi_TN_command
-    type: std::string  
-    restore_value: no
-    initial_value: '"IR to BLE Kuo"'
-
-  - id: last_IR_address
-    type: std::string  
-    restore_value: no
-    initial_value: '"Hisense-Xgimi"'
-    
-  - id: last_IR_instruction
-    type: std::string  
-    restore_value: no
-    initial_value: '"READY"'
-
- 
- # ======= KUO Begin remote_receiver =========
+# ======= KUO Begin remote_receiver =========
 remote_receiver:
   id: ir_receiver
   pin:
@@ -43,73 +25,127 @@ remote_receiver:
             };
  
             static const std::map<uint16_t, IRCommand> nec_codes = {
-              { 0xFB04,       { "back",          id(back) } },
-              { 0xA857,       { "cursor_down",   id(cursor_down) } },
-              { 0xA55A,       { "cursor_enter",  id(cursor_enter) } },
-              { 0xA758,       { "cursor_left",   id(cursor_left) } },
-              { 0xA659,       { "cursor_right",  id(cursor_right) } },
-              { 0xA956,       { "cursor_up",     id(cursor_up) } },
-              { 0xE817,       { "focus_auto",    id(focus_auto) } },
-              { 0xE718,       { "focus_manual",  id(focus_manual) } },
-              { 0xBC43,       { "settings_menu", id(settings_menu) } },
-              { 0xB54A,       { "settings_menu", id(settings_menu) } },
-              { 0xB54A,       { "home",          id(home) } },
-              { 0x718E,       { "home",          id(home) } },
-              { 0xF40B,       { "input",         id(input) } },
-              { 0x35CA,       { "game_menu",     id(game_menu) } },
-              { 0xF609,       { "mute",          id(mute) } },
-              { 0xFF00,       { "picture",       id(picture) } },
-              { 0xF708,       { "power_on",      id(power_on) } },
-              { 0x8E71,       { "power_on",      id(power_on) } },
-              { 0xEF10,       { "power_off",     id(power_off_held) } },
-              { 0x8D72,       { "power_off",     id(power_off_held) } },
-              { 0xAB54,       { "shortcut_1",    id(shortcut_1) } },
-              { 0xAA55,       { "shortcut_2",    id(shortcut_2) } },
-              { 0xAD52,       { "shortcut_3",    id(shortcut_3) } },
-              { 0xAC53,       { "shortcut_4",    id(shortcut_4) } },
-              { 0xFC03,       { "volume_down",   id(volume_down) } },
-              { 0xFD02,       { "volume_up",     id(volume_up) } },
-              { 0xB847,       { "BT_start_pair", id(bluetooth_pairing_start) } },
-              { 0xB649,       { "BT_clear_pair", id(bluetooth_pairing_clear) } },
+              { 0xFB04,       { "back",          id(back) } },           // back
+              { 0xA857,       { "cursor_down",   id(cursor_down) } },    // arrow down
+              { 0xA55A,       { "cursor_enter",  id(cursor_enter) } },   // select
+              { 0xA758,       { "cursor_left",   id(cursor_left) } },    // arrow left
+              { 0xA659,       { "cursor_right",  id(cursor_right) } },   // arrow right
+              { 0xA956,       { "cursor_up",     id(cursor_up) } },      // arrow up
+              { 0xE817,       { "focus_auto",    id(focus_auto) } },     // 7
+              { 0xE718,       { "focus_manual",  id(focus_manual) } },   // 8
+              { 0xBC43,       { "home",          id(home) } },           // home
+              { 0xB54A,       { "input",         id(input) } },          // input
+              { 0xB54A,       { "settings_menu", id(settings_menu) } },  // menu
+              { 0x718E,       { "settings_menu", id(settings_menu) } },  // menu (variant)
+              { 0x35CA,       { "game_menu",     id(game_menu) } },      // apps
+              { 0xF609,       { "mute",          id(mute) } },           // mute
+              { 0xFF00,       { "picture",       id(picture) } },        // channel up
+              { 0xF708,       { "power_on",      id(power_on) } },       // discrete power on
+              { 0x8E71,       { "power_on",      id(power_on) } },       // discrete power on (variant)
+              { 0xEF10,       { "power_off_immediately", id(power_off_immediately) } }, // discrete power off
+              { 0x8D72,       { "power_off_immediately", id(power_off_immediately) } }, // 0
+              { 0xAB54,       { "shortcut_1",    id(shortcut_1) } },     // yellow
+              { 0xAA55,       { "shortcut_2",    id(shortcut_2) } },     // blue
+              { 0xAD52,       { "shortcut_3",    id(shortcut_3) } },     // red
+              { 0xAC53,       { "shortcut_4",    id(shortcut_4) } },     // green
+              { 0xFC03,       { "volume_down",   id(volume_down) } },    // volume down
+              { 0xFD02,       { "volume_up",     id(volume_up) } },      // volume up
+              { 0xEB14,       { "token_sniff",   id(token_sniff) } },    // 4
+              { 0xEA15,       { "token_clear",   id(token_clear) } },    // 🛠️ UNCOMMENTED: 5 (debug)
+              { 0xE916,       { "token_recall",  id(token_recall) } },   // 6
+              { 0xB847,       { "BT_start_pair", id(bluetooth_pairing_start) } },  // prime video
+              { 0xB649,       { "BT_clear_pair", id(bluetooth_pairing_clear) } },  // youtube
             };
 
+            // Persistent internal variable controllers
+            static uint32_t last_clear_press_time = 0;
+            static uint32_t last_global_ir_time = 0;
+            static bool clear_confirmation_armed = false;
+
+            uint32_t now = millis();
             
+            // Drop hardware bouncing duplicate frames from trailing Hisense packet blasts
+            if (now - last_global_ir_time < 250) {
+              last_global_ir_time = now;
+              return;
+            }
+            last_global_ir_time = now;
+
             std::stringstream ss1;
-            // x.command provides the 16-bit NEC data command sequence
             ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.command;
             std::string rc_code_1_str = ss1.str(); 
             
-            
             std::stringstream ss2;
-            // x.address provides the 16-bit NEC device address block
             ss2 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.address;
             std::string rc_code_2_str = ss2.str(); 
 
-            // Hisense should always be x.address 0xFB04 
+            id(OLED_line2) = rc_code_2_str; 
+            id(OLED_line3) = rc_code_1_str; 
+
             // Only execute the button mapping lookup if the address matches 0xFB04
             if (x.address == 0xFB04) {
-              // It is a Hisense device address, but we must also check its command for a match
-              rc_code_2_str = "Hisense"; // report address as human readable Hisense
+              id(OLED_line2) = "Hisense"; 
               
-              auto it = nec_codes.find(x.command); // search table for IR command match
+              auto it = nec_codes.find(x.command); 
               
               if (it != nec_codes.end()) {
-                id(last_xgimi_TN_command) = it->second.name; // remember xgimi command
+                id(OLED_line1) = it->second.name; 
+                ESP_LOGD("IR Translated", "IR ---> : %s", it->second.name.c_str());
                 
-                if (it->second.button_obj != nullptr) {
-                  it->second.button_obj->press(); // press associated template button
+                if (it->second.name == "token_clear") {
+                  uint32_t elapsed = now - last_clear_press_time;
+
+                  // Evaluate if confirmation gate is currently open (less than 5000ms old)
+                  if (clear_confirmation_armed && elapsed <= 5000) {
+                    
+                    // --- SUCCESSFUL SECOND PRESS ---
+                    clear_confirmation_armed = false;
+                    last_clear_press_time = 0;
+
+                    id(ir_receiver)->cancel_timeout("token_clear_timeout");
+
+                    if (it->second.button_obj != nullptr) {
+                      it->second.button_obj->press(); 
+                    }
+                  } else {
+                    
+                    // --- FIRST PRESS TRIGGERED ---
+                    clear_confirmation_armed = true;
+                    last_clear_press_time = now;
+
+                    id(OLED_line1) = "Press Again!";
+                    id(OLED_line2) = "To Confirm";
+                    id(OLED_line3) = "Within 5 Sec";
+
+                    // Background scheduler task to wipe text and reset states if window expires
+                    id(ir_receiver)->set_timeout("token_clear_timeout", 5000, []() {
+                      clear_confirmation_armed = false;
+                      last_clear_press_time = 0;
+                      ESP_LOGI("IR Gate", "Hisense confirmation window expired.");
+
+                      id(OLED_line1) = "Clear Canceled";
+                      id(OLED_line2) = "Timed Out";
+                      id(OLED_line3) = "";
+                      id(display_timeout_handler)->execute();
+                    });
+                  }
+                }
+                else {
+                  // Any separate navigation click naturally cancels any pending token_clear arming state
+                  clear_confirmation_armed = false;
+                  last_clear_press_time = 0;
+                  id(ir_receiver)->cancel_timeout("token_clear_timeout");
+
+                  if (it->second.button_obj != nullptr) {
+                    it->second.button_obj->press(); 
+                  }
                 }
                 
               } else {
-                id(last_xgimi_TN_command) = "Unassigned";
-                
- 
+                id(OLED_line1) = "Unassigned";
               }
             } else {
-              // It is an NEC code, but not a Hisense
-              id(last_xgimi_TN_command) = "Not Hisense IR";
+              id(OLED_line1) = "Not Hisense IR";
             }
             
-            id(last_IR_address) = rc_code_2_str;
-            id(last_IR_instruction) = rc_code_1_str;
 # ======= KUO End remote_receiver ============

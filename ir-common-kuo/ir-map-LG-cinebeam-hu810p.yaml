@@ -1,24 +1,6 @@
 # LG HU810P Cinebeam
 
-# Global variables to save the latest parsed IR data
-globals:
-  - id: last_xgimi_TN_command
-    type: std::string  
-    restore_value: no
-    initial_value: '"IR to BLE Kuo"'
-
-  - id: last_IR_address
-    restore_value: no
-    type: std::string  
-    initial_value: '"LG Cinebeam"'
-    
-  - id: last_IR_instruction
-    restore_value: no
-    type: std::string  
-    initial_value: '"To Xgimi Ready"'
-
-
-# ======= KUO Begin remote_receiver =========
+# ======= KUO IR remote_receiver =========
 remote_receiver:
   id: ir_receiver
   pin:
@@ -43,40 +25,52 @@ remote_receiver:
             };
  
             static const std::map<uint32_t, IRCommand> nec_codes = {
-              { 0x14EB,       { "back",          id(back) } }, // Back / Return
-              { 0x827D,       { "cursor_down",   id(cursor_down) } },
-              { 0x22DD,       { "cursor_enter",  id(cursor_enter) } }, // OK / Select
-              { 0xE01F,       { "cursor_left",   id(cursor_left) } },
-              { 0x609F,       { "cursor_right",  id(cursor_right) } },
-              { 0x02FD,       { "cursor_up",     id(cursor_up) } },
-              { 0x9E61,       { "focus_auto",    id(focus_auto) } }, // aspect Ratio
-              { 0x0DF2,       { "focus_manual",  id(focus_manual) } }, // play
-              { 0x3EC1,       { "home",          id(home) } }, // Home Menu as Home
-              { 0xD02F,       { "input",         id(input) } }, // Input Toggle
+              { 0x14EB,       { "back",          id(back) } },          // Back / Return
+              { 0x827D,       { "cursor_down",   id(cursor_down) } },   // cursor down
+              { 0x22DD,       { "cursor_enter",  id(cursor_enter) } },  // OK / Select
+              { 0xE01F,       { "cursor_left",   id(cursor_left) } },   // cursor left
+              { 0x609F,       { "cursor_right",  id(cursor_right) } },  // cursor right
+              { 0x02FD,       { "cursor_up",     id(cursor_up) } },     // cursor up
+              { 0x9E61,       { "focus_auto",    id(focus_auto) } },    // aspect Ratio
+              { 0x0DF2,       { "focus_manual",  id(focus_manual) } },  // play
+              { 0x3EC1,       { "home",          id(home) } },          // Home Menu as Home
+              { 0xD02F,       { "input",         id(input) } },         // Input Toggle
               { 0xC23D,       { "settings_menu", id(settings_menu) } }, // Quick Menu as Menu
               { 0xB24D,       { "settings_menu", id(settings_menu) } }, // Picture Mode as Menu alternate
-              { 0x807F,       { "game_menu",     id(game_menu) } }, // channel down
-              { 0x906F,       { "mute",          id(mute) } },
-              { 0xA956,       { "picture",       id(picture) } }, // Picture / Energy Saving mode
-              { 0xA35C,       { "power_on",      id(power_on) } }, // Discrete Power On
-              { 0x10EF,       { "power_on",      id(power_on) } }, // Power Toggle fallback
-              { 0x23DC,       { "power_off",     id(power_off_held) } }, // Discrete Power Off
-              { 0x08F7,       { "power_off",     id(power_off_held) } }, // 0 as Power Toggle fallback
-              { 0x8877,       { "shortcut_1",    id(shortcut_1) } }, // 1
-              { 0x48B7,       { "shortcut_2",    id(shortcut_2) } }, // 2
-              { 0xC837,       { "shortcut_3",    id(shortcut_3) } }, // 3
-              { 0x28D7,       { "shortcut_4",    id(shortcut_4) } }, // 4
-              { 0x4EB1,       { "shortcut_1",    id(shortcut_1) } }, // red as user 1 alternate
-              { 0x8E71,       { "shortcut_2",    id(shortcut_2) } }, // green as user 2 alternate
-              { 0xC639,       { "shortcut_3",    id(shortcut_3) } }, // yellow as user 3 alternate
-              { 0x8679,       { "shortcut_4",    id(shortcut_4) } }, // blue as user 3 alternate
-              { 0xC03F,       { "volume_down",   id(volume_down) } },
-              { 0x40BF,       { "volume_up",     id(volume_up) } },
+              { 0x807F,       { "game_menu",     id(game_menu) } },     // channel down
+              { 0x906F,       { "mute",          id(mute) } },          // mute
+              { 0xA956,       { "picture",       id(picture) } },       // Picture / Energy Saving mode
+              { 0xA35C,       { "power_on",      id(power_on) } },      // Discrete Power On
+              { 0x10EF,       { "power_on",      id(power_on) } },      // Power
+              { 0x23DC,       { "power_off_immediately",     id(power_off_immediately) } }, // Discrete Power Off
+              { 0x08F7,       { "power_off",     id(power_off) } },     // 0 as Power Toggle fallback
+              { 0x4EB1,       { "shortcut_1",    id(shortcut_1) } },    // red
+              { 0x8E71,       { "shortcut_2",    id(shortcut_2) } },    // green
+              { 0xC639,       { "shortcut_3",    id(shortcut_3) } },    // yellow
+              { 0x8679,       { "shortcut_4",    id(shortcut_4) } },    // blue
+              { 0xC03F,       { "volume_down",   id(volume_down) } },   // volume down
+              { 0x40BF,       { "volume_up",     id(volume_up) } },     // volume up
+              { 0x28D7,       { "token_sniff",   id(token_sniff) } },   // 4
+              { 0xA857,       { "token_clear",   id(token_clear) } },   // 🛠️ UNCOMMENTED: 5
+              { 0x6897,       { "token_recall",  id(token_recall) } },  // 6
               { 0x6A95,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // netflix
               { 0x3AC5,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }, // prime video
-
             };
             
+            // Persistent internal variable controllers
+            static uint32_t last_clear_press_time = 0;
+            static uint32_t last_global_ir_time = 0;
+            static bool clear_confirmation_armed = false;
+
+            uint32_t now = millis();
+
+            // Filter out hardware bounce duplicates from trailing LG packet blasts
+            if (now - last_global_ir_time < 250) {
+              last_global_ir_time = now;
+              return;
+            }
+            last_global_ir_time = now;
+
             // Isolate the numerical chunks using bitwise operations
             uint16_t device_num = x.data >> 16;       // Shifts away the last 4 hex characters
             uint16_t command_num = x.data & 0xFFFF;   // Masks out the first 4 hex characters
@@ -89,22 +83,70 @@ remote_receiver:
             ss2 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << command_num;
             std::string rc_command_str = ss2.str(); 
 
+            id(OLED_line2) = rc_device_str; 
+            id(OLED_line3) = rc_command_str; 
+            
             if (device_num == 0x20DF) {
-              rc_device_str = "LG Cinebeam"; 
+              id(OLED_line2) = "LG Cinebeam"; 
               auto it = nec_codes.find(command_num); 
             
               if (it != nec_codes.end()) {
-                id(last_xgimi_TN_command) = it->second.name; 
-                if (it->second.button_obj != nullptr) {
-                  it->second.button_obj->press(); 
+                id(OLED_line1) = it->second.name; 
+                ESP_LOGD("IR Translated", "IR ---> : %s", it->second.name.c_str());
+ 
+                if (it->second.name == "token_clear") {
+                  uint32_t elapsed = now - last_clear_press_time;
+
+                  // Evaluate if confirmation gate is currently open (less than 5000ms old)
+                  if (clear_confirmation_armed && elapsed <= 5000) {
+                    
+                    // --- SUCCESSFUL SECOND PRESS ---
+                    clear_confirmation_armed = false;
+                    last_clear_press_time = 0;
+
+                    id(ir_receiver)->cancel_timeout("token_clear_timeout");
+
+                    if (it->second.button_obj != nullptr) {
+                      it->second.button_obj->press(); 
+                    }
+                  } else {
+                    
+                    // --- FIRST PRESS TRIGGERED ---
+                    clear_confirmation_armed = true;
+                    last_clear_press_time = now;
+
+                    id(OLED_line1) = "Press Again!";
+                    id(OLED_line2) = "To Confirm";
+                    id(OLED_line3) = "Within 5 Sec";
+
+                    // Background scheduler task to handle screen restoration automatically
+                    id(ir_receiver)->set_timeout("token_clear_timeout", 5000, []() {
+                      clear_confirmation_armed = false;
+                      last_clear_press_time = 0;
+                      ESP_LOGI("IR Gate", "LG confirmation window expired.");
+
+                      id(OLED_line1) = "Clear Canceled";
+                      id(OLED_line2) = "Timed Out";
+                      id(OLED_line3) = "";
+                      id(display_timeout_handler)->execute();
+                    });
+                  }
+                }
+                else {
+                  // Any standard button press instantly cancels the pending clear window
+                  clear_confirmation_armed = false;
+                  last_clear_press_time = 0;
+                  id(ir_receiver)->cancel_timeout("token_clear_timeout");
+
+                  if (it->second.button_obj != nullptr) {
+                    it->second.button_obj->press(); 
+                  }
                 }
               } else {
-                id(last_xgimi_TN_command) = "Unassigned";
+                id(OLED_line1) = "Unassigned";
               }
             } else {
-              id(last_xgimi_TN_command) = "Not Cinebeam IR";
+              id(OLED_line1) = "Not Cinebeam IR";
             }
           
-            id(last_IR_address) = rc_device_str;
-            id(last_IR_instruction) = rc_command_str;
 # ======= KUO End remote_receiver ============

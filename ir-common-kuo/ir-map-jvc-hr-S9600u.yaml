@@ -1,24 +1,6 @@
 # JVC HR-S9600U S-VHS VCR
 
-# Global variables to save the latest parsed IR data
-globals:
-  - id: last_xgimi_TN_command
-    type: std::string  
-    restore_value: no
-    initial_value: '"IR to BLE Kuo"'
-
-  - id: last_IR_address
-    type: std::string  
-    restore_value: no
-    initial_value: '"JVC VCR to Xgimi"'
-    
-  - id: last_IR_instruction
-    type: std::string  
-    restore_value: no
-    initial_value: '"READY"'
-
-
- # ======= KUO Begin remote_receiver =========
+# ======= KUO Begin remote_receiver =========
 remote_receiver:
   id: ir_receiver
   pin:
@@ -43,60 +25,123 @@ remote_receiver:
           };
 
           static const std::map<uint16_t, IRCommand> jvc_codes = {
-            { 0xC2C3,       { "back",          id(back) } },
-            { 0xC218,       { "cursor_down",   id(cursor_down) } },
-            { 0xC261,       { "cursor_down",   id(cursor_down) } },
-            { 0xC23C,       { "cursor_enter",  id(cursor_enter) } },
-            { 0xC2A8,       { "cursor_left",   id(cursor_left) } },
-            { 0xC228,       { "cursor_right",  id(cursor_right) } },
-            { 0xC241,       { "cursor_up",     id(cursor_up) } },
-            { 0xC298,       { "cursor_up",     id(cursor_up) } },
-            { 0xC2E4,       { "focus_auto",    id(focus_auto) } },
-            { 0xC214,       { "focus_manual",  id(focus_manual) } },
-            { 0xC26C,       { "cancel",        id(home) } },
-            { 0xC2C8,       { "input",         id(input) } },
-            { 0xC2EC,       { "settings_menu", id(settings_menu) } },
-            { 0xC207,       { "settings_menu", id(settings_menu) } },
-            { 0xC230,       { "game_menu",     id(game_menu) } },
-            { 0xC2B0,       { "mute",          id(mute) } },
-            { 0xC260,       { "picture",       id(picture) } },
-            { 0xC2D0,       { "power_on",      id(power_on) } },
-            { 0xC2B8,       { "power_on",      id(power_on) } },
-            { 0xC258,       { "power_off",     id(power_off_held) } },
-            { 0xC2CC,       { "power_off",     id(power_off_held) } },
-            { 0xC283,       { "shortcut_1",    id(shortcut_1) } },
-            { 0xC2BC,       { "shortcut_2",    id(shortcut_2) } },
-            { 0xC28C,       { "shortcut_3",    id(shortcut_3) } },
-            { 0xC269,       { "shortcut_4",    id(shortcut_4) } },
-            { 0xC293,       { "volume_down",   id(volume_down) } },
-            { 0xC213,       { "volume_up",     id(volume_up) } },
-            { 0xC284,       { "BT_start_pair", id(bluetooth_pairing_start) } },
-            { 0xC244,       { "BT_clear_pair", id(bluetooth_pairing_clear) } },
+            { 0xC2C3,       { "back",          id(back) } },          // review
+            { 0xC218,       { "cursor_down",   id(cursor_down) } },   // cursor down
+            { 0xC261,       { "cursor_down",   id(cursor_down) } },   // cursor down (harmony)
+            { 0xC23C,       { "cursor_enter",  id(cursor_enter) } },  // OK
+            { 0xC2A8,       { "cursor_left",   id(cursor_left) } },   // cursor left
+            { 0xC228,       { "cursor_right",  id(cursor_right) } },  // cursor right (harmony)
+            { 0xC241,       { "cursor_up",     id(cursor_up) } },     // cursor up
+            { 0xC298,       { "cursor_up",     id(cursor_up) } },     // cursor up (harmony)
+            { 0xC2E4,       { "focus_auto",    id(focus_auto) } },    // 7
+            { 0xC214,       { "focus_manual",  id(focus_manual) } },  // 8
+            { 0xC26C,       { "cancel",        id(home) } },          // cancel
+            { 0xC2C8,       { "input",         id(input) } },         // tv/vcr
+            { 0xC2EC,       { "settings_menu", id(settings_menu) } }, // menu
+            { 0xC207,       { "settings_menu", id(settings_menu) } }, // memu (alternate) 
+            { 0xC230,       { "game_menu",     id(game_menu) } },     // game menu
+            { 0xC2B0,       { "mute",          id(mute) } },          // pause
+            { 0xC260,       { "picture",       id(picture) } },       // fast forward
+            { 0xC2D0,       { "power_on",      id(power_on) } },      // power (as discrete)
+            { 0xC2B8,       { "power_on",      id(power_on) } },      // power (alternate)
+            { 0xC258,       { "power_off",     id(power_off_immediately) } }, // discrete off
+            { 0xC2E8,       { "power_off",     id(power_off_immediately) } }, // audio monitor
+            { 0xC2CC,       { "power_off",     id(power_off_immediately) } }, // 0
+            { 0xC283,       { "shortcut_1",    id(shortcut_1) } },    // prog
+            { 0xC2BC,       { "shortcut_2",    id(shortcut_2) } },    // prog check
+            { 0xC28C,       { "shortcut_3",    id(shortcut_3) } },    // SP/EP
+            { 0xC269,       { "shortcut_4",    id(shortcut_4) } },    // skip search
+            { 0xC293,       { "volume_down",   id(volume_down) } },   // start up
+            { 0xC213,       { "volume_up",     id(volume_up) } },     // start down
+            { 0xC224,       { "token_sniff",   id(token_sniff) } },  // 4
+            { 0xC2A4,       { "token_clear",   id(token_clear) } },  // 🛠️ UNCOMMENTED: 5
+            { 0xC264,       { "token_recall",  id(token_recall) } }, // 6
+            { 0xC284,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // 1
+            { 0xC244,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }, // 2
           };
 
+          // Persistent internal variables for time framing
+          static uint32_t last_clear_press_time = 0;
+          static uint32_t last_global_ir_time = 0;
+          static bool clear_confirmation_armed = false;
+
+          uint32_t now = millis();
+
+          // Drop hardware bounce duplicates from trailing JVC packet streams
+          if (now - last_global_ir_time < 250) {
+            last_global_ir_time = now;
+            return;
+          }
+          last_global_ir_time = now;
+
           std::stringstream ss1;
-          // x.data provides the 16-bit jvc data command sequence
+          // Note: JVC uses x.data, not x.command
           ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.data;
           std::string rc_code_1_str = ss1.str(); 
           
           std::stringstream ss2;
           ss2 << "JVC protocol";
           std::string rc_code_2_str = ss2.str(); 
+          
+          id(OLED_line2) = rc_code_2_str; 
+          id(OLED_line3) = rc_code_1_str; 
 
           auto it = jvc_codes.find(x.data); 
             
           if (it != jvc_codes.end()) {
-            id(last_xgimi_TN_command) = it->second.name; // remember xgimi command
-              
-            if (it->second.button_obj != nullptr) {
-              it->second.button_obj->press(); 
-            } else {
-              id(last_xgimi_TN_command) = "Unassigned";
-            } // Fixed: Missing bracket closed here
+            id(OLED_line1) = it->second.name;
+            ESP_LOGD("IR Translated", "IR ---> : %s", it->second.name.c_str()); // Fixed: Changed SP_LOGD to ESP_LOGD
+
+            if (it->second.name == "token_clear") {
+              uint32_t elapsed = now - last_clear_press_time;
+
+              // Verify if confirmation window is open (less than 5000ms old)
+              if (clear_confirmation_armed && elapsed <= 5000) {
+                
+                // --- SUCCESSFUL SECOND PRESS ---
+                clear_confirmation_armed = false;
+                last_clear_press_time = 0;
+                
+                id(ir_receiver)->cancel_timeout("token_clear_timeout");
+
+                if (it->second.button_obj != nullptr) {
+                  it->second.button_obj->press(); 
+                }
+              } else {
+                
+                // --- FIRST PRESS TRIGGERED ---
+                clear_confirmation_armed = true;
+                last_clear_press_time = now;
+
+                id(OLED_line1) = "Press Again!";
+                id(OLED_line2) = "To Confirm";
+                id(OLED_line3) = "Within 5 Sec";
+
+                // Schedule background screen cleanup after 5 seconds of inactivity
+                id(ir_receiver)->set_timeout("token_clear_timeout", 5000, []() {
+                  clear_confirmation_armed = false;
+                  last_clear_press_time = 0;
+                  ESP_LOGI("IR Gate", "JVC confirmation window expired.");
+
+                  id(OLED_line1) = "Clear Canceled";
+                  id(OLED_line2) = "Timed Out";
+                  id(OLED_line3) = "";
+                  id(display_timeout_handler)->execute();
+                });
+              }
+            }
+            else {
+              // Pressing any other key cancels any pending token_clear arming state
+              clear_confirmation_armed = false;
+              last_clear_press_time = 0;
+              id(ir_receiver)->cancel_timeout("token_clear_timeout");
+
+              if (it->second.button_obj != nullptr) {
+                it->second.button_obj->press(); 
+              }
+            }
           } else {
-            id(last_xgimi_TN_command) = "Unassigned";
+            id(OLED_line1) = "Unassigned";
           }
           
-          id(last_IR_address) = rc_code_2_str;
-          id(last_IR_instruction) = rc_code_1_str;
 # ======= KUO End remote_receiver ============
