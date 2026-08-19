@@ -318,6 +318,9 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 |shortcut\_4 |D green |address=0x3085, command=0x9063 |
 |volume\_down |volume down |address=0x3085, command=0xE01D |
 |volume\_up |volume up |address=0x3085, command=0xE01C |
+|token\_sniff |4 |address=0x3085, command=0xD02B |
+|token\_clear |5 |address=0x3085, command=0xD02C |
+|volume\_recall |6 |address=0x3085, command=0xD02D |
 |bluetooth\_pairing\_start |enter |address=0x3085, command=0xC033 |
 |bluetooth\_pairing\_clear |clear |address=0x3085, command=0xC032 |
 
@@ -438,8 +441,8 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 
 *   Sniffing of Xgimi tokens directly by ESP32 board fully working. Captures and
 stores wake token. It's now simply a matter of pressing a button on the IR remote
-twice to start sniffing. Four to six presses of Xgimi remote power button usually
-is sufficient to get a capture. Learned token is kep on ESP non-volatile flash.
+twice to start sniffing. Four to six presses of Xgimi remote power button is usually
+sufficient to get a capture. Learned token is kept on ESP non-volatile flash.
 
 Supplying a wake token in secret.yaml is now optional.
   
