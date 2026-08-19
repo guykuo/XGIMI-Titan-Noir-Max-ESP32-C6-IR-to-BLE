@@ -435,11 +435,15 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 
 
 ## Recent Notes:
-*   Sniffing of Xgimi token is working. Functions by starting token capture upon
-press of specific IR or Home Assistant button. Already capturess the token in testing.
-The only barrier left is passing learned token into mrmachine's bluetooth stack. 
 
-ESP Board preference is now OLED display bearing ESP32-C3 SuperMini dev board.
+*   Sniffing of Xgimi tokens directly by ESP32 board fully working. Captures and
+stores wake token. It's now simply a matter of pressing a button on the IR remote
+twice to start sniffing. Four to six presses of Xgimi remote power button usually
+is sufficient to get a capture. Learned token is kep on ESP non-volatile flash.
+
+Supplying a wake token in secret.yaml is now optional.
+  
+*   ESP Board preference is now OLED display bearing ESP32-C3 SuperMini dev board.
 OLED display nicely shows when board begins token sniffing and completes capture.
 Non-display ESP32 will still work, but gives feedback only via log.
 
