@@ -320,7 +320,7 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 |volume\_up |volume up |address=0x3085, command=0xE01C |
 |token\_sniff |4 |address=0x3085, command=0xD02B |
 |token\_clear |5 |address=0x3085, command=0xD02C |
-|volume\_recall |6 |address=0x3085, command=0xD02D |
+|token\_recall |6 |address=0x3085, command=0xD02D |
 |bluetooth\_pairing\_start |enter |address=0x3085, command=0xC033 |
 |bluetooth\_pairing\_clear |clear |address=0x3085, command=0xC032 |
 
@@ -355,6 +355,9 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 |shortcut\_4 |green |0xAC53 |
 |volume\_down |volume down |0xFC03 |
 |volume\_up |volume up |0xFD02 |
+|token\_sniff |volume up |0xEB14 |
+|token\_clear |volume up |0xEA15 |
+|token\_recall |volume up |0xE916 |
 |bluetooth\_pairing\_start |prime video |0xB847 |
 |bluetooth\_pairing\_clear |youtube |0xB649 |
 
@@ -386,16 +389,15 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 | power on | Power Toggle | 0x10EF |
 | power off | Discrete Power Off | 0xA53C |
 | power off | 0 | 0x08F7 |
-| shortcut 1 | 1 | 0x8877 |
-| shortcut 2 | 2 | 0x48B7 |
-| shortcut 3 | 3 | 0xC837 |
-| shortcut 4 | 4 | 0x28D7 |
 | shortcut 1 | red | 0x4EB1 |
 | shortcut 2 | green | 0x8E71 |
 | shortcut 3 | yellow | 0xC639 |
 | shortcut 4 | blue | 0x8679 |
 | volume down | volume down | 0xC03F |
 | volume up | volume up | 0x40BF |
+| token sniff | 4 | 0x28D7 |
+| token clear | 5 | 0xA857 |
+| token recall | 6 | 0x6897 |
 | BT start pairing | netflix | 0x6A95 |
 | BT clear pairing | prime | 0x3AC5 |
 
@@ -425,6 +427,7 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 | power\_on | power toggle | 0xC2D0 |
 | power\_on | power on | 0xC2B8 |
 | power\_off | power off | 0xC258 |
+| power\_off | audio monitor | 0xC2E8 |
 | power\_off | 0 | 0xC2CC |
 | shortcut\_1 | Prog | 0xC283 |
 | shortcut\_2 | Prog Check | 0xC2BC |
@@ -432,6 +435,9 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 | shortcut\_4 | Skip Search | 0xC269 |
 | volume\_down | Start - | 0xC293 |
 | volume\_up | Start + | 0xC213 |
+| token\_sniff | 4| 0xC224 |
+| token\_clear | 5 | 0xC2A4 |
+| token\_recall | 6| 0xC264 |
 | bluetooth\_pairing\_start | 1 | 0xC284 |
 | bluetooth\_pairing\_clear | 2 | 0xC244 |
 
