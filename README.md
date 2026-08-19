@@ -47,6 +47,8 @@ The IR sensor style that has the small pc board includes a red LED which lights 
 
 ### Selecting an ESP32 Board
 
+With addition of on-ESP token sniffing, I recommend using an ESPZ32-C3 with on-board OLED display. Although it is possible to sniff tokens "blind," it is the OLED display give visible feedback during the process.
+
 If you want to use an ESP32 board than the two examples illustrated herein, be certain it has at least bluetooth version 4.2 and BLE (Bluetooth Low Energy) capability. Otherwise, power-on broadcast to Xgimi projector will not work.
 
 Boards that should work:
@@ -172,7 +174,7 @@ py -3 -m venv .venv
 .venv\\Scripts\\python.exe -m pip install -r requirements.txt
 ```
 
-### 3\. Capture Your Remote's Token
+### 3\. Capture Your Remote's Token (OPTIONAL now with on-EPS wake token capture)
 
 Physically unplug the projector so it cannot reconnect to the original remote. Turn Bluetooth on and grant the terminal Bluetooth access if the operating system asks.
 
@@ -192,7 +194,7 @@ On Windows Powershell
 
 Keep the remote close to the computer and press its Power button several times during the scan. A trustworthy capture has a stable 15-byte tail and at least two distinct first-byte rolling-counter values.
 
-### 4\. Create `secrets.yaml` with the captured token.
+### 4\. Create `secrets.yaml` with the captured token. (OPTIONAL. You may now skip this setp and use a copy of secrets.example.yaml WITHOUT an acquired token)
 
 The helper generates the API key and strong OTA/fallback-access-point passwords using Python's securerandom generator:
 
@@ -210,7 +212,7 @@ Windows Powershell
 .venv\Scripts\python.exe scripts\create_secrets.py --token "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88"
 ```
 
-Now you have a secrets.yaml file containing your specific token.
+Now you have a secrets.yaml file (optionally) containing your specific token.
 
 The helper refuses to overwrite an existing `secrets.yaml`.
 
