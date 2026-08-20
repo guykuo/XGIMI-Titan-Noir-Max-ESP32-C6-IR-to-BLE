@@ -14,6 +14,8 @@ The IR code sets translated are:
 3.  VC-VCR HR-S9600U
 4.  LG Cinebeam HU810P
 
+#### \*\*\* Newly implemented is ability for ESP32 to directly learn wake token from Xgimi remote \*\*\*
+
 #### \*\*\* This fork does **NOT** require presence nor use of a Home Assistant Server \*\*\*
 
 This fork concentrates on direct IR translation to Xgimi Titan Noir bluetooth and HA usage is not documented here. However, _Home Assistant_ integration capability has been preserved and can also be used.. See mrmachine's original github for _Home Assistant_ related information.
