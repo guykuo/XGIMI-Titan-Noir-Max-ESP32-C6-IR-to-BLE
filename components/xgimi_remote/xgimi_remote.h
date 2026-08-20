@@ -18,6 +18,7 @@ class XgimiRemote : public Component {
   void set_keyboard_report(esp32_ble_server::BLECharacteristic *report) { this->keyboard_report_ = report; }
   void set_consumer_report(esp32_ble_server::BLECharacteristic *report) { this->consumer_report_ = report; }
   void set_wake_token(const std::vector<uint8_t> &token) { this->wake_token_ = token; }
+  void set_remote_name(const std::string &name) { this->remote_name_ = name; } // added Kuo
 
   void setup() override;
   void loop() override;
@@ -57,6 +58,7 @@ class XgimiRemote : public Component {
   esp32_ble_server::BLEServer *server_{nullptr};
   esp32_ble_server::BLECharacteristic *keyboard_report_{nullptr};
   esp32_ble_server::BLECharacteristic *consumer_report_{nullptr};
+  std::string remote_name_{"ESP32 Xgimi"};
 
   bool ble_ready_{false};
   bool connected_{false};

@@ -1,7 +1,7 @@
 wifi:
   reboot_timeout: 0s
   ap:
-    ssid: "TiVo Xgimi ESP32"
+    ssid: "${ble_remote_name}"
     password: !secret fallback_ap_password
     ap_timeout: 15s
 
@@ -105,7 +105,7 @@ esp32_ble_server:
 
 xgimi_remote:
   id: xgimi_remote_controller
-  #remote_name: "${ble_remote_name}" # Kuo cannot pass a param in this version bluetooth stack
+  remote_name: "${ble_remote_name}" # Kuo cannot pass a param in this version bluetooth stack
   wake_token: !secret xgimi_wake_token
   ble_id: esp32c6_ble
   ble_server_id: esp32c6_ble_server

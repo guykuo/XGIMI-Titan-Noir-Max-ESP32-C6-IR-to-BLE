@@ -10,6 +10,7 @@ CONF_BLE_SERVER_ID = "ble_server_id"
 CONF_KEYBOARD_REPORT_ID = "keyboard_report_id"
 CONF_CONSUMER_REPORT_ID = "consumer_report_id"
 CONF_WAKE_TOKEN = "wake_token"
+CONF_REMOTE_NAME = "remote_name"
 
 xgimi_remote_ns = cg.esphome_ns.namespace("xgimi_remote")
 XgimiRemote = xgimi_remote_ns.class_("XgimiRemote", cg.Component)
@@ -27,7 +28,9 @@ CONFIG_SCHEMA = cv.Schema(
         ),
         cv.Required(CONF_WAKE_TOKEN): cv.All(
             cv.ensure_list(cv.hex_uint8_t), cv.Length(min=15, max=15)
-        ),
+        ),    
+        cv.Optional(CONF_REMOTE_NAME, default="ESP32 Xgimi"): cv.All(
+            cv.string_strict, cv.Length(min=1, max=20)),
     }
 ).extend(cv.COMPONENT_SCHEMA)
 
@@ -45,6 +48,7 @@ async def to_code(config):
     cg.add(var.set_server(server))
     cg.add(var.set_keyboard_report(keyboard_report))
     cg.add(var.set_consumer_report(consumer_report))
+    cg.add(var.set_remote_name(config[CONF_REMOTE_NAME]))
     cg.add(var.set_wake_token(config[CONF_WAKE_TOKEN]))
 
     esp32_ble.register_gap_event_handler(ble, var)

@@ -51,7 +51,7 @@ remote_receiver:
               { 0xC03F,       { "volume_down",   id(volume_down) } },   // volume down
               { 0x40BF,       { "volume_up",     id(volume_up) } },     // volume up
               { 0x28D7,       { "token_sniff",   id(token_sniff) } },   // 4
-              { 0xA857,       { "token_clear",   id(token_clear) } },   // 🛠️ UNCOMMENTED: 5
+              { 0xA857,       { "token_clear",   id(token_clear) } },   // 5
               { 0x6897,       { "token_recall",  id(token_recall) } },  // 6
               { 0x6A95,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // netflix
               { 0x3AC5,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }, // prime video

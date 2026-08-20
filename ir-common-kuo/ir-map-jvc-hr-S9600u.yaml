@@ -54,7 +54,7 @@ remote_receiver:
             { 0xC293,       { "volume_down",   id(volume_down) } },   // start up
             { 0xC213,       { "volume_up",     id(volume_up) } },     // start down
             { 0xC224,       { "token_sniff",   id(token_sniff) } },  // 4
-            { 0xC2A4,       { "token_clear",   id(token_clear) } },  // 🛠️ UNCOMMENTED: 5
+            { 0xC2A4,       { "token_clear",   id(token_clear) } },  // 5
             { 0xC264,       { "token_recall",  id(token_recall) } }, // 6
             { 0xC284,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // 1
             { 0xC244,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }, // 2
