@@ -283,9 +283,27 @@ Keep the original remote paired as well.
 <br>
 <br>
 <br>
-### 7\. Test your TiVo / Hisense IR remote's ability to control your Titan Noir projector.
+### 7\. Learning Wake Token from Xgimi Remote.
 
-For universal remotes, add a TiVo Roamio or Hisense 50U6G device to your remote.
+Unless you secrets.yaml already have a valid wake token, your ESP32 translator needs to learn a wake token from your original Xgimi remote.
+Sniffing for the wake token should be done with projector power disconnected because you will be pressing the remote's power button repeatedly.
+
+- Remote power from Xgimi Titan Noir Projector
+- ESP32 should be plugged into 5 volt USB-C power
+- Point your infrared remote at ESP32 IR receiver and press the "4" button to start sniffing.
+      Sniffing remains active for 20 seconds.
+- Repeatedly press power button on Xgimi remote with it near your ESP32 board.
+      Usually, just 4 to 6 presses are neede to sniff a valid token
+      If you have an ESP32-C3 with built-in OLED display, sniff mode and capture will be shown
+      On boards lacking a display, you can still learn a wake token, but won't see any feedback
+
+- Wait at least five seconds to let the ESP32 commit the token to NVS flash storage.
+     Once flashed to permanetn storage, the learned token will persis across power and boot cycles.
+     There is also a clear token (5 on remote). TO clear a learned token press 5 twice withing 5 seconds.
+     Normally, there is no need to clear a learned token, ubless you wish to revert to the one
+     specified in secret.yaml. Because sniffing a token is so simple, you likely did not manually
+     captuer and place one in your secrets.yaml
+    
 
 CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: both contain device credentials, and the binary also embeds the wake token.
 
