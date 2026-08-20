@@ -293,16 +293,16 @@ Sniffing for the wake token should be done with projector power disconnected bec
 - Point your infrared remote at ESP32 IR receiver and press the "4" button to start sniffing.
       Sniffing remains active for 20 seconds.
 - Repeatedly press power button on Xgimi remote with it near your ESP32 board.
-      Usually, just 4 to 6 presses are neede to sniff a valid token
-      If you have an ESP32-C3 with built-in OLED display, sniff mode and capture will be shown
+      Usually, just 4 to 6 presses are needed to sniff a valid token. 
+      If you have an ESP32-C3 with built-in OLED display, sniff mode and capture will be shown.
       On boards lacking a display, you can still learn a wake token, but won't see any feedback
 
 - Wait at least five seconds to let the ESP32 commit the token to NVS flash storage.
-     Once flashed to permanetn storage, the learned token will persis across power and boot cycles.
-     There is also a clear token (5 on remote). TO clear a learned token press 5 twice withing 5 seconds.
-     Normally, there is no need to clear a learned token, ubless you wish to revert to the one
+     Once flashed to permanent storage, the learned token persists across power and boot cycles.
+     There is also a clear token (5 on remote). To clear a learned token press 5 twice within 5 seconds.
+     Normally, there is no need to clear a learned token, unless you wish to revert to the one
      specified in secret.yaml. Because sniffing a token is so simple, you likely did not manually
-     captuer and place one in your secrets.yaml
+     capture and place one in your secrets.yaml. Easiest is to sniff with the ESP board.
     
 
 CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: both contain device credentials, and the binary also embeds the wake token.
