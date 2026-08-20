@@ -285,12 +285,12 @@ Keep the original remote paired as well.
 <br>
 ### 7\. Learning Wake Token from Xgimi Remote.
 
-Unless you secrets.yaml already have a valid wake token, your ESP32 translator needs to learn a wake token from your original Xgimi remote.
+Unless your secrets.yaml already has a valid wake token, your ESP32 translator needs to learn a wake token from your original Xgimi remote.
 Sniffing for the wake token should be done with projector power disconnected because you will be pressing the remote's power button repeatedly.
 
 - Remote power from Xgimi Titan Noir Projector
 - ESP32 should be plugged into 5 volt USB-C power
-- Point your infrared remote at ESP32 IR receiver and press the "4" button to start sniffing.
+- Point infrared remote at ESP32 IR receiver and press its "4" button to start sniffing.
       Sniffing remains active for 20 seconds.
 - Repeatedly press power button on Xgimi remote with it near your ESP32 board.
       Usually, just 4 to 6 presses are needed to sniff a valid token. 
@@ -303,6 +303,13 @@ Sniffing for the wake token should be done with projector power disconnected bec
      Normally, there is no need to clear a learned token, unless you wish to revert to the one
      specified in secret.yaml. Because sniffing a token is so simple, you likely did not manually
      capture and place one in your secrets.yaml. Easiest is to sniff with the ESP board.
+
+What the token buttons do
+  - Token Sniff (4) - Button (4) ESP32 sniffs for an Xgimi a wake token for 20 seconds. If one is accepted, It is stored into NV storage.
+  - Token Clear - Press button (5) twice within give seconds and stored token is removed from NV storage. Active wake token becomes the one you supplied in secrets.yaml
+  - Token Recall - Button (6) displays currently stored token (if one is present). This is useful to verifying the token that was sniffed correctly.
+
+
     
 
 CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: both contain device credentials, and the binary also embeds the wake token.
