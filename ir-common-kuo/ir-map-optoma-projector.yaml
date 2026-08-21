@@ -1,0 +1,152 @@
+# Optoma Projector
+
+# ======= KUO Begin remote_receiver =========
+remote_receiver:
+  id: ir_receiver
+  pin:
+    number: ${pin_ir_receiver}
+    inverted: true
+    mode:
+      input: true
+      pullup: true
+  filter: 50us
+  idle: 10ms
+  tolerance: 25%
+  dump: 
+    - nec
+    
+  on_nec:
+      then:
+        - script.execute: display_timeout_handler
+        - lambda: |-
+            struct IRCommand {
+              std::string name;
+              esphome::template_::TemplateButton* button_obj;
+            };
+ 
+            static const std::map<uint16_t, IRCommand> nec_codes = {
+              { 0x5CA3,       { "back",          id(back) } },           // Optoma: ESCAPE / BACK
+              { 0x3DC2,       { "cursor_down",   id(cursor_down) } },    // Optoma: DOWN ARROW
+              { 0x3AC5,       { "cursor_enter",  id(cursor_enter) } },   // Optoma: ENTER
+              { 0x3CC3,       { "cursor_left",   id(cursor_left) } },    // Optoma: LEFT ARROW / SOURCE
+              { 0x3BC4,       { "cursor_right",  id(cursor_right) } },   // Optoma: RIGHT ARROW / RE-SYNC
+              { 0x3EC1,       { "cursor_up",     id(cursor_up) } },      // Optoma: UP ARROW
+              { 0x7887,       { "focus_auto",    id(focus_auto) } },     // Optoma: BRIGHTNESS
+              { 0x7B84,       { "focus_manual",  id(focus_manual) } },   // Optoma: KEYSTONE MINUS
+              { 0x7788,       { "home",          id(home) } },           // Optoma: MENU (Fallback)
+              { 0x3CC3,       { "input",         id(input) } },          // Optoma: SOURCE
+              { 0x7788,       { "settings_menu", id(settings_menu) } },  // Optoma: MENU
+              { 0x7788,       { "settings_menu", id(settings_menu) } },  // Optoma: MENU (Fallback)
+              { 0x6996,       { "game_menu",     id(game_menu) } },      // Optoma: INFO PANEL
+              { 0xFC03,       { "mute",          id(mute) } },           // Optoma: AV MUTE (Blank Screen)
+              { 0x6699,       { "picture",       id(picture) } },        // Optoma: DISPLAY MODE
+              { 0xFD02,       { "power_on",      id(power_on) } },       // Optoma: DISCRETE POWER ON
+              { 0xFD02,       { "power_on",      id(power_on) } },       // Optoma: DISCRETE POWER ON (Fallback)
+              { 0xD12E,       { "power_off_immediately", id(power_off_immediately) } }, // Optoma: DISCRETE POWER OFF
+              { 0xD12E,       { "power_off_immediately", id(power_off_immediately) } }, // Optoma: DISCRETE POWER OFF (Fallback)
+              { 0x41BE,       { "shortcut_1",    id(shortcut_1) } },     // Optoma: ASPECT RATIO
+              { 0x7A85,       { "shortcut_2",    id(shortcut_2) } },     // Optoma: KEYSTONE PLUS
+              { 0x1CE3,       { "shortcut_3",    id(shortcut_3) } },     // Optoma: 3D MODE
+              { 0x55AA,       { "shortcut_4",    id(shortcut_4) } },     // Optoma: CONTRAST TOOL
+              { 0x708F,       { "volume_down",   id(volume_down) } },    // Optoma: VOLUME MINUS
+              { 0x738C,       { "volume_up",     id(volume_up) } },      // Optoma: VOLUME PLUS
+              { 0x01FE,       { "token_sniff",   id(token_sniff) } },    // Optoma: NUMPAD 1 PLACEHOLDER
+              { 0x02FD,       { "token_clear",   id(token_clear) } },    // Optoma: NUMPAD 2 PLACEHOLDER
+              { 0x03FC,       { "token_recall",  id(token_recall) } },   // Optoma: NUMPAD 3 PLACEHOLDER
+              { 0x04FB,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // Optoma: NUMPAD 4 PLACEHOLDER
+              { 0x05FA,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }, // Optoma: NUMPAD 5 PLACEHOLDER
+            };
+
+            // Persistent internal variable controllers
+            static uint32_t last_clear_press_time = 0;
+            static uint32_t last_global_ir_time = 0;
+            static bool clear_confirmation_armed = false;
+
+            uint32_t now = millis();
+            
+            // Drop hardware bouncing duplicate frames from trailing Optoma packet blasts
+            if (now - last_global_ir_time < 250) {
+              last_global_ir_time = now;
+              return;
+            }
+            last_global_ir_time = now;
+
+            std::stringstream ss1;
+            ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.command;
+            std::string rc_code_1_str = ss1.str(); 
+            
+            std::stringstream ss2;
+            ss2 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.address;
+            std::string rc_code_2_str = ss2.str(); 
+
+            id(OLED_line2) = rc_code_2_str; 
+            id(OLED_line3) = rc_code_1_str; 
+
+            // Only execute button mapping lookup if the address matches Optoma standard (0xCD32)
+            if (x.address == 0xCD32 || x.address == 0x32CD) {
+              id(OLED_line2) = "Optoma Proj"; 
+              
+              uint16_t lookup_key = x.command;
+              auto it = nec_codes.find(lookup_key); 
+              
+              if (it != nec_codes.end()) {
+                id(OLED_line1) = it->second.name; 
+                ESP_LOGD("IR Translated", "IR ---> : %s", it->second.name.c_str());
+                
+                if (it->second.name == "token_clear") {
+                  uint32_t elapsed = now - last_clear_press_time;
+
+                  // Evaluate if confirmation gate is currently open (less than 5000ms old)
+                  if (clear_confirmation_armed && elapsed <= 5000) {
+                    
+                    // --- SUCCESSFUL SECOND PRESS ---
+                    clear_confirmation_armed = false;
+                    last_clear_press_time = 0;
+
+                    id(ir_receiver)->cancel_timeout("token_clear_timeout");
+
+                    if (it->second.button_obj != nullptr) {
+                      it->second.button_obj->press(); 
+                    }
+                  } else {
+                    
+                    // --- FIRST PRESS TRIGGERED ---
+                    clear_confirmation_armed = true;
+                    last_clear_press_time = now;
+
+                    id(OLED_line1) = "Press Again!";
+                    id(OLED_line2) = "To Confirm";
+                    id(OLED_line3) = "Within 5 Sec";
+
+                    // Background scheduler task to wipe text and reset states if window expires
+                    id(ir_receiver)->set_timeout("token_clear_timeout", 5000, []() {
+                      clear_confirmation_armed = false;
+                      last_clear_press_time = 0;
+                      ESP_LOGI("IR Gate", "Optoma confirmation window expired.");
+
+                      id(OLED_line1) = "Clear Canceled";
+                      id(OLED_line2) = "Timed Out";
+                      id(OLED_line3) = "";
+                      id(display_timeout_handler)->execute();
+                    });
+                  }
+                }
+                else {
+                  // Any separate navigation click naturally cancels any pending token_clear arming state
+                  clear_confirmation_armed = false;
+                  last_clear_press_time = 0;
+                  id(ir_receiver)->cancel_timeout("token_clear_timeout");
+
+                  if (it->second.button_obj != nullptr) {
+                    it->second.button_obj->press(); 
+                  }
+                }
+                
+              } else {
+                id(OLED_line1) = "Unassigned";
+              }
+            } else {
+              id(OLED_line1) = "Not Optoma IR";
+            }
+            
+# ======= KUO End remote_receiver ============

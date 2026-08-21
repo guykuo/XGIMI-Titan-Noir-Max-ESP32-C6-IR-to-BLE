@@ -1,0 +1,152 @@
+# BenQ Projector
+
+# ======= KUO Begin remote_receiver =========
+remote_receiver:
+  id: ir_receiver
+  pin:
+    number: ${pin_ir_receiver}
+    inverted: true
+    mode:
+      input: true
+      pullup: true
+  filter: 50us
+  idle: 10ms
+  tolerance: 25%
+  dump: 
+    - nec
+    
+  on_nec:
+      then:
+        - script.execute: display_timeout_handler
+        - lambda: |-
+            struct IRCommand {
+              std::string name;
+              esphome::template_::TemplateButton* button_obj;
+            };
+ 
+            static const std::map<uint16_t, IRCommand> nec_codes = {
+              { 0x1AE5,       { "back",          id(back) } },           // BenQ: BACK / EXIT
+              { 0x16E9,       { "cursor_down",   id(cursor_down) } },    // BenQ: DOWN ARROW
+              { 0x13EC,       { "cursor_enter",  id(cursor_enter) } },   // BenQ: ENTER / OK
+              { 0x17E8,       { "cursor_left",   id(cursor_left) } },    // BenQ: LEFT ARROW
+              { 0x18E7,       { "cursor_right",  id(cursor_right) } },   // BenQ: RIGHT ARROW
+              { 0x15EA,       { "cursor_up",     id(cursor_up) } },      // BenQ: UP ARROW
+              { 0x22DD,       { "focus_auto",    id(focus_auto) } },     // BenQ: AUTO (Auto Setup adjustment)
+              { 0x21DE,       { "focus_manual",  id(focus_manual) } },   // BenQ: QUICK INSTALL / TEST PATTERN
+              { 0x10EF,       { "home",          id(home) } },           // BenQ: MENU (Fallback)
+              { 0x31CE,       { "input",         id(input) } },          // BenQ: SOURCE SELECT
+              { 0x10EF,       { "settings_menu", id(settings_menu) } },  // BenQ: MENU
+              { 0x10EF,       { "settings_menu", id(settings_menu) } },  // BenQ: MENU (Fallback)
+              { 0x26D9,       { "game_menu",     id(game_menu) } },      // BenQ: INFORMATION
+              { 0x1CE3,       { "mute",          id(mute) } },           // BenQ: ECO BLANK (Blank Screen toggle)
+              { 0x25DA,       { "picture",       id(picture) } },        // BenQ: MODE (Picture Profile cycle)
+              { 0x0CF3,       { "power_on",      id(power_on) } },       // BenQ: DISCRETE POWER ON
+              { 0x0CF3,       { "power_on",      id(power_on) } },       // BenQ: DISCRETE POWER ON (Fallback)
+              { 0x0DF2,       { "power_off_immediately", id(power_off_immediately) } }, // BenQ: DISCRETE POWER OFF
+              { 0x0DF2,       { "power_off_immediately", id(power_off_immediately) } }, // BenQ: DISCRETE POWER OFF (Fallback)
+              { 0x23DC,       { "shortcut_1",    id(shortcut_1) } },     // BenQ: ASPECT RATIO
+              { 0x09F6,       { "shortcut_2",    id(shortcut_2) } },     // BenQ: KEYSTONE +
+              { 0x0AF5,       { "shortcut_3",    id(shortcut_3) } },     // BenQ: KEYSTONE -
+              { 0x27D8,       { "shortcut_4",    id(shortcut_4) } },     // BenQ: 3D MODE
+              { 0x1EE1,       { "volume_down",   id(volume_down) } },    // BenQ: VOLUME -
+              { 0x1DE2,       { "volume_up",     id(volume_up) } },      // BenQ: VOLUME +
+              { 0x01FE,       { "token_sniff",   id(token_sniff) } },    // BenQ: NUMPAD 1 PLACEHOLDER
+              { 0x02FD,       { "token_clear",   id(token_clear) } },    // BenQ: NUMPAD 2 PLACEHOLDER
+              { 0x03FC,       { "token_recall",  id(token_recall) } },   // BenQ: NUMPAD 3 PLACEHOLDER
+              { 0x04FB,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // BenQ: NUMPAD 4 PLACEHOLDER
+              { 0x05FA,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }, // BenQ: NUMPAD 5 PLACEHOLDER
+            };
+
+            // Persistent internal variable controllers
+            static uint32_t last_clear_press_time = 0;
+            static uint32_t last_global_ir_time = 0;
+            static bool clear_confirmation_armed = false;
+
+            uint32_t now = millis();
+            
+            // Drop hardware bouncing duplicate frames from trailing BenQ packet blasts
+            if (now - last_global_ir_time < 250) {
+              last_global_ir_time = now;
+              return;
+            }
+            last_global_ir_time = now;
+
+            std::stringstream ss1;
+            ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.command;
+            std::string rc_code_1_str = ss1.str(); 
+            
+            std::stringstream ss2;
+            ss2 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.address;
+            std::string rc_code_2_str = ss2.str(); 
+
+            id(OLED_line2) = rc_code_2_str; 
+            id(OLED_line3) = rc_code_1_str; 
+
+            // Only execute button mapping lookup if the address matches BenQ standard (0x00C4)
+            if (x.address == 0x00C4 || x.address == 0xC400) {
+              id(OLED_line2) = "BenQ Proj"; 
+              
+              uint16_t lookup_key = x.command;
+              auto it = nec_codes.find(lookup_key); 
+              
+              if (it != nec_codes.end()) {
+                id(OLED_line1) = it->second.name; 
+                ESP_LOGD("IR Translated", "IR ---> : %s", it->second.name.c_str());
+                
+                if (it->second.name == "token_clear") {
+                  uint32_t elapsed = now - last_clear_press_time;
+
+                  // Evaluate if confirmation gate is currently open (less than 5000ms old)
+                  if (clear_confirmation_armed && elapsed <= 5000) {
+                    
+                    // --- SUCCESSFUL SECOND PRESS ---
+                    clear_confirmation_armed = false;
+                    last_clear_press_time = 0;
+
+                    id(ir_receiver)->cancel_timeout("token_clear_timeout");
+
+                    if (it->second.button_obj != nullptr) {
+                      it->second.button_obj->press(); 
+                    }
+                  } else {
+                    
+                    // --- FIRST PRESS TRIGGERED ---
+                    clear_confirmation_armed = true;
+                    last_clear_press_time = now;
+
+                    id(OLED_line1) = "Press Again!";
+                    id(OLED_line2) = "To Confirm";
+                    id(OLED_line3) = "Within 5 Sec";
+
+                    // Background scheduler task to wipe text and reset states if window expires
+                    id(ir_receiver)->set_timeout("token_clear_timeout", 5000, []() {
+                      clear_confirmation_armed = false;
+                      last_clear_press_time = 0;
+                      ESP_LOGI("IR Gate", "BenQ confirmation window expired.");
+
+                      id(OLED_line1) = "Clear Canceled";
+                      id(OLED_line2) = "Timed Out";
+                      id(OLED_line3) = "";
+                      id(display_timeout_handler)->execute();
+                    });
+                  }
+                }
+                else {
+                  // Any separate navigation click naturally cancels any pending token_clear arming state
+                  clear_confirmation_armed = false;
+                  last_clear_press_time = 0;
+                  id(ir_receiver)->cancel_timeout("token_clear_timeout");
+
+                  if (it->second.button_obj != nullptr) {
+                    it->second.button_obj->press(); 
+                  }
+                }
+                
+              } else {
+                id(OLED_line1) = "Unassigned";
+              }
+            } else {
+              id(OLED_line1) = "Not BenQ IR";
+            }
+            
+# ======= KUO End remote_receiver ============
