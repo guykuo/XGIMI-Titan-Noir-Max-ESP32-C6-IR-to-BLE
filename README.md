@@ -65,8 +65,6 @@ Boards that should work:
 *   ESP32-C3
 *   ESP32-C6
 *   ESP32 pico d4
-*   ESP32-H2
-*   ESP32-H4
     
 <br>
 Boards that will NOT work
@@ -483,8 +481,6 @@ Supplied hardware files support ESP32 boards ...
 * hardware_s3.yaml
 * hardware_c3.yaml
 * hardware_c6.yaml
-* hardware_h2.yaml
-* hardware_h4.yaml
 * hardware_m5stack-atom-lite.yaml
 
 Look in the hardware file for suggested GPIO pins for IR receiver and optional i2c display
