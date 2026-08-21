@@ -292,7 +292,7 @@ Keep the original remote paired as well.
 Unless your secrets.yaml already has a valid wake token, your ESP32 translator needs to learn a wake token from your original Xgimi remote.
 Sniffing for the wake token should be done with projector power disconnected because you will be pressing the remote's power button repeatedly.
 
-- Remote power from Xgimi Titan Noir Projector
+- Remove AC power from Xgimi Titan Noir Projector
 - ESP32 should be plugged into 5 volt USB-C power
 - Point infrared remote at ESP32 IR receiver and press its "4" button to start sniffing.
       Sniffing remains active for 20 seconds.
@@ -388,9 +388,9 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 |shortcut\_4 |green |0xAC53 |
 |volume\_down |volume down |0xFC03 |
 |volume\_up |volume up |0xFD02 |
-|token\_sniff |volume up |0xEB14 |
-|token\_clear |volume up |0xEA15 |
-|token\_recall |volume up |0xE916 |
+|token\_sniff |4 |0xEB14 |
+|token\_clear |5 |0xEA15 |
+|token\_recall |6 |0xE916 |
 |bluetooth\_pairing\_start |prime video |0xB847 |
 |bluetooth\_pairing\_clear |youtube |0xB649 |
 
