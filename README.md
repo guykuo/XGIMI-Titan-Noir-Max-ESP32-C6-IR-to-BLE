@@ -513,7 +513,7 @@ let me know and submit a working copy of corrected ir-map.
 * ir-map-sony-projector.yaml
 
 
-## Recent Notes:
+## Recent Changes:
 *   Multiple hardware and ir-map files added to project
 *   Added support for LED light on boards C3 and C6 to act as visual feedback
 *   Pressing BOOT button of board is alternate way to start sniff mode.
@@ -524,22 +524,12 @@ stores wake token. It's now simply a matter of pressing a button on the IR remot
 twice to start sniffing. Four to six presses of Xgimi remote power button is usually
 sufficient to get a capture. Learned token is kept on ESP non-volatile flash.
 
-Supplying a wake token in secret.yaml is now optional.
+*   Supplying a wake token in secret.yaml is now optional.
   
 *   ESP Board preference is now OLED display bearing ESP32-C3 SuperMini dev board.
 OLED display nicely shows when board begins token sniffing and completes capture.
 Non-display ESP32 will still work, but gives feedback only via log.
 
-*   Added support for LG Cinebeam HU810P IR codes
-
-*   Added support for JVC VCR remote IR codes
-    
-*   Changed file naming convention to board-GPIOpin-IRmapping
-    
-*   WARNING - Using 5v for Vcc on IR sensors may endanger the ESP32 boards.  
-    Changed pinout diagrams and instructions to use the 3 volt board connection.
-    
-*   Refactored to support of other ESP32 boards via adjusting a few entries in "make" file.
 
     
 
