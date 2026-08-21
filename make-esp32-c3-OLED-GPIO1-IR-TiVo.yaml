@@ -8,23 +8,19 @@ substitutions:
 packages: 
   # ***** hardware settings of ESP32 board
   
-  hardware_package: !include ir-common-kuo/hardware_c3.yaml
-  # hardware_package: !include ir-common-kuo/hardware_c6.yaml
+  hardware_package: !include ir-common-kuo/hardware_c3.yaml # Replace HARDWAREFILE.yaml with hardware file for your board
 
 
   # ***** IR mapping options
   
-  irmap_package: !include ir-common-kuo/ir-map-tivo-roamio.yaml # TiVo Roamio IR mapping
-  #  irmap_package: !include ir-common-kuo/ir-map-hisense-50u6g.yaml # Hisense 50U6G IR mapping
-  #  irmap_package: !include ir-common-kuo/ir-map-LG-cinebeam-hu810p.yaml # LG Cinebeam HU810P IR mapping
-  #  irmap_package: !include ir-common-kuo/ir-map-jvc-hr-S9600u.yaml # JVC HR-9600 VCR IR mapping
+  irmap_package: !include ir-common-kuo/ir-map-tivo-roamio.yaml #  Replace IRMAP.yaml with desired IR map.yaml 
 
 # ============= END Configuration Options KUO ===========
 
 
 
 
-  mrmachine_BLE_package: !include ir-common-kuo/mrmachine_bluetoothV_old.yaml # core bluetooth stack implementaton base by mrmachine
+  mrmachine_BLE_package: !include ir-common-kuo/appkit/mrmachine_bluetoothV_old.yaml # core bluetooth stack implementaton base by mrmachine
   
 
 preferences:
@@ -38,7 +34,7 @@ esphome:
     - <sstream>
     - <iomanip>
     - <array>
-    - secrets_bridge.h
+    - ir-common-kuo/appkit/secrets_bridge.h
 
   project:
     name: xgimi.titan-noir-esp32-rc # KUO name for generic ESP32
@@ -146,7 +142,7 @@ esp32:
   framework:
     type: ${framework_type}
     
-  partitions: partitions.csv  
+  partitions: ir-common-kuo/appkit/partitions.csv  
       
 
 

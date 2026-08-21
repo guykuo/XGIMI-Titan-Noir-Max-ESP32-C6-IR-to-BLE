@@ -1,7 +1,7 @@
 # ============= BEGIN Configuration Options KUO ==========
 substitutions:
 
-  ble_remote_name: "Hisense to Xgimi"  # <===== Name your IR remote. 20 char max.
+  ble_remote_name: "Hisense Xgimi"  # <===== Name your IR remote. 20 char max.
    
 
 
@@ -13,14 +13,14 @@ packages:
 
   # ***** IR mapping options
   
-  irmap_package: !include ir-common-kuo/ir-map-hisense-50u6g.yaml #  Replace IRMAP.yaml with IR map desired.
+  irmap_package: !include ir-common-kuo/ir-map-hisense-50u6g.yaml #  Replace IRMAP.yaml with desired IR map.yaml 
 
 # ============= END Configuration Options KUO ===========
 
 
 
 
-  mrmachine_BLE_package: !include ir-common-kuo/mrmachine_bluetoothV_old.yaml # core bluetooth stack implementaton base by mrmachine
+  mrmachine_BLE_package: !include ir-common-kuo/appkit/mrmachine_bluetoothV_old.yaml # core bluetooth stack implementaton base by mrmachine
   
 
 preferences:
@@ -34,7 +34,7 @@ esphome:
     - <sstream>
     - <iomanip>
     - <array>
-    - secrets_bridge.h
+    - ir-common-kuo/appkit/secrets_bridge.h
 
   project:
     name: xgimi.titan-noir-esp32-rc # KUO name for generic ESP32
@@ -142,7 +142,7 @@ esp32:
   framework:
     type: ${framework_type}
     
-  partitions: partitions.csv  
+  partitions: ir-common-kuo/appkit/partitions.csv  
       
 
 

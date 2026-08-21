@@ -1,0 +1,336 @@
+substitutions:
+
+  ssid_name: "ESP32 Xgimi Setup" # KUO name for generic esp32
+  device_name: esp32-xgimi # KUO name for generic esp32
+  friendly_name: "esp32 xgimi" # KUO name for generic esp32
+
+  shortcut_1_name: Shortcut 1
+  shortcut_2_name: Shortcut 2
+  shortcut_3_name: Shortcut 3
+  shortcut_4_name: Shortcut 4
+
+wifi:
+  reboot_timeout: 0s
+  ap:
+    ssid: "${ble_remote_name}"
+    password: !secret fallback_ap_password
+    ap_timeout: 15s
+
+captive_portal:
+improv_serial:
+
+esp32_ble:
+  id: esp32c6_ble
+  name: "${ble_remote_name}" # Kuo remote name here
+  io_capability: none
+  auth_req_mode: bond
+  min_key_size: 7
+  max_key_size: 16
+  max_connections: 1
+
+esp32_ble_server:
+  id: esp32c6_ble_server
+  appearance: 0x0180
+  manufacturer_data: [0x46, 0x00]
+  max_clients: 1
+  services:
+    # Exact identity fields reported by the original remote.
+    - uuid: 0x180A
+      characteristics:
+        - uuid: 0x2A29
+          read: true
+          value: "Seneasy"
+        - uuid: 0x2A24
+          read: true
+          value: "${ble_remote_name}" # Kuo remote name
+        - uuid: 0x2A25
+          read: true
+          value: "20260205"
+        - uuid: 0x2A26
+          read: true
+          value: "V1.0.0"
+        - uuid: 0x2A50
+          read: true
+          # USB VID source, VID 000D, PID 3843, version 0003 (little-endian).
+          value: [0x02, 0x0D, 0x00, 0x43, 0x38, 0x03, 0x00]
+
+    - uuid: 0x180F
+      characteristics:
+        - uuid: 0x2A19
+          read: true
+          notify: true
+          value: [100]
+
+    - uuid: 0x1812
+      advertise: true
+      characteristics:
+        - uuid: 0x2A4A
+          read: true
+          # HID 1.11, no country code, normally connectable + remote wake.
+          value: [0x11, 0x01, 0x00, 0x03]
+
+        - uuid: 0x2A4B
+          read: true
+          # Byte-for-byte descriptor captured from the original XGIMI remote.
+          value:
+            [
+              0x05, 0x01, 0x09, 0x06, 0xA1, 0x01, 0x05, 0x07,
+              0x09, 0x06, 0xA1, 0x01, 0x85, 0x01, 0x95, 0x08,
+              0x75, 0x08, 0x15, 0x00, 0x25, 0xFF, 0x19, 0x00,
+              0x29, 0xFF, 0x81, 0x00, 0xC0, 0x05, 0x0C, 0x09,
+              0x01, 0xA1, 0x01, 0x85, 0x02, 0x95, 0x03, 0x75,
+              0x10, 0x15, 0x00, 0x26, 0x9C, 0x02, 0x19, 0x00,
+              0x2A, 0x9C, 0x02, 0x81, 0x00, 0xC0, 0xC0
+            ]
+
+        - uuid: 0x2A4C
+          write_no_response: true
+          value: [0x00]
+
+        - uuid: 0x2A4E
+          read: true
+          write_no_response: true
+          value: [0x01]
+
+        - uuid: 0x2A4D
+          id: xgimi_keyboard_report
+          read: true
+          notify: true
+          value: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+          descriptors:
+            - uuid: 0x2908
+              read: true
+              write: false
+              value: [0x01, 0x01]
+
+        - uuid: 0x2A4D
+          id: xgimi_consumer_report
+          read: true
+          notify: true
+          value: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+          descriptors:
+            - uuid: 0x2908
+              read: true
+              write: false
+              value: [0x02, 0x01]
+
+xgimi_remote:
+  id: xgimi_remote_controller
+  remote_name: "${ble_remote_name}" # Kuo cannot pass a param in this version bluetooth stack
+  wake_token: !secret xgimi_wake_token
+  ble_id: esp32c6_ble
+  ble_server_id: esp32c6_ble_server
+  keyboard_report_id: xgimi_keyboard_report
+  consumer_report_id: xgimi_consumer_report
+
+binary_sensor:
+  - platform: template
+    name: "Projector Remote Connected"
+    id: projector_remote_connected
+    device_class: connectivity
+    entity_category: diagnostic
+    lambda: return id(xgimi_remote_controller).is_connected();
+
+  - platform: template
+    name: "Projector Remote Authenticated"
+    id: projector_remote_authenticated
+    device_class: connectivity
+    entity_category: diagnostic
+    lambda: return id(xgimi_remote_controller).is_authenticated();
+
+  - platform: template
+    name: "Projector Keyboard Notifications"
+    id: projector_keyboard_notifications
+    device_class: connectivity
+    entity_category: diagnostic
+    lambda: return id(xgimi_remote_controller).is_keyboard_subscribed();
+
+  - platform: template
+    name: "Projector Consumer Notifications"
+    id: projector_consumer_notifications
+    device_class: connectivity
+    entity_category: diagnostic
+    lambda: return id(xgimi_remote_controller).is_consumer_subscribed();
+
+      
+# IR receiver code was here KUO
+      
+                                    
+button:
+  - platform: template
+    name: "Back"
+    id: back
+    icon: mdi:arrow-left
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x29);
+
+  - platform: template
+    name: "Cursor Down"
+    id: cursor_down
+    icon: mdi:chevron-down
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x51);
+
+  - platform: template
+    name: "Cursor Enter"
+    id: cursor_enter
+    icon: mdi:checkbox-blank-circle-outline
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x28);
+
+  - platform: template
+    name: "Cursor Left"
+    id: cursor_left
+    icon: mdi:chevron-left
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x50);
+
+  - platform: template
+    name: "Cursor Right"
+    id: cursor_right
+    icon: mdi:chevron-right
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x4F);
+
+  - platform: template
+    name: "Cursor Up"
+    id: cursor_up
+    icon: mdi:chevron-up
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x52);
+
+  - platform: template
+    name: "Focus (Auto)"
+    id: focus_auto
+    icon: mdi:focus-field
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x44);
+
+  - platform: template
+    name: "Focus (Manual)"
+    id: focus_manual
+    icon: mdi:focus-field
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x3D);
+
+  - platform: template
+    name: "Home"
+    id: home
+    icon: mdi:home
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x4A);
+
+  - platform: template
+    name: "Input"
+    id: input
+    icon: mdi:login
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_consumer(0x01BC);
+
+  - platform: template
+    name: "Settings Menu"
+    id: settings_menu
+    icon: mdi:cog
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x41);
+
+  - platform: template
+    name: "Game Menu"
+    id: game_menu
+    icon: mdi:gamepad-variant
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x65);
+
+  - platform: template
+    name: "Mute"
+    id: mute
+    icon: mdi:volume-mute
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_consumer(0x01BD);
+
+  - platform: template
+    name: "Picture"
+    id: picture
+    icon: mdi:image-outline
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_consumer(0x0223);
+
+  - platform: template
+    name: "Power Off"
+    id: power_off
+    icon: mdi:power
+    on_press:
+      - lambda: id(xgimi_remote_controller).request_power_off();
+
+  - platform: template
+    name: "Power On"
+    id: power_on
+    icon: mdi:power
+    on_press:
+      - lambda: id(xgimi_remote_controller).start_wake_burst();
+
+  - platform: template
+    name: "Power Off (Immediately)"
+    id: power_off_immediately
+    icon: mdi:power
+    on_press:
+      - lambda: id(xgimi_remote_controller).hold_keyboard(0x7F);
+
+  - platform: template
+    name: "Shortcut 1"
+    id: shortcut_1
+    icon: mdi:numeric-1-box
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_consumer(0x021D);
+
+  - platform: template
+    name: "Shortcut 2"
+    id: shortcut_2
+    icon: mdi:numeric-2-box
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_consumer(0x021F);
+
+  - platform: template
+    name: "Shortcut 3"
+    id: shortcut_3
+    icon: mdi:numeric-3-box
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_consumer(0x0221);
+
+  - platform: template
+    name: "Shortcut 4"
+    id: shortcut_4
+    icon: mdi:numeric-4-box
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_consumer(0x0222);
+
+  - platform: template
+    name: "Volume Down"
+    id: volume_down
+    icon: mdi:volume-minus
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x81);
+
+  - platform: template
+    name: "Volume Up"
+    id: volume_up
+    icon: mdi:volume-plus
+    on_press:
+      - lambda: id(xgimi_remote_controller).press_keyboard(0x80);
+
+  - platform: template
+    name: "Bluetooth Pairing Mode"
+    id: bluetooth_pairing_start
+    icon: mdi:bluetooth-connect
+    entity_category: config
+    on_press:
+      - lambda: id(xgimi_remote_controller).start_pairing_mode();
+
+  - platform: template
+    name: "Clear Bluetooth Pairings"
+    id: bluetooth_pairing_clear
+    icon: mdi:bluetooth-off
+    entity_category: config
+    disabled_by_default: true
+    on_press:
+      - lambda: id(xgimi_remote_controller).clear_bonds();
