@@ -473,7 +473,10 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 
 
 ## Recent Notes:
-
+*   Added support for LED light on boards C3 and C6 to act as visual feedback
+*   Pressing BOOT button of board is alternate way to start sniff mode.
+*   Light flashes give information about token presence and sniffing success
+*   Sniffing a token that is identical to one already stored no longer seems to fail.
 *   Sniffing of Xgimi tokens directly by ESP32 board fully working. Captures and
 stores wake token. It's now simply a matter of pressing a button on the IR remote
 twice to start sniffing. Four to six presses of Xgimi remote power button is usually
@@ -495,19 +498,7 @@ Non-display ESP32 will still work, but gives feedback only via log.
     Changed pinout diagrams and instructions to use the 3 volt board connection.
     
 *   Refactored to support of other ESP32 boards via adjusting a few entries in "make" file.
-    
-*   Latest bluetooth stack from mrmachine incorporated into fork
-    
-*   Adjusted IR code mapping to work around errors in remote definitions stored  
-    at MyHarmony's library. With new mappings, translator works with codes learned from  
-    actual remote or ones downloaded from MyHarmony library.
-    
-*   Logging output from ESP32-C6-WROOM is only on its USB port. THe COMS port can  
-    be used for programming the ESP32, but will not output any log data.
-    
-*   If older Python is on your Mac, completes flashing ESP32 successfully,  
-    but does not start logging. Instead an architecture error appears in terminal.  
-    Fix this issue by updating to python-3.14.7 before building firmware.
+
     
 
 ## Scope and safety
