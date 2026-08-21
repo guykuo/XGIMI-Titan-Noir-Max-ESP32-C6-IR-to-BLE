@@ -1,3 +1,14 @@
+substitutions:
+
+  ssid_name: "ESP32 Xgimi Setup" # KUO name for generic esp32
+  device_name: esp32-xgimi # KUO name for generic esp32
+  friendly_name: "esp32 xgimi" # KUO name for generic esp32
+
+  shortcut_1_name: Shortcut 1
+  shortcut_2_name: Shortcut 2
+  shortcut_3_name: Shortcut 3
+  shortcut_4_name: Shortcut 4
+
 wifi:
   reboot_timeout: 0s
   ap:
@@ -141,21 +152,7 @@ binary_sensor:
     entity_category: diagnostic
     lambda: return id(xgimi_remote_controller).is_consumer_subscribed();
 
- 
- 
-  - platform: gpio
-    id: optional_wake_button
-    internal: true
-    pin:
-      number: GPIO11
-      inverted: true
-    filters:
-      - delayed_on: 20ms
-    on_press:
-      - lambda: id(xgimi_remote_controller).start_wake_burst();
-
-
-         
+      
 # IR receiver code was here KUO
       
                                     

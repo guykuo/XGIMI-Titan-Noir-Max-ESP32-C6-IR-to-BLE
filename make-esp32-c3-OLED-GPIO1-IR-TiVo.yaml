@@ -1,58 +1,31 @@
+# ============= BEGIN Configuration Options KUO ==========
 substitutions:
 
-  ssid_name: "ESP32 Xgimi Setup" # KUO name for generic esp32
-  device_name: esp32-xgimi # KUO name for generic esp32
-  friendly_name: "esp32 xgimi" # KUO name for generic esp32
+  ble_remote_name: "TiVo Xgimi"  # <===== Name your IR remote. 20 char max.
+   
 
-  shortcut_1_name: Shortcut 1 - HDMI 1
-  shortcut_2_name: Shortcut 2 - HDMI 2
-  shortcut_3_name: Shortcut 3 - HDMI 3
-  shortcut_4_name: Shortcut 4 - 3D Settings
-
-# ======================================================================
-# ============= BEGIN Configuration Options KUO ==========
-# ***** basic board and GPIO wiring
-  ble_remote_name: "TiVo to Xgimi"  # Name remote to indicate IR remote expected. KUO
-  
-  board_type: "esp32-c3-devkitm-1" # <== set board type here
-  framework_type: "esp-idf" # <====  set board framewark. 
-  pin_ir_receiver: GPIO1 # <======= set GPIO pin for IR sensor. 
-  pin_optional_wake_btn: GPIO3 # <= set GPIO pin for optional wake button. 
-
-# ***** i2c Display Pins
-# We always define a set of i2c pins to allow sharing of code base between boards with/without display
-
-# Pins for #ESP32-C3 with built in OLED i2c display
-i2c: 
-  sda: GPIO5
-  scl: GPIO6
-  scan: true
-  id: bus_a
-
-# # Pins for # ESP32-C6-wroom-1 and dummy or optional i2c display. Also display defintions near end of file
-# i2c: 
-#   sda: GPIO21
-#   scl: GPIO22
-#   frequency: 400kHz
-#   scan: false # Required for ESP32-C6 to prevent startup crashes during boot scans
-#   id: bus_a
 
 packages: 
-  mrmachine_BLE_package: !include ir-common-kuo/mrmachine_bluetoothV_old.yaml # core bluetooth stack implementaton base by mrmachine
+  # ***** hardware settings of ESP32 board
   
+  hardware_package: !include ir-common-kuo/hardware_c3.yaml
+  # hardware_package: !include ir-common-kuo/hardware_c6.yaml
+
+
   # ***** IR mapping options
-  # Select IR code mapping is desired by leaving the desired one uncommented. 
-  # Choices are TiVo Roamio, Hisense 50U6G, LG Cinebeam HU810P, or JVC HR-9600 VCR
-  # One and ONLY ONE irmap_package should be uncommented.
   
   irmap_package: !include ir-common-kuo/ir-map-tivo-roamio.yaml # TiVo Roamio IR mapping
   #  irmap_package: !include ir-common-kuo/ir-map-hisense-50u6g.yaml # Hisense 50U6G IR mapping
   #  irmap_package: !include ir-common-kuo/ir-map-LG-cinebeam-hu810p.yaml # LG Cinebeam HU810P IR mapping
   #  irmap_package: !include ir-common-kuo/ir-map-jvc-hr-S9600u.yaml # JVC HR-9600 VCR IR mapping
 
-
 # ============= END Configuration Options KUO ===========
-# ======================================================================
+
+
+
+
+  mrmachine_BLE_package: !include ir-common-kuo/mrmachine_bluetoothV_old.yaml # core bluetooth stack implementaton base by mrmachine
+  
 
 preferences:
   flash_write_interval: 3s # More quickly commits sniffed tokens to flash. Global data rarely changes.
@@ -68,7 +41,7 @@ esphome:
     - secrets_bridge.h
 
   project:
-    name: xgimi.titan-noir-max-esp32-rc # KUO name for generic ESP32
+    name: xgimi.titan-noir-esp32-rc # KUO name for generic ESP32
     version: 2.23.0
 
 
@@ -113,6 +86,8 @@ esphome:
               ESP_LOGD("boot_loader", "Using learned 15-byte token from NVS flash: %s", formatted_hex.c_str());
               id(OLED_line1) = formatted_hex; 
               
+              id(flash_led_custom).execute(8, 0.0, 0.2, 0.0); // flash 8 times indicate has learned token.
+
             } else {
               std::vector<uint8_t> active_token_vector = get_secret_wake_token();
               
@@ -143,6 +118,8 @@ esphome:
                   char buf[3];
                   snprintf(buf, sizeof(buf), "%02x", active_token_vector[i]);
                   hex_log_str += buf;
+                  
+              id(flash_led_custom).execute(2, 0.0, 0.0, 0.2); // flash two indicate default token.
               }
       
               ESP_LOGD("boot_loader", "Active wake token vector now set to hex: %s", hex_log_str.c_str());
@@ -150,6 +127,7 @@ esphome:
  
  
             }
+        
 
         - script.execute: display_timeout_handler
 
@@ -233,7 +211,8 @@ globals:
     initial_value: 'false'  # This acts as your default value!
     
     
-# Dashboard helper to see if the sniffer is active or asleep
+
+  
 binary_sensor:
   - platform: template
     name: "XGIMI Sniffer Active Status"
@@ -241,53 +220,29 @@ binary_sensor:
     icon: "mdi:radar"
 
 
+  - platform: gpio # Implement boot button to start sniff.
+    pin:
+      number: ${pin_boot_btn}
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    name: "Physical Boot Button"
+    id: physical_boot_button
+    on_press:
+      then:
+        - button.press: token_sniff
+
+
 button:
-  - platform: template # ===== button implements sniffing episode
+  - platform: template 
     name: "Token Sniff"
     id: token_sniff
     icon: "mdi:bluetooth-audio"
     on_press:
       then:
-        - logger.log: "Button token_scan pressed. Starting capture sequence..."
-
-        # prep globals for sniffing
-        - lambda: |-
-            id(sniffer_candidate_token) = "None";
-            id(sniffer_hit_counter) = 0;
-
-        # start sniffing
-        - esp32_ble_tracker.start_scan: 
-            continuous: false
-      
-        - binary_sensor.template.publish: # publish as sniffing
-            id: sniffer_status
-            state: ON
-        - logger.log: "BLE Wake Token ===" 
-        - logger.log: "BLE Wake Token === SNIFFING for Token." 
-        - logger.log: "BLE Wake Token === Repeatedly press xgimi power button." 
-        - logger.log: "BLE Wake Token ===" 
-        # show on OLED display
-        - lambda: |-
-            id(OLED_line1) = "SNIFFING Token"; 
-            id(OLED_line2) = "Repeat Press";
-            id(OLED_line3) = "Xgimi Power";
-        - script.execute: display_timeout_handler
-            
-        - delay: 20s # how long sniffing should continue.
-
-        - esp32_ble_tracker.stop_scan: {} # stop sniffing
- 
-        - binary_sensor.template.publish:
-            id: sniffer_status
-            state: OFF          
-        - logger.log: "BLE Wake Token === Sniffing Ended."
-        # show on OLED display
-        - lambda: |-
-            id(OLED_line1) = "Wake Token"; 
-            id(OLED_line2) = "Sniffing";
-            id(OLED_line3) = "ENDED";
-        - script.execute: display_timeout_handler
- 
+        - script.execute: sniffing_sequence
+         
  
  # retrieve stored template, display, and use as active token
   - platform: template
@@ -385,9 +340,11 @@ button:
               // Clear operational array memory as well
               memset(id(active_wake_token), 0x00, 15);
 
+              id(flash_led_custom).execute(2, 1.0, 1.0, 0.0); // flash twice indicate emptied.
+              
               id(OLED_line1) = "Clear Learned";
               id(OLED_line2) = "Using Default";
-              id(OLED_line3) = "Pending 5 sec";
+              id(OLED_line3) = "Wait 5 sec";
             } else {
             
               // 🛠️ THE C HELPER BRIDGE INJECTION: Safely sync parsed secret vector data to active arrays
@@ -396,6 +353,8 @@ button:
                 id(active_wake_token)[i] = active_token_vector[i];
               }
               
+              id(flash_led_custom).execute(1, 0.0, 1.0, 0.0); // flash once indicate already empty.
+
               id(OLED_line1) = "Already Cleared";
               id(OLED_line2) = "(no learned)";
               id(OLED_line3) = "Using Default";
@@ -420,13 +379,9 @@ button:
         - script.execute: display_timeout_handler
 
 
- 
-
-
-        
 # ==========================================
 # BLE TRACKING performs sniffing for wake tokens
-# Upon finding one, stores and beings using new token
+# Upon finding one, stores and begins using new token
 # ==========================================
 esp32_ble_tracker:
   id: my_ble_tracker   
@@ -441,18 +396,9 @@ esp32_ble_tracker:
                 
                 auto const& raw_payload = data.data;
 
-                // Compare raw memory bytes against global byte array
-                if (raw_payload.size() >= 15) {
-                  const uint8_t* incoming_last15_ptr = raw_payload.data() + (raw_payload.size() - 15);
-  
-                  if (memcmp(incoming_last15_ptr, id(active_wake_token), 15) == 0) {
-                    continue; 
-                  }
-                }
-
-                // 2. Parse payload text characters for architectural masking routines
+                // 1. Parse payload text characters for architectural masking routines
                 std::string token_hex = "";
-                char buffer[4]; // Restored fixed size allocation array bounds
+                char buffer[4]; 
                 for (unsigned char byte : raw_payload) {
                   snprintf(buffer, sizeof(buffer), "%02X", byte);
                   token_hex += buffer;
@@ -484,11 +430,37 @@ esp32_ble_tracker:
                       // Copy last 15 bytes of raw_payload into sniffed_token_last15
                       std::vector<uint8_t> sniffed_token_last15(raw_payload.end() - 15, raw_payload.end());
                       
-                      std::string sniffed_token_last15_hex = ""; // create human readable hex
-                      char slice_buf[4]; // Restored array buffer boundaries
+                      std::string sniffed_token_last15_hex = ""; 
+                      char slice_buf[4]; 
                       for (uint8_t byte : sniffed_token_last15) {
                         snprintf(slice_buf, sizeof(slice_buf), "%02X ", byte);
                         sniffed_token_last15_hex += slice_buf;
+                      }
+
+                      // MODIFIED PROTECTION: Notify OLED and skip flash write if token is already active
+                      if (memcmp(sniffed_token_last15.data(), id(active_wake_token), 15) == 0) {
+                        ESP_LOGD("xgimi_sniffer", "Token matches active_wake_token. Skipping duplicate flash write.");
+                        
+                        // 1. Kill the 20s delay script instantly
+                        id(sniffing_sequence).stop(); 
+                      
+                        // 2. Halt the BLE hardware scan and turn off the status sensor
+                        id(my_ble_tracker)->stop_scan(); 
+                        id(sniffer_status)->publish_state(false);
+                      
+                        id(flash_led_custom).execute(4, 0.0, 1.0, 0.0); // Flash 4 indicates matches stored
+                        
+                        id(sniffer_led)->turn_off();
+
+                        // 3. Clear display routine backlogs and push static info
+                        id(display_timeout_handler).stop();
+                        id(OLED_line1) = "Token Recognized";
+                        id(OLED_line2) = "Matches";
+                        id(OLED_line3) = "Existing";
+                        id(display_timeout_handler).execute();
+                        
+                        id(sniffer_hit_counter) = 0; 
+                        continue;
                       }
 
                       ESP_LOGI("xgimi_sniffer", "New TOKEN %s", sniffed_token_last15_hex.c_str());
@@ -496,7 +468,7 @@ esp32_ble_tracker:
                       // Copy 15 vector bytes into active active_wake_token and learned_wake_token. Request NVS sync
                       memcpy(id(active_wake_token), sniffed_token_last15.data(), 15);
                       memcpy(id(learned_wake_token), sniffed_token_last15.data(), 15);
-                      global_preferences->sync(); // flush to physical flash sectors
+                      global_preferences->sync(); 
 
                       // submit active_wake_token as one to use
                       std::vector<uint8_t> active_token_vector(id(active_wake_token), id(active_wake_token) + 15);
@@ -506,16 +478,25 @@ esp32_ble_tracker:
 
                       id(sniffer_hit_counter) = 0; 
 
-                      
                       ESP_LOGI("xgimi_sniffer", "SUCCESS! Token queued for Flash memory.");
 
-                      // display
+                      // 1. KILL THE 20s DELAY INSTANTLY
+                      id(sniffing_sequence).stop(); 
+                      
+                      id(flash_led_custom).execute(8, 0.0, 1.0, 0.0); // flash 8 times to indicate stored new token
+                      
+                      id(sniffer_led)->turn_off();
+
+                      // 2. Safely cleanup the state toggles manually since the script was aborted
+                      id(my_ble_tracker)->stop_scan(); 
+                      id(sniffer_status)->publish_state(false);
+                      
+                      // 3. Clear display delays and push your new text
+                      id(display_timeout_handler).stop();
                       id(OLED_line1) = sniffed_token_last15_hex;
                       id(OLED_line2) = "Storing Token";
-                      id(OLED_line3) = "Pending 5 sec";
-                      id(display_timeout_handler).execute();
-                      
-                      id(my_ble_tracker)->stop_scan(); 
+                      id(OLED_line3) = "Wait 5 sec";
+                      id(display_timeout_handler).execute(); 
                       
                       ESP_LOGI("xgimi_sniffer", "SUCCESS! Repeated XGIMI Wake Token detected and updated.");
                     } else {
@@ -538,8 +519,73 @@ esp32_ble_tracker:
             }
 
 
+
+
 #=====================  utility scripts
 script:
+  - id: sniffing_sequence
+    mode: restart
+    then:
+      - logger.log: "Starting capture sequence..."
+
+      # Prep globals for sniffing
+      - lambda: |-
+          id(sniffer_candidate_token) = "None";
+          id(sniffer_hit_counter) = 0;
+
+      # --- FIXED SEQUENCE: TURN ON LED BEFORE THE RADIO LOCKS THE TIMERS ---
+      - script.execute:
+          id: turn_led_on_custom
+          red: 0.0
+          green: 0.0
+          blue: 1.0
+          brightness: 0.2
+
+      # Give the RMT driver a microscopic window to finish shifting data bits out
+      - delay: 10ms 
+
+      # Start sniffing now that the light is safely glowing
+      - esp32_ble_tracker.start_scan: 
+          continuous: false
+     
+      # ---------------------------------------------------------------------
+
+      - binary_sensor.template.publish: 
+          id: sniffer_status
+          state: ON
+      - logger.log: "BLE Wake Token === SNIFFING for Token." 
+      
+      # Show on OLED display
+      - lambda: |-
+          id(OLED_line1) = "SNIFFING Token"; 
+          id(OLED_line2) = "Repeat Press";
+          id(OLED_line3) = "Xgimi Power";
+      - script.execute: display_timeout_handler
+          
+      - delay: 20s 
+
+      # This section only runs if the 20s completely expires without finding a token
+      - esp32_ble_tracker.stop_scan: {} 
+      
+      # Give the BLE stack a small window to release hardware resources
+      - delay: 10ms
+
+      - binary_sensor.template.publish:
+          id: sniffer_status
+          state: OFF          
+      - logger.log: "BLE Wake Token === Sniffing Ended."
+
+      # turn off light (Safe now that scan has officially stopped)
+      - script.execute: turn_led_off_custom
+
+      - lambda: |-
+          id(OLED_line1) = "Wake Token"; 
+          id(OLED_line2) = "Sniffing";
+          id(OLED_line3) = "ENDED";
+      - script.execute: display_timeout_handler
+
+
+
                 
   # OLED timeout handler script ===================
   - id: display_timeout_handler
@@ -609,46 +655,3 @@ script:
 
 
 
-# Download font for text rendering
-font:
-  - file: "gfonts://Roboto"
-    id: my_fontSmall
-    size: 9
-
-  - file: "gfonts://Roboto"
-    id: my_fontMedium
-    size: 10
-
-  - file: "gfonts://Roboto"
-    id: my_fontLarge
-    size: 12
-
-    
-# Built-in 72x40 SSD1306 OLED screen
-display:
-  - platform: ssd1306_i2c
-    model: "SSD1306 72x40"
-    address: 0x3C
-    id: oled_display
-    update_interval: 0.3s
-    offset_x: 0
-    offset_y: 0
-    rotation: 0
-    pages:
-      - id: active_page_std
-        lambda: |-
-          it.print(0, 0,  id(my_fontMedium), id(OLED_line1).c_str());
-          it.print(0, 11, id(my_fontLarge), id(OLED_line2).c_str());
-          it.print(0, 24, id(my_fontLarge), id(OLED_line3).c_str());
-
-      # FIXED: Aligned list item dash and nested lambda text exactly 4 spaces deep
-      - id: active_page_small
-        lambda: |-
-          it.print(0, 0,  id(my_fontSmall), id(OLED_line1).c_str());
-          it.print(0, 12, id(my_fontSmall), id(OLED_line2).c_str());
-          it.print(0, 24, id(my_fontSmall), id(OLED_line3).c_str());
-
-      # FIXED: Aligned list item dash and nested comment string safely
-      - id: blank_page
-        lambda: |-
-          // Leaving lambda completely blank turns all pixels off safely
