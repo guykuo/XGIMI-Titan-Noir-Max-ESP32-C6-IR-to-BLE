@@ -476,9 +476,45 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 | bluetooth\_pairing\_start | 1 | 0xC284 |
 | bluetooth\_pairing\_clear | 2 | 0xC244 |
 
+## Hardware Definitions Packages:
+Board specific information is pulled into make files as packages. You can edit your "make" file to use any of the supplied hardware packages.
+Supplied hardware files support ESP32 boards ...
+
+* hardware_s3.yaml
+* hardware_c3.yaml
+* hardware_c6.yaml
+* hardware_h2.yaml
+* hardware_h4.yaml
+* hardware_m5stack-atom-lite.yaml
+
+Look in the hardware file for suggested GPIO pins for IR receiver and optional i2c display
+
+## IR Map Pacakges:
+Similarly IR to bluetooth mappings are supplied as packages to be pulled into your make file.
+Tested ir-map files are...
+
+* ir-map-hisense-50u6g.yaml
+* ir-map-jvc-hr-S9600u.yaml
+* ir-map-LG-cinebeam-hu810p.yaml
+* ir-map-tivo-roamio.yaml
+
+Additional AI generated ir-maps are also supplied, but have not been tested and may 
+have compilation issues, particularly if "place holder" definitions are not removed or
+resolved with actual button IR codes. Author does not plan to edit nor test these 
+AI generated IR-maps, but if anyone edits and makes one actually usable, please
+let me know and submit a working copy of corrected ir-map.
+
+* ir-map-AWOL-projector.yaml
+* ir-map-benq-projector.yaml
+* ir-map-epson-projector.yaml
+* ir-map-hisense-projector.yaml
+* ir-map-jvc-projector.yaml
+* ir-map-optoma-projector.yaml
+* ir-map-sony-projector.yaml
 
 
 ## Recent Notes:
+*   Multiple hardware and ir-map files added to project
 *   Added support for LED light on boards C3 and C6 to act as visual feedback
 *   Pressing BOOT button of board is alternate way to start sniff mode.
 *   Light flashes give information about token presence and sniffing success
