@@ -6,7 +6,7 @@ substitutions:
   board_type: "m5stack-atom" # <== set board type here
   framework_type: "esp-idf" # <========= set board framewark. 
   
-  pin_ir_receiver: GPIO32 # <= GPIO pin for IR sensor on Grove Yellow/RX
+  pin_ir_receiver: GPIO32 # <= GPIO pin for IR sensor on Grove white/RX
 
   pin_indicator_LED: GPIO27 # <========== set GPIO pin for LED indicator
 
