@@ -10,14 +10,14 @@ substitutions:
 
   pin_indicator_LED: GPIO27 # <========== set GPIO pin for LED indicator
 
-  pin_boot_btn: GPIO39 # <====== main face button instead of boot to shart sniffing 
+  pin_boot_btn: GPIO9 # <====== use front button instead of boot to shart sniffing 
   
   
 # ***** i2c Display Pins <========= set by uncommenting only the pin for your board
 
 i2c: 
-  sda: GPIO26
-  scl: GPIO32
+  sda: GPIO25 # M5Stack Atom Display Kit
+  scl: GPIO21 # M5Stack Atom Display Kit
   frequency: 400kHz
   scan: false # to prevent startup crashes during boot scans
   id: bus_a
