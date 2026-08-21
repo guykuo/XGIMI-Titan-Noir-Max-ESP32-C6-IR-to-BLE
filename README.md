@@ -42,10 +42,16 @@ Your IR sensor module needs three connections to your ESP32 board.
 3.  IR Vcc --> 3V (Avoid connecting Vcc to 5V to avoid risk of ESP32 board damage)
     
 
-Here are pinouts of two styles of IR sensors and the correct connection points on a ESP32-C6-WROOM-1 board.
-<img width="1000" height="827" alt="pinouts ir sensor and esp32-c6-wroom-1" src="https://github.com/user-attachments/assets/eb46dd0e-6ddc-4379-a20e-1d3b8a705a19" />
+Here are pinouts of two styles of IR sensors and the correct connection points on a ESP32-C3 with built in OLED display.
+<img width="1000" height="827" alt="pinouts c3" src="https://github.com/user-attachments/assets/ed81b73e-706c-42e6-9b2c-3ecd1d09404e" />
+
 
 The IR sensor style that has the small pc board includes a red LED which lights with IR presence. That feedback LED may be useful during troubleshooting, but is not required. Either style of IR sensor will work.
+
+Here is an alternative board I have also tested, ESP32-C6-WROOM-1. This one does not have a built-in display, but this project will run on it and uses its single light to give feedback.
+
+<img width="1000" height="827" alt="pinouts c6" src="https://github.com/user-attachments/assets/52b63bcd-5724-4e93-91a2-a50d24705c71" />
+
 
 ### Selecting an ESP32 Board
 
