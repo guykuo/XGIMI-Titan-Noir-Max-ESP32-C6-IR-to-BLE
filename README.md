@@ -476,7 +476,7 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 | bluetooth\_pairing\_start | 1 | 0xC284 |
 | bluetooth\_pairing\_clear | 2 | 0xC244 |
 
-## Hardware Definitions Packages:
+## Hardware Definition Packages
 Board specific information is pulled into make files as packages. You can edit your "make" file to use any of the supplied hardware packages.
 Supplied hardware files support ESP32 boards ...
 
@@ -489,7 +489,7 @@ Supplied hardware files support ESP32 boards ...
 
 Look in the hardware file for suggested GPIO pins for IR receiver and optional i2c display
 
-## IR Map Pacakges:
+## IR Map Packages
 Similarly IR to bluetooth mappings are supplied as packages to be pulled into your make file.
 Tested ir-map files are...
 
