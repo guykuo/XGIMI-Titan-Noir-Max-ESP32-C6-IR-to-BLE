@@ -1,100 +1,78 @@
-# JVC Projector
+# Cleaned and migrated to decoupled architecture package format
 
-# ======= KUO Begin remote_receiver =========
-remote_receiver:
-  id: ir_receiver
-  pin:
-    number: ${pin_ir_receiver}
-    inverted: true
-    mode:
-      input: true
-      pullup: true
-  filter: 50us
-  idle: 10ms
-  tolerance: 25%
-  dump: 
-    - nec
-    
-  on_nec:
-      then:
-        - script.execute: display_timeout_handler
-        - lambda: |-
-            struct IRCommand {
-              std::string name;
-              esphome::template_::TemplateButton* button_obj;
-            };
- 
-            static const std::map<uint16_t, IRCommand> nec_codes = {
-              { 0x7303,       { "back",          id(back) } },           // JVC: EXIT
-              { 0x7335,       { "cursor_down",   id(cursor_down) } },    // JVC: DOWN ARROW
-              { 0x732F,       { "cursor_enter",  id(cursor_enter) } },   // JVC: OK / ENTER
-              { 0x7336,       { "cursor_left",   id(cursor_left) } },    // JVC: LEFT ARROW
-              { 0x7334,       { "cursor_right",  id(cursor_right) } },   // JVC: RIGHT ARROW
-              { 0x7337,       { "cursor_up",     id(cursor_up) } },      // JVC: UP ARROW
-              { 0x7330,       { "focus_auto",    id(focus_auto) } },     // JVC: LENS CONTROL
-              { 0x73D4,       { "focus_manual",  id(focus_manual) } },   // JVC: LENS MEMORY
-              { 0x732C,       { "home",          id(home) } },           // JVC: MENU (Fallback)
-              { 0x7304,       { "input",         id(input) } },          // JVC: INPUT
-              { 0x732C,       { "settings_menu", id(settings_menu) } },  // JVC: MENU
-              { 0x732C,       { "settings_menu", id(settings_menu) } },  // JVC: MENU (Fallback)
-              { 0x731E,       { "game_menu",     id(game_menu) } },      // JVC: INFO
-              { 0x7314,       { "mute",          id(mute) } },           // JVC: HIDE (Blank Screen)
-              { 0x7341,       { "picture",       id(picture) } },        // JVC: PIC MODE
-              { 0x7305,       { "power_on",      id(power_on) } },       // JVC: DISCRETE POWER ON
-              { 0x7305,       { "power_on",      id(power_on) } },       // JVC: DISCRETE POWER ON (Fallback)
-              { 0x7306,       { "power_off_immediately", id(power_off_immediately) } }, // JVC: DISCRETE POWER OFF
-              { 0x7306,       { "power_off_immediately", id(power_off_immediately) } }, // JVC: DISCRETE POWER OFF (Fallback)
-              { 0x7374,       { "shortcut_1",    id(shortcut_1) } },     // JVC: GAMMA
-              { 0x7375,       { "shortcut_2",    id(shortcut_2) } },     // JVC: COLOR TEMP
-              { 0x738A,       { "shortcut_3",    id(shortcut_3) } },     // JVC: C.M.D. (Clear Motion Drive)
-              { 0x73D5,       { "shortcut_4",    id(shortcut_4) } },     // JVC: 3D
-              { 0x7335,       { "volume_down",   id(volume_down) } },    // JVC: DOWN ARROW (Fallback)
-              { 0x7337,       { "volume_up",     id(volume_up) } },      // JVC: UP ARROW (Fallback)
-              { 0x7301,       { "token_sniff",   id(token_sniff) } },    // JVC: CUSTOM RESERVED 1
-              { 0x7302,       { "token_clear",   id(token_clear) } },    // JVC: CUSTOM RESERVED 2
-              { 0x7307,       { "token_recall",  id(token_recall) } },   // JVC: CUSTOM RESERVED 3
-              { 0x7308,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // JVC: CUSTOM RESERVED 4
-              { 0x7309,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }, // JVC: CUSTOM RESERVED 5
-            };
+packages:
+  base_ir_engine: !include ir-architecture-base.yaml
 
-            static uint32_t last_global_ir_time = 0;
-            uint32_t now = millis();
-            
-            // Drop hardware bouncing duplicate frames from trailing JVC packet blasts
-            if (now - last_global_ir_time < 250) {
-              return;
-            }
+substitutions:
+  # FIXED: Programmed to match JVC's native hardcoded D-ILA extended device address
+  target_ir_address: "0x73C8"
+  remote_display_name: "JVC Proj"
+  
+  # FIXED: Set to seamlessly match and isolate token_clear (0x02) from repeating on hold
+  hold_exclusion_condition: "command == 0x02"
 
-            std::stringstream ss1;
-            ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.command;
-            std::string rc_code_1_str = ss1.str(); 
-            
-            std::stringstream ss2;
-            ss2 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.address;
-            std::string rc_code_2_str = ss2.str(); 
-            
-            id(OLED_line2) = rc_code_2_str; 
-            id(OLED_line3) = rc_code_1_str; 
-            
-            if (x.address == 0x0073) {
-              id(OLED_line2) = "JVC Proj"; 
-              
-              auto it = nec_codes.find(x.command); 
-              
-              if (it != nec_codes.end()) {
-                last_global_ir_time = now; 
-                
-                id(OLED_line1) = it->second.name; 
-                ESP_LOGD("IR Translated", "IR ---> : %s", it->second.name.c_str());
-            
-                if (it->second.button_obj != nullptr) {
-                  it->second.button_obj->press(); 
-                }
-              } else {
-                id(OLED_line1) = "Unassigned"; 
-              }
+script:
+  - id: master_ir_processor
+    parameters:
+      command: uint32_t
+      is_hold: bool
+    then:
+      - lambda: |-
+          struct IRCommand {
+            std::string name;
+            esphome::template_::TemplateButton* button_obj;
+          };
+
+          // Strict unique map loaded with genuine JVC production command data codes
+          static const std::map<uint32_t, IRCommand> nec_codes = {
+            { 0x03,       { "back",          id(back) } },           // JVC: EXIT / BACK
+            { 0x35,       { "cursor_down",   id(cursor_down) } },    // JVC: DOWN ARROW
+            { 0x2F,       { "cursor_enter",  id(cursor_enter) } },   // JVC: OK / ENTER
+            { 0x36,       { "cursor_left",   id(cursor_left) } },    // JVC: LEFT ARROW
+            { 0x34,       { "cursor_right",  id(cursor_right) } },   // JVC: RIGHT ARROW
+            { 0x37,       { "cursor_up",     id(cursor_up) } },      // JVC: UP ARROW
+            { 0x30,       { "focus_auto",    id(focus_auto) } },     // JVC: LENS CONTROL
+            { 0xD4,       { "focus_manual",  id(focus_manual) } },   // JVC: LENS MEMORY
+            { 0x2C,       { "settings_menu", id(settings_menu) } },  // JVC: MENU
+            { 0x1E,       { "game_menu",     id(game_menu) } },      // JVC: INFO
+            { 0x04,       { "input",         id(input) } },          // JVC: INPUT
+            { 0x14,       { "mute",          id(mute) } },           // JVC: HIDE (Blank Screen)
+            { 0x41,       { "picture",       id(picture) } },        // JVC: PIC MODE
+            { 0x05,       { "power_on",      id(power_on) } },       // JVC: DISCRETE POWER ON
+            { 0x06,       { "power_off_immediately", id(power_off_immediately) } }, // JVC: DISCRETE POWER OFF
+            { 0x74,       { "shortcut_1",    id(shortcut_1) } },     // JVC: GAMMA
+            { 0x75,       { "shortcut_2",    id(shortcut_2) } },     // JVC: COLOR TEMP
+            { 0x8A,       { "shortcut_3",    id(shortcut_3) } },     // JVC: C.M.D. (Clear Motion Drive)
+            { 0xD5,       { "shortcut_4",    id(shortcut_4) } },     // JVC: 3D
+            { 0x01,       { "token_sniff",   id(token_sniff) } },    // JVC: CUSTOM RESERVED 1
+            { 0x02,       { "token_clear",   id(token_clear) } },    // JVC: CUSTOM RESERVED 2
+            { 0x07,       { "token_recall",  id(token_recall) } },   // JVC: CUSTOM RESERVED 3
+            { 0x08,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // JVC: CUSTOM RESERVED 4
+            { 0x09,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // JVC: CUSTOM RESERVED 5
+          }; // Structural semicolon to close map declaration
+
+          // Operational safety intercept loop for repeating button holds
+          if (is_hold && (${hold_exclusion_condition})) {
+            // FIXED: Cast uint32_t command to uint8_t to fully eliminate log print compiler width warnings
+            ESP_LOGW("IR Safety", "Hold repeat blocked for safety excluded command: 0x%02X", (uint8_t)command);
+            return;
+          }
+
+          auto it = nec_codes.find(command);
+          if (it != nec_codes.end()) {
+            if (is_hold) {
+              id(OLED_line1) = it->second.name + " (Hold)";
+              ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
             } else {
-              id(OLED_line1) = "Not JVC Proj IR"; 
+              id(OLED_line1) = it->second.name;
+              ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
             }
-            
-# ======= KUO End remote_receiver ============
+
+            if (it->second.button_obj != nullptr) {
+              it->second.button_obj->press();
+            }
+          } else {
+            if (!is_hold) {
+              id(OLED_line1) = "Unassigned";
+            }
+          }

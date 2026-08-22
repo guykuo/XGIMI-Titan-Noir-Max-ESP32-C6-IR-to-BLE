@@ -1,100 +1,80 @@
-# Hisense Projector (Laser TV / Cube Series)
+# Cleaned and migrated to decoupled architecture package format
 
-# ======= KUO Begin remote_receiver =========
-remote_receiver:
-  id: ir_receiver
-  pin:
-    number: ${pin_ir_receiver}
-    inverted: true
-    mode:
-      input: true
-      pullup: true
-  filter: 50us
-  idle: 10ms
-  tolerance: 25%
-  dump: 
-    - nec
-    
-  on_nec:
-      then:
-        - script.execute: display_timeout_handler
-        - lambda: |-
-            struct IRCommand {
-              std::string name;
-              esphome::template_::TemplateButton* button_obj;
-            };
- 
-            static const std::map<uint16_t, IRCommand> nec_codes = {
-              { 0x02FD,       { "back",          id(back) } },           // Hisense Proj: BACK / RETURN
-              { 0x1AE5,       { "cursor_down",   id(cursor_down) } },    // Hisense Proj: DOWN ARROW
-              { 0x12ED,       { "cursor_enter",  id(cursor_enter) } },   // Hisense Proj: OK / SELECT
-              { 0x11EE,       { "cursor_left",   id(cursor_left) } },    // Hisense Proj: LEFT ARROW
-              { 0x15EA,       { "cursor_right",  id(cursor_right) } },   // Hisense Proj: RIGHT ARROW
-              { 0x19E6,       { "cursor_up",     id(cursor_up) } },      // Hisense Proj: UP ARROW
-              { 0x48B7,       { "focus_auto",    id(focus_auto) } },     // Hisense Proj: AUTO FOCUS
-              { 0x49B6,       { "focus_manual",  id(focus_manual) } },   // Hisense Proj: MANUAL FOCUS MENU
-              { 0x06F9,       { "home",          id(home) } },           // Hisense Proj: HOME (VIDAA / Google Home)
-              { 0x0DF2,       { "input",         id(input) } },          // Hisense Proj: INPUT SOURCE SELECT
-              { 0x0AF5,       { "settings_menu", id(settings_menu) } },  // Hisense Proj: QUICK SETTINGS MENU
-              { 0x0AF5,       { "settings_menu", id(settings_menu) } },  // Hisense Proj: QUICK SETTINGS MENU (Fallback)
-              { 0x45BA,       { "game_menu",     id(game_menu) } },      // Hisense Proj: INFO STATUS
-              { 0x03FC,       { "mute",          id(mute) } },           // Hisense Proj: MUTE
-              { 0x1fe0,       { "picture",       id(picture) } },        // Hisense Proj: PICTURE MODE CYCLE
-              { 0xD02F,       { "power_on",      id(power_on) } },       // Hisense Proj: DISCRETE POWER ON
-              { 0xD02F,       { "power_on",      id(power_on) } },       // Hisense Proj: DISCRETE POWER ON (Fallback)
-              { 0xD12E,       { "power_off_immediately", id(power_off_immediately) } }, // Hisense Proj: DISCRETE POWER OFF
-              { 0xD12E,       { "power_off_immediately", id(power_off_immediately) } }, // Hisense Proj: DISCRETE POWER OFF (Fallback)
-              { 0x54AB,       { "shortcut_1",    id(shortcut_1) } },     // Hisense Proj: ECO MODE / GEOM CALIBRATION
-              { 0x58A7,       { "shortcut_2",    id(shortcut_2) } },     // Hisense Proj: AUDIO MODE
-              { 0x52AD,       { "shortcut_3",    id(shortcut_3) } },     // Hisense Proj: 3D SETTING
-              { 0x56A9,       { "shortcut_4",    id(shortcut_4) } },     // Hisense Proj: CUSTOM FUNCTION KEY
-              { 0x17E8,       { "volume_down",   id(volume_down) } },    // Hisense Proj: VOLUME MINUS
-              { 0x13EC,       { "volume_up",     id(volume_up) } },      // Hisense Proj: VOLUME PLUS
-              { 0x619E,       { "token_sniff",   id(token_sniff) } },    // Hisense Proj: CUSTOM ALLOCATION 1
-              { 0x629D,       { "token_clear",   id(token_clear) } },    // Hisense Proj: CUSTOM ALLOCATION 2
-              { 0x639C,       { "token_recall",  id(token_recall) } },   // Hisense Proj: CUSTOM ALLOCATION 3
-              { 0x649B,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // Hisense Proj: BLUETOOTH PAIR PLACEHOLDER
-              { 0x659A,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }, // Hisense Proj: BLUETOOTH RESET PLACEHOLDER
-            };
+packages:
+  base_ir_engine: !include ir-architecture-base.yaml
 
-            static uint32_t last_global_ir_time = 0;
-            uint32_t now = millis();
-            
-            // Drop hardware bouncing duplicate frames from trailing Hisense packet blasts
-            if (now - last_global_ir_time < 250) {
-              return;
-            }
+substitutions:
+  # CHANGED: Replaced the old TiVo 0x3085 placeholder with the correct baseline Hisense projector native address
+  target_ir_address: "0x01FE"
+  remote_display_name: "Hisense Proj"
+  
+  # CHANGED: Programmed to natively match and isolate token_clear (0x629D) from repeating on hold
+  hold_exclusion_condition: "command == 0x629D"
 
-            std::stringstream ss1;
-            ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.command;
-            std::string rc_code_1_str = ss1.str(); 
-            
-            std::stringstream ss2;
-            ss2 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.address;
-            std::string rc_code_2_str = ss2.str(); 
-            
-            id(OLED_line2) = rc_code_2_str; 
-            id(OLED_line3) = rc_code_1_str; 
-            
-            if (x.address == 0x3085) {
-              id(OLED_line2) = "Hisense Proj"; 
-              
-              auto it = nec_codes.find(x.command); 
-              
-              if (it != nec_codes.end()) {
-                last_global_ir_time = now; 
-                
-                id(OLED_line1) = it->second.name; 
-                ESP_LOGD("IR Translated", "IR ---> : %s", it->second.name.c_str());
-            
-                if (it->second.button_obj != nullptr) {
-                  it->second.button_obj->press(); 
-                }
-              } else {
-                id(OLED_line1) = "Unassigned"; 
-              }
+script:
+  - id: master_ir_processor
+    parameters:
+      command: uint32_t
+      is_hold: bool
+    then:
+      - lambda: |-
+          struct IRCommand {
+            std::string name;
+            esphome::template_::TemplateButton* button_obj;
+          };
+
+          // Strict unique map to prevent compiler errors and map overwrites
+          static const std::map<uint32_t, IRCommand> nec_codes = {
+            { 0x02FD,       { "back",          id(back) } },           // Hisense Proj: BACK / RETURN
+            { 0x1AE5,       { "cursor_down",   id(cursor_down) } },    // Hisense Proj: DOWN ARROW
+            { 0x12ED,       { "cursor_enter",  id(cursor_enter) } },   // Hisense Proj: OK / SELECT
+            { 0x11EE,       { "cursor_left",   id(cursor_left) } },    // Hisense Proj: LEFT ARROW
+            { 0x15EA,       { "cursor_right",  id(cursor_right) } },   // Hisense Proj: RIGHT ARROW
+            { 0x19E6,       { "cursor_up",     id(cursor_up) } },      // Hisense Proj: UP ARROW
+            { 0x48B7,       { "focus_auto",    id(focus_auto) } },     // Hisense Proj: AUTO FOCUS
+            { 0x49B6,       { "focus_manual",  id(focus_manual) } },   // Hisense Proj: MANUAL FOCUS MENU
+            { 0x06F9,       { "home",          id(home) } },           // Hisense Proj: HOME (VIDAA / Google Home)
+            { 0x0DF2,       { "input",         id(input) } },          // Hisense Proj: INPUT SOURCE SELECT
+            { 0x0AF5,       { "settings_menu", id(settings_menu) } },  // Hisense Proj: QUICK SETTINGS MENU
+            { 0x45BA,       { "game_menu",     id(game_menu) } },      // Hisense Proj: INFO STATUS
+            { 0x03FC,       { "mute",          id(mute) } },           // Hisense Proj: MUTE
+            { 0x1fe0,       { "picture",       id(picture) } },        // Hisense Proj: PICTURE MODE CYCLE
+            { 0xD02F,       { "power_on",      id(power_on) } },       // Hisense Proj: DISCRETE POWER ON
+            { 0xD12E,       { "power_off_immediately", id(power_off_immediately) } }, // Hisense Proj: DISCRETE POWER OFF
+            { 0x54AB,       { "shortcut_1",    id(shortcut_1) } },     // Hisense Proj: ECO MODE / GEOM CALIBRATION
+            { 0x58A7,       { "shortcut_2",    id(shortcut_2) } },     // Hisense Proj: AUDIO MODE
+            { 0x52AD,       { "shortcut_3",    id(shortcut_3) } },     // Hisense Proj: 3D SETTING
+            { 0x56A9,       { "shortcut_4",    id(shortcut_4) } },     // Hisense Proj: CUSTOM FUNCTION KEY
+            { 0x17E8,       { "volume_down",   id(volume_down) } },    // Hisense Proj: VOLUME MINUS
+            { 0x13EC,       { "volume_up",     id(volume_up) } },      // Hisense Proj: VOLUME PLUS
+            { 0x619E,       { "token_sniff",   id(token_sniff) } },    // Hisense Proj: CUSTOM ALLOCATION 1
+            { 0x629D,       { "token_clear",   id(token_clear) } },    // Hisense Proj: CUSTOM ALLOCATION 2
+            { 0x639C,       { "token_recall",  id(token_recall) } },   // Hisense Proj: CUSTOM ALLOCATION 3
+            { 0x649B,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // Hisense Proj: BLUETOOTH PAIR PLACEHOLDER
+            { 0x659A,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // Hisense Proj: BLUETOOTH RESET PLACEHOLDER
+          };
+
+          // Operational safety intercept loop for repeating button holds
+          if (is_hold && (${hold_exclusion_condition})) {
+            ESP_LOGW("IR Safety", "Hold repeat blocked for safety excluded command: 0x%04X", command);
+            return;
+          }
+
+          auto it = nec_codes.find(command);
+          if (it != nec_codes.end()) {
+            if (is_hold) {
+              id(OLED_line1) = it->second.name + " (Hold)";
+              ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
             } else {
-              id(OLED_line1) = "Not Hisense Proj IR"; 
+              id(OLED_line1) = it->second.name;
+              ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
             }
-            
-# ======= KUO End remote_receiver ============
+
+            if (it->second.button_obj != nullptr) {
+              it->second.button_obj->press();
+            }
+          } else {
+            if (!is_hold) {
+              id(OLED_line1) = "Unassigned";
+            }
+          }

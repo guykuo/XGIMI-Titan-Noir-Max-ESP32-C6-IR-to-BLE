@@ -10,7 +10,6 @@ substitutions:
 
   pin_indicator_LED: GPIO8 # <========== set GPIO pin for LED indicator (both ESP32-C3 and C6)
 
-  #pin_boot_btn: GPIO0 # <====== Most ESP boards use pin 0 for boot button. 
   pin_boot_btn: GPIO9 # <======= ESP32-c3 and ESP32-C6 are different and use pin 9 for boot button. 
   
   

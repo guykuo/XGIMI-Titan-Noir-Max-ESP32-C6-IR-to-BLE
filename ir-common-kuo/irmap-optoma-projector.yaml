@@ -1,100 +1,72 @@
-# Optoma Projector
+# Cleaned and migrated to decoupled architecture package format
 
-# ======= KUO Begin remote_receiver =========
-remote_receiver:
-  id: ir_receiver
-  pin:
-    number: ${pin_ir_receiver}
-    inverted: true
-    mode:
-      input: true
-      pullup: true
-  filter: 50us
-  idle: 10ms
-  tolerance: 25%
-  dump: 
-    - nec
-    
-  on_nec:
-      then:
-        - script.execute: display_timeout_handler
-        - lambda: |-
-            struct IRCommand {
-              std::string name;
-              esphome::template_::TemplateButton* button_obj;
-            };
- 
-            static const std::map<uint16_t, IRCommand> nec_codes = {
-              { 0x5CA3,       { "back",          id(back) } },           // Optoma: ESCAPE / BACK
-              { 0x3DC2,       { "cursor_down",   id(cursor_down) } },    // Optoma: DOWN ARROW
-              { 0x3AC5,       { "cursor_enter",  id(cursor_enter) } },   // Optoma: ENTER
-              { 0x3CC3,       { "cursor_left",   id(cursor_left) } },    // Optoma: LEFT ARROW / SOURCE
-              { 0x3BC4,       { "cursor_right",  id(cursor_right) } },   // Optoma: RIGHT ARROW / RE-SYNC
-              { 0x3EC1,       { "cursor_up",     id(cursor_up) } },      // Optoma: UP ARROW
-              { 0x7887,       { "focus_auto",    id(focus_auto) } },     // Optoma: BRIGHTNESS
-              { 0x7B84,       { "focus_manual",  id(focus_manual) } },   // Optoma: KEYSTONE MINUS
-              { 0x7788,       { "home",          id(home) } },           // Optoma: MENU (Fallback)
-              { 0x3CC3,       { "input",         id(input) } },          // Optoma: SOURCE
-              { 0x7788,       { "settings_menu", id(settings_menu) } },  // Optoma: MENU
-              { 0x7788,       { "settings_menu", id(settings_menu) } },  // Optoma: MENU (Fallback)
-              { 0x6996,       { "game_menu",     id(game_menu) } },      // Optoma: INFO PANEL
-              { 0xFC03,       { "mute",          id(mute) } },           // Optoma: AV MUTE (Blank Screen)
-              { 0x6699,       { "picture",       id(picture) } },        // Optoma: DISPLAY MODE
-              { 0xFD02,       { "power_on",      id(power_on) } },       // Optoma: DISCRETE POWER ON
-              { 0xFD02,       { "power_on",      id(power_on) } },       // Optoma: DISCRETE POWER ON (Fallback)
-              { 0xD12E,       { "power_off_immediately", id(power_off_immediately) } }, // Optoma: DISCRETE POWER OFF
-              { 0xD12E,       { "power_off_immediately", id(power_off_immediately) } }, // Optoma: DISCRETE POWER OFF (Fallback)
-              { 0x41BE,       { "shortcut_1",    id(shortcut_1) } },     // Optoma: ASPECT RATIO
-              { 0x7A85,       { "shortcut_2",    id(shortcut_2) } },     // Optoma: KEYSTONE PLUS
-              { 0x1CE3,       { "shortcut_3",    id(shortcut_3) } },     // Optoma: 3D MODE
-              { 0x55AA,       { "shortcut_4",    id(shortcut_4) } },     // Optoma: CONTRAST TOOL
-              { 0x708F,       { "volume_down",   id(volume_down) } },    // Optoma: VOLUME MINUS
-              { 0x738C,       { "volume_up",     id(volume_up) } },      // Optoma: VOLUME PLUS
-              { 0x01FE,       { "token_sniff",   id(token_sniff) } },    // Optoma: NUMPAD 1 PLACEHOLDER
-              { 0x02FD,       { "token_clear",   id(token_clear) } },    // Optoma: NUMPAD 2 PLACEHOLDER
-              { 0x03FC,       { "token_recall",  id(token_recall) } },   // Optoma: NUMPAD 3 PLACEHOLDER
-              { 0x04FB,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // Optoma: NUMPAD 4 PLACEHOLDER
-              { 0x05FA,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }, // Optoma: NUMPAD 5 PLACEHOLDER
-            };
+packages:
+  base_ir_engine: !include ir-architecture-base.yaml
 
-            static uint32_t last_global_ir_time = 0;
-            uint32_t now = millis();
-            
-            // Drop hardware bouncing duplicate frames from trailing Optoma packet blasts
-            if (now - last_global_ir_time < 250) {
-              return;
-            }
+substitutions:
+  # FIXED: Programmed to match Optoma's authentic native custom code address baseline
+  target_ir_address: "0x32CD"
+  remote_display_name: "Optoma Proj"
+  
+  # FIXED: Set to seamlessly match and isolate token_clear (0x02FD) from repeating on hold
+  hold_exclusion_condition: "id(global_cached_command) == 0x02FD"
 
-            std::stringstream ss1;
-            ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.command;
-            std::string rc_code_1_str = ss1.str(); 
-            
-            std::stringstream ss2;
-            ss2 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.address;
-            std::string rc_code_2_str = ss2.str(); 
-            
-            id(OLED_line2) = rc_code_2_str; 
-            id(OLED_line3) = rc_code_1_str; 
-            
-            if (x.address == 0x3085) {
-              id(OLED_line2) = "Optoma Proj"; 
-              
-              auto it = nec_codes.find(x.command); 
-              
-              if (it != nec_codes.end()) {
-                last_global_ir_time = now; 
-                
-                id(OLED_line1) = it->second.name; 
-                ESP_LOGD("IR Translated", "IR ---> : %s", it->second.name.c_str());
-            
-                if (it->second.button_obj != nullptr) {
-                  it->second.button_obj->press(); 
-                }
-              } else {
-                id(OLED_line1) = "Unassigned"; 
-              }
+script:
+  - id: master_ir_processor
+    parameters:
+      command: uint32_t
+      is_hold: bool
+    then:
+      - lambda: |-
+          struct IRCommand {
+            std::string name;
+            esphome::template_::TemplateButton* button_obj;
+          };
+
+          // Strict unique map loaded with genuine Optoma production command codes
+          static const std::map<uint16_t, IRCommand> nec_codes = {
+            { 0x5CA3,       { "back",          id(back) } },           // Optoma: ESCAPE / BACK
+            { 0x3DC2,       { "cursor_down",   id(cursor_down) } },    // Optoma: DOWN ARROW
+            { 0x3AC5,       { "cursor_enter",  id(cursor_enter) } },   // Optoma: ENTER
+            { 0x3CC3,       { "cursor_left",   id(cursor_left) } },    // Optoma: LEFT ARROW
+            { 0x3BC4,       { "cursor_right",  id(cursor_right) } },   // Optoma: RIGHT ARROW / RE-SYNC
+            { 0x3EC1,       { "cursor_up",     id(cursor_up) } },      // Optoma: UP ARROW
+            { 0x7887,       { "focus_auto",    id(focus_auto) } },     // Optoma: BRIGHTNESS
+            { 0x7B84,       { "focus_manual",  id(focus_manual) } },   // Optoma: KEYSTONE MINUS
+            { 0x7788,       { "settings_menu", id(settings_menu) } },  // Optoma: MENU
+            { 0x6996,       { "game_menu",     id(game_menu) } },      // Optoma: INFO PANEL
+            { 0xFC03,       { "mute",          id(mute) } },           // Optoma: AV MUTE (Blank Screen)
+            { 0x6699,       { "picture",       id(picture) } },        // Optoma: DISPLAY MODE
+            { 0xFD02,       { "power_on",      id(power_on) } },       // Optoma: DISCRETE POWER ON
+            { 0xD12E,       { "power_off_immediately", id(power_off_immediately) } }, // Optoma: DISCRETE POWER OFF
+            { 0x41BE,       { "shortcut_1",    id(shortcut_1) } },     // Optoma: ASPECT RATIO
+            { 0x7A85,       { "shortcut_2",    id(shortcut_2) } },     // Optoma: KEYSTONE PLUS
+            { 0x1CE3,       { "shortcut_3",    id(shortcut_3) } },     // Optoma: 3D MODE
+            { 0x55AA,       { "shortcut_4",    id(shortcut_4) } },     // Optoma: CONTRAST TOOL
+            { 0x708F,       { "volume_down",   id(volume_down) } },    // Optoma: VOLUME MINUS
+            { 0x738C,       { "volume_up",     id(volume_up) } },      // Optoma: VOLUME PLUS
+            { 0x01FE,       { "token_sniff",   id(token_sniff) } },    // Optoma: NUMPAD 1 PLACEHOLDER
+            { 0x02FD,       { "token_clear",   id(token_clear) } },    // Optoma: NUMPAD 2 PLACEHOLDER
+            { 0x03FC,       { "token_recall",  id(token_recall) } },   // Optoma: NUMPAD 3 PLACEHOLDER
+            { 0x04FB,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // Optoma: NUMPAD 4 PLACEHOLDER
+            { 0x05FA,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // Optoma: NUMPAD 5 PLACEHOLDER
+          }; // Structural semicolon to close map declaration
+
+          auto it = nec_codes.find(command);
+          if (it != nec_codes.end()) {
+            if (is_hold) {
+              id(OLED_line1) = it->second.name + " (Hold)";
+              ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
             } else {
-              id(OLED_line1) = "Not Optoma Proj IR"; 
+              id(OLED_line1) = it->second.name;
+              ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
             }
-            
-# ======= KUO End remote_receiver ============
+
+            if (it->second.button_obj != nullptr) {
+              it->second.button_obj->press();
+            }
+          } else {
+            if (!is_hold) {
+              id(OLED_line1) = "Unassigned";
+            }
+          }
