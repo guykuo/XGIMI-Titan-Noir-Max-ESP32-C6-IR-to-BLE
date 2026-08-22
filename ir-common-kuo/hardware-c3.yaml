@@ -3,21 +3,21 @@
 substitutions:
 # ***** basic board and GPIO wiring
   
-  board_type: "esp32-s3-devkitc-1" # <== set board type here
+  board_type: "esp32-c3-devkitm-1" # <== set board type here
   framework_type: "esp-idf" # <========= set board framewark. 
   
   pin_ir_receiver: GPIO1 # <============ set GPIO pin for IR sensor. 
 
-  pin_indicator_LED: GPIO48 # <========== set GPIO pin for LED indicator
+  pin_indicator_LED: GPIO8 # <========== set GPIO pin for LED indicator (both ESP32-C3 and C6)
 
-  pin_boot_btn: GPIO0 # <====== Most ESP boards use pin 0 for boot button. 
+  pin_boot_btn: GPIO9 # <======= ESP32-c3 and ESP32-C6 use pin 9 for boot button. 
   
   
 # ***** i2c Display Pins <========= set by uncommenting only the pin for your board
 
 i2c: 
-  sda: GPIO8
-  scl: GPIO9
+  sda: GPIO5
+  scl: GPIO6
   frequency: 400kHz
   scan: false # Required for ESP32-C6 to prevent startup crashes during boot scans
   id: bus_a
