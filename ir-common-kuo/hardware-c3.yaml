@@ -24,68 +24,48 @@ i2c:
   
 # ======================================================================
   
-light:
-  - platform: esp32_rmt_led_strip  # REPAIRED: Correct ESPHome driver for C6 addressable LEDs
+
+switch:
+  - platform: gpio # indicator LED that lights up when sniffing
+    pin:
+      number: ${pin_indicator_LED}
+      inverted: true  # <--- Fixes the active-low inversion
     id: sniffer_led
-    pin: ${pin_indicator_LED}
-    chipset: WS2812
-    num_leds: 1
-    rgb_order: GRB
-    name: "Sniffer Indicator"
-    
+  
 script:
   - id: flash_led_custom
     parameters:
       count: int         # Number of flashes
-      red: float         # Red value (0.0 to 1.0)
-      green: float       # Green value (0.0 to 1.0)
-      blue: float        # Blue value (0.0 to 1.0)
+      red: float         # Ignored on C3, kept for API matching
+      green: float       # Ignored on C3, kept for API matching
+      blue: float        # Ignored on C3, kept for API matching
     mode: restart
     then:
       - repeat:
           count: !lambda "return count;"
           then:
-            # --- TURN RGB LED ON WITH DYNAMIC COLOR ---
-            # Pass your script parameters to the light.turn_on action via lambdas
-            - light.turn_on:
-                id: sniffer_led
-                red: !lambda "return red;"
-                green: !lambda "return green;"
-                blue: !lambda "return blue;"
-                brightness: 0.2
-                transition_length: 0s
+            # --- TURN BINARY LED ON ---
+            - switch.turn_on: sniffer_led
             - delay: 150ms
-
-            # --- TURN RGB LED OFF ---
-            - light.turn_off:
-                id: sniffer_led
-                transition_length: 0s
+  
+            # --- TURN BINARY LED OFF ---
+            - switch.turn_off: sniffer_led
             - delay: 150ms
-            
-            
+               
   - id: turn_led_on_custom
     parameters:
-      red: float         # Red channel (0.0 to 1.0)
-      green: float       # Green channel (0.0 to 1.0)
-      blue: float        # Blue channel (0.0 to 1.0)
-      brightness: float  # Brightness (0.0 to 1.0)
+      red: float         # Ignored on C3, kept for API matching
+      green: float       # Ignored on C3, kept for API matching
+      blue: float        # Ignored on C3, kept for API matching
+      brightness: float  # Ignored on C3, kept for API matching
     mode: restart
     then:
-      - light.turn_on:
-          id: sniffer_led
-          red: !lambda "return red;"
-          green: !lambda "return green;"
-          blue: !lambda "return blue;"
-          brightness: !lambda "return brightness;"
-          transition_length: 0s  # Turns on instantly without a fade
-          
-          
+      - switch.turn_on: sniffer_led
+
   - id: turn_led_off_custom
     mode: restart
     then:
-      - light.turn_off:
-          id: sniffer_led
-          transition_length: 0s  # Turns off instantly without a fade
+      - switch.turn_off: sniffer_led
 
 # ========  Display Specific Implementation ========
 
