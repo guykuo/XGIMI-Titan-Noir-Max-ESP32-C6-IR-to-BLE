@@ -1,0 +1,100 @@
+# AWOL Vision / Valerion Projector
+
+# ======= KUO Begin remote_receiver =========
+remote_receiver:
+  id: ir_receiver
+  pin:
+    number: ${pin_ir_receiver}
+    inverted: true
+    mode:
+      input: true
+      pullup: true
+  filter: 50us
+  idle: 10ms
+  tolerance: 25%
+  dump: 
+    - nec
+    
+  on_nec:
+      then:
+        - script.execute: display_timeout_handler
+        - lambda: |-
+            struct IRCommand {
+              std::string name;
+              esphome::template_::TemplateButton* button_obj;
+            };
+ 
+            static const std::map<uint16_t, IRCommand> nec_codes = {
+              { 0x7B84,       { "back",          id(back) } },           // Valerion: BACK / EXIT
+              { 0x4DB2,       { "cursor_down",   id(cursor_down) } },    // Valerion: DOWN ARROW
+              { 0x7A85,       { "cursor_enter",  id(cursor_enter) } },   // Valerion: OK / ENTER
+              { 0x4CB3,       { "cursor_left",   id(cursor_left) } },    // Valerion: LEFT ARROW
+              { 0x4EB1,       { "cursor_right",  id(cursor_right) } },   // Valerion: RIGHT ARROW
+              { 0x4FB0,       { "cursor_up",     id(cursor_up) } },      // Valerion: UP ARROW
+              { 0x728D,       { "focus_auto",    id(focus_auto) } },     // Valerion: AUTO FOCUS
+              { 0x50AF,       { "focus_manual",  id(focus_manual) } },   // Valerion: MANUAL FOCUS
+              { 0x6A95,       { "home",          id(home) } },           // Valerion: HOME (Smart Hub / Android TV)
+              { 0x8C73,       { "input",         id(input) } },          // Valerion: SOURCE SELECT (HDMI 1)
+              { 0x659A,       { "settings_menu", id(settings_menu) } },  // Valerion: QUICK SETTINGS
+              { 0x659A,       { "settings_menu", id(settings_menu) } },  // Valerion: QUICK SETTINGS (Fallback)
+              { 0x1AE5,       { "game_menu",     id(game_menu) } },      // Valerion: INFO STATUS Panel
+              { 0xEA15,       { "mute",          id(mute) } },           // Valerion: MUTE (Unified or 0xFF00 block)
+              { 0x25DA,       { "picture",       id(picture) } },        // Valerion: PICTURE MODE (Theater/Filmmaker cycle)
+              { 0x6F90,       { "power_on",      id(power_on) } },       // Valerion: DISCRETE POWER ON
+              { 0x6F90,       { "power_on",      id(power_on) } },       // Valerion: DISCRETE POWER ON (Fallback)
+              { 0x6E91,       { "power_off_immediately", id(power_off_immediately) } }, // Valerion: DISCRETE POWER OFF
+              { 0x6E91,       { "power_off_immediately", id(power_off_immediately) } }, // Valerion: DISCRETE POWER OFF (Fallback)
+              { 0x23DC,       { "shortcut_1",    id(shortcut_1) } },     // Valerion: KEYSTONE CORRECTION
+              { 0x09F6,       { "shortcut_2",    id(shortcut_2) } },     // Valerion: OPTICAL ZOOM ADJ
+              { 0x0AF5,       { "shortcut_3",    id(shortcut_3) } },     // Valerion: 3D MODE SWITCH
+              { 0x27D8,       { "shortcut_4",    id(shortcut_4) } },     // Valerion: MEMORY STORAGE SLOT
+              { 0xF807,       { "volume_down",   id(volume_down) } },    // Valerion: VOLUME MINUS
+              { 0xBC43,       { "volume_up",     id(volume_up) } },      // Valerion: VOLUME PLUS
+              { 0x01FE,       { "token_sniff",   id(token_sniff) } },    // Valerion: APP SHORTCUT 1 (Netflix)
+              { 0x02FD,       { "token_clear",   id(token_clear) } },    // Valerion: APP SHORTCUT 2 (YouTube)
+              { 0x03FC,       { "token_recall",  id(token_recall) } },   // Valerion: APP SHORTCUT 3 (Prime Video)
+              { 0x04FB,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // Valerion: BT REMOTE PAIR TRIGGER
+              { 0x05FA,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }, // Valerion: BT REMOTE RESET TRIGGER
+            };
+
+            static uint32_t last_global_ir_time = 0;
+            uint32_t now = millis();
+            
+            // Drop hardware bouncing duplicate frames from trailing Valerion packet blasts
+            if (now - last_global_ir_time < 250) {
+              return;
+            }
+
+            std::stringstream ss1;
+            ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.command;
+            std::string rc_code_1_str = ss1.str(); 
+            
+            std::stringstream ss2;
+            ss2 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.address;
+            std::string rc_code_2_str = ss2.str(); 
+            
+            id(OLED_line2) = rc_code_2_str; 
+            id(OLED_line3) = rc_code_1_str; 
+            
+            if (x.address == 0x3085) {
+              id(OLED_line2) = "Valerion Prj"; 
+              
+              auto it = nec_codes.find(x.command); 
+              
+              if (it != nec_codes.end()) {
+                last_global_ir_time = now; 
+                
+                id(OLED_line1) = it->second.name; 
+                ESP_LOGD("IR Translated", "IR ---> : %s", it->second.name.c_str());
+            
+                if (it->second.button_obj != nullptr) {
+                  it->second.button_obj->press(); 
+                }
+              } else {
+                id(OLED_line1) = "Unassigned"; 
+              }
+            } else {
+              id(OLED_line1) = "Not Valerion Prj IR"; 
+            }
+            
+# ======= KUO End remote_receiver ============

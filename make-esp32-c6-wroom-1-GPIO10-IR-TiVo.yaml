@@ -1,19 +1,19 @@
 # ============= BEGIN Configuration Options KUO ==========
 substitutions:
 
-  ble_remote_name: "IR to Xgimi"  # <===== Name your IR remote. 20 char max.
+  ble_remote_name: "TiVo Xgimi"  # <===== Name your IR remote. 20 char max.
    
 
 
 packages: 
   # ***** hardware settings of ESP32 board
   
-  hardware_package: !include ir-common-kuo/HARDWAREFILE.yaml # Replace HARDWAREFILE.yaml with hardware file for your board
+  hardware_package: !include ir-common-kuo/hardware-c6.yaml # Replace HARDWAREFILE.yaml with hardware file for your board
 
 
   # ***** IR mapping options
   
-  irmap_package: !include ir-common-kuo/IRMAP.yaml #  Replace IRMAP.yaml with desired IR map.yaml 
+  irmap_package: !include ir-common-kuo/irmap-tivo-roamio.yaml #  Replace IRMAP.yaml with desired IR map.yaml 
 
 # ============= END Configuration Options KUO ===========
 

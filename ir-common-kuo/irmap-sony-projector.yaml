@@ -1,0 +1,101 @@
+# Sony Projector
+
+# ======= KUO Begin remote_receiver =========
+remote_receiver:
+  id: ir_receiver
+  pin:
+    number: ${pin_ir_receiver}
+    inverted: true
+    mode:
+      input: true
+      pullup: true
+  filter: 50us
+  idle: 10ms
+  tolerance: 25%
+  dump: 
+    - sony
+    
+  on_sony:
+      then:
+        - script.execute: display_timeout_handler
+        - lambda: |-
+            struct IRCommand {
+              std::string name;
+              esphome::template_::TemplateButton* button_obj;
+            };
+ 
+            // Sony SIRC 15-bit format: Key uses the combined 16-bit parsed representation
+            static const std::map<uint16_t, IRCommand> sony_codes = {
+              { 0x005C,       { "back",          id(back) } },           // Sony: RESET (Exit / Undo)
+              { 0x0034,       { "cursor_down",   id(cursor_down) } },    // Sony: DOWN ARROW
+              { 0x0054,       { "cursor_enter",  id(cursor_enter) } },   // Sony: ENTER
+              { 0x0035,       { "cursor_left",   id(cursor_left) } },    // Sony: LEFT ARROW
+              { 0x0033,       { "cursor_right",  id(cursor_right) } },   // Sony: RIGHT ARROW
+              { 0x0032,       { "cursor_up",     id(cursor_up) } },      // Sony: UP ARROW
+              { 0x0042,       { "focus_auto",    id(focus_auto) } },     // Sony: APA (Auto Pixel Alignment)
+              { 0x0026,       { "focus_manual",  id(focus_manual) } },   // Sony: ASPECT
+              { 0x0054,       { "home",          id(home) } },           // Sony: ENTER (Fallback)
+              { 0x0025,       { "input",         id(input) } },          // Sony: INPUT SELECT / CYCLE
+              { 0x0036,       { "settings_menu", id(settings_menu) } },  // Sony: MENU
+              { 0x0036,       { "settings_menu", id(settings_menu) } },  // Sony: MENU (Fallback)
+              { 0x005D,       { "game_menu",     id(game_menu) } },      // Sony: STATUS / INFO
+              { 0x0028,       { "mute",          id(mute) } },           // Sony: PIC MUTING (Blank Screen)
+              { 0x0040,       { "picture",       id(picture) } },        // Sony: PICTURE MODE
+              { 0x002F,       { "power_on",      id(power_on) } },       // Sony: DISCRETE POWER ON
+              { 0x002F,       { "power_on",      id(power_on) } },       // Sony: DISCRETE POWER ON (Fallback)
+              { 0x002E,       { "power_off_immediately", id(power_off_immediately) } }, // Sony: DISCRETE POWER OFF
+              { 0x002E,       { "power_off_immediately", id(power_off_immediately) } }, // Sony: DISCRETE POWER OFF (Fallback)
+              { 0x004A,       { "shortcut_1",    id(shortcut_1) } },     // Sony: GAMMA ADJUSTMENT
+              { 0x004B,       { "shortcut_2",    id(shortcut_2) } },     // Sony: COLOR TEMP
+              { 0x0049,       { "shortcut_3",    id(shortcut_3) } },     // Sony: MOTIONFLOW / FILM PROJ
+              { 0x005E,       { "shortcut_4",    id(shortcut_4) } },     // Sony: 3D MODE
+              { 0x0034,       { "volume_down",   id(volume_down) } },    // Sony: DOWN ARROW (Fallback)
+              { 0x0032,       { "volume_up",     id(volume_up) } },      // Sony: UP ARROW (Fallback)
+              { 0x0001,       { "token_sniff",   id(token_sniff) } },    // Sony: RECYCLE KEY 1
+              { 0x0002,       { "token_clear",   id(token_clear) } },    // Sony: RECYCLE KEY 2
+              { 0x0003,       { "token_recall",  id(token_recall) } },   // Sony: RECYCLE KEY 3
+              { 0x0004,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // Sony: RECYCLE KEY 4
+              { 0x0005,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }, // Sony: RECYCLE KEY 5
+            };
+
+            static uint32_t last_global_ir_time = 0;
+            uint32_t now = millis();
+            
+            // Drop hardware bouncing duplicate frames from trailing Sony packet bursts (SIRC repeats heavily)
+            if (now - last_global_ir_time < 250) {
+              return;
+            }
+
+            std::stringstream ss1;
+            ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.command;
+            std::string rc_code_1_str = ss1.str(); 
+            
+            std::stringstream ss2;
+            ss2 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.address;
+            std::string rc_code_2_str = ss2.str(); 
+            
+            id(OLED_line2) = rc_code_2_str; 
+            id(OLED_line3) = rc_code_1_str; 
+            
+            if (x.address == 0x3085) {
+              id(OLED_line2) = "Sony Proj"; 
+              
+              auto it = nec_codes.find(x.command); 
+              
+              if (it != nec_codes.end()) {
+                last_global_ir_time = now; 
+                
+                id(OLED_line1) = it->second.name; 
+                ESP_LOGD("IR Translated", "IR ---> : %s", it->second.name.c_str());
+            
+                if (it->second.button_obj != nullptr) {
+                  it->second.button_obj->press(); 
+                }
+              } else {
+                id(OLED_line1) = "Unassigned"; 
+              }
+            } else {
+              id(OLED_line1) = "Not Sony Proj IR"; 
+            }
+            
+# ======= KUO End remote_receiver ============

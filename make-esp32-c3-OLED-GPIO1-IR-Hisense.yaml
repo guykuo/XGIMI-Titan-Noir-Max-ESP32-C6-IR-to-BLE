@@ -8,12 +8,12 @@ substitutions:
 packages: 
   # ***** hardware settings of ESP32 board
   
-  hardware_package: !include ir-common-kuo/hardware_c3.yaml # Replace HARDWAREFILE.yaml with hardware file for your board
+  hardware_package: !include ir-common-kuo/hardware-c3.yaml # Replace HARDWAREFILE.yaml with hardware file for your board
 
 
   # ***** IR mapping options
   
-  irmap_package: !include ir-common-kuo/ir-map-hisense-50u6g.yaml #  Replace IRMAP.yaml with desired IR map.yaml 
+  irmap_package: !include ir-common-kuo/irmap-hisense-50u6g.yaml #  Replace IRMAP.yaml with desired IR map.yaml 
 
 # ============= END Configuration Options KUO ===========
 
@@ -206,8 +206,14 @@ globals:
     restore_value: no
     initial_value: 'false'  # This acts as your default value!
     
-    
+  # State flag: true means we are waiting for the 2nd click
+  - id: clear_window_active
+    type: bool
+    initial_value: 'false'
 
+
+
+          
   
 binary_sensor:
   - platform: template
@@ -299,82 +305,35 @@ button:
   - platform: template
     name: "Token Clear"
     id: token_clear
-    icon: "mdi:bluetooth"
     on_press:
       then:
-        - logger.log: "Clearing BLE wake token"
-
-        - esp32_ble_tracker.stop_scan: {}
-
-        - binary_sensor.template.publish:
-            id: sniffer_status
-            state: OFF          
-        - logger.log: "BLE Clear Token === Sniffing Ended."
-        - logger.log: "BLE Clear Token === Zeroing Token."
-
-        # Show on OLED display
+        
+        - script.execute:
+            id: turn_led_on_custom
+            red: 0.3
+            green: 0.2
+            blue: 0.0
+            brightness: 0.2
+        
+        
         - lambda: |-
-            id(OLED_line1) = "Wake Token"; 
-            id(OLED_line2) = "Sniffing";
-            id(OLED_line3) = "ENDED";
-        - script.execute: display_timeout_handler
-
-        - lambda: |-
-            bool learned_wake_token_exists = false; // check if any bytes are not 0x00
-            for (int i = 0; i < 15; i++) {
-              if (id(learned_wake_token)[i] != 0x00) {
-                learned_wake_token_exists = true;
-                break;
-              }
-            }
-            
-            if (learned_wake_token_exists) {
-              // Wipe flash persistent memory 
-              memset(id(learned_wake_token), 0x00, 15);  
-              global_preferences->sync();
-
-              // Clear operational array memory as well
-              memset(id(active_wake_token), 0x00, 15);
-
-              id(flash_led_custom).execute(2, 1.0, 1.0, 0.0); // flash twice indicate emptied.
-              
-              id(OLED_line1) = "Clear Learned";
-              id(OLED_line2) = "Using Default";
-              id(OLED_line3) = "Wait 5 sec";
+            if (id(clear_window_active)) {
+              // --- CONFIRMED: 2ND PHYSICAL PRESS RECEIVED ---
+              id(clear_window_active) = false;
+              id(clear_timeout_tracker).stop(); 
+              id(run_token_clear_worker).execute(); 
             } else {
-            
-              // 🛠️ THE C HELPER BRIDGE INJECTION: Safely sync parsed secret vector data to active arrays
-              std::vector<uint8_t> active_token_vector = get_secret_wake_token();
-              for (size_t i = 0; i < 15; ++i) {
-                id(active_wake_token)[i] = active_token_vector[i];
-              }
+              // --- INITIALIZATION: 1ST PHYSICAL PRESS RECEIVED ---
+              id(clear_window_active) = true;
               
-              id(flash_led_custom).execute(1, 0.0, 1.0, 0.0); // flash once indicate already empty.
-
-              id(OLED_line1) = "Already Cleared";
-              id(OLED_line2) = "(no learned)";
-              id(OLED_line3) = "Using Default";
-          
-            }  
+              id(OLED_line1) = "Press Again!";
+              id(OLED_line2) = "To Confirm";
+              id(OLED_line3) = "Within 5 Sec";
+              id(display_timeout_handler).execute();
+              
+              id(clear_timeout_tracker).execute();
+            }            
             
-            // Submit active_wake_token wrapped inside a temporary runtime vector object
-            std::vector<uint8_t> active_token_vector(id(active_wake_token), id(active_wake_token) + 15);
-            id(xgimi_remote_controller)->set_wake_token(active_token_vector);
-  
-            // 🛠️ ADDED: Build and print the active_token_vector hex payload directly to the ESPHome logs
-            std::string hex_log_str = "";
-            for (size_t i = 0; i < active_token_vector.size(); ++i) {
-                if (i > 0) hex_log_str += " ";
-                char buf[3];
-                snprintf(buf, sizeof(buf), "%02x", active_token_vector[i]);
-                hex_log_str += buf;
-            }
-            ESP_LOGD("token_clear", "Active wake token vector now set to hex: %s", hex_log_str.c_str());
-
-  
-        - script.execute: display_timeout_handler
-
-
 # ==========================================
 # BLE TRACKING performs sniffing for wake tokens
 # Upon finding one, stores and begins using new token
@@ -519,6 +478,95 @@ esp32_ble_tracker:
 
 #=====================  utility scripts
 script:
+
+  # --- ASYNCHRONOUS TIMEOUT TRACKER ---
+  - id: clear_timeout_tracker
+    mode: restart
+    then:
+      - delay: 5s
+      - if:
+          condition:
+            lambda: 'return id(clear_window_active);'
+          then:
+            - globals.set: { id: clear_window_active, value: 'false' }
+            - script.execute: turn_led_off_custom
+
+            - script.execute:
+                id: turn_led_off_custom
+               
+            - lambda: |-
+                id(OLED_line1) = "Clear Canceled";
+                id(OLED_line2) = "Timed Out";
+                id(OLED_line3) = "";
+            - script.execute: display_timeout_handler
+
+  # --- THREAD-ISOLATED CLEAR ACTION ---
+  - id: run_token_clear_worker
+    mode: single  # <--- FIXED: Valid ESPHome mode to isolate thread processing
+    then:
+      - script.execute: turn_led_off_custom
+      - logger.log: "Clearing BLE wake token"
+      - esp32_ble_tracker.stop_scan: {}
+      - binary_sensor.template.publish: { id: sniffer_status, state: OFF }          
+      - logger.log: "BLE Clear Token === Sniffing Ended."
+      - logger.log: "BLE Clear Token === Zeroing Token."
+
+      - script.execute:
+          id: turn_led_off_custom
+               
+      - lambda: |-
+          id(OLED_line1) = "Clear Learned"; 
+          id(OLED_line2) = "Using Default";
+          id(OLED_line3) = "Wait 5 sec";
+      - script.execute: display_timeout_handler
+
+      - lambda: |-
+          bool learned_wake_token_exists = false;
+          for (int i = 0; i < 15; i++) {
+            if (id(learned_wake_token)[i] != 0x00) {
+              learned_wake_token_exists = true;
+              break;
+            }
+          }
+          
+          if (learned_wake_token_exists) {
+            memset(id(learned_wake_token), 0x00, 15);  
+            global_preferences->sync();
+            memset(id(active_wake_token), 0x00, 15);
+            id(flash_led_custom).execute(2, 1.0, 1.0, 0.0);
+            
+            id(OLED_line1) = "Clear Learned";
+            id(OLED_line2) = "Using Default";
+            id(OLED_line3) = "Wait 5 sec";
+          } else {
+            std::vector<uint8_t> active_token_vector = get_secret_wake_token();
+            for (size_t i = 0; i < 15; ++i) {
+              id(active_wake_token)[i] = active_token_vector[i];
+            }
+            id(flash_led_custom).execute(1, 0.0, 1.0, 0.0);
+
+            id(OLED_line1) = "Already Cleared";
+            id(OLED_line2) = "(no learned)";
+            id(OLED_line3) = "Using Default";
+          }  
+          
+          std::vector<uint8_t> active_token_vector(id(active_wake_token), id(active_wake_token) + 15);
+          id(xgimi_remote_controller)->set_wake_token(active_token_vector);
+
+          std::string hex_log_str = "";
+          for (size_t i = 0; i < active_token_vector.size(); ++i) {
+              if (i > 0) hex_log_str += " ";
+              
+              char buf[3]; 
+              
+              snprintf(buf, sizeof(buf), "%02x", active_token_vector[i]);
+              hex_log_str += buf;
+          }
+          ESP_LOGD("token_clear", "Active wake token vector now set to hex: %s", hex_log_str.c_str());
+
+      - script.execute: display_timeout_handler      
+      
+            
   - id: sniffing_sequence
     mode: restart
     then:

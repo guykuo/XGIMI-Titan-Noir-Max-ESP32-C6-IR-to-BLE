@@ -1,0 +1,100 @@
+# Hisense 50U6G
+
+# ======= KUO Begin remote_receiver =========
+remote_receiver:
+  id: ir_receiver
+  pin:
+    number: ${pin_ir_receiver}
+    inverted: true
+    mode:
+      input: true
+      pullup: true
+  filter: 50us
+  idle: 10ms
+  tolerance: 25%
+  dump: 
+    - nec
+    
+  on_nec:
+      then:
+        - script.execute: display_timeout_handler
+        - lambda: |-
+            struct IRCommand {
+              std::string name;
+              esphome::template_::TemplateButton* button_obj;
+            };
+ 
+            static const std::map<uint16_t, IRCommand> nec_codes = {
+              { 0xFB04,       { "back",          id(back) } },           // back
+              { 0xA857,       { "cursor_down",   id(cursor_down) } },    // arrow down
+              { 0xA55A,       { "cursor_enter",  id(cursor_enter) } },   // select
+              { 0xA758,       { "cursor_left",   id(cursor_left) } },    // arrow left
+              { 0xA659,       { "cursor_right",  id(cursor_right) } },   // arrow right
+              { 0xA956,       { "cursor_up",     id(cursor_up) } },      // arrow up
+              { 0xE817,       { "focus_auto",    id(focus_auto) } },     // 7
+              { 0xE718,       { "focus_manual",  id(focus_manual) } },   // 8
+              { 0xBC43,       { "home",          id(home) } },           // home
+              { 0xB54A,       { "input",         id(input) } },          // input
+              { 0xB54A,       { "settings_menu", id(settings_menu) } },  // menu
+              { 0x718E,       { "settings_menu", id(settings_menu) } },  // menu (variant)
+              { 0x35CA,       { "game_menu",     id(game_menu) } },      // apps
+              { 0xF609,       { "mute",          id(mute) } },           // mute
+              { 0xFF00,       { "picture",       id(picture) } },        // channel up
+              { 0xF708,       { "power_on",      id(power_on) } },       // discrete power on
+              { 0x8E71,       { "power_on",      id(power_on) } },       // discrete power on (variant)
+              { 0xEF10,       { "power_off_immediately", id(power_off_immediately) } }, // discrete power off
+              { 0x8D72,       { "power_off_immediately", id(power_off_immediately) } }, // 0
+              { 0xAB54,       { "shortcut_1",    id(shortcut_1) } },     // yellow
+              { 0xAA55,       { "shortcut_2",    id(shortcut_2) } },     // blue
+              { 0xAD52,       { "shortcut_3",    id(shortcut_3) } },     // red
+              { 0xAC53,       { "shortcut_4",    id(shortcut_4) } },     // green
+              { 0xFC03,       { "volume_down",   id(volume_down) } },    // volume down
+              { 0xFD02,       { "volume_up",     id(volume_up) } },      // volume up
+              { 0xEB14,       { "token_sniff",   id(token_sniff) } },    // 4
+              { 0xEA15,       { "token_clear",   id(token_clear) } },    // 🛠️ UNCOMMENTED: 5 (debug)
+              { 0xE916,       { "token_recall",  id(token_recall) } },   // 6
+              { 0xB847,       { "BT_start_pair", id(bluetooth_pairing_start) } },  // prime video
+              { 0xB649,       { "BT_clear_pair", id(bluetooth_pairing_clear) } },  // youtube
+            };
+
+            static uint32_t last_global_ir_time = 0;
+            uint32_t now = millis();
+            
+            // Drop hardware bouncing duplicate frames from trailing Hisense packet blasts
+            if (now - last_global_ir_time < 250) {
+              return;
+            }
+
+            std::stringstream ss1;
+            ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.command;
+            std::string rc_code_1_str = ss1.str(); 
+            
+            std::stringstream ss2;
+            ss2 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.address;
+            std::string rc_code_2_str = ss2.str(); 
+            
+            id(OLED_line2) = rc_code_2_str; 
+            id(OLED_line3) = rc_code_1_str; 
+            
+            if (x.address == 0xFB04) {
+              id(OLED_line2) = "Hisense"; 
+              
+              auto it = nec_codes.find(x.command); 
+              
+              if (it != nec_codes.end()) {
+                last_global_ir_time = now; 
+                
+                id(OLED_line1) = it->second.name; 
+                ESP_LOGD("IR Translated", "IR ---> : %s", it->second.name.c_str());
+            
+                if (it->second.button_obj != nullptr) {
+                  it->second.button_obj->press(); 
+                }
+              } else {
+                id(OLED_line1) = "Unassigned"; 
+              }
+            } else {
+              id(OLED_line1) = "Not Hisense IR"; 
+            }
+            
+# ======= KUO End remote_receiver ============
