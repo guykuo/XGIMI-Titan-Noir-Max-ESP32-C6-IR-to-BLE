@@ -12,26 +12,6 @@ substitutions:
 
   pin_boot_btn: GPIO9 # <======= ESP32-c3 and ESP32-C6 are different and use pin 9 for boot button. 
   
-  
-# ***** i2c Display Pins <========= set by uncommenting only the pin for your board
-
-# We always define a set of i2c pins to allow sharing of code base between boards with/without display
-# # Pins for #ESP32-C3 with built in OLED i2c display
-# i2c: 
-#   sda: GPIO5
-#   scl: GPIO6
-#   frequency: 400kHz
-#   scan: false
-#   id: bus_a
-
-# Pins for # ESP32-C6-wroom-1 and dummy or optional i2c display. Also display defintions near end of file
-i2c: 
-  sda: GPIO6
-  scl: GPIO7
-  frequency: 400kHz
-  scan: false # Required for ESP32-C6 to prevent startup crashes during boot scans
-  id: bus_a
-  
 # ======================================================================
   
 light:
@@ -113,6 +93,16 @@ font:
     id: my_fontLarge
     size: 11
 
+
+# Pins for # ESP32-C6-wroom-1 and dummy or optional i2c display. Also display defintions near end of file
+i2c: 
+  sda: GPIO6
+  scl: GPIO7
+  frequency: 400kHz
+  scan: false # Required for ESP32-C6 to prevent startup crashes during boot scans
+  id: bus_a
+  
+
     
 # Built-in 72x40 SSD1306 OLED screen
 display:
@@ -138,7 +128,6 @@ display:
           it.print(0, 10, id(my_fontSmall), id(OLED_line2).c_str());
           it.print(0, 20, id(my_fontSmall), id(OLED_line3).c_str());
 
-      # FIXED: Aligned list item dash and nested comment string safely
       - id: blank_page
         lambda: |-
           // Leaving lambda completely blank turns all pixels off safely

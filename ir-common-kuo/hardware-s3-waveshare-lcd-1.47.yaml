@@ -12,7 +12,7 @@ substitutions:
 
   pin_boot_btn: GPIO0 # <====== Most ESP boards use pin 0 for boot button. 
   
-  
+  # ======================================================================
   
     
 light:
@@ -103,6 +103,7 @@ spi:
 display:
   - platform: st7789v
     model: "Waveshare 1.47in 172X320" # Pre-configured model profile
+    id: oled_display
     cs_pin: GPIO42
     dc_pin: GPIO41
     reset_pin: GPIO39
@@ -121,6 +122,6 @@ display:
           it.print(0, 12, id(my_fontSmall), id(OLED_line2).c_str());
           it.print(0, 24, id(my_fontSmall), id(OLED_line3).c_str());
 
-      - id: blank_pages
+      - id: blank_page
         lambda: |-
           // Leaving lambda completely blank turns all pixels off safely
