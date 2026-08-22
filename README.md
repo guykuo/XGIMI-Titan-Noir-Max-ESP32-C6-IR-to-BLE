@@ -478,10 +478,10 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 Board specific information is pulled into make files as packages. You can edit your "make" file to use any of the supplied hardware packages.
 Supplied hardware files support ESP32 boards ...
 
-* hardware_s3.yaml
-* hardware_c3.yaml
-* hardware_c6.yaml
-* hardware_m5stack-atom-lite.yaml
+* hardware-c3.yaml
+* hardware-c6.yaml
+* hardware-m5stack-atom-lite.yaml
+* hardware-s3-waveshare-lcd-1.47.yaml
 
 Look in the hardware file for suggested GPIO pins for IR receiver and optional i2c display
 
@@ -489,10 +489,10 @@ Look in the hardware file for suggested GPIO pins for IR receiver and optional i
 Similarly IR to bluetooth mappings are supplied as packages to be pulled into your make file.
 Tested ir-map files are...
 
-* ir-map-hisense-50u6g.yaml
-* ir-map-jvc-hr-S9600u.yaml
-* ir-map-LG-cinebeam-hu810p.yaml
-* ir-map-tivo-roamio.yaml
+* irmap-tivo-roamio.yaml
+* irmap-hisense-50u6g.yaml
+* irmap-jvc-hr-S9600u.yaml
+* irmap-LG-cinebeam-hu810p.yaml
 
 Additional AI generated ir-maps are also supplied, but have not been tested and may 
 have compilation issues, particularly if "place holder" definitions are not removed or
@@ -500,16 +500,18 @@ resolved with actual button IR codes. Author does not plan to edit nor test thes
 AI generated IR-maps, but if anyone edits and makes one actually usable, please
 let me know and submit a working copy of corrected ir-map.
 
-* ir-map-AWOL-projector.yaml
-* ir-map-benq-projector.yaml
-* ir-map-epson-projector.yaml
-* ir-map-hisense-projector.yaml
-* ir-map-jvc-projector.yaml
-* ir-map-optoma-projector.yaml
-* ir-map-sony-projector.yaml
+* irmap-AWOL-projector.yaml
+* irmap-benq-projector.yaml
+* irmap-epson-projector.yaml
+* irmap-hisense-projector.yaml
+* irmap-jvc-projector.yaml
+* irmap-optoma-projector.yaml
+* irmap-sony-projector.yaml
 
 
 ## Recent Changes:
+*   Revamped IR debouncing to improve responsiveness.
+*   Hardware-c6 supports SSD1306 128x32 i2c display
 *   Multiple hardware and ir-map files added to project
 *   Added support for LED light on boards C3 and C6 to act as visual feedback
 *   Pressing BOOT button of board is alternate way to start sniff mode.
