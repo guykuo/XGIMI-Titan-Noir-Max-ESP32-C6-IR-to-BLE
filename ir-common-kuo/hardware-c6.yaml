@@ -1,21 +1,31 @@
 # ============= BEGIN Configuration Options KUO ==========
 
 substitutions:
-# ***** basic board and GPIO wiring
-  
-  board_type: "esp32-c6-devkitc-1" # <== set board type here
-  framework_type: "esp-idf" # <========= set board framewark. 
-  
-  pin_ir_receiver: GPIO10 # <============ set GPIO pin for IR sensor. 
 
-  pin_indicator_LED: GPIO8 # <========== set GPIO pin for LED indicator (both ESP32-C3 and C6)
+  pin_ir_receiver: GPIO1   # IR sensor. 
+  pin_indicator_LED: GPIO8 # LED indicator (both ESP32-C3 and C6)
+  pin_sniff_btn: GPIO9     # usually use boot button for sniff. ESP32-c3 and ESP32-C6 use pin 9 for boot button. 
 
-  pin_boot_btn: GPIO9 # <======= ESP32-c3 and ESP32-C6 are different and use pin 9 for boot button. 
-  
-# ======================================================================
+
+# Core Architecture Declaration
+esp32:
+  board: esp32-c6-devkitc-1
+  framework:
+    type: esp-idf
+
+# i2c pins for # ESP32-C6-wroom-1 and dummy or optional i2c display. See also display later file
+i2c: 
+  sda: GPIO5 # suggested same as c3 with built in OLED
+  scl: GPIO6 # suggested same as c3 with built in OLED
+  frequency: 400kHz
+  scan: false #to prevent startup crashes during boot scans
+  id: bus_a
+      
+# ============= END Configuration Options KUO ==========
+
   
 light:
-  - platform: esp32_rmt_led_strip  # REPAIRED: Correct ESPHome driver for C6 addressable LEDs
+  - platform: esp32_rmt_led_strip # neopixel
     id: sniffer_led
     pin: ${pin_indicator_LED}
     chipset: WS2812
@@ -77,9 +87,9 @@ script:
           id: sniffer_led
           transition_length: 0s  # Turns off instantly without a fade
 
+
 # ========  Display Specific Implementation ========
 
-# Download font for text rendering
 font:
   - file: "gfonts://Roboto"
     id: my_fontSmall
@@ -93,23 +103,13 @@ font:
     id: my_fontLarge
     size: 11
 
-
-# Pins for # ESP32-C6-wroom-1 and dummy or optional i2c display. Also display defintions near end of file
-i2c: 
-  sda: GPIO6
-  scl: GPIO7
-  frequency: 400kHz
-  scan: false # Required for ESP32-C6 to prevent startup crashes during boot scans
-  id: bus_a
-  
-
     
 # Built-in 72x40 SSD1306 OLED screen
 display:
   - platform: ssd1306_i2c
     model: "SSD1306 128x32"
     address: 0x3C
-    id: oled_display
+    id: myDisplay
     update_interval: 0.3s
     offset_x: 0
     offset_y: 0
@@ -117,16 +117,15 @@ display:
     pages:
       - id: active_page_std
         lambda: |-
-          it.print(0, 0,  id(my_fontMedium), id(OLED_line1).c_str());
-          it.print(0, 9, id(my_fontLarge), id(OLED_line2).c_str());
-          it.print(0, 20, id(my_fontLarge), id(OLED_line3).c_str());
+          it.print(0, 0,  id(my_fontMedium), id(myDisplay_line1).c_str());
+          it.print(0, 9, id(my_fontLarge), id(myDisplay_line2).c_str());
+          it.print(0, 20, id(my_fontLarge), id(myDisplay_line3).c_str());
 
-      # FIXED: Aligned list item dash and nested lambda text exactly 4 spaces deep
       - id: active_page_small
         lambda: |-
-          it.print(0, 0,  id(my_fontSmall), id(OLED_line1).c_str());
-          it.print(0, 10, id(my_fontSmall), id(OLED_line2).c_str());
-          it.print(0, 20, id(my_fontSmall), id(OLED_line3).c_str());
+          it.print(0, 0,  id(my_fontSmall), id(myDisplay_line1).c_str());
+          it.print(0, 10, id(my_fontSmall), id(myDisplay_line2).c_str());
+          it.print(0, 20, id(my_fontSmall), id(myDisplay_line3).c_str());
 
       - id: blank_page
         lambda: |-

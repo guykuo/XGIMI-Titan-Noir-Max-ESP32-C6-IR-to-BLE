@@ -36,18 +36,18 @@ remote_receiver:
         std::stringstream ss1, ss2;
         ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.command;
         ss2 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.address;
-        id(OLED_line2) = ss2.str(); 
-        id(OLED_line3) = ss1.str(); 
+        id(myDisplay_line2) = ss2.str(); 
+        id(myDisplay_line3) = ss1.str(); 
         
         if (x.address == ${target_ir_address}) {
-          id(OLED_line2) = "${remote_display_name}"; 
+          id(myDisplay_line2) = "${remote_display_name}"; 
           last_global_ir_time = now; 
           id(global_cached_command) = x.command;
           id(global_initial_press_time) = now; 
           id(global_is_holding) = false;      
           id(master_ir_processor).execute(x.command, false);
         } else {
-          id(OLED_line1) = "Not Match Address"; 
+          id(myDisplay_line1) = "Not Match Address"; 
           id(global_cached_command) = 0;
           id(global_is_holding) = false;
         }
@@ -66,18 +66,18 @@ remote_receiver:
         std::stringstream ss1, ss2;
         ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << lg_command;
         ss2 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << lg_address;
-        id(OLED_line2) = ss2.str(); 
-        id(OLED_line3) = ss1.str(); 
+        id(myDisplay_line2) = ss2.str(); 
+        id(myDisplay_line3) = ss1.str(); 
         
         if (lg_address == ${target_ir_address}) {
-          id(OLED_line2) = "${remote_display_name}"; 
+          id(myDisplay_line2) = "${remote_display_name}"; 
           last_global_ir_time = now; 
           id(global_cached_command) = lg_command;
           id(global_initial_press_time) = now; 
           id(global_is_holding) = false;      
           id(master_ir_processor).execute(lg_command, false); 
         } else {
-          id(OLED_line1) = "Not Match Address"; 
+          id(myDisplay_line1) = "Not Match Address"; 
           id(global_cached_command) = 0;
           id(global_is_holding) = false;
         }
@@ -112,11 +112,11 @@ remote_receiver:
         std::stringstream ss1, ss2;
         ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(2) << std::hex << sony_cmd;
         ss2 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << sony_address;
-        id(OLED_line2) = ss2.str(); 
-        id(OLED_line3) = ss1.str(); 
+        id(myDisplay_line2) = ss2.str(); 
+        id(myDisplay_line3) = ss1.str(); 
         
         if (sony_address == ${target_ir_address}) {
-          id(OLED_line2) = "${remote_display_name}"; 
+          id(myDisplay_line2) = "${remote_display_name}"; 
           
           if (id(global_cached_command) != sony_cmd) {
             last_global_ir_time = now; 
@@ -128,7 +128,7 @@ remote_receiver:
             id(global_last_raw_packet_time) = now;
           }
         } else {
-          id(OLED_line1) = "Not Match Address";
+          id(myDisplay_line1) = "Not Match Address";
         }
         
 globals:

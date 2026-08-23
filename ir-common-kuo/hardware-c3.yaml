@@ -1,35 +1,34 @@
 # ============= BEGIN Configuration Options KUO ==========
 
 substitutions:
-# ***** basic board and GPIO wiring
   
-  board_type: "esp32-c3-devkitm-1" # <== set board type here
-  framework_type: "esp-idf" # <========= set board framewark. 
-  
-  pin_ir_receiver: GPIO1 # <============ set GPIO pin for IR sensor. 
-
-  pin_indicator_LED: GPIO8 # <========== set GPIO pin for LED indicator (both ESP32-C3 and C6)
-
-  pin_boot_btn: GPIO9 # <======= ESP32-c3 and ESP32-C6 use pin 9 for boot button. 
+  pin_ir_receiver: GPIO1   # IR sensor. 
+  pin_indicator_LED: GPIO8 # LED indicator (both ESP32-C3 and C6)
+  pin_sniff_btn: GPIO9     # use boot button for snifff. Both ESP32-c3 and ESP32-C6 use pin 9 for boot button. 
   
   
-# ***** i2c Display Pins <========= set by uncommenting only the pin for your board
-
+# Core Architecture Declaration
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: esp-idf
+  
+# i2c Display Pins
 i2c: 
   sda: GPIO5
   scl: GPIO6
   frequency: 400kHz
-  scan: false # Required for ESP32-C6 to prevent startup crashes during boot scans
+  scan: false # to prevent startup crashes during boot scans
   id: bus_a
   
-# ======================================================================
+# ============= END Configuration Options KUO ==========
   
 
 switch:
   - platform: gpio # indicator LED that lights up when sniffing
     pin:
       number: ${pin_indicator_LED}
-      inverted: true  # <--- Fixes the active-low inversion
+      inverted: true
     id: sniffer_led
   
 script:
@@ -69,7 +68,6 @@ script:
 
 # ========  Display Specific Implementation ========
 
-# Download font for text rendering
 font:
   - file: "gfonts://Roboto"
     id: my_fontSmall
@@ -89,7 +87,7 @@ display:
   - platform: ssd1306_i2c
     model: "SSD1306 72x40"
     address: 0x3C
-    id: oled_display
+    id: myDisplay
     update_interval: 0.3s
     offset_x: 0
     offset_y: 0
@@ -97,18 +95,16 @@ display:
     pages:
       - id: active_page_std
         lambda: |-
-          it.print(0, 0,  id(my_fontMedium), id(OLED_line1).c_str());
-          it.print(0, 11, id(my_fontLarge), id(OLED_line2).c_str());
-          it.print(0, 24, id(my_fontLarge), id(OLED_line3).c_str());
+          it.print(0, 0,  id(my_fontMedium), id(myDisplay_line1).c_str());
+          it.print(0, 11, id(my_fontLarge), id(myDisplay_line2).c_str());
+          it.print(0, 24, id(my_fontLarge), id(myDisplay_line3).c_str());
 
-      # FIXED: Aligned list item dash and nested lambda text exactly 4 spaces deep
       - id: active_page_small
         lambda: |-
-          it.print(0, 0,  id(my_fontSmall), id(OLED_line1).c_str());
-          it.print(0, 12, id(my_fontSmall), id(OLED_line2).c_str());
-          it.print(0, 24, id(my_fontSmall), id(OLED_line3).c_str());
+          it.print(0, 0,  id(my_fontSmall), id(myDisplay_line1).c_str());
+          it.print(0, 12, id(my_fontSmall), id(myDisplay_line2).c_str());
+          it.print(0, 24, id(my_fontSmall), id(myDisplay_line3).c_str());
 
-      # FIXED: Aligned list item dash and nested comment string safely
       - id: blank_page
         lambda: |-
           // Leaving lambda completely blank turns all pixels off safely

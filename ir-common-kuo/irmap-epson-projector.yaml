@@ -2,11 +2,9 @@ packages:
   base_ir_engine: !include appkit/ir-architecture-base.yaml
 
 substitutions:
-  # FIXED: Pointing to Epson's standard factory-certified native address baseline
   target_ir_address: "0x41B6"
   remote_display_name: "Epson Proj"
   
-  # FIXED: Formatted to target your core engine's variable name for the 0x10EF token_clear code
   hold_exclusion_condition: "id(global_cached_command) == 0x12ED"
 
 script:
@@ -48,21 +46,21 @@ script:
             //{ 0x4B34,       { "token_recall",  id(token_recall) } },   // Epson: out of buttons
             { 0x0BFA,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // Epson: HDR
             { 0xF40B,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // Epson: PATTERN
-          }; // Structural semicolon to close map declaration
+          };
 
           // Operational safety intercept loop for repeating button holds
           if (is_hold && (${hold_exclusion_condition})) {
-            ESP_LOGW("IR Safety", "Hold repeat blocked for safety excluded command: 0x%04X", command);
+            ESP_LOGW("IR Safety", "Hold repeat blocked for safety excluded command: 0x%04X", (unsigned int)command);
             return;
           }
 
           auto it = nec_codes.find(command);
           if (it != nec_codes.end()) {
             if (is_hold) {
-              id(OLED_line1) = it->second.name + " (Hold)";
+              id(myDisplay_line1) = it->second.name + " (Hold)";
               ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
             } else {
-              id(OLED_line1) = it->second.name;
+              id(myDisplay_line1) = it->second.name;
               ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
             }
 
@@ -71,7 +69,6 @@ script:
             }
           } else {
             if (!is_hold) {
-              id(OLED_line1) = "Unassigned";
+              id(myDisplay_line1) = "Unassigned";
             }
           }
-AI Mode response is ready

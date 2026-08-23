@@ -2,11 +2,9 @@ packages:
   base_ir_engine: !include appkit/ir-architecture-base.yaml
 
 substitutions:
-  # FIXED: Programmed to match JVC's native hardcoded D-ILA extended device address
   target_ir_address: "0x73C8"
   remote_display_name: "JVC Proj"
   
-  # FIXED: Set to seamlessly match and isolate token_clear (0x02) from repeating on hold
   hold_exclusion_condition: "command == 0x02"
 
 script:
@@ -47,22 +45,21 @@ script:
             { 0x07,       { "token_recall",  id(token_recall) } },   // JVC: CUSTOM RESERVED 3
             { 0x08,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // JVC: CUSTOM RESERVED 4
             { 0x09,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // JVC: CUSTOM RESERVED 5
-          }; // Structural semicolon to close map declaration
+          };
 
           // Operational safety intercept loop for repeating button holds
           if (is_hold && (${hold_exclusion_condition})) {
-            // FIXED: Cast uint32_t command to uint8_t to fully eliminate log print compiler width warnings
-            ESP_LOGW("IR Safety", "Hold repeat blocked for safety excluded command: 0x%02X", (uint8_t)command);
+            ESP_LOGW("IR Safety", "Hold repeat blocked for safety excluded command: 0x%04X", (unsigned int)command);
             return;
           }
 
           auto it = nec_codes.find(command);
           if (it != nec_codes.end()) {
             if (is_hold) {
-              id(OLED_line1) = it->second.name + " (Hold)";
+              id(myDisplay_line1) = it->second.name + " (Hold)";
               ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
             } else {
-              id(OLED_line1) = it->second.name;
+              id(myDisplay_line1) = it->second.name;
               ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
             }
 
@@ -71,6 +68,6 @@ script:
             }
           } else {
             if (!is_hold) {
-              id(OLED_line1) = "Unassigned";
+              id(myDisplay_line1) = "Unassigned";
             }
           }

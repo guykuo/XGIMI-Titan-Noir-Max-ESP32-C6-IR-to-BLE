@@ -2,11 +2,9 @@ packages:
   base_ir_engine: !include appkit/ir-architecture-base.yaml
 
 substitutions:
-  # CHANGED: Replaced the old TiVo 0x3085 placeholder with the correct baseline Hisense projector native address
   target_ir_address: "0x01FE"
   remote_display_name: "Hisense Proj"
   
-  # CHANGED: Programmed to natively match and isolate token_clear (0x629D) from repeating on hold
   hold_exclusion_condition: "command == 0x629D"
 
 script:
@@ -54,17 +52,17 @@ script:
 
           // Operational safety intercept loop for repeating button holds
           if (is_hold && (${hold_exclusion_condition})) {
-            ESP_LOGW("IR Safety", "Hold repeat blocked for safety excluded command: 0x%04X", command);
+            ESP_LOGW("IR Safety", "Hold repeat blocked for safety excluded command: 0x%04X", (unsigned int)command);
             return;
           }
 
           auto it = nec_codes.find(command);
           if (it != nec_codes.end()) {
             if (is_hold) {
-              id(OLED_line1) = it->second.name + " (Hold)";
+              id(myDisplay_line1) = it->second.name + " (Hold)";
               ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
             } else {
-              id(OLED_line1) = it->second.name;
+              id(myDisplay_line1) = it->second.name;
               ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
             }
 
@@ -73,6 +71,6 @@ script:
             }
           } else {
             if (!is_hold) {
-              id(OLED_line1) = "Unassigned";
+              id(myDisplay_line1) = "Unassigned";
             }
           }

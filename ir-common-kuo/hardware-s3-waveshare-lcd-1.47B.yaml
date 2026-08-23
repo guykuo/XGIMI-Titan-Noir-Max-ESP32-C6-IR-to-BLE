@@ -1,45 +1,37 @@
 # ============= BEGIN Configuration Options KUO ==========
 
 substitutions:
-# ***** basic board and GPIO wiring
-  board_type: "esp32-s3-devkitc-1" # Map to valid framework target to accept ESP32-S3R8 core
-  framework_type: "esp-idf" 
   
   pin_ir_receiver: GPIO2
   pin_indicator_LED: GPIO38
-  pin_boot_btn: GPIO0 
+  pin_sniff_btn: GPIO0 # use boot button to start sniff
 
-
-# ===========================================================
 
 # Core Architecture Declaration
 esp32:
-  board: ${board_type}
-  variant: esp32s3              # Keeps compilation tuned for the S3 chip core
+  board: esp32-s3-devkitc-1
+  variant: esp32s3 # variant needed to keep compiler tuned for the S3 chip core
   framework:
     type: esp-idf
-#  partitions: ir-common-kuo/appkit/partitions.csv
 
+# ============= END Configuration Options KUO ==========
 
 esphome:
-  name: kuo-display-driver
   on_boot:
-    priority: 200.0            # Executes immediately after the hardware components setup
+    priority: 200.0            # Dim display backlight after hardware components setup
     then:
       - light.turn_on:
           id: display_backlight
-          brightness: 30%       # Instantly overrides full brightness spike
+          brightness: 30%
           
-          
-# Native Onboard LCD Backlight Dimming Driver Control
 output:
-  - platform: ledc
+  - platform: ledc # LCD Backlight
     id: backlight_pwm
     pin: GPIO46    
     frequency: 1000 Hz
           
 light:
-  - platform: esp32_rmt_led_strip
+  - platform: esp32_rmt_led_strip # neopixel
     id: sniffer_led
     pin: ${pin_indicator_LED}
     chipset: WS2812
@@ -105,6 +97,7 @@ script:
           id: sniffer_led
           transition_length: 0s  
 
+
 # ========  Display Specific Implementation ========
 
 font:
@@ -117,16 +110,16 @@ font:
   - file: "gfonts://Roboto"
     id: my_fontLarge
     size: 40
+
     
 spi:
   clk_pin: GPIO40
   mosi_pin: GPIO45
 
-
 # Master Display Component Configuration
 display:
   - platform: st7789v
-    id: oled_display
+    id: myDisplay
     model: WAVESHARE_1.47IN_172X320  
     cs_pin: GPIO42
     dc_pin: GPIO41
@@ -147,15 +140,15 @@ display:
     pages:
       - id: active_page_std
         lambda: |-
-          it.print(5, 30,  id(my_fontMedium), id(OLED_line1).c_str());
-          it.print(5, 60, id(my_fontLarge), id(OLED_line2).c_str());
-          it.print(5, 100, id(my_fontLarge), id(OLED_line3).c_str());
+          it.print(5, 30,  id(my_fontMedium), id(myDisplay_line1).c_str());
+          it.print(5, 60, id(my_fontLarge), id(myDisplay_line2).c_str());
+          it.print(5, 100, id(my_fontLarge), id(myDisplay_line3).c_str());
 
       - id: active_page_small
         lambda: |-
-          it.print(5, 30,  id(my_fontSmall), id(OLED_line1).c_str());
-          it.print(5, 60, id(my_fontSmall), id(OLED_line2).c_str());
-          it.print(5, 90, id(my_fontSmall), id(OLED_line3).c_str());
+          it.print(5, 30,  id(my_fontSmall), id(myDisplay_line1).c_str());
+          it.print(5, 60, id(my_fontSmall), id(myDisplay_line2).c_str());
+          it.print(5, 90, id(my_fontSmall), id(myDisplay_line3).c_str());
 
       - id: blank_page
         lambda: |-

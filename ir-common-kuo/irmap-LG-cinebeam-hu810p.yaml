@@ -2,11 +2,9 @@ packages:
   base_ir_engine: !include appkit/ir-architecture-base.yaml
 
 substitutions:
-  # True LG Electronics protocol extended hardware address baseline
   target_ir_address: "0xFB04"
   remote_display_name: "LG Cinebeam"
   
-  # EXCLUSION RULES FOR SAFETY: Blocks token_clear from executing hold repeat cascades
   hold_exclusion_condition: "command == 0xEA15"
 
 script:
@@ -52,9 +50,9 @@ script:
             { 0xE916,       { "token_recall",  id(token_recall) } },  // 6
             { 0xA956,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // netflix
             { 0xA35C,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // prime video
-          }; // Map structural close terminator
+          };
 
-          // Global safety filter blocking repetitive hold executions on specified codes
+          // Operational safety intercept loop for repeating button holds
           if (is_hold && (${hold_exclusion_condition})) {
             ESP_LOGW("IR Safety", "Hold repeat blocked for safety excluded command: 0x%04X", (unsigned int)command);
             return;
@@ -63,10 +61,10 @@ script:
           auto it = nec_codes.find(command);
           if (it != nec_codes.end()) {
             if (is_hold) {
-              id(OLED_line1) = it->second.name + " (Hold)";
+              id(myDisplay_line1) = it->second.name + " (Hold)";
               ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
             } else {
-              id(OLED_line1) = it->second.name;
+              id(myDisplay_line1) = it->second.name;
               ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
             }
 
@@ -75,6 +73,6 @@ script:
             }
           } else {
             if (!is_hold) {
-              id(OLED_line1) = "Unassigned";
+              id(myDisplay_line1) = "Unassigned";
             }
           }

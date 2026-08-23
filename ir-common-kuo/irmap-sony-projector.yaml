@@ -2,11 +2,9 @@ packages:
   base_ir_engine: !include appkit/ir-architecture-base.yaml
 
 substitutions:
-  # FIXED: Point to the official native Sony hardware projector address space (Device 26)
   target_ir_address: "0x001A"  
   remote_display_name: "Sony Proj"
   
-  # CHANGED: Setup to natively isolate token_clear (0x02) from repeating on button holds
   hold_exclusion_condition: "id(global_cached_command) == 0x0F" 
 
 script:
@@ -49,15 +47,21 @@ script:
             { 0x3E,       { "token_recall",  id(token_recall) } },   // Command 0x3E (REF / TV / GAME or USER button)
             { 0x0E,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // Command 0x0E (BRIGHTNESS button)
             { 0x48,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // Command 0x48 (CONTRAST button)
-          }; // Structural map close terminator
+          };
+
+          // Operational safety intercept loop for repeating button holds
+          if (is_hold && (${hold_exclusion_condition})) {
+            ESP_LOGW("IR Safety", "Hold repeat blocked for safety excluded command: 0x%04X", (unsigned int)command);
+            return;
+          }
 
           auto it = sony_codes.find(command);
           if (it != sony_codes.end()) {
             if (is_hold) {
-              id(OLED_line1) = it->second.name + " (Hold)";
+              id(myDisplay_line1) = it->second.name + " (Hold)";
               ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
             } else {
-              id(OLED_line1) = it->second.name;
+              id(myDisplay_line1) = it->second.name;
               ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
             }
 
@@ -66,6 +70,6 @@ script:
             }
           } else {
             if (!is_hold) {
-              id(OLED_line1) = "Unassigned";
+              id(myDisplay_line1) = "Unassigned";
             }
           }

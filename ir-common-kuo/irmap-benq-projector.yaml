@@ -2,11 +2,9 @@ packages:
   base_ir_engine: !include appkit/ir-architecture-base.yaml
 
 substitutions:
-  # CHANGED: Replaced the old TiVo 0x3085 placeholder with the correct baseline BenQ native address
   target_ir_address: "0x00FF"
   remote_display_name: "BenQ Proj"
-  
-  # CHANGED: Set to filter out the token_clear command code from repeating during button holds
+
   hold_exclusion_condition: "command == 0x02FD"
 
 script:
@@ -49,21 +47,21 @@ script:
             { 0x03FC,       { "token_recall",  id(token_recall) } },   // BenQ: NUMPAD 3 PLACEHOLDER
             { 0x04FB,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // BenQ: NUMPAD 4 PLACEHOLDER
             { 0x05FA,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // BenQ: NUMPAD 5 PLACEHOLDER
-          }; // Added missing structural semicolon to close map declaration
+          };
 
           // Operational safety intercept loop for repeating button holds
           if (is_hold && (${hold_exclusion_condition})) {
-            ESP_LOGW("IR Safety", "Hold repeat blocked for safety excluded command: 0x%04X", command);
+            ESP_LOGW("IR Safety", "Hold repeat blocked for safety excluded command: 0x%04X", (unsigned int)command);
             return;
           }
 
           auto it = nec_codes.find(command);
           if (it != nec_codes.end()) {
             if (is_hold) {
-              id(OLED_line1) = it->second.name + " (Hold)";
+              id(myDisplay_line1) = it->second.name + " (Hold)";
               ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
             } else {
-              id(OLED_line1) = it->second.name;
+              id(myDisplay_line1) = it->second.name;
               ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
             }
 
@@ -72,6 +70,6 @@ script:
             }
           } else {
             if (!is_hold) {
-              id(OLED_line1) = "Unassigned";
+              id(myDisplay_line1) = "Unassigned";
             }
           }

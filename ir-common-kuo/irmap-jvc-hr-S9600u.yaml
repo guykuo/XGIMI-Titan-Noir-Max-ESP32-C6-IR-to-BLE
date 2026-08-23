@@ -2,11 +2,9 @@ packages:
   base_ir_engine: !include appkit/ir-architecture-base.yaml
 
 substitutions:
-  # CHANGED: Replaced the old TiVo placeholder with the true JVC device address block code
   target_ir_address: "0x03C2"
   remote_display_name: "JVC VCR"
   
-  # CHANGED: Setup to natively isolate token_clear (0xC2A4) from executing hold repeat cascades
   hold_exclusion_condition: "command == 0xC2A4"
 
 script:
@@ -56,21 +54,21 @@ script:
             { 0xC264,       { "token_recall",  id(token_recall) } },  // 6
             { 0xC284,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // 1
             { 0xC244,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // 2
-          }; // Structural semicolon to close map declaration
+          };
 
           // Operational safety intercept loop for repeating button holds
           if (is_hold && (${hold_exclusion_condition})) {
-            ESP_LOGW("IR Safety", "Hold repeat blocked for safety excluded command: 0x%04X", command);
+            ESP_LOGW("IR Safety", "Hold repeat blocked for safety excluded command: 0x%04X", (unsigned int)command);
             return;
           }
 
           auto it = jvc_codes.find(command);
           if (it != jvc_codes.end()) {
             if (is_hold) {
-              id(OLED_line1) = it->second.name + " (Hold)";
+              id(myDisplay_line1) = it->second.name + " (Hold)";
               ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
             } else {
-              id(OLED_line1) = it->second.name;
+              id(myDisplay_line1) = it->second.name;
               ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
             }
 
@@ -79,6 +77,6 @@ script:
             }
           } else {
             if (!is_hold) {
-              id(OLED_line1) = "Unassigned";
+              id(myDisplay_line1) = "Unassigned";
             }
           }
