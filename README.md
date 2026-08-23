@@ -73,12 +73,12 @@ I recommend using an ESP32-C3 with on-board OLED display. Although it is possibl
 ### Boards I have tested and know to work are..
 
 #### ESP32-C3 with built in 0.42 OLD display. Many clones are available.
+<img width="676" height="864" alt="esp32 c3 OLED" src="https://github.com/user-attachments/assets/f5da1f5f-e7a5-4947-a166-1334c34a57c2" />
+
 [Here is a good quality set of 3 including breakout boards](https://www.amazon.com/dp/B0G6YT4ZQ3)
 
 [A cheaper, usable clone with thinner PCB and often less well aligned OLD display ](https://www.amazon.com/dp/B0F59L9RMR)
 
-<img width="676" height="864" alt="esp32 c3 OLED" src="https://github.com/user-attachments/assets/f5da1f5f-e7a5-4947-a166-1334c34a57c2" />
-Here is one that is of good quality. Here is a usable, cheap one with thinner PC boards and 
 
 #### ESP32-C6-WROOM-1
 The [ESP32-C6-WROOM-1](https://www.amazon.com/dp/B0H1GGL9L1?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1) does not have a display, but does include a multi-color neopixel LED that gives some feedback. 
