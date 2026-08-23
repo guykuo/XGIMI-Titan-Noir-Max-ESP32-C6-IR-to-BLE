@@ -2,7 +2,7 @@
 
 substitutions:
 
-  pin_ir_receiver: GPIO1   # IR sensor. 
+  pin_ir_receiver: GPIO10   # IR sensor. 
   pin_indicator_LED: GPIO8 # LED indicator (both ESP32-C3 and C6)
   pin_sniff_btn: GPIO9     # usually use boot button for sniff. ESP32-c3 and ESP32-C6 use pin 9 for boot button. 
 
