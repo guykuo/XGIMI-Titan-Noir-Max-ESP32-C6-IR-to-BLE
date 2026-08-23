@@ -1,7 +1,5 @@
-# ir-common-kuo/irmap-sony-projector.yaml
-
 packages:
-  base_ir_engine: !include ir-architecture-base.yaml
+  base_ir_engine: !include appkit/ir-architecture-base.yaml
 
 substitutions:
   # FIXED: Point to the official native Sony hardware projector address space (Device 26)

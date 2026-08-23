@@ -1,7 +1,5 @@
-# Cleaned and migrated to decoupled architecture package format
-
 packages:
-  base_ir_engine: !include ir-architecture-base.yaml
+  base_ir_engine: !include appkit/ir-architecture-base.yaml
 
 substitutions:
   # FIXED: Programmed to match Optoma's authentic native custom code address baseline

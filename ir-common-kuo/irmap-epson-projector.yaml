@@ -1,5 +1,5 @@
 packages:
-  base_ir_engine: !include ir-architecture-base.yaml
+  base_ir_engine: !include appkit/ir-architecture-base.yaml
 
 substitutions:
   # FIXED: Pointing to Epson's standard factory-certified native address baseline

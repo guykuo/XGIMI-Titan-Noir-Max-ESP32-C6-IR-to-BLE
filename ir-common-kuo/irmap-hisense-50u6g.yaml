@@ -1,7 +1,5 @@
-# Cleaned and migrated to decoupled architecture package format
-
 packages:
-  base_ir_engine: !include ir-architecture-base.yaml
+  base_ir_engine: !include appkit/ir-architecture-base.yaml
 
 substitutions:
   target_ir_address: "0xFB04"
