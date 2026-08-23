@@ -1,5 +1,5 @@
 # ir-common-kuo/ir-architecture-base.yaml
-
+# 100 msec before next button press accepted
 remote_receiver:
   id: ir_receiver
   pin:
@@ -31,7 +31,7 @@ remote_receiver:
     - lambda: |-
         static uint32_t last_global_ir_time = 0;
         uint32_t now = millis();
-        if (now - last_global_ir_time < 250) return;
+        if (now - last_global_ir_time < 100) return;
 
         std::stringstream ss1, ss2;
         ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.command;
@@ -58,7 +58,7 @@ remote_receiver:
     - lambda: |-
         static uint32_t last_global_ir_time = 0;
         uint32_t now = millis();
-        if (now - last_global_ir_time < 250) return;
+        if (now - last_global_ir_time < 100) return;
 
         uint16_t lg_address = (x.data >> 16) & 0xFFF;
         uint16_t lg_command = x.data & 0xFFFF;
@@ -105,7 +105,7 @@ remote_receiver:
         // Convert command using your constant multiplier rules
         uint32_t reconstructed_code = (0x3085 << 7) | sony_cmd;
 
-        if (!id(global_is_holding) && (now - last_global_ir_time < 250) && (reconstructed_code == id(global_cached_command))) {
+        if (!id(global_is_holding) && (now - last_global_ir_time < 100) && (reconstructed_code == id(global_cached_command))) {
           return;
         }
 
