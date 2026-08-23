@@ -376,6 +376,29 @@ Edit your makefile and replace three items at the top of the file
 * irmap.yaml for your desired IR mapping
 
 You can find hardware and irmap files within ir-common-kuo directory. (Do not move files out of ir-common-kuo)
+```YAML
+# ============= BEGIN Configuration Options KUO ==========
+
+# Only three things to configure here
+#   ble_remote_name
+#   hardware_package
+#   irmap_package
+
+substitutions:
+  ble_remote_name: "IR to Xgimi"  # <===== Name your IR remote. (20 char max)
+
+packages: 
+
+  # ******* NB do not accidentally leave out prefix ir-common-kuo/
+
+  # --- hardware settings of ESP32 board
+  hardware_package: !include ir-common-kuo/HARDWAREFILE.yaml # <===== Replace HARDWAREFILE.yaml with your board.yaml
+
+  # --- IR mapping options
+  irmap_package:    !include ir-common-kuo/IRMAP.yaml # <===== Replace IRMAP.yaml with your IRMAP.yaml 
+
+```
+
 
 
 ## 7\. Learning Wake Token from Xgimi Remote.
@@ -387,7 +410,6 @@ Sniffing for the wake token should be done with projector power disconnected bec
 - ESP32 should be plugged into 5 volt USB-C power
 - Point infrared remote at ESP32 IR receiver and press its "4" button to start sniffing.
       Alternatively, press the "boot" button of your ESP32 to start sniffing.
-      
       Sniffing remains active for 20 seconds.
   
 - Repeatedly press power button on Xgimi remote with it near your ESP32 board.
