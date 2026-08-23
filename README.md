@@ -481,7 +481,7 @@ Supplied hardware files support ESP32 boards ...
 * hardware-c3.yaml
 * hardware-c6.yaml
 * hardware-m5stack-atom-lite.yaml
-* hardware-s3-waveshare-lcd-1.47.yaml
+* hardware-s3-waveshare-lcd-1.47b.yaml
 
 Look in the hardware file for suggested GPIO pins for IR receiver and optional i2c display
 
@@ -510,6 +510,9 @@ let me know and submit a working copy of corrected ir-map.
 
 
 ## Recent Changes:
+*   Further adjusted button acceptance speed to approx 10 press/sec.
+*   Added support for holding down button on remote for fast repeat.
+*   Added hardware file for Waveshare ESP32 S3 LCD 1.47B board.
 *   Revamped IR debouncing to improve responsiveness.
 *   Hardware-c6 supports SSD1306 128x32 i2c display
 *   Multiple hardware and ir-map files added to project
