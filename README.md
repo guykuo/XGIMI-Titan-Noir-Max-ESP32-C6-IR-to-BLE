@@ -29,16 +29,16 @@ You can additionally do a tedious, manual capture and process the hexadecimal to
 ## What You Will Accomplish
 Getting the translator to work requires you to...
 
-1 Choose IR mapping to translate
-2 Obtain ESP32 board and IR sensor to be this translator
-3 Choose Name of the translator 
-4 Assemble ESP32 board and IR sensor
-5 Create a copy of make-esp32-TEMPLATE.yaml
-6 Rename it something like make-my-spec-board.yaml
-7 Edit make-my-spec-board.yaml to specify name for your remote, which ESP32 board you are using, and which IR translation map.
-8 Create compiler evironment
-9 Compile your new ESP32 firmware and send it to your ESP32 board.
-10 Set up your universal remote to use the IR mapped codes.
+* Choose IR mapping to translate
+* Obtain ESP32 board and IR sensor to be this translator
+* Choose Name of the translator 
+* Assemble ESP32 board and IR sensor
+* Create a copy of make-esp32-TEMPLATE.yaml
+* Rename it something like make-my-spec-board.yaml
+* Edit make-my-spec-board.yaml to specify name for your remote, which ESP32 board you are using, and which IR translation map.
+* Create compiler evironment
+* Compile your new ESP32 firmware and send it to your ESP32 board.
+* Set up your universal remote to use the IR mapped codes.
 
 
 ## IR Maps
