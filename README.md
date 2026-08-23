@@ -70,17 +70,19 @@ The following IR maps have not been vetted and may not (yet) have correct IR map
 ### Selecting an ESP32 Board
 I recommend using an ESP32-C3 with on-board OLED display. Although it is possible to sniff tokens "blind," the OLED display gives better feedback during setup and troubleshooting IR codes. Boards that lack a display are also usable, but you will only have LED flashes for feedback during setup. 
 
-### Boards I have tested and know to work are..
+## Boards Tested and Known to Work..
 
-#### ESP32-C3 with built in 0.42 OLD display. Many clones are available.
+### ESP32-C3 with built in 0.42 OLD display. Many clones are available.
 <img width="676" height="864" alt="esp32 c3 OLED" src="https://github.com/user-attachments/assets/f5da1f5f-e7a5-4947-a166-1334c34a57c2" />
 
 [Here is a good quality set of 3 including breakout boards](https://www.amazon.com/dp/B0G6YT4ZQ3)
 
 [A cheaper, usable clone with thinner PCB and often less well aligned OLD display ](https://www.amazon.com/dp/B0F59L9RMR)
 
-
-#### ESP32-C6-WROOM-1
+<br>
+<br>
+<br>
+### ESP32-C6-WROOM-1
 The [ESP32-C6-WROOM-1](https://www.amazon.com/dp/B0H1GGL9L1?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1) does not have a display, but does include a multi-color neopixel LED that gives some feedback. 
 <img width="794" height="378" alt="ESP32-C6-WROOM-1" src="https://github.com/user-attachments/assets/c580d0eb-c7f6-480c-9d7d-152ecd95c489" />
 
@@ -88,14 +90,19 @@ The [ESP32-C6-WROOM-1](https://www.amazon.com/dp/B0H1GGL9L1?ref=ppx_yo2ov_dt_b_f
 You can optionally connect a [SSD1306 128x32 0.91-inch OLED display module](https://www.amazon.com/dp/B0GX9245FD) to this board. One might even connect the OLED display only during setup and troubleshooting. Support for adding a display is already in my hardware-c6.yaml file. 
 <img width="636" height="222" alt="0 91-inch OLED display module" src="https://github.com/user-attachments/assets/49b91c07-67c8-4109-bf33-dbb260e0f5d2" />
 
-
-#### Waveshare ESP32-S3 1.47inch LCD Display Development Board (Revision B)
+<br>
+<br>
+<br>
+### Waveshare ESP32-S3 1.47inch LCD Display Development Board (Revision B)
 This ESP32-S3 board was used to verify translator functionality on S3 boards. It has a larger LCD display and dissipates quite a bit more power than the C3 and C6 boards. I would only use this as a testing and setup board. The larger screen enables easier reading of captured IR codes while editing irmap files. It is probably to bright and power hungry for home theater deployment as full time translator. There are many similar boards, but variants are not always GPIO pin matches for the ones specified in my hardware-s3-waveshare-lcd-1.47B.yaml
 
 Be sure to get exactly [Waveshare ESP S3 LCD 1.47B board](https://www.amazon.com/dp/B0FBWPJPXN) if you want to use my hardware config without searching for correct pinouts.
 <img width="1020" height="910" alt="Screenshot 2026-08-23 at 13 55 31" src="https://github.com/user-attachments/assets/8d91d927-70b3-4f66-9c51-759854cdc0fb" />
 
-#### Other ESP32 Boards
+<br>
+<br>
+<br>
+### Other ESP32 Boards
 If you want to use an ESP32 board than the two examples illustrated herein, be certain it has at least bluetooth version 4.2 and BLE (Bluetooth Low Energy) capability. Otherwise, power-on broadcast to Xgimi projector will not work.
 
 Board series that should work:
@@ -155,19 +162,19 @@ i2c:
 Most users are better off obtaining one of the already tested and known working ESP32 boards.
 
 
-#### ESP32-C6-WROOM-1 Pinout and GPIO Pin Selection Example
+## ESP32-C6-WROOM-1 Pinout and GPIO Pin Selection Example
 
 ESP32-C6-WROOM-1 board has GPIO10 freely usable as input for I used as IR signal input. Pin GPIO10 has already been specified in the "make" files provided in this project. I have marked the connectors of interest on its pinout diagram.
 <img width="1326" height="712" alt="pinouts esp32-c6-wroom-1-marked" src="https://github.com/user-attachments/assets/c01e511b-e68a-442d-b883-c19569586023" />
 
 
-#### ESP32-C3 SuperMini Dev Board with Integrated 0.42-inch OLED Display Example
+## ESP32-C3 SuperMini Dev Board with Integrated 0.42-inch OLED Display Example
 
 Lonely Binary's ESP32-C3 OLED board has GPIO01 usable for IR signal input. GPIO01 is on same side as its 3V and Gnd connectos, making wiring simpler than GPIO pins on the opposing edge of the board.
 <img width="1500" height="983" alt="esp32-c3 with OLED pins marked" src="https://github.com/user-attachments/assets/33e10bc0-86a0-48b4-ab33-a4aaa9b7b8ed" />
 
 
-#### Completed ESP32 Boards
+## Completed ESP32 Boards
 
 Here are two ESP32-C6-WROOM-1 boards wired with two different style IR sensors.
 <img width="1000" height="624" alt="ir to xgimi BLE completed" src="https://github.com/user-attachments/assets/f6219f27-d2a9-41a8-a603-ff9e0276e722" />
@@ -176,7 +183,7 @@ Here are two ESP32-C6-WROOM-1 boards wired with two different style IR sensors.
 Here is ESP32-C3 OLED board. My firmware displays inbound IR codes and equivalent Xgimi projector translation.
 <img width="1300" height="620" alt="oled esp32-c3" src="https://github.com/user-attachments/assets/04c25845-2c3f-4be7-bd48-4127073c7f61" />
 
-#### Powering Your ESP32 Board
+## Powering Your ESP32 Board
 
 ESP32 boards require very modest poewr for operation. Any stable USB-C power supply should suffice.
 
@@ -249,7 +256,7 @@ py -3 -m venv .venv
 .venv\\Scripts\\python.exe -m pip install -r requirements.txt
 ```
 
-### 3\. Capture Your Remote's Token (OPTIONAL now with on-EPS wake token capture)
+### 3\. OPTIONAL STEP - Manually Capture Your Remote's Token
 
 Physically unplug the projector so it cannot reconnect to the original remote. Turn Bluetooth on and grant the terminal Bluetooth access if the operating system asks.
 
@@ -269,11 +276,14 @@ On Windows Powershell
 
 Keep the remote close to the computer and press its Power button several times during the scan. A trustworthy capture has a stable 15-byte tail and at least two distinct first-byte rolling-counter values.
 
-### 4\. Create `secrets.yaml` with the captured token. (OPTIONAL. You may now skip this setp and use a copy of secrets.example.yaml WITHOUT an acquired token)
+### 4\. Create `secrets.yaml` with/without the captured token. 
+
+(NOTE: You if you skipped prior manual capture of Remote's token, you do not need to replace the below token hex numbers. Just leave them alone
+because you will be capturing your token on the translator later)
 
 The helper generates the API key and strong OTA/fallback-access-point passwords using Python's securerandom generator:
 
-Replace the below script's token with the 15-byte token printed by the capture
+(Optional) Replace the below script's token with the 15-byte token printed by the capture
 
 MacOS or Linux
 
@@ -287,7 +297,7 @@ Windows Powershell
 .venv\Scripts\python.exe scripts\create_secrets.py --token "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88"
 ```
 
-Now you have a secrets.yaml file (optionally) containing your specific token.
+Now you have a secrets.yaml file that (optionally) contains your specific token.
 
 The helper refuses to overwrite an existing `secrets.yaml`.
 
@@ -296,9 +306,9 @@ The helper refuses to overwrite an existing `secrets.yaml`.
 For your convenience, YAML "make" files have been created to directly support the two example ESP32 boards with any of three IR code sets. The name of provided make files indicate board type, GPIO pin, and IR code set.  
   
 Substitute name of specific "make" file for the one listed in below example scripts to create the version desired.  
-If you create a "make" file for a different board, GPIO, or IR code, substitute your make filename in the scripts.
+If you create a "make" file for a different board / IR mapping combination, substitute your own make filename in the scripts.
 
-#### 5a. Build firmware for TIVO on ESP32-C6
+#### 5a. Example Build firmware for TIVO on ESP32-C6
 
 Connect the new ESP32-C6 by USB, validate, compile and flash:
 
@@ -308,7 +318,6 @@ MacOS or Linux
 
 .venv/bin/esphome config make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
 .venv/bin/esphome run make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
-
 ```
 
 Windows Powershell
@@ -320,7 +329,7 @@ Windows Powershell
 
 ```
 
-#### 5b. Build Firmware for HISENSE on ESP32-C3 with OLED display)
+#### 5b. Example Build Firmware for HISENSE on ESP32-C3 with OLED display)
 
 Connect the new ESP32-C3 by USB, validate, compile and flash:
 
@@ -356,7 +365,20 @@ Keep the original remote paired as well.
 <br>
 <br>
 <br>
-### 7\. Learning Wake Token from Xgimi Remote.
+
+## Making Other Board and IR Mapping Combinations
+You can create a custom make file by copying and editing make-esp32-TEMPLATE.yaml
+Leave your custom makefile in same directory as make-esp32-TEMPLATE.yaml
+Edit your makefile and replace three items at the top of the file
+
+* name for your remote
+* hardware.yaml for your desired ESP32 board
+* irmap.yaml for your desired IR mapping
+
+You can find hardware and irmap files within ir-common-kuo directory. (Do not move files out of ir-common-kuo)
+
+
+## 7\. Learning Wake Token from Xgimi Remote.
 
 Unless your secrets.yaml already has a valid wake token, your ESP32 translator needs to learn a wake token from your original Xgimi remote.
 Sniffing for the wake token should be done with projector power disconnected because you will be pressing the remote's power button repeatedly.
@@ -364,7 +386,10 @@ Sniffing for the wake token should be done with projector power disconnected bec
 - Remove AC power from Xgimi Titan Noir Projector
 - ESP32 should be plugged into 5 volt USB-C power
 - Point infrared remote at ESP32 IR receiver and press its "4" button to start sniffing.
+      Alternatively, press the "boot" button of your ESP32 to start sniffing.
+      
       Sniffing remains active for 20 seconds.
+  
 - Repeatedly press power button on Xgimi remote with it near your ESP32 board.
       Usually, just 4 to 6 presses are needed to sniff a valid token. 
       If you have an ESP32-C3 with built-in OLED display, sniff mode and capture will be shown.
