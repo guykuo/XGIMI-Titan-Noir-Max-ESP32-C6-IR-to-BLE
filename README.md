@@ -3,22 +3,13 @@
 <img width="1200" height="312" alt="banner" src="https://github.com/user-attachments/assets/0817c01b-239d-4115-843b-b0c1d7a0783f" />
 
 
-This project makes an ESP32 board into an IR remote to Bluetooth translator for XGIMI Titan Noir projectors. Titan Noir projectors lack IR control capability and only accept bluetooth signals. This translator works around that limitation by translating infrared signals into bluetooth commands the projector accepts.
+This project transforms an ESP32 board into an IR remote to Bluetooth translator for XGIMI Titan Noir projectors. Titan Noir projectors lack IR control capability and only accept bluetooth signals. This translator works around that limitation by translating infrared signals into bluetooth commands the projector accepts. Typically, users add one of these devices definitions to a universal remote and control their Titan Noir by sending IR codes specified to be translated. This effectively adds IR capability to the otherwise bluetooth bound Titan Noir.
 
-Three different IR remotes are supported for translation. Typically, users add one of these devices definitions to a universal remote rather than employing the actual physical remote . Once the translator is active, you can control your Titan Noir projector via IR signals from your universal remote.
+Note: This fork concentrates on direct IR translation to Xgimi Titan Noir bluetooth. Home Assistant usage is not documented here. However, _Home Assistant_ integration capability has been preserved and can also be used.. See mrmachine's original github for _Home Assistant_ related information.
 
-The IR code sets translated are:
+This translator requires the special wake token transmitted by your original Xgimi remote. The translator ESP32 board can itself sniff the token from your original remote. 
 
-1.  TiVO Roamio
-2.  Hisense 50U6G
-3.  VC-VCR HR-S9600U
-4.  LG Cinebeam HU810P
-
-#### \*\*\* Newly implemented is ability for ESP32 to directly learn wake token from Xgimi remote \*\*\*
-
-#### \*\*\* This fork does **NOT** require presence nor use of a Home Assistant Server \*\*\*
-
-This fork concentrates on direct IR translation to Xgimi Titan Noir bluetooth and HA usage is not documented here. However, _Home Assistant_ integration capability has been preserved and can also be used.. See mrmachine's original github for _Home Assistant_ related information.
+You can additionally do a tedious, manual capture and process the hexadecimal token into a secrets.yaml file, but it is much easier to skip that process and let the translator ESP32 sniff and capture the wake token.
 
 ## Requirements
 
@@ -33,35 +24,83 @@ This fork concentrates on direct IR translation to Xgimi Titan Noir bluetooth an
 *   Windows, macOS or Linux computer with Bluetooth and Python 3.14 or newer
     
 *   Data capable USB cable
-    
 
-Your IR sensor module needs three connections to your ESP32 board.
+  
+## What You Will Accomplish
+Getting the translator to work requires you to...
 
-1.  IR signal --> GPIO pin (actual pin varies with board)
-2.  IR Gnd --> Ground
-3.  IR Vcc --> 3V (Avoid connecting Vcc to 5V to avoid risk of ESP32 board damage)
-    
+1 Choose IR mapping to translate
+2 Obtain ESP32 board and IR sensor to be this translator
+3 Choose Name of the translator 
+4 Assemble ESP32 board and IR sensor
+5 Create a copy of make-esp32-TEMPLATE.yaml
+6 Rename it something like make-my-spec-board.yaml
+7 Edit make-my-spec-board.yaml to specify name for your remote, which ESP32 board you are using, and which IR translation map.
+8 Create compiler evironment
+9 Compile your new ESP32 firmware and send it to your ESP32 board.
+10 Set up your universal remote to use the IR mapped codes.
 
-Here are pinouts of two styles of IR sensors and the correct connection points on a ESP32-C3 with built in OLED display.
-<img width="1000" height="827" alt="pinouts c3" src="https://github.com/user-attachments/assets/ed81b73e-706c-42e6-9b2c-3ecd1d09404e" />
 
+## IR Maps
+In terms of IR mapping, this translator project includes several IR translations as irmap files.
 
-The IR sensor style that has the small pc board includes a red LED which lights with IR presence. That feedback LED may be useful during troubleshooting, but is not required. Either style of IR sensor will work.
+The main IR maps, which have been vetted, were chosen because they are less likely to be in a home theater that is using an Xgimi Titan Noir projector.
+You should choose one that does not conflict with existing devices in your system.
 
-Here is an alternative board I have also tested, ESP32-C6-WROOM-1. This one does not have a built-in display, but this project will run on it and uses its single light to give feedback.
+* irmap-tivo-roamio.yaml          (TiVo Roamio)
+* irmap-LG-cinebeam-hu810p.yaml   (LG Cinebeam HU810P projector)
+* irmap-hisense-50u6g.yaml        (Hisense 50U6G TV)
+* irmap-jvc-hr-S9600u.yaml        (JVC-VCR HR-S9600U)
 
-<img width="1000" height="827" alt="pinouts c6" src="https://github.com/user-attachments/assets/52b63bcd-5724-4e93-91a2-a50d24705c71" />
+An alternate strategy for chossing an IRmap is to intentionally chose a mapping for a projector that is already in your universal remote and being replaced.
+This lets the Titan Noir simply take over the old projector's already configured role in your universal remote. However, the old projector cannot be
+used simultaneously under this strategy of re-using an existing projector's IR mapping.
+
+The following IR maps have not been vetted and may not (yet) have correct IR mapping...
+
+* irmap-AWOL-projector.yaml
+* irmap-benq-projector.yaml
+* irmap-epson-projector.yaml
+* irmap-hisense-projector.yaml
+* irmap-jvc-projector.yaml
+* irmap-optoma-projector.yaml
+* irmap-sony-projector.yaml
 
 
 ### Selecting an ESP32 Board
+I recommend using an ESP32-C3 with on-board OLED display. Although it is possible to sniff tokens "blind," the OLED display gives better feedback during setup and troubleshooting IR codes. Boards that lack a display are also usable, but you will only have LED flashes for feedback during setup. 
 
-With addition of on-ESP token sniffing, I recommend using an ESPZ32-C3 with on-board OLED display. Although it is possible to sniff tokens "blind," it is the OLED display give visible feedback during the process.
+### Boards I have tested and know to work are..
 
+#### ESP32-C3 with built in 0.42 OLD display. Many clones are available.
+[Here is a good quality set of 3 including breakout boards](https://www.amazon.com/dp/B0G6YT4ZQ3)
+
+[A cheaper, usable clone with thinner PCB and often less well aligned OLD display ](https://www.amazon.com/dp/B0F59L9RMR)
+
+<img width="676" height="864" alt="esp32 c3 OLED" src="https://github.com/user-attachments/assets/f5da1f5f-e7a5-4947-a166-1334c34a57c2" />
+Here is one that is of good quality. Here is a usable, cheap one with thinner PC boards and 
+
+#### ESP32-C6-WROOM-1
+The [ESP32-C6-WROOM-1](https://www.amazon.com/dp/B0H1GGL9L1?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1) does not have a display, but does include a multi-color neopixel LED that gives some feedback. 
+<img width="794" height="378" alt="ESP32-C6-WROOM-1" src="https://github.com/user-attachments/assets/c580d0eb-c7f6-480c-9d7d-152ecd95c489" />
+
+
+You can optionally connect a [SSD1306 128x32 0.91-inch OLED display module](https://www.amazon.com/dp/B0GX9245FD) to this board. One might even connect the OLED display only during setup and troubleshooting. Support for adding a display is already in my hardware-c6.yaml file. 
+<img width="636" height="222" alt="0 91-inch OLED display module" src="https://github.com/user-attachments/assets/49b91c07-67c8-4109-bf33-dbb260e0f5d2" />
+
+
+#### Waveshare ESP32-S3 1.47inch LCD Display Development Board (Revision B)
+This ESP32-S3 board was used to verify translator functionality on S3 boards. It has a larger LCD display and dissipates quite a bit more power than the C3 and C6 boards. I would only use this as a testing and setup board. The larger screen enables easier reading of captured IR codes while editing irmap files. It is probably to bright and power hungry for home theater deployment as full time translator. There are many similar boards, but variants are not always GPIO pin matches for the ones specified in my hardware-s3-waveshare-lcd-1.47B.yaml
+
+Be sure to get exactly [Waveshare ESP S3 LCD 1.47B board](https://www.amazon.com/dp/B0FBWPJPXN) if you want to use my hardware config without searching for correct pinouts.
+<img width="1020" height="910" alt="Screenshot 2026-08-23 at 13 55 31" src="https://github.com/user-attachments/assets/8d91d927-70b3-4f66-9c51-759854cdc0fb" />
+
+#### Other ESP32 Boards
 If you want to use an ESP32 board than the two examples illustrated herein, be certain it has at least bluetooth version 4.2 and BLE (Bluetooth Low Energy) capability. Otherwise, power-on broadcast to Xgimi projector will not work.
 
-Boards that should work:
+Board series that should work:
 
-*   ESP32-S3
+*   ESP32-S3 (uses more electricity than C3 and C6)
 *   ESP32-C3
 *   ESP32-C6
 *   ESP32 pico d4
@@ -73,41 +112,48 @@ Boards that will NOT work
 *   ESP32-S2 series
     
 <br>
-Each variation of ESP board has its own pinout and specific GPIO pins suitable for for IR signal input. It is particularly important to obtain pinout information and know which GPIO pins are actually free for use (not strapping pins or already assigned to other board functions)  
+Each variation of ESP board has its own pinout and specific GPIO pins suitable for for IR signal input. It is particularly important to obtain pinout information and know which GPIO pins are actually free for use (not strapping pins or already assigned to other board functions). Because that process can be overwhelming, four board configuration "hardware" files have been supplied. These pre-define board type and pinouts. Most likely, you can simply specify one of the supplied hardware files within your make file.
 
-I have pre-selected appropriate GPIO pins for the two specific boards used during creation of this project. The example "make" files provided have already been configured for those specific boards. Easiest way to proceed is to use one of the exact same boards as I have for this project. If you follow the same board selection and pin wiring that I made, you can directly use one of the supplied make files to create an IR to Bluetooth translator.
+Example "make" files provided have already been configured for those specific boards. Easiest way to proceed is to use one of the exact same boards as I have for this project. If you follow the same board selection and pin wiring that I made, you can directly use one of the supplied make files to create an IR to Bluetooth translator.
 
 ### Using Other ESP Boards
 
-To use a different board, obtain its pinout diagram and identify a free GPIO pin suitable for IR input. Beware that some GPIO pins are used for special functions such as boot strapping, timing signals, or may be allocated to devices on the PC board.  
-Once you know the board pinout and identify an appropriate GPIO pin, make a copy of one of my "make" files and customize it for your particula board.
+Skip this step if you are using one of already tested boards. To use a different board, obtain its pinout diagram and identify a free GPIO pin suitable for IR input. Beware that some GPIO pins are used for special functions such as boot strapping, timing signals, or may be allocated to devices on the PC board.
 
-Typically only three values in the configuration section at start of file need be adjusted for your board.
+Once you know the board pinout and identify an appropriate GPIO pin, make a copy of one of my "hardware" files within ir-common-kuo directory. Name your copy uniquely and and customize it for your particular board.
 
-1.  board\_type
-2.  pin\_ir\_receiver
-3.  pin\_optional\_wake\_btn
-    
+Adjust values in your hardware yaml for your particular board.
 
 ```yaml
-# ============= Begin Configuration to Match Physical ESP32 Board and Wiring. KUO
-# Also see end of this file where include package sets which IR remote is to be decoded
+# ============= BEGIN Configuration Options KUO ==========
 
-  ble_remote_name: "Hisense IR to Xgimi"  # Name remote to indicate IR remote expected. KUO
+substitutions:
   
-  board_type: "esp32-c3-devkitm-1" # <== set board type here
-  framework_type: "esp-idf" # <====  set board framewark. 
-  pin_ir_receiver: GPIO1 # <======= set GPIO pin for IR sensor. 
-  pin_optional_wake_btn: GPIO3 # <= set GPIO pin for optional wake button. 
+  pin_ir_receiver: GPIO1   # IR sensor. 
+  pin_indicator_LED: GPIO8 # LED indicator (both ESP32-C3 and C6)
+  pin_sniff_btn: GPIO9     # use boot button for snifff. Both ESP32-c3 and ESP32-C6 use pin 9 for boot button. 
+  
+  
+# Core Architecture Declaration
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: esp-idf
+  
+# i2c Display Pins
+i2c: 
+  sda: GPIO5
+  scl: GPIO6
+  frequency: 400kHz
+  scan: false # to prevent startup crashes during boot scans
+  id: bus_a
+  
+# ============= END Configuration Options KUO ==========
 
-# Except for selection of IR mapping file at end, the remainder of this
-# file typically needs no further changes to adapt to board and wiring
-# ============= End of settings for configurig board KUO
 ```
 
-Also, At the bottom of the make file is where you choose the IR remote code set desired (TiVo vs Hisense vs JVC VCR).
+Most users are better off obtaining one of the already tested and known working ESP32 boards.
 
-IR code selection is via uncommenting **_one and ONLY one_** line specifying the irmap\_package to include as IR map.
 
 #### ESP32-C6-WROOM-1 Pinout and GPIO Pin Selection Example
 
@@ -135,6 +181,29 @@ Here is ESP32-C3 OLED board. My firmware displays inbound IR codes and equivalen
 ESP32 boards require very modest poewr for operation. Any stable USB-C power supply should suffice.
 
 \[This one works well.\]([https://www.amazon.com/dp/B0DZ6J62C3](https://www.amazon.com/dp/B0DZ6J62C3))
+
+
+
+### IR Sensor
+
+Your IR sensor module needs three connections to your ESP32 board.
+
+1.  IR signal --> GPIO pin (actual pin varies with board)
+2.  IR Gnd --> Ground
+3.  IR Vcc --> 3V (Avoid connecting Vcc to 5V to avoid risk of ESP32 board damage)
+    
+
+Here are pinouts of two styles of IR sensors and the correct connection points on a ESP32-C3 with built in OLED display.
+<img width="1000" height="827" alt="pinouts c3" src="https://github.com/user-attachments/assets/ed81b73e-706c-42e6-9b2c-3ecd1d09404e" />
+
+The IR sensor style that has the small pc board includes a red LED which lights with IR presence. That feedback LED may be useful during troubleshooting, but is not required. Either style of IR sensor will work.
+
+Here is an alternative board I have also tested, ESP32-C6-WROOM-1. This one does not have a built-in display, but this project will run on it and uses its single light to give feedback.
+
+<img width="1000" height="827" alt="pinouts c6" src="https://github.com/user-attachments/assets/52b63bcd-5724-4e93-91a2-a50d24705c71" />
+
+
+
 
 ### How Bluetooth to Titan Noir Works
 
