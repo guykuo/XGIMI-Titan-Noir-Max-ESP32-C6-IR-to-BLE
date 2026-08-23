@@ -406,12 +406,13 @@ Sniffing for the wake token should be done with projector power disconnected bec
 - ESP32 should be plugged into 5 volt USB-C power
 - Point infrared remote at ESP32 IR receiver and press its "4" button to start sniffing.
       Alternatively, press the "boot" button of your ESP32 to start sniffing.
-      Sniffing remains active for 20 seconds.
+      Sniffing remains active for 20 seconds. Light comes on to indicate sniffing mode.
   
 - Repeatedly press power button on Xgimi remote with it near your ESP32 board.
       Usually, just 4 to 6 presses are needed to sniff a valid token. 
       If you have an ESP32-C3 with built-in OLED display, sniff mode and capture will be shown.
-      On boards lacking a display, you can still learn a wake token, but won't see any feedback
+      On boards lacking a display, light will flash 8 times indicating capture of new token.
+      If light flashes 3 times, captured token was identical to one already stored.
 
 - Wait at least five seconds to let the ESP32 commit the token to NVS flash storage.
      Once flashed to permanent storage, the learned token persists across power and boot cycles.
@@ -421,8 +422,8 @@ Sniffing for the wake token should be done with projector power disconnected bec
      capture and place one in your secrets.yaml. Easiest is to sniff with the ESP board.
 
 What the token buttons do
-  - Token Sniff (4) - Button (4) ESP32 sniffs for an Xgimi a wake token for 20 seconds. If one is accepted, It is stored into NV storage.
-  - Token Clear - Press button (5) twice within give seconds and stored token is removed from NV storage. Active wake token becomes the one you supplied in secrets.yaml
+  - Token Sniff - Button (4) ESP32 sniffs for an Xgimi a wake token for 20 seconds. If one is accepted, It is stored into NV storage.
+  - Token Clear - Button (5) Must be pressed twice within 5 seconds. Stored token is removed from NV storage. Active wake token becomes the one supplied in secrets.yaml
   - Token Recall - Button (6) displays currently stored token (if one is present). This is useful to verifying the token that was sniffed correctly.
 
 
