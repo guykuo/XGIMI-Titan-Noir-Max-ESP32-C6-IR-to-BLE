@@ -1,6 +1,7 @@
 # XGIMI Titan Noir IR Remote via ESP32
 
-<img width="1200" height="312" alt="banner" src="https://github.com/user-attachments/assets/0817c01b-239d-4115-843b-b0c1d7a0783f" />
+<img width="1200" alt="banner for git" src="https://github.com/user-attachments/assets/7fcef2fa-453c-4113-b921-eb75118d7cbc" />
+
 
 
 This project transforms an ESP32 board into an IR remote to Bluetooth translator for XGIMI Titan Noir projectors. Titan Noir projectors lack IR control capability and only accept bluetooth signals. This translator works around that limitation by translating infrared signals into bluetooth commands the projector accepts. Typically, users add one of these devices definitions to a universal remote and control their Titan Noir by sending IR codes specified to be translated. This effectively adds IR capability to the otherwise bluetooth bound Titan Noir.
@@ -73,7 +74,7 @@ I recommend using an ESP32-C3 with on-board OLED display. Although it is possibl
 ## Boards Tested and Known to Work..
 
 ### ESP32-C3 with built in 0.42 OLD display. Many clones are available.
-<img width="676" height="864" alt="esp32 c3 OLED" src="https://github.com/user-attachments/assets/f5da1f5f-e7a5-4947-a166-1334c34a57c2" />
+<img width="400" alt="esp32 c3 OLED" src="https://github.com/user-attachments/assets/f5da1f5f-e7a5-4947-a166-1334c34a57c2" />
 
 [Here is a good quality set of 3 including breakout boards](https://www.amazon.com/dp/B0G6YT4ZQ3)
 
