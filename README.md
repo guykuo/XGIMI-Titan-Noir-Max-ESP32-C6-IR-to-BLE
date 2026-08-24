@@ -74,7 +74,7 @@ I recommend using an ESP32-C3 with on-board OLED display. Although it is possibl
 ## Boards Tested and Known to Work..
 
 ### ESP32-C3 with built in 0.42 OLD display. Many clones are available.
-<img width="400" alt="esp32 c3 OLED" src="https://github.com/user-attachments/assets/f5da1f5f-e7a5-4947-a166-1334c34a57c2" />
+<img width="300" alt="esp32 c3 OLED" src="https://github.com/user-attachments/assets/f5da1f5f-e7a5-4947-a166-1334c34a57c2" />
 
 [Here is a good quality set of 3 including breakout boards](https://www.amazon.com/dp/B0G6YT4ZQ3)
 
@@ -85,10 +85,11 @@ I recommend using an ESP32-C3 with on-board OLED display. Although it is possibl
 <br>
 ### ESP32-C6-WROOM-1
 The [ESP32-C6-WROOM-1](https://www.amazon.com/dp/B0H1GGL9L1?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1) does not have a display, but does include a multi-color neopixel LED that gives some feedback. 
-<img width="794" height="378" alt="ESP32-C6-WROOM-1" src="https://github.com/user-attachments/assets/c580d0eb-c7f6-480c-9d7d-152ecd95c489" />
+<img width="500" alt="ESP32-C6-WROOM-1" src="https://github.com/user-attachments/assets/c580d0eb-c7f6-480c-9d7d-152ecd95c489" />
 
 
-You can optionally connect a [SSD1306 128x32 0.91-inch OLED display module](https://www.amazon.com/dp/B0GX9245FD) to this board. One might even connect the OLED display only during setup and troubleshooting. Support for adding a display is already in my hardware-c6.yaml file. 
+You can optionally connect a [SSD1306 128x32 0.91-inch OLED display module](https://www.amazon.com/dp/B0GX9245FD) to this board. One might even connect the OLED display only during setup and troubleshooting. Support for adding a display is already in my hardware-c6.yaml file.
+
 <img width="636" height="222" alt="0 91-inch OLED display module" src="https://github.com/user-attachments/assets/49b91c07-67c8-4109-bf33-dbb260e0f5d2" />
 
 <br>
@@ -98,7 +99,7 @@ You can optionally connect a [SSD1306 128x32 0.91-inch OLED display module](http
 This ESP32-S3 board was used to verify translator functionality on S3 boards. It has a larger LCD display and dissipates quite a bit more power than the C3 and C6 boards. I would only use this as a testing and setup board. The larger screen enables easier reading of captured IR codes while editing irmap files. It is probably to bright and power hungry for home theater deployment as full time translator. There are many similar boards, but variants are not always GPIO pin matches for the ones specified in my hardware-s3-waveshare-lcd-1.47B.yaml
 
 Be sure to get exactly [Waveshare ESP S3 LCD 1.47B board](https://www.amazon.com/dp/B0FBWPJPXN) if you want to use my hardware config without searching for correct pinouts.
-<img width="1020" height="910" alt="Screenshot 2026-08-23 at 13 55 31" src="https://github.com/user-attachments/assets/8d91d927-70b3-4f66-9c51-759854cdc0fb" />
+<img width="550" alt="Screenshot 2026-08-23 at 13 55 31" src="https://github.com/user-attachments/assets/8d91d927-70b3-4f66-9c51-759854cdc0fb" />
 
 <br>
 <br>
