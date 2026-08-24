@@ -158,6 +158,8 @@ You can optionally connect a [SSD1306 128x32 0.91-inch OLED display module](http
 This ESP32-S3 board was used to verify translator functionality on S3 boards. It has a larger LCD display and dissipates quite a bit more power than the C3 and C6 boards. I would only use this as a testing and setup board. The larger screen enables easier reading of captured IR codes while editing irmap files. It is probably to bright and power hungry for home theater deployment as full time translator. There are many similar boards, but variants are not always GPIO pin matches for the ones specified in my hardware-s3-waveshare-lcd-1.47B.yaml
 
 Be sure to get exactly [Waveshare ESP S3 LCD 1.47B board](https://www.amazon.com/dp/B0FBWPJPXN) if you want to use my hardware config without searching for correct pinouts.
+
+
 <img width="550" alt="Screenshot 2026-08-23 at 13 55 31" src="https://github.com/user-attachments/assets/8d91d927-70b3-4f66-9c51-759854cdc0fb" />
 
 <br>
