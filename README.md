@@ -43,8 +43,8 @@ Getting the translator to work requires you to...
 
 # The Software
 ## Make Files
-"Make" files are the central place you specify board type, IR mapping, and name your new IR translator. Several example make files are provided.
-These each specify a ESP32 board type and desired IR mapping
+"Make" files are where you specify desired combination of board type, IR mapping, and name your new IR translator. Several example make files are provided.
+These each specify a ESP32 board type and desired IR mapping, but you can also create your own combinations.
 
 * make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
 * make-esp32-c3-OLED-GPIO1-IR-LGcinebeam.yaml
@@ -54,8 +54,15 @@ These each specify a ESP32 board type and desired IR mapping
 * make-esp32-m5stack-atom-lite-Hisense.yaml
 * make-esp32-TEMPLATE.yaml
 
-You can create your own combination by cloning make-esp32-TEMPLATE.yaml and editing your custom make file. 
-At the top of the make file are places to specify remote name, esp32 board, and desired IR mapping.
+You create your own combinations by 
+
+1 Cloning make-esp32-TEMPLATE.yaml 
+2 Editing your custom make file
+
+At the top of your custom make file are places to specify remote name, esp32 board, and desired IR mapping.
+
+Be sure to leave the ir-common-kuo/ prefix when you replaced the HARDWARE and IRMAP
+Also, do not move or rename existing files in ir-common-kuo/ subdirectory
 
 ```YAML
 # ============= BEGIN Configuration Options KUO ==========
@@ -78,7 +85,7 @@ packages:
   # --- IR mapping options
   irmap_package:    !include ir-common-kuo/IRMAP.yaml # <===== Replace IRMAP.yaml with your IRMAP.yaml 
 ```
-You can find available hardware and irmap files in ir-common-kuo/ subdirectory
+You will find available hardware and irmap files in ir-common-kuo/ subdirectory
 
 
 ## IR Maps
@@ -118,18 +125,9 @@ Supplied hardware files are for ESP32 boards ...
 * hardware-s3-waveshare-lcd-1.47b.yaml
 
 Look in the hardware file for suggested GPIO pins for IR receiver and optional i2c display
-
-## IR Map Packages
-Similarly IR to bluetooth mappings are supplied as packages to be pulled into your make file.
-Tested ir-map files are...
-
-* irmap-tivo-roamio.yaml
-* irmap-hisense-50u6g.yaml
-* irmap-jvc-hr-S9600u.yaml
-* irmap-LG-cinebeam-hu810p.yaml
   
-
-### Selecting an ESP32 Board
+# The Hardware
+## Selecting an ESP32 Board
 I recommend using an ESP32-C3 with on-board OLED display. Although it is possible to sniff tokens "blind," the OLED display gives better feedback during setup and troubleshooting IR codes. Boards that lack a display are also usable, but you will only have LED flashes for feedback during setup. 
 
 ## Boards Tested and Known to Work..
@@ -225,19 +223,19 @@ i2c:
 Most users are better off obtaining one of the already tested and known working ESP32 boards.
 
 
-## ESP32-C6-WROOM-1 Pinout and GPIO Pin Selection Example
+### ESP32-C6-WROOM-1 Pinout and GPIO Pin Selection Example
 
 ESP32-C6-WROOM-1 board has GPIO10 freely usable as input for I used as IR signal input. Pin GPIO10 has already been specified in the "make" files provided in this project. I have marked the connectors of interest on its pinout diagram.
 <img width="1326" height="712" alt="pinouts esp32-c6-wroom-1-marked" src="https://github.com/user-attachments/assets/c01e511b-e68a-442d-b883-c19569586023" />
 
 
-## ESP32-C3 SuperMini Dev Board with Integrated 0.42-inch OLED Display Example
+### ESP32-C3 SuperMini Dev Board with Integrated 0.42-inch OLED Display Example
 
 Lonely Binary's ESP32-C3 OLED board has GPIO01 usable for IR signal input. GPIO01 is on same side as its 3V and Gnd connectos, making wiring simpler than GPIO pins on the opposing edge of the board.
 <img width="1500" height="983" alt="esp32-c3 with OLED pins marked" src="https://github.com/user-attachments/assets/33e10bc0-86a0-48b4-ab33-a4aaa9b7b8ed" />
 
 
-## Completed ESP32 Boards
+### Completed ESP32 Boards
 
 Here are two ESP32-C6-WROOM-1 boards wired with two different style IR sensors.
 <img width="1000" height="624" alt="ir to xgimi BLE completed" src="https://github.com/user-attachments/assets/f6219f27-d2a9-41a8-a603-ff9e0276e722" />
@@ -261,9 +259,7 @@ ESP32 boards require very modest power for operation. Any stable USB-C power sup
 
 
 
-
-
-### IR Sensor
+## IR Sensor
 
 Your IR sensor module needs three connections to your ESP32 board.
 
@@ -284,7 +280,7 @@ Here is an alternative board I have also tested, ESP32-C6-WROOM-1. This one does
 
 
 
-### How Bluetooth to Titan Noir Works
+# How Bluetooth to Titan Noir Works
 
 When the projector is awake, the ESP32 maintains a bonded Bluetooth HID connection and sends the same keyboard or consumer-control reports captured from the original remote. Settings Menu and Focus use the two distinct short/alternate reports produced by the physical remote. Immediate power-off holds the Power report for the confirmed 1500 ms duration.
 
@@ -298,9 +294,10 @@ Mrmachine already captured and mapped an original Titan Noir Max remote. We do n
 
 **_The only per-remote value we must acquire is the original remote's 15-byte BLE wake token._**
 
-## Installing This Software on ESP32
 
-### 1\. Clone or copy this directory to your computer.
+# Installing This Software on ESP32
+
+## 1\. Clone or copy this directory to your computer.
 Cloning and downloading controls are within Gitbub green "<> Code" button.
 
 <img width="400" alt="gihub directory clone" src="https://github.com/user-attachments/assets/f7c4ce8f-e0fb-49c3-a893-f6e6023dad4e" />
@@ -314,7 +311,7 @@ Cloning and downloading controls are within Gitbub green "<> Code" button.
 On macOS or Linux, cd to directory of this project. You can readily do so by typing "cd " and dragging your directory into terminal.
 Once terminal is at the correct working directory, you can proceed with below scripts.
 
-### 2\. Install Python environment
+## 2\. Install Python environment
 
 On MacOS or Linux
 
@@ -330,7 +327,7 @@ py -3 -m venv .venv
 .venv\\Scripts\\python.exe -m pip install -r requirements.txt
 ```
 
-### 3\. OPTIONAL STEP - Manually Capture Your Remote's Token
+## 3\. OPTIONAL STEP - Manually Capture Your Remote's Token
 
 Physically unplug the projector so it cannot reconnect to the original remote. Turn Bluetooth on and grant the terminal Bluetooth access if the operating system asks.
 
@@ -350,7 +347,7 @@ On Windows Powershell
 
 Keep the remote close to the computer and press its Power button several times during the scan. A trustworthy capture has a stable 15-byte tail and at least two distinct first-byte rolling-counter values.
 
-### 4. Create `secrets.yaml` with optional captured token. 
+## 4. Create `secrets.yaml` with optional captured token. 
 
 (NOTE: You if you skipped prior manual capture of Remote's token, you do not need to replace the below token hex numbers. Just leave them alone
 because you will be capturing your token on the translator later)
@@ -375,14 +372,14 @@ Now you have a secrets.yaml file that (optionally) contains your specific token.
 
 The helper refuses to overwrite an existing `secrets.yaml`.
 
-### 5\. Build and Flash Firmware for Your Choice of IR Remote
+## 5. Build and Flash Firmware for Your Choice of IR Remote
 
 For your convenience, YAML "make" files have been created to directly support the two example ESP32 boards with any of three IR code sets. The name of provided make files indicate board type, GPIO pin, and IR code set.  
   
 Substitute name of specific "make" file for the one listed in below example scripts to create the version desired.  
 If you create a "make" file for a different board / IR mapping combination, substitute your own make filename in the scripts.
 
-#### 5a. Example Build firmware for TIVO on ESP32-C6
+### 5a. Example Build firmware for TIVO on ESP32-C6
 
 Connect the new ESP32-C6 by USB, validate, compile and flash:
 
@@ -403,7 +400,7 @@ Windows Powershell
 
 ```
 
-#### 5b. Example Build Firmware for HISENSE on ESP32-C3 with OLED display)
+### 5b. Example Build Firmware for HISENSE on ESP32-C3 with OLED display)
 
 Connect the new ESP32-C3 by USB, validate, compile and flash:
 
@@ -439,36 +436,6 @@ Keep the original remote paired as well.
 <br>
 <br>
 <br>
-
-## Specify Your Own Board and IR Mapping Combinations
-You can create a custom make file by copying and editing make-esp32-TEMPLATE.yaml
-Leave your custom makefile in same directory as make-esp32-TEMPLATE.yaml
-Edit your make file and replace three items at the top of the file
-
-```YAML
-# ============= BEGIN Configuration Options KUO ==========
-
-# Only three things to configure here
-#   ble_remote_name
-#   hardware_package
-#   irmap_package
-
-substitutions:
-  ble_remote_name: "IR to Xgimi"  # <===== Name your IR remote. (20 char max)
-
-packages: 
-
-  # ******* NB do not accidentally leave out prefix ir-common-kuo/
-
-  # --- hardware settings of ESP32 board
-  hardware_package: !include ir-common-kuo/HARDWAREFILE.yaml # <===== Replace HARDWAREFILE.yaml with your board.yaml
-
-  # --- IR mapping options
-  irmap_package:    !include ir-common-kuo/IRMAP.yaml # <===== Replace IRMAP.yaml with your IRMAP.yaml 
-
-```
-Supplied HARDWAREFILE and IRMAP files are within ir-common-kuo sub-directory. (NB: Never move or rename files in ir-common-kuo)
-
 
 
 ## 7\. Learning Wake Token from Xgimi Remote.
@@ -508,10 +475,10 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 <br>
 <br>
 
-## Xgimi Command and IR Remote Button Tables
+# Xgimi Command and IR Remote Button Tables
 <br>
 
-### Tivo to Xgimi Titan Noir Mapping
+## Tivo to Xgimi Titan Noir Mapping
 |Xgimi Remote Command | Tivo Remote | NEC IR code of Tivo Roamio Remote |
 |-------- | -------- | -------------------- |
 |back |zoom |address=0x3085, command=0xB044 |
@@ -547,7 +514,7 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 <br>
 <br>
 
-### Hisense to Xgimi Titan Noir Mapping
+## Hisense to Xgimi Titan Noir Mapping
 |Xgimi Remote Command | Hisense Remote Button | NEC IR code of Hisense 50U6G Remote |
 |-------- | -------- | -------------------- |
 |back |back |0xFB04 |
@@ -584,7 +551,7 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 <br>
 <br>
 
-### LG Cinebeam HU810P to Xgimi Titan Noir Mapping
+## LG Cinebeam HU810P to Xgimi Titan Noir Mapping
 
 (Some items duplicated to accept alternative buttons)
 | Xgimi Remote Command | LG Cinebeam Button | NEC IR Code |
@@ -624,7 +591,7 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 <br>
 <br>
 
-### JVC-VCR to Xgimi Titan Noir Mapping
+## JVC-VCR to Xgimi Titan Noir Mapping
 | Xgimi Remote Command | JVC VCR Remote Btn | JVC IR code from JVC VCR |
 | :--- | :--- | :--- |
 | back | rewind | 0xC2C3 |
@@ -667,7 +634,7 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 
 
 
-## Recent Changes:
+# Recent Changes:
 *   Further adjusted button acceptance speed to approx 10 press/sec.
 *   Added support for holding down button on remote for fast repeat.
 *   Added hardware file for Waveshare ESP32 S3 LCD 1.47B board.
