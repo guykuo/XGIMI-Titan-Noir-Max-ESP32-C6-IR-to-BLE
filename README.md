@@ -289,7 +289,7 @@ On Windows Powershell
 
 Keep the remote close to the computer and press its Power button several times during the scan. A trustworthy capture has a stable 15-byte tail and at least two distinct first-byte rolling-counter values.
 
-### 4\. Create `secrets.yaml` with/without the captured token. 
+### 4. Create `secrets.yaml` with optional captured token. 
 
 (NOTE: You if you skipped prior manual capture of Remote's token, you do not need to replace the below token hex numbers. Just leave them alone
 because you will be capturing your token on the translator later)
