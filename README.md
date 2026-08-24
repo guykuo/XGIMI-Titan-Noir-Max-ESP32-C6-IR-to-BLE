@@ -244,7 +244,7 @@ Here are two ESP32-C6-WROOM-1 boards wired with two different style IR sensors.
 Here are ESP32-C3 OLED boards. My firmware displays inbound IR codes and equivalent Xgimi projector translation.
 <img width="1300" height="620" alt="oled esp32-c3" src="https://github.com/user-attachments/assets/04c25845-2c3f-4be7-bd48-4127073c7f61" />
 
-Such tiny boards to the job and provide good feedback via OLED display. Flexible sensor wire leads let me turn LED and OLED away from viewer while keeping IR sensor pointed in direction of IR signal. UV cured resin safely encapsulates IR sensor wiring.
+Such tiny boards to the job and provide good feedback via OLED display. Flexible sensor wire leads allow turning LED and OLED away from viewer while keeping IR sensor pointed in direction of IR signal. UV cured resin encapsulates IR sensor wiring connections in this example.
 
 <img width="1000" height="743" alt="ESP32 C3 with IR sensor" src="https://github.com/user-attachments/assets/9f39a4ef-bfd0-496b-b69d-b79c36f6db5b" />
 
