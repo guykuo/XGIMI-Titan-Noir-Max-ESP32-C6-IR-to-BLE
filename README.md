@@ -41,6 +41,45 @@ Getting the translator to work requires you to...
 * Compile your new ESP32 firmware and send it to your ESP32 board.
 * Set up your universal remote to use the IR mapped codes.
 
+# The Software
+## Make Files
+"Make" files are the central place you specify board type, IR mapping, and name your new IR translator. Several example make files are provided.
+These each specify a ESP32 board type and desired IR mapping
+
+* make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
+* make-esp32-c3-OLED-GPIO1-IR-LGcinebeam.yaml
+* make-esp32-c3-OLED-GPIO1-IR-TiVo.yaml
+* make-esp32-c6-wroom-1-GPIO10-IR-Hisense.yaml
+* make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
+* make-esp32-m5stack-atom-lite-Hisense.yaml
+* make-esp32-TEMPLATE.yaml
+
+You can create your own combination by cloning make-esp32-TEMPLATE.yaml and editing your custom make file. 
+At the top of the make file are places to specify remote name, esp32 board, and desired IR mapping.
+
+```YAML
+# ============= BEGIN Configuration Options KUO ==========
+
+# Only three things to configure here
+#   ble_remote_name
+#   hardware_package
+#   irmap_package
+
+substitutions:
+  ble_remote_name: "IR to Xgimi"  # <===== Name your IR remote. (20 char max)
+
+packages: 
+
+  # ******* NB do not accidentally leave out prefix ir-common-kuo/
+
+  # --- hardware settings of ESP32 board
+  hardware_package: !include ir-common-kuo/HARDWAREFILE.yaml # <===== Replace HARDWAREFILE.yaml with your board.yaml
+
+  # --- IR mapping options
+  irmap_package:    !include ir-common-kuo/IRMAP.yaml # <===== Replace IRMAP.yaml with your IRMAP.yaml 
+```
+You can find available hardware and irmap files in ir-common-kuo/ subdirectory
+
 
 ## IR Maps
 In terms of IR mapping, this translator project includes several IR translations as irmap files.
@@ -67,6 +106,28 @@ The following IR maps have not been vetted and may not (yet) have correct IR map
 * irmap-optoma-projector.yaml
 * irmap-sony-projector.yaml
 
+
+## Hardware Definition Packages
+Board specific information are stored in ir-common-kuo/ as hardware.yaml files. These hardware files contain board specific information used to create the translator firmware. Four board types are supplied. You can also create your "hardware" file to support a new ESP32 board type or customize GPIO assignments.
+
+Supplied hardware files are for ESP32 boards ...
+
+* hardware-c3.yaml
+* hardware-c6.yaml
+* hardware-m5stack-atom-lite.yaml
+* hardware-s3-waveshare-lcd-1.47b.yaml
+
+Look in the hardware file for suggested GPIO pins for IR receiver and optional i2c display
+
+## IR Map Packages
+Similarly IR to bluetooth mappings are supplied as packages to be pulled into your make file.
+Tested ir-map files are...
+
+* irmap-tivo-roamio.yaml
+* irmap-hisense-50u6g.yaml
+* irmap-jvc-hr-S9600u.yaml
+* irmap-LG-cinebeam-hu810p.yaml
+  
 
 ### Selecting an ESP32 Board
 I recommend using an ESP32-C3 with on-board OLED display. Although it is possible to sniff tokens "blind," the OLED display gives better feedback during setup and troubleshooting IR codes. Boards that lack a display are also usable, but you will only have LED flashes for feedback during setup. 
@@ -379,10 +440,10 @@ Keep the original remote paired as well.
 <br>
 <br>
 
-## Making Other Board and IR Mapping Combinations
+## Specify Your Own Board and IR Mapping Combinations
 You can create a custom make file by copying and editing make-esp32-TEMPLATE.yaml
 Leave your custom makefile in same directory as make-esp32-TEMPLATE.yaml
-Edit your makefile and replace three items at the top of the file
+Edit your make file and replace three items at the top of the file
 
 ```YAML
 # ============= BEGIN Configuration Options KUO ==========
@@ -600,39 +661,10 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 | bluetooth\_pairing\_start | 1 | 0xC284 |
 | bluetooth\_pairing\_clear | 2 | 0xC244 |
 
-## Hardware Definition Packages
-Board specific information is pulled into make files as packages. You can edit your "make" file to use any of the supplied hardware packages.
-Supplied hardware files support ESP32 boards ...
 
-* hardware-c3.yaml
-* hardware-c6.yaml
-* hardware-m5stack-atom-lite.yaml
-* hardware-s3-waveshare-lcd-1.47b.yaml
 
-Look in the hardware file for suggested GPIO pins for IR receiver and optional i2c display
 
-## IR Map Packages
-Similarly IR to bluetooth mappings are supplied as packages to be pulled into your make file.
-Tested ir-map files are...
 
-* irmap-tivo-roamio.yaml
-* irmap-hisense-50u6g.yaml
-* irmap-jvc-hr-S9600u.yaml
-* irmap-LG-cinebeam-hu810p.yaml
-
-Additional AI generated ir-maps are also supplied, but have not been tested and may 
-have compilation issues, particularly if "place holder" definitions are not removed or
-resolved with actual button IR codes. Author does not plan to edit nor test these 
-AI generated IR-maps, but if anyone edits and makes one actually usable, please
-let me know and submit a working copy of corrected ir-map.
-
-* irmap-AWOL-projector.yaml
-* irmap-benq-projector.yaml
-* irmap-epson-projector.yaml
-* irmap-hisense-projector.yaml
-* irmap-jvc-projector.yaml
-* irmap-optoma-projector.yaml
-* irmap-sony-projector.yaml
 
 
 ## Recent Changes:
