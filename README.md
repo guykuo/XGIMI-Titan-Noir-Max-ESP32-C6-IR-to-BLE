@@ -194,9 +194,9 @@ Such tiny boards to the job and provide good feedback via OLED display. Flexible
 
 ESP32 boards require very modest power for operation. Any stable USB-C power supply should suffice.
 
-\[These work well.\]([https://www.amazon.com/dp/B0DZ6J62C3](https://www.amazon.com/dp/B0DZ6J62C3)) and include a varied length assortment of DATA capable cables.
+[\[These work well.\](https://www.amazon.com/dp/B0DZ6J62C3)) and include a varied length assortment of DATA capable cables.
 
-<img width="400" height="1340" alt="usbc power supply" src="https://github.com/user-attachments/assets/fe43824f-542d-45b6-890a-67b16024e743" />
+<img width="400" alt="usbc power supply" src="https://github.com/user-attachments/assets/fe43824f-542d-45b6-890a-67b16024e743" />
 
 
 
@@ -241,7 +241,7 @@ Mrmachine already captured and mapped an original Titan Noir Max remote. We do n
 
 ### 1\. Clone or copy this directory to your computer.
 Cloning and downloading controls are within Gitbub green "<> Code" button.
-<img width="856" height="802" alt="gihub directory clone" src="https://github.com/user-attachments/assets/f7c4ce8f-e0fb-49c3-a893-f6e6023dad4e" />
+<img width="400" alt="gihub directory clone" src="https://github.com/user-attachments/assets/f7c4ce8f-e0fb-49c3-a893-f6e6023dad4e" />
 
 
 <br>
