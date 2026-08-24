@@ -192,9 +192,13 @@ Such tiny boards to the job and provide good feedback via OLED display. Flexible
 
 ## Powering Your ESP32 Board
 
-ESP32 boards require very modest poewr for operation. Any stable USB-C power supply should suffice.
+ESP32 boards require very modest power for operation. Any stable USB-C power supply should suffice.
 
-\[This one works well.\]([https://www.amazon.com/dp/B0DZ6J62C3](https://www.amazon.com/dp/B0DZ6J62C3))
+\[These work well.\]([https://www.amazon.com/dp/B0DZ6J62C3](https://www.amazon.com/dp/B0DZ6J62C3)) and include a varied length assortment of DATA capable cables.
+
+<img width="400" height="1340" alt="usbc power supply" src="https://github.com/user-attachments/assets/fe43824f-542d-45b6-890a-67b16024e743" />
+
+
 
 
 
