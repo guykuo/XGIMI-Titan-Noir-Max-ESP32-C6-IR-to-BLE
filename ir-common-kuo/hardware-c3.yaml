@@ -21,7 +21,29 @@ i2c:
   
 # ============= END Configuration Options KUO ==========
   
+globals:
+    # ======= myDisplay display globals
+  - id: myDisplay_line1
+    type: std::string  
+    restore_value: no
+    initial_value: '"IR to BLE Kuo"'
 
+  - id: myDisplay_line2
+    restore_value: no
+    type: std::string  
+    #assign at boot
+    
+  - id: myDisplay_line3
+    restore_value: no
+    type: std::string  
+    initial_value: '"Translator"'
+
+  - id: myDisplay_small_text
+    type: bool
+    restore_value: no
+    initial_value: 'false'  # This acts as your default value!
+    
+    
 switch:
   - platform: gpio # indicator LED that lights up when sniffing
     pin:
