@@ -41,6 +41,16 @@ Getting the translator to work requires you to...
 * Compile your new ESP32 firmware and send it to your ESP32 board.
 * Set up your universal remote to use the IR mapped codes.
 
+
+# Layout of this Git
+Project Git is arranged as below. You will find make, hardware, and IRmap files that are combined to create your own combination of IR code set translation and particular ESP32 board the translator is to run upon.
+
+<img width="1200" height="1319" alt="project git layout" src="https://github.com/user-attachments/assets/4c0e3408-2380-4790-8e67-8c003cb49541" />
+
+
+
+
+
 # The Software
 ## Make Files
 "Make" files are where you specify desired combination of board type, IR mapping, and name your new IR translator. Several example make files are provided.
