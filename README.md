@@ -388,16 +388,12 @@ Connect the new ESP32-C6 by USB, validate, compile and flash:
 MacOS or Linux
 
 ```sh
-
-.venv/bin/esphome config make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
 .venv/bin/esphome run make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
 ```
 
 Windows Powershell
 
 ```powershell
-
-.venv\\Scripts\\esphome.exe config make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
 .venv\\Scripts\\esphome.exe run make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
 
 ```
@@ -409,8 +405,6 @@ Connect the new ESP32-C3 by USB, validate, compile and flash:
 MacOS or Linux
 
 ```sh
-
-.venv/bin/esphome config make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
 .venv/bin/esphome run make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
 
 ```
@@ -418,8 +412,6 @@ MacOS or Linux
 Windows Powershell
 
 ```powershell
-
-.venv\\Scripts\\esphome.exe make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
 .venv\\Scripts\\esphome.exe make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
 
 ```
