@@ -331,11 +331,21 @@ Cloning and downloading controls are within Gitbub green "<> Code" button.
 <br>
 
 ### Create a virtual environment, and install the pinned tools
+## Change working director of Powershell or Terminal to be the folder containing this Git
 
-On macOS or Linux, cd to directory of this project. You can readily do so by typing "cd " and dragging your directory into terminal.
-Once terminal is at the correct working directory, you can proceed with below scripts.
+Launch PowerShell or Terminal (which depends on your OS).
+
+Type cd <a space>
+
+Drag directory of this project into terminal window. Dragging directory into terminal window enters the filepath for you.
+
+Type <return>
+
+That should set your shell window working directory to be the one containing this Git.
+
 
 ## 2\. Install Python environment
+Type in two commands to create python compile and required elements in the Git folder. This readies things for compiling with Python
 
 On MacOS or Linux
 
@@ -352,6 +362,7 @@ py -3 -m venv .venv
 ```
 
 ## 3\. OPTIONAL STEP - Manually Capture Your Remote's Token
+You do not have to do this step, unless you want your translator to have a "default" backup copy of your Xgimi wake token. Generally, this can be skipped because it is so easy to have the translator sniff the token later.
 
 Physically unplug the projector so it cannot reconnect to the original remote. Turn Bluetooth on and grant the terminal Bluetooth access if the operating system asks.
 
@@ -373,12 +384,15 @@ Keep the remote close to the computer and press its Power button several times d
 
 ## 4. Create `secrets.yaml` with optional captured token. 
 
-(NOTE: You if you skipped prior manual capture of Remote's token, you do not need to replace the below token hex numbers. Just leave them alone
-because you will be capturing your token on the translator later)
+You must do this step to create a secrets.yaml file. The optional bit is that you are not required to replace the placeholder token
 
-The helper generates the API key and strong OTA/fallback-access-point passwords using Python's securerandom generator:
+if you skipped prior manual capture of Remote's token, you do not need to replace the below token hex numbers. 
+Just leave them alone token AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88
 
-(Optional) Replace the below script's token with the 15-byte token printed by the capture
+
+This script generates the API key and strong OTA/fallback-access-point passwords using Python's secure random generator:
+
+(Optional) Replace the below script's token with the 15-byte token obtained by manual capture.
 
 MacOS or Linux
 
@@ -392,9 +406,9 @@ Windows Powershell
 .venv\Scripts\python.exe scripts\create_secrets.py --token "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88"
 ```
 
-Now you have a secrets.yaml file that (optionally) contains your specific token.
+Now you should have a secrets.yaml file that (optionally) contains your specific token.
 
-The helper refuses to overwrite an existing `secrets.yaml`.
+The helper script refuses to overwrite an existing `secrets.yaml`.
 
 ## 5. Build and Flash Firmware for Your Choice of IR Remote
 
