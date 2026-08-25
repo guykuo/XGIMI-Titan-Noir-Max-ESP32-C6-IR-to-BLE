@@ -151,7 +151,8 @@ I recommend using an ESP32-C3 with on-board OLED display. Although it is possibl
 
 <br>
 <br>
-<br>
+
+
 ### ESP32-C6-WROOM-1
 The [ESP32-C6-WROOM-1](https://www.amazon.com/dp/B0H1GGL9L1?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1) does not have a display, but does include a multi-color neopixel LED that gives some feedback. 
 <img width="500" alt="ESP32-C6-WROOM-1" src="https://github.com/user-attachments/assets/c580d0eb-c7f6-480c-9d7d-152ecd95c489" />
