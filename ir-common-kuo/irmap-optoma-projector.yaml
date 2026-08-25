@@ -1,17 +1,38 @@
+# optoma projector
 packages:
   base_ir_engine: !include appkit/ir-architecture-base.yaml
 
+remote_receiver:
+  id: ir_receiver
+  dump: nec
+  on_sony: []   # Total hardware lockout for cross-talk
+  on_lg: []
+  on_jvc: []
+
 substitutions:
-  target_ir_address: "0x32CD"
+  target_ir_address: "0xCD32"
   remote_display_name: "Optoma Proj"
   
-  hold_exclusion_condition: "id(global_cached_command) == 0x02FD"
+  # =============================================================
+  # DEFINE token clearing gate buttons
+  cmd_token_clear_arm: "0xE31C"    # Optoma: 5
+  cmd_token_clear_fire: "0x3AC5"   # Optoma: ENTER
 
 script:
   - id: master_ir_processor
     parameters:
       command: uint32_t
       is_hold: bool
+    then:
+      - lambda: |-
+          id(nec_broadcast_processor).execute(command, (uint16_t)(command >> 16), (uint16_t)(command & 0xFFFF), is_hold);
+
+  - id: nec_broadcast_processor
+    parameters:
+      command: uint32_t     
+      device_addr: uint16_t  
+      pure_cmd: uint16_t     
+      is_hold: bool       
     then:
       - lambda: |-
           struct IRCommand {
@@ -22,11 +43,11 @@ script:
           // Strict unique map loaded with genuine Optoma production command codes
           static const std::map<uint16_t, IRCommand> nec_codes = {
             { 0x5CA3,       { "back",          id(back) } },           // Optoma: ESCAPE / BACK
-            { 0x3DC2,       { "cursor_down",   id(cursor_down) } },    // Optoma: DOWN ARROW
+            { 0x38C7,       { "cursor_down",   id(cursor_down) } },    // Optoma: DOWN ARROW
             { 0x3AC5,       { "cursor_enter",  id(cursor_enter) } },   // Optoma: ENTER
-            { 0x3CC3,       { "cursor_left",   id(cursor_left) } },    // Optoma: LEFT ARROW
-            { 0x3BC4,       { "cursor_right",  id(cursor_right) } },   // Optoma: RIGHT ARROW / RE-SYNC
-            { 0x3EC1,       { "cursor_up",     id(cursor_up) } },      // Optoma: UP ARROW
+            { 0x37C8,       { "cursor_left",   id(cursor_left) } },    // Optoma: LEFT ARROW
+            { 0x36C9,       { "cursor_right",  id(cursor_right) } },   // Optoma: RIGHT ARROW / RE-SYNC
+            { 0x39C6,       { "cursor_up",     id(cursor_up) } },      // Optoma: UP ARROW
             { 0x7887,       { "focus_auto",    id(focus_auto) } },     // Optoma: BRIGHTNESS
             { 0x7B84,       { "focus_manual",  id(focus_manual) } },   // Optoma: KEYSTONE MINUS
             { 0x7788,       { "settings_menu", id(settings_menu) } },  // Optoma: MENU
@@ -41,34 +62,38 @@ script:
             { 0x55AA,       { "shortcut_4",    id(shortcut_4) } },     // Optoma: CONTRAST TOOL
             { 0x708F,       { "volume_down",   id(volume_down) } },    // Optoma: VOLUME MINUS
             { 0x738C,       { "volume_up",     id(volume_up) } },      // Optoma: VOLUME PLUS
-            { 0x01FE,       { "token_sniff",   id(token_sniff) } },    // Optoma: NUMPAD 1 PLACEHOLDER
-            { 0x02FD,       { "token_clear",   id(token_clear) } },    // Optoma: NUMPAD 2 PLACEHOLDER
-            { 0x03FC,       { "token_recall",  id(token_recall) } },   // Optoma: NUMPAD 3 PLACEHOLDER
-            { 0x04FB,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // Optoma: NUMPAD 4 PLACEHOLDER
-            { 0x05FA,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // Optoma: NUMPAD 5 PLACEHOLDER
+            { 0x8F70,       { "token_sniff",   id(token_sniff) } },    // Optoma: 4
+            { 0xE31C,       { "token_clear",   id(token_clear) } },    // Optoma: 5
+            { 0xE619,       { "token_recall",  id(token_recall) } },   // Optoma: 6
+            { 0xE51A,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // 7
+            { 0xE817,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // 8
           };
 
-          // Operational safety intercept loop for repeating button holds
-          if (is_hold && (${hold_exclusion_condition})) {
-            ESP_LOGW("IR Safety", "Hold repeat blocked for safety excluded command: 0x%04X", (unsigned int)command);
-            return;
-          }
-
-          auto it = nec_codes.find(command);
+          auto it = nec_codes.find(pure_cmd);
           if (it != nec_codes.end()) {
-            if (is_hold) {
-              id(myDisplay_line1) = it->second.name + " (Hold)";
-              ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
-            } else {
-              id(myDisplay_line1) = it->second.name;
-              ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
+            if (!id(global_token_clear_armed)) {
+              if (is_hold) {
+                id(myDisplay_line1) = it->second.name + " (Hold)";
+                id(myDisplay_line2) = "${remote_display_name}"; 
+                id(myDisplay_line3) = ""; 
+                ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
+              } else {
+                id(myDisplay_line1) = it->second.name;
+                id(myDisplay_line2) = "${remote_display_name}"; 
+                id(myDisplay_line3) = ""; 
+                ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
+              }
             }
 
             if (it->second.button_obj != nullptr) {
               it->second.button_obj->press();
             }
           } else {
-            if (!is_hold) {
-              id(myDisplay_line1) = "Unassigned";
+            if (!id(global_token_clear_armed)) {
+              if (!is_hold) {
+                id(myDisplay_line1) = "Unassigned";
+                id(myDisplay_line2) = "${remote_display_name}"; 
+                id(myDisplay_line3) = ""; 
+              }
             }
           }

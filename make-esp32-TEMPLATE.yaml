@@ -173,32 +173,7 @@ globals:
     restore_value: no
     initial_value: '0'
 
-    # ======= myDisplay display globals
-  - id: myDisplay_line1
-    type: std::string  
-    restore_value: no
-    initial_value: '"IR to BLE Kuo"'
-
-  - id: myDisplay_line2
-    restore_value: no
-    type: std::string  
-    #assign at boot
     
-  - id: myDisplay_line3
-    restore_value: no
-    type: std::string  
-    initial_value: '"Translator"'
-
-  - id: myDisplay_small_text
-    type: bool
-    restore_value: no
-    initial_value: 'false'  # This acts as your default value!
-    
-  # ===== State flag: true means we are waiting for the 2nd click of clear_token action
-  - id: clear_window_active
-    type: bool
-    initial_value: 'false'
-
   
 binary_sensor:
   - platform: template
@@ -282,32 +257,16 @@ button:
     id: token_clear
     on_press:
       then:
-        
         - script.execute:
             id: turn_led_on_custom
             red: 0.3
             green: 0.2
             blue: 0.0
             brightness: 0.2
-        
-        
         - lambda: |-
-            if (id(clear_window_active)) {
-              // --- CONFIRMED: 2ND PHYSICAL PRESS RECEIVED ---
-              id(clear_window_active) = false;
-              id(clear_timeout_tracker).stop(); 
-              id(run_token_clear_worker).execute(); 
-            } else {
-              // --- INITIALIZATION: 1ST PHYSICAL PRESS RECEIVED ---
-              id(clear_window_active) = true;
-              
-              id(myDisplay_line1) = "Press Again!";
-              id(myDisplay_line2) = "To Confirm";
-              id(myDisplay_line3) = "Within 5 Sec";
-              id(display_timeout_handler).execute();
-              
-              id(clear_timeout_tracker).execute();
-            }            
+            // Force fire your local hardware data-erasing flash worker
+            id(run_token_clear_worker).execute(); 
+     
             
   - platform: template # button to start sniffing for wake token. W
     name: "Token Sniff"
@@ -462,28 +421,6 @@ esp32_ble_tracker:
 #=================  utility scripts ==============
 script:
 
-  # --- ASYNCHRONOUS TIMEOUT TRACKER ---
-  - id: clear_timeout_tracker
-    mode: restart
-    then:
-      - delay: 5s
-      - if:
-          condition:
-            lambda: 'return id(clear_window_active);'
-          then:
-            - globals.set: { id: clear_window_active, value: 'false' }
-            - script.execute: turn_led_off_custom
-
-            - script.execute:
-                id: turn_led_off_custom
-               
-            - lambda: |-
-                id(myDisplay_line1) = "Clear Canceled";
-                id(myDisplay_line2) = "Timed Out";
-                id(myDisplay_line3) = "";
-            - script.execute: display_timeout_handler
-
-
   # --- THREAD-ISOLATED CLEAR ACTION ---
   - id: run_token_clear_worker
     mode: single
@@ -614,20 +551,27 @@ script:
       - script.execute: display_timeout_handler
 
 
-
-  # --- myDisplay timeout handler ---
+# --- myDisplay timeout handler ---
   - id: display_timeout_handler
     mode: restart 
     # FIXED: No parameter block needed. It reads the global state instead.
     then:
-      - lambda: |-
-          if (id(myDisplay_small_text)) {
-            id(myDisplay).show_page(id(active_page_small));
-          } else {
-            id(myDisplay).show_page(id(active_page_std));
-          }
-      - delay: 40s
-      - display.page.show: blank_page
+      - if:
+          condition:
+            lambda: |-
+              return (id(myDisplay_line1) != "TOKENS WIPED" && id(myDisplay_line1) != "ARMED: PRESS");
+          then:
+            - lambda: |-
+                if (id(myDisplay_small_text)) {
+                  id(myDisplay).show_page(id(active_page_small));
+                } else {
+                  id(myDisplay).show_page(id(active_page_std));
+                }
+            - delay: 40s
+            - display.page.show: blank_page
+          else:
+            - delay: 40s
+
 
 
   # --- show token_param on display ---

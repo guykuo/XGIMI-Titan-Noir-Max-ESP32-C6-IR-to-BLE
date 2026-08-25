@@ -1,17 +1,42 @@
+# sony projector
 packages:
   base_ir_engine: !include appkit/ir-architecture-base.yaml
 
+remote_receiver:
+  id: ir_receiver
+  dump: sony
+  on_nec: []   # Total hardware lockout for cross-talk
+  on_lg: []
+  on_jvc: []
+  
 substitutions:
   target_ir_address: "0x001A"  
   remote_display_name: "Sony Proj"
-  
-  hold_exclusion_condition: "id(global_cached_command) == 0x0F" 
+
+  # =============================================================
+  # DEFINE token clearing gate buttons
+  cmd_token_clear_arm: "0x0CAB54"   # FILM 1
+  cmd_token_clear_fire: "0x002D2A"  # OK / ENTER (Verified)
 
 script:
   - id: master_ir_processor
     parameters:
-      command: uint32_t   # Receives the clean, raw 7-bit command byte directly
-      is_hold: bool
+      command: uint32_t   
+      is_hold: bool       
+    then:
+      - lambda: |-
+          // Fixed LSB-First Extraction: Command is bottom 7 bits, Address is everything above
+          uint8_t pure_command = command & 0x7F;
+          uint16_t dynamic_address = command >> 7; 
+
+          id(sony_broadcast_processor).execute(command, dynamic_address, pure_command, is_hold);
+
+  - id: sony_broadcast_processor
+    parameters:
+      command: uint32_t     
+      device_addr: uint16_t  
+      pure_cmd: uint16_t     
+      is_hold: bool       
     then:
       - lambda: |-
           struct IRCommand {
@@ -19,57 +44,64 @@ script:
             esphome::template_::TemplateButton* button_obj;
           };
 
-          // SINGLE SOURCE OF TRUTH: Rebuilt using official, raw 7-bit Sony SIRC factory command codes
           static const std::map<uint32_t, IRCommand> sony_codes = {
-            { 0x5C,       { "back",          id(back) } },           // Command 0x005C (EXIT)
-            { 0x34,       { "cursor_down",   id(cursor_down) } },    // Command 0x0034 (DOWN ARROW)
-            { 0x54,       { "cursor_enter",  id(cursor_enter) } },   // Command 0x0054 (ENTER)
-            { 0x35,       { "cursor_left",   id(cursor_left) } },    // Command 0x0035 (LEFT ARROW)
-            { 0x33,       { "cursor_right",  id(cursor_right) } },   // Command 0x0033 (RIGHT ARROW)
-            { 0x32,       { "cursor_up",     id(cursor_up) } },      // Command 0x0032 (UP ARROW)
-            { 0x42,       { "focus_auto",    id(focus_auto) } },     // Command 0x0042 (FOCUS / LENS ADJUST)
-            { 0x26,       { "focus_manual",  id(focus_manual) } },   // Command 0x0026 (APA / ADJ RESET)
-            { 0x25,       { "input",         id(input) } },          // Command 0x0025 (INPUT SELECT)
-            { 0x36,       { "settings_menu", id(settings_menu) } },  // Command 0x0036 (MENU)
-            { 0x5D,       { "game_menu",     id(game_menu) } },      // Command 0x005D (STATUS / INFO)
-            { 0x28,       { "mute",          id(mute) } },           // Command 0x0028 (MUTING)
-            { 0x40,       { "picture",       id(picture) } },        // Command 0x0040 (PICTURE MODE CALIBRATION)
-            { 0x2F,       { "power_on",      id(power_on) } },       // Command 0x002F (DISCRETE POWER ON)
-            { 0x2E,       { "power_off_immediately", id(power_off_immediately) } }, // Command 0x002E (DISCRETE POWER OFF)
-            { 0x4A,       { "shortcut_1",    id(shortcut_1) } },     // Command 0x004A (ASPECT RATIO)
-            { 0x4B,       { "shortcut_2",    id(shortcut_2) } },     // Command 0x004B (MOTIONFLOW)
-            { 0x49,       { "shortcut_3",    id(shortcut_3) } },     // Command 0x0049 (3D MODE)
-            { 0x5E,       { "shortcut_4",    id(shortcut_4) } },     // Command 0x005E (COLOR SPACE)
-            { 0x1B,       { "volume_down",   id(volume_down) } },    // Command 0x1B (RESET button)
-            { 0x4D,       { "volume_up",     id(volume_up) } },      // Command 0x4D (REALISM button)
-            { 0x10,       { "token_sniff",   id(token_sniff) } },    // Command 0x10 (DYNAMIC / STANDARD button)
-            { 0x0F,       { "token_clear",   id(token_clear) } },    // Command 0x0F (CINEMA FILM 1 / FILM 2 button)
-            { 0x3E,       { "token_recall",  id(token_recall) } },   // Command 0x3E (REF / TV / GAME or USER button)
-            { 0x0E,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // Command 0x0E (BRIGHTNESS button)
-            { 0x48,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // Command 0x48 (CONTRAST button)
+            { 0x006F2A,       { "back",          id(back) } },           // RESET
+            { 0x00362A,       { "cursor_down",   id(cursor_down) } },    // DOWN ARROW (Verified)
+            { 0x002D2A,       { "cursor_enter",  id(cursor_enter) } },   // OK / ENTER (Verified)
+            { 0x00162A,       { "cursor_left",   id(cursor_left) } },    // LEFT ARROW (Verified)
+            { 0x00662A,       { "cursor_right",  id(cursor_right) } },   // RIGHT ARROW (Verified)
+            { 0x00562A,       { "cursor_up",     id(cursor_up) } },      // UP ARROW (Verified)
+            { 0x0FAB54,       { "focus_auto",    id(focus_auto) } },     // advanced IRIS (Verified)
+            { 0x026B54,       { "focus_manual",  id(focus_manual) } },   // FOCUS / LENS ADJUST (Verified)
+            { 0x00752A,       { "input",         id(input) } },          // INPUT SELECT
+            { 0x004A2A,       { "settings_menu", id(settings_menu) } },  // MENU button
+            { 0x06AB54,       { "game_menu",     id(game_menu) } },      // GAME
+            { 0x0EAB54,       { "mute",          id(mute) } },           // PHOTO
+            { 0x07AB54,       { "picture",       id(picture) } },        // GAMMA CORRECTION
+            { 0x003A2A,       { "power_on",      id(power_on) } },       // DISCRETE POWER ON
+            { 0x00542A,       { "power_on_alt",  id(power_on) } },       // Toggle POWER ON
+            { 0x007A2A,       { "power_off", id(power_off_immediately)}},// DISCRETE POWER OFF
+            { 0x076B54,       { "shortcut_1",    id(shortcut_1) } },     // ASPECT RATIO (Verified!)
+            { 0x00502A,       { "shortcut_2",    id(shortcut_2) } },     // MOTIONFLOW
+            { 0x0DCB54,       { "shortcut_3",    id(shortcut_3) } },     // 3D MOTION (Verified!)
+            { 0x0D2B54,       { "shortcut_4",    id(shortcut_4) } },     // COLOR SPACE (Verified!)
+            { 0x004C2A,       { "volume_down",   id(volume_down) } },    // CONTRAST DOWN
+            { 0x000C2A,       { "volume_up",     id(volume_up) } },      // CONTRAST 
+            { 0x032B54,       { "token_sniff",   id(token_sniff) } },    // REALITY
+            { 0x0CAB54,       { "token_clear",   id(token_clear) } },    // FILM 1
+            { 0x01AB54,       { "token_recall",  id(token_recall) } },   // FILM 2
+            { 0x007C2A,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // BRIGHTNESS DOWN
+            { 0x003C2A,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // BRIGHTNESS UP
           };
-
-          // Operational safety intercept loop for repeating button holds
-          if (is_hold && (${hold_exclusion_condition})) {
-            ESP_LOGW("IR Safety", "Hold repeat blocked for safety excluded command: 0x%04X", (unsigned int)command);
-            return;
-          }
 
           auto it = sony_codes.find(command);
           if (it != sony_codes.end()) {
-            if (is_hold) {
-              id(myDisplay_line1) = it->second.name + " (Hold)";
-              ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
-            } else {
-              id(myDisplay_line1) = it->second.name;
-              ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
+            if (!id(global_token_clear_armed)) {
+              if (is_hold) {
+                id(myDisplay_line1) = it->second.name + " (Hold)";
+              } else {
+                id(myDisplay_line1) = it->second.name;
+              }
+              id(myDisplay_line2) = "${remote_display_name}"; 
+              id(myDisplay_line3) = ""; 
             }
-
+            
             if (it->second.button_obj != nullptr) {
               it->second.button_obj->press();
             }
           } else {
-            if (!is_hold) {
-              id(myDisplay_line1) = "Unassigned";
+            if (!id(global_token_clear_armed)) {
+              if (!is_hold) {
+                uint8_t bit_depth = (command > 0x007FFF) ? 20 : ((command > 0x000FFF) ? 15 : 12);
+                id(myDisplay_line1) = "Sony Unknown (" + std::to_string(bit_depth) + "b)";
+                
+                char addr_buf[32];
+                snprintf(addr_buf, sizeof(addr_buf), "A:0x%04X  CMD:0x%02X", device_addr, pure_cmd);
+                id(myDisplay_line2) = std::string(addr_buf);
+                
+                char code_buf[32];
+                snprintf(code_buf, sizeof(code_buf), "RAW: 0x%05X", (unsigned int)command);
+                id(myDisplay_line3) = std::string(code_buf);
+              }
             }
           }

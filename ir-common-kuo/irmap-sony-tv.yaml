@@ -1,0 +1,92 @@
+# sony-tv.yaml
+packages:
+  base_ir_engine: !include appkit/ir-architecture-base.yaml
+
+remote_receiver:
+  id: ir_receiver
+  dump: sony
+  on_nec: []   # Total hardware lockout for cross-talk
+  on_lg: []
+  on_jvc: []
+
+substitutions:
+  target_ir_address: "0x0001"        
+  remote_display_name: "Sony TV"     
+
+  # =============================================================
+  # DEFINE token clearing gate buttons
+  cmd_token_clear_arm: "0x000210"    # Button 5
+  cmd_token_clear_fire: "0x000A70"   # Cursor Enter (Select)
+
+script:
+  - id: master_ir_processor
+    parameters:
+      command: uint32_t   
+      is_hold: bool       
+    then:
+      # Wrapped raw ID method execution inside a proper C++ lambda action block
+      - lambda: |-
+          id(sony_broadcast_processor).execute(command, (uint16_t)(command >> 7), (uint8_t)(command & 0x7F), is_hold);
+
+  - id: sony_broadcast_processor
+    parameters:
+      command: uint32_t     
+      device_addr: uint16_t  
+      pure_cmd: uint16_t     
+      is_hold: bool       
+    then:
+      - lambda: |-
+          struct IRCommand {
+            std::string name;
+            esphome::template_::TemplateButton* button_obj;
+          };
+
+          static const std::map<uint32_t, IRCommand> sony_codes = {
+            { 0x0062E9,       { "back",          id(back) } },           // Back
+            { 0x000AF0,       { "cursor_down",   id(cursor_down) } },    // Arrow Down
+            { 0x000A70,       { "cursor_enter",  id(cursor_enter) } },   // Arrow Select
+            { 0x0002D0,       { "cursor_left",   id(cursor_left) } },    // Arrow Left
+            { 0x000CD0,       { "cursor_right",  id(cursor_right) } },   // Arrow Right
+            { 0x0002F0,       { "cursor_up",     id(cursor_up) } },      // Arrow Up
+            { 0x000AE9,       { "focus_auto",    id(focus_auto) } },     // subtitle
+            { 0x000E90,       { "focus_manual",  id(focus_manual) } },   // audio
+            { 0x000A50,       { "input",         id(input) } },          // Input
+            { 0x006923,       { "settings_menu", id(settings_menu) } },  // Action Menu
+            { 0x003123,       { "game_menu",     id(game_menu) } },      // Google Play
+            { 0x000290,       { "mute",          id(mute) } },           // mute
+            { 0x000070,       { "home",          id(home) } },           // Home
+            { 0x000250,       { "picture",       id(picture) } },        // TV
+            { 0x000750,       { "power_on",      id(power_on) } },             // power on discrete
+            { 0x000A90,       { "power_on_alt",  id(power_on) } },             // power (toggle)
+            { 0x000F50,       { "power_off",     id(power_off_immediately)} }, // power off discrete
+            { 0x000910,       { "power_off_alt", id(power_off_immediately)} }, // 0
+            { 0x0072E9,       { "shortcut_1",    id(shortcut_1) } },     // yellow
+            { 0x0012E9,       { "shortcut_2",    id(shortcut_2) } },     // blue
+            { 0x0052E9,       { "shortcut_3",    id(shortcut_3) } },     // red
+            { 0x0032E9,       { "shortcut_4",    id(shortcut_4) } },     // green
+            { 0x000C90,       { "volume_down",   id(volume_down) } },    // volume down
+            { 0x000490,       { "volume_up",     id(volume_up) } },      // volume up
+            { 0x000C10,       { "token_sniff",   id(token_sniff) } },    // 4
+            { 0x000210,       { "token_clear",   id(token_clear) } },    // 5 -> Normal un-hacked mapping!
+            { 0x000A10,       { "token_recall",  id(token_recall) } },   // 6
+            { 0x002CE9,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // play
+            { 0x001CE9,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // fast forward
+          };
+
+          auto it = sony_codes.find(command);
+          if (it != sony_codes.end()) {
+            // Only modify display lines if the security gate is NOT currently active
+            if (!id(global_token_clear_armed)) {
+              if (is_hold) {
+                id(myDisplay_line1) = it->second.name + " (Hold)";
+              } else {
+                id(myDisplay_line1) = it->second.name;
+              }
+              id(myDisplay_line2) = "${remote_display_name}"; 
+              id(myDisplay_line3) = ""; 
+            }
+            
+            if (it->second.button_obj != nullptr) {
+              it->second.button_obj->press();
+            }
+          }

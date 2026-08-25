@@ -1,11 +1,9 @@
 # ============= BEGIN Configuration Options KUO ==========
 
 substitutions:
-  
   pin_ir_receiver: GPIO2
   pin_indicator_LED: GPIO38
   pin_sniff_btn: GPIO0 # use boot button to start sniff
-
 
 # Core Architecture Declaration
 esp32:
@@ -23,9 +21,31 @@ esphome:
       - light.turn_on:
           id: display_backlight
           brightness: 30%
+
+globals:
+    # ======= myDisplay display globals
+  - id: myDisplay_line1
+    type: std::string  
+    restore_value: no
+    initial_value: '"IR to BLE Kuo"'
+
+  - id: myDisplay_line2
+    restore_value: no
+    type: std::string  
+    #assign at boot
+    
+  - id: myDisplay_line3
+    restore_value: no
+    type: std::string  
+    initial_value: '"Translator"'
+
+  - id: myDisplay_small_text
+    type: bool
+    restore_value: no
+    initial_value: 'false'  # This acts as your default value!
           
 output:
-  - platform: ledc # LCD Backlight
+  - platform: ledc
     id: backlight_pwm
     pin: GPIO46    
     frequency: 1000 Hz
@@ -103,7 +123,7 @@ script:
 font:
   - file: "gfonts://Roboto"
     id: my_fontSmall
-    size: 25
+    size: 30
   - file: "gfonts://Roboto"
     id: my_fontMedium
     size: 30
@@ -140,15 +160,15 @@ display:
     pages:
       - id: active_page_std
         lambda: |-
-          it.print(5, 30,  id(my_fontMedium), id(myDisplay_line1).c_str());
-          it.print(5, 60, id(my_fontLarge), id(myDisplay_line2).c_str());
-          it.print(5, 100, id(my_fontLarge), id(myDisplay_line3).c_str());
+            it.print(5, 30,  id(my_fontMedium), id(myDisplay_line1).c_str());
+            it.print(5, 65,  id(my_fontMedium), id(myDisplay_line2).c_str());
+            it.print(5, 115, id(my_fontLarge),  id(myDisplay_line3).c_str());
 
       - id: active_page_small
         lambda: |-
-          it.print(5, 30,  id(my_fontSmall), id(myDisplay_line1).c_str());
-          it.print(5, 60, id(my_fontSmall), id(myDisplay_line2).c_str());
-          it.print(5, 90, id(my_fontSmall), id(myDisplay_line3).c_str());
+            it.print(5, 30,  id(my_fontSmall), id(myDisplay_line1).c_str());
+            it.print(5, 60,  id(my_fontSmall), id(myDisplay_line2).c_str());
+            it.print(5, 90,  id(my_fontSmall), id(myDisplay_line3).c_str());
 
       - id: blank_page
         lambda: |-

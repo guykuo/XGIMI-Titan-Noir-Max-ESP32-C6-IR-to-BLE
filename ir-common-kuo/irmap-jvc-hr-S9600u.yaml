@@ -1,17 +1,39 @@
+# jvc vcr
 packages:
   base_ir_engine: !include appkit/ir-architecture-base.yaml
+
+remote_receiver:
+  id: ir_receiver
+  dump: jvc
+  on_nec: []   # Total hardware lockout for cross-talk
+  on_sony: []
+  on_lg: []
 
 substitutions:
   target_ir_address: "0x03C2"
   remote_display_name: "JVC VCR"
   
-  hold_exclusion_condition: "command == 0xC2A4"
+  # =============================================================
+  # DEFINE token clearing gate buttons
+  cmd_token_clear_arm: "0xC2A4"    # 5
+  cmd_token_clear_fire: "0xC23C"   # OK
 
 script:
   - id: master_ir_processor
     parameters:
       command: uint32_t
       is_hold: bool
+    then:
+      - lambda: |-
+          // JVC VCR Payload Matrix: Extract standard upper address context and lower raw commands
+          id(jvc_broadcast_processor).execute(command, (uint16_t)((command >> 8) & 0xFF), (uint16_t)(command & 0xFF), is_hold);
+
+  - id: jvc_broadcast_processor
+    parameters:
+      command: uint32_t     
+      device_addr: uint16_t  
+      pure_cmd: uint16_t     
+      is_hold: bool       
     then:
       - lambda: |-
           struct IRCommand {
@@ -56,27 +78,31 @@ script:
             { 0xC244,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // 2
           };
 
-          // Operational safety intercept loop for repeating button holds
-          if (is_hold && (${hold_exclusion_condition})) {
-            ESP_LOGW("IR Safety", "Hold repeat blocked for safety excluded command: 0x%04X", (unsigned int)command);
-            return;
-          }
-
           auto it = jvc_codes.find(command);
           if (it != jvc_codes.end()) {
-            if (is_hold) {
-              id(myDisplay_line1) = it->second.name + " (Hold)";
-              ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
-            } else {
-              id(myDisplay_line1) = it->second.name;
-              ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
+            if (!id(global_token_clear_armed)) {
+              if (is_hold) {
+                id(myDisplay_line1) = it->second.name + " (Hold)";
+                id(myDisplay_line2) = "${remote_display_name}"; 
+                id(myDisplay_line3) = ""; 
+                ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
+              } else {
+                id(myDisplay_line1) = it->second.name;
+                id(myDisplay_line2) = "${remote_display_name}"; 
+                id(myDisplay_line3) = ""; 
+                ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
+              }
             }
 
             if (it->second.button_obj != nullptr) {
               it->second.button_obj->press();
             }
           } else {
-            if (!is_hold) {
-              id(myDisplay_line1) = "Unassigned";
+            if (!id(global_token_clear_armed)) {
+              if (!is_hold) {
+                id(myDisplay_line1) = "Unassigned";
+                id(myDisplay_line2) = "${remote_display_name}"; 
+                id(myDisplay_line3) = ""; 
+              }
             }
           }

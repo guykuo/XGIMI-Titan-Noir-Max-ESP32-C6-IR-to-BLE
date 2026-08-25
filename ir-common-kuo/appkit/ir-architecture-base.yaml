@@ -1,5 +1,5 @@
 # ir-common-kuo/ir-architecture-base.yaml
-# 100 msec before next button press accepted
+# Universal, multi-protocol base architecture - MODULAR CLEAN SEPARATED GATES
 remote_receiver:
   id: ir_receiver
   pin:
@@ -8,15 +8,11 @@ remote_receiver:
     mode:
       input: true
       pullup: true
-  filter: 50us
-  idle: 10ms
-  tolerance: 25%
-  dump: 
-    - nec
-    - pioneer
-    - sony
-    - lg 
-
+  filter: 50us       
+  idle: 10ms         
+  tolerance: 25%     
+  #dump: [raw]           # Baseline configuration placeholder
+    
   # 1. Updates timestamp every single time ANY raw IR pulse or repeat packet burst hits the pin
   on_raw:
     - lambda: |-
@@ -25,13 +21,39 @@ remote_receiver:
           id(ir_timeout_watcher).execute();
         }
 
-  # 2. Handles NEC-style packets natively
+  # ======= MULTI-PROTOCOL INTERCEPT CORE GATES (SYNCHRONOUS FIXED) =======
+
+  # 2. NEC Handler
   on_nec:
     - script.execute: display_timeout_handler
     - lambda: |-
-        static uint32_t last_global_ir_time = 0;
+        // FIXED: Check safety parameters synchronously at the pin-read event
+        uint32_t arm_code = ${cmd_token_clear_arm};
+        uint32_t fire_code = ${cmd_token_clear_fire};
+
+        if (x.command == arm_code) {
+          id(global_token_clear_armed) = true;
+          id(token_clear_safety_timeout).execute(); 
+          id(myDisplay_line1) = "Token Clear Requested";
+          id(myDisplay_line2) = "To Confirm";
+          id(myDisplay_line3) = "Press Select ";
+          return; // STOP FLOW: Instantly kills the frame for security keys
+        }
+        if (x.command == fire_code && id(global_token_clear_armed)) {
+          id(global_token_clear_armed) = false;
+          id(token_clear_safety_timeout).stop();
+          id(myDisplay_line1) = "Token Clearing";
+          id(myDisplay_line2) = "Taking Effect";
+          id(myDisplay_line3) = "Wait 5 Seconds";
+          id(token_clear)->press(); 
+          return; // STOP FLOW: Blocks regular button dictionary execution
+        }
+
+        // --- Normal Non-Security Fallthrough Path ---
         uint32_t now = millis();
-        if (now - last_global_ir_time < 100) return;
+        static uint32_t last_nec_press = 0;
+        if (now - last_nec_press < 30) return;
+        last_nec_press = now;
 
         std::stringstream ss1, ss2;
         ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.command;
@@ -41,27 +63,56 @@ remote_receiver:
         
         if (x.address == ${target_ir_address}) {
           id(myDisplay_line2) = "${remote_display_name}"; 
-          last_global_ir_time = now; 
-          id(global_cached_command) = x.command;
-          id(global_initial_press_time) = now; 
-          id(global_is_holding) = false;      
-          id(master_ir_processor).execute(x.command, false);
+          if (id(global_cached_command) != x.command || id(global_initial_press_time) == 0) {
+            id(global_cached_command) = x.command;
+            id(global_initial_press_time) = now; 
+            id(global_last_processed_time) = now;
+            id(global_is_holding) = false;      
+            id(master_ir_processor).execute(x.command, false);
+          } else if (now - id(global_last_processed_time) > 130) {
+            id(global_initial_press_time) = now; 
+            id(global_last_processed_time) = now;
+            id(global_is_holding) = true;      
+            id(master_ir_processor).execute(x.command, true);
+          }
         } else {
-          id(myDisplay_line1) = "Not Match Address"; 
+          id(myDisplay_line2) = "Not Match Address"; 
           id(global_cached_command) = 0;
           id(global_is_holding) = false;
         }
 
-  # 3. Handles LG-style parameters cleanly by parsing x.data bit-structures
+  # 3. LG Handler
   on_lg:
     - script.execute: display_timeout_handler
     - lambda: |-
-        static uint32_t last_global_ir_time = 0;
-        uint32_t now = millis();
-        if (now - last_global_ir_time < 100) return;
-
-        uint16_t lg_address = (x.data >> 16) & 0xFFF;
         uint16_t lg_command = x.data & 0xFFFF;
+        uint32_t arm_code = ${cmd_token_clear_arm};
+        uint32_t fire_code = ${cmd_token_clear_fire};
+
+        if (lg_command == arm_code) {
+          id(global_token_clear_armed) = true;
+          id(token_clear_safety_timeout).execute();
+          id(myDisplay_line1) = "Token Clear Requested";
+          id(myDisplay_line2) = "To Confirm";
+          id(myDisplay_line3) = "Press Select ";
+          return;
+        }
+        if (lg_command == fire_code && id(global_token_clear_armed)) {
+          id(global_token_clear_armed) = false;
+          id(token_clear_safety_timeout).stop();
+          id(myDisplay_line1) = "Token Clearing";
+          id(myDisplay_line2) = "Taking Effect";
+          id(myDisplay_line3) = "Wait 5 Seconds";
+          id(token_clear)->press();
+          return;
+        }
+
+        // --- Normal Path ---
+        uint32_t now = millis();
+        static uint32_t last_lg_press = 0;
+        if (now - last_lg_press < 30) return;
+        last_lg_press = now;
+        uint16_t lg_address = (x.data >> 16) & 0xFFF;
 
         std::stringstream ss1, ss2;
         ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << lg_command;
@@ -71,66 +122,141 @@ remote_receiver:
         
         if (lg_address == ${target_ir_address}) {
           id(myDisplay_line2) = "${remote_display_name}"; 
-          last_global_ir_time = now; 
-          id(global_cached_command) = lg_command;
-          id(global_initial_press_time) = now; 
-          id(global_is_holding) = false;      
-          id(master_ir_processor).execute(lg_command, false); 
+          if (id(global_cached_command) != lg_command || id(global_initial_press_time) == 0) {
+            id(global_cached_command) = lg_command;
+            id(global_initial_press_time) = now; 
+            id(global_last_processed_time) = now;
+            id(global_is_holding) = false;      
+            id(master_ir_processor).execute(lg_command, false); 
+          } else if (now - id(global_last_processed_time) > 130) {
+            id(global_initial_press_time) = now; 
+            id(global_last_processed_time) = now;
+            id(global_is_holding) = true;      
+            id(master_ir_processor).execute(lg_command, true);
+          }
         } else {
-          id(myDisplay_line1) = "Not Match Address"; 
+          id(myDisplay_line2) = "Not Match Address"; 
           id(global_cached_command) = 0;
           id(global_is_holding) = false;
         }
 
-  # 4. Handles Sony address blocks by parsing the underlying data stream width flags
-  on_sony:
+  # 4. JVC Handler
+  on_jvc:
     - script.execute: display_timeout_handler
     - lambda: |-
-        static uint32_t last_global_ir_time = 0;
-        uint32_t now = millis();
-        
-        // Sony SIRC protocol command payload sits cleanly inside the lower 7-bits of x.data
-        uint32_t sony_cmd = x.data & 0x7F; 
-        
-        // Using nbits for dynamic frame parsing sizes safely
-        uint32_t sony_address = 0;
-        if (x.nbits == 12) {
-          sony_address = (x.data >> 7) & 0x1F;   // 5-bit address width
-        } else if (x.nbits == 15) {
-          sony_address = (x.data >> 7) & 0xFF;   // 8-bit address width
-        } else {
-          sony_address = (x.data >> 7) & 0x1FFF; // 13-bit address width
+        uint16_t jvc_command = x.data & 0xFF;
+        uint32_t arm_code = ${cmd_token_clear_arm};
+        uint32_t fire_code = ${cmd_token_clear_fire};
+
+        if (jvc_command == arm_code) {
+          id(global_token_clear_armed) = true;
+          id(token_clear_safety_timeout).execute();
+          id(myDisplay_line1) = "Token Clear Requested";
+          id(myDisplay_line2) = "To Confirm";
+          id(myDisplay_line3) = "Press Select ";
+          return;
         }
-
-        // Convert command using your constant multiplier rules
-        uint32_t reconstructed_code = (0x3085 << 7) | sony_cmd;
-
-        if (!id(global_is_holding) && (now - last_global_ir_time < 100) && (reconstructed_code == id(global_cached_command))) {
+        if (jvc_command == fire_code && id(global_token_clear_armed)) {
+          id(global_token_clear_armed) = false;
+          id(token_clear_safety_timeout).stop();
+          id(myDisplay_line1) = "Token Clearing";
+          id(myDisplay_line2) = "Taking Effect";
+          id(myDisplay_line3) = "Wait 5 Seconds";
+          id(token_clear)->press();
           return;
         }
 
+        // --- Normal Path ---
+        uint32_t now = millis();
+        static uint32_t last_jvc_press = 0;
+        if (now - last_jvc_press < 30) return;
+        last_jvc_press = now;
+        uint16_t jvc_address = (x.data >> 8) & 0xFF;
+
         std::stringstream ss1, ss2;
-        ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(2) << std::hex << sony_cmd;
-        ss2 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << sony_address;
+        ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(2) << std::hex << jvc_command;
+        ss2 << "0x" << std::uppercase << std::setfill('0') << std::setw(2) << std::hex << jvc_address;
         id(myDisplay_line2) = ss2.str(); 
         id(myDisplay_line3) = ss1.str(); 
         
-        if (sony_address == ${target_ir_address}) {
+        if (jvc_address == ${target_ir_address}) {
           id(myDisplay_line2) = "${remote_display_name}"; 
-          
-          if (id(global_cached_command) != sony_cmd) {
-            last_global_ir_time = now; 
-            id(global_cached_command) = sony_cmd; 
+          if (id(global_cached_command) != jvc_command || id(global_initial_press_time) == 0) {
+            id(global_cached_command) = jvc_command;
             id(global_initial_press_time) = now; 
+            id(global_last_processed_time) = now;
             id(global_is_holding) = false;      
-            id(master_ir_processor).execute(sony_cmd, false);
-          } else {
-            id(global_last_raw_packet_time) = now;
+            id(master_ir_processor).execute(jvc_command, false); 
+          } else if (now - id(global_last_processed_time) > 130) {
+            id(global_initial_press_time) = now; 
+            id(global_last_processed_time) = now;
+            id(global_is_holding) = true;      
+            id(master_ir_processor).execute(jvc_command, true);
           }
         } else {
-          id(myDisplay_line1) = "Not Match Address";
+          id(myDisplay_line2) = "Not Match Address"; 
+          id(global_cached_command) = 0;
+          id(global_is_holding) = false;
         }
+
+  # 5. Sony Handler
+  on_sony:
+    - script.execute: display_timeout_handler
+    - lambda: |-
+        uint32_t arm_code = ${cmd_token_clear_arm};
+        uint32_t fire_code = ${cmd_token_clear_fire};
+
+        if (x.data == arm_code) {
+          id(global_token_clear_armed) = true;
+          id(token_clear_safety_timeout).execute();
+          id(myDisplay_line1) = "Token Clear Requested";
+          id(myDisplay_line2) = "To Confirm";
+          id(myDisplay_line3) = "Press Select ";
+          return;
+        }
+        if (x.data == fire_code && id(global_token_clear_armed)) {
+          id(global_token_clear_armed) = false;
+          id(token_clear_safety_timeout).stop();
+          id(myDisplay_line1) = "Token Clearing";
+          id(myDisplay_line2) = "Taking Effect";
+          id(myDisplay_line3) = "Wait 5 Seconds";
+          id(token_clear)->press();
+          return;
+        }
+
+        // --- Normal Path ---
+        uint32_t now = millis();
+        static uint32_t last_sony_press = 0;
+        if (now - last_sony_press < 30) return;
+        last_sony_press = now;
         
+        if (id(global_cached_command) != x.data || id(global_initial_press_time) == 0) {
+          id(global_cached_command) = x.data; 
+          id(global_initial_press_time) = now; 
+          id(global_last_processed_time) = now;
+          id(global_sony_stream_time) = now;   
+          id(global_is_holding) = false;      
+          id(global_sony_frame_count) = 1; 
+          id(master_ir_processor).execute(x.data, false); 
+        } else if (now - id(global_sony_stream_time) > 80) {
+          id(global_initial_press_time) = now; 
+          id(global_last_processed_time) = now;
+          id(global_sony_stream_time) = now;
+          id(global_is_holding) = false;      
+          id(global_sony_frame_count) = 1;
+          id(master_ir_processor).execute(x.data, false);
+        } else {
+          id(global_sony_stream_time) = now;
+          id(global_sony_frame_count)++; 
+          if (id(global_sony_frame_count) > 3) {
+            if (!id(global_is_holding)) {
+              id(global_is_holding) = true;
+              id(master_ir_processor).execute(x.data, true); 
+            }
+          }
+        }
+
+
 globals:
   - id: global_cached_command
     type: uint32_t
@@ -141,11 +267,31 @@ globals:
   - id: global_initial_press_time
     type: uint32_t
     initial_value: '0'
+  - id: global_last_processed_time
+    type: uint32_t
+    initial_value: '0'
+  - id: global_sony_stream_time
+    type: uint32_t
+    initial_value: '0'
+  - id: global_sony_frame_count
+    type: int
+    initial_value: '0'
   - id: global_is_holding
     type: bool
     initial_value: 'false'
-
+  # SEQUENTIAL ENGINE STATE VARIABLES
+  - id: global_token_clear_armed
+    type: bool
+    initial_value: 'false'
+  - id: debounce_safety_lock
+    type: bool
+    initial_value: 'false'
+  - id: global_intercept_active
+    type: bool
+    initial_value: 'false'
+    
 script:
+  # A. High Speed Timeout Watcher Register Cleanup
   - id: ir_timeout_watcher
     mode: restart
     then:
@@ -153,32 +299,93 @@ script:
           condition:
             lambda: 'return (millis() - id(global_last_raw_packet_time) < 140);'
           then:
-            - delay: 20ms
+            - delay: 15ms
       - lambda: |-
           id(global_cached_command) = 0;
+          id(global_initial_press_time) = 0;  
+          id(global_sony_stream_time) = 0;
           id(global_is_holding) = false;
+          id(global_sony_frame_count) = 0;
 
-interval:
-  - interval: 110ms
+  # B. Automatic hardware lock release timer step
+  - id: release_debounce_lock
     then:
+      - delay: 110ms
+      - globals.set:
+          id: debounce_safety_lock
+          value: 'false'
+
+  # C. Automated 5-Second Expiration Timer
+  - id: token_clear_safety_timeout
+    mode: restart
+    then:
+      - delay: 5s
+      - if:
+          condition:
+            lambda: 'return id(global_token_clear_armed);'
+          then:
+            - globals.set:
+                id: global_token_clear_armed
+                value: 'false'
+            - lambda: |-
+                ESP_LOGI("IR Safety", "Sequence timed out. Gate locked.");
+                id(myDisplay_line1) = "Timed Out";
+                id(myDisplay_line2) = "Clear Token";
+                id(myDisplay_line3) = "Canceled";
+
+
+  # D. CENTRAL UNIFIED SAFETY ENGINE - INTERCEPT FILTER FOR ALL PROTOCOLS
+  - id: central_safety_gate_processor
+    mode: queued
+    parameters:
+      command: uint32_t
+      is_hold: bool
+    then:
+      # Step 1: Drop frames instantly if the 110ms freeze block safety lock is active
+      - if:
+          condition:
+            lambda: 'return id(debounce_safety_lock);'
+          then:
+            - script.stop: central_safety_gate_processor
+
+      # Step 2: Engage hardware lock for the next 110ms to prevent double-triggering
+      - globals.set:
+          id: debounce_safety_lock
+          value: 'true'
+      - script.execute: release_debounce_lock
+
+      # Step 3: Global Intercept Evaluation
       - lambda: |-
-          uint32_t now = millis();
-          
-          if (id(global_cached_command) != 0) {
-            // FIXED: Declare a local alias variable 'command' mapped to the global tracker.
-            // This guarantees full compilation safety whether profiles evaluate 'command' or 'id(global_cached_command)'.
-            uint32_t command = id(global_cached_command);
+          uint32_t arm_code = ${cmd_token_clear_arm};
+          uint32_t fire_code = ${cmd_token_clear_fire};
 
-            if (${hold_exclusion_condition}) return;
-
-            if (now - id(global_last_raw_packet_time) >= 140) return;
-
-            if (id(global_is_holding)) {
-              id(master_ir_processor).execute(id(global_cached_command), true);
+          if (command == arm_code && !is_hold) {
+            id(global_token_clear_armed) = true;
+            id(token_clear_safety_timeout).execute(); // Start/Reset 5s auto-lock out
+            
+            id(myDisplay_line1) = "Token Clear Requested";
+            id(myDisplay_line2) = "To Confirm";
+            id(myDisplay_line3) = "Press Select ";
+            ESP_LOGW("IR Safety", "Global Intercept: System Gated Clear ARMED via code 0x%05X", (unsigned int)command);
+            
+            // Set safety lock state to true so calling handlers abort downstream routing
+            id(global_intercept_active) = true;
+          } 
+          else if (command == fire_code && !is_hold) {
+            if (id(global_token_clear_armed)) {
+              id(global_token_clear_armed) = false;
+              id(token_clear_safety_timeout).stop(); // Disarm auto-lock timer
+              
+              id(myDisplay_line1) = "Token Clearing";
+              id(myDisplay_line2) = "Taking Effect";
+              id(myDisplay_line3) = "Wait 5 Seconds";
+              ESP_LOGE("IR Safety", "Global Intercept: Security Gate Fired Successfully.");
+              
+              id(token_clear)->press(); // Run final physical routine action
+              id(global_intercept_active) = true;
             } else {
-              if (now - id(global_initial_press_time) >= 450) {
-                id(global_is_holding) = true;
-                id(master_ir_processor).execute(id(global_cached_command), true);
-              }
+              id(global_intercept_active) = false;
             }
+          } else {
+            id(global_intercept_active) = false;
           }

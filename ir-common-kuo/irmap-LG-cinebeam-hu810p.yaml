@@ -1,11 +1,22 @@
+# lg cinebeam
 packages:
   base_ir_engine: !include appkit/ir-architecture-base.yaml
+
+remote_receiver:
+  id: ir_receiver
+  dump: nec
+  on_sony: []   # Total hardware lockout for cross-talk
+  on_lg: []
+  on_jvc: []
 
 substitutions:
   target_ir_address: "0xFB04"
   remote_display_name: "LG Cinebeam"
   
-  hold_exclusion_condition: "command == 0xEA15"
+  # =============================================================
+  # DEFINE token clearing gate buttons
+  cmd_token_clear_arm: "0xEA15"    # 5
+  cmd_token_clear_fire: "0xBB44"   # OK / Select
 
 script:
   - id: master_ir_processor
@@ -14,13 +25,23 @@ script:
       is_hold: bool
     then:
       - lambda: |-
+          id(nec_broadcast_processor).execute(command, (uint16_t)(command >> 16), (uint16_t)(command & 0xFFFF), is_hold);
+
+  - id: nec_broadcast_processor
+    parameters:
+      command: uint32_t     
+      device_addr: uint16_t  
+      pure_cmd: uint16_t     
+      is_hold: bool       
+    then:
+      - lambda: |-
           struct IRCommand {
             std::string name;
             esphome::template_::TemplateButton* button_obj;
           };
 
           // Clean, strict unique map built from genuine production LG webOS data codes
-          static const std::map<uint32_t, IRCommand> nec_codes = {
+          static const std::map<uint16_t, IRCommand> nec_codes = {
             { 0xD728,       { "back",          id(back) } },          // Back / Return
             { 0xBE41,       { "cursor_down",   id(cursor_down) } },   // cursor down
             { 0xBB44,       { "cursor_enter",  id(cursor_enter) } },  // OK / Select
@@ -52,27 +73,31 @@ script:
             { 0xA35C,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // prime video
           };
 
-          // Operational safety intercept loop for repeating button holds
-          if (is_hold && (${hold_exclusion_condition})) {
-            ESP_LOGW("IR Safety", "Hold repeat blocked for safety excluded command: 0x%04X", (unsigned int)command);
-            return;
-          }
-
-          auto it = nec_codes.find(command);
+          auto it = nec_codes.find(pure_cmd);
           if (it != nec_codes.end()) {
-            if (is_hold) {
-              id(myDisplay_line1) = it->second.name + " (Hold)";
-              ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
-            } else {
-              id(myDisplay_line1) = it->second.name;
-              ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
+            if (!id(global_token_clear_armed)) {
+              if (is_hold) {
+                id(myDisplay_line1) = it->second.name + " (Hold)";
+                id(myDisplay_line2) = "${remote_display_name}"; 
+                id(myDisplay_line3) = ""; 
+                ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
+              } else {
+                id(myDisplay_line1) = it->second.name;
+                id(myDisplay_line2) = "${remote_display_name}"; 
+                id(myDisplay_line3) = ""; 
+                ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
+              }
             }
 
             if (it->second.button_obj != nullptr) {
               it->second.button_obj->press();
             }
           } else {
-            if (!is_hold) {
-              id(myDisplay_line1) = "Unassigned";
+            if (!id(global_token_clear_armed)) {
+              if (!is_hold) {
+                id(myDisplay_line1) = "Unassigned";
+                id(myDisplay_line2) = "${remote_display_name}"; 
+                id(myDisplay_line3) = ""; 
+              }
             }
           }
