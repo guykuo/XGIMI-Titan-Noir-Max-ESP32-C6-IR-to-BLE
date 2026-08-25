@@ -307,7 +307,7 @@ Cloning and downloading controls are within Gitbub green "<> Code" button.
 
 
 <br>
-<br>
+
 ### Create a virtual environment, and install the pinned tools
 
 On macOS or Linux, cd to directory of this project. You can readily do so by typing "cd " and dragging your directory into terminal.
