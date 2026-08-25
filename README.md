@@ -102,26 +102,30 @@ You will find available hardware and irmap files in ir-common-kuo/ subdirectory
 In terms of IR mapping, this translator project includes several IR translations as irmap files.
 
 The main IR maps, which have been vetted, were chosen because they are less likely to be in a home theater that is using an Xgimi Titan Noir projector.
-You should choose one that does not conflict with existing devices in your system.
+You should usually choose one that does not conflict with existing devices in your system.
+
+An alternate strategy for chossing an IRmap is to intentionally choose a mapping for a projector that is already in your universal remote but is being replaced.
+This lets the Titan Noir simply take over the old projector's already configured role in your universal remote. However, the old projector cannot be
+used simultaneously under this strategy.
+
+The following IR maps have known to be working IR code sets ...
 
 * irmap-tivo-roamio.yaml          (TiVo Roamio)
 * irmap-LG-cinebeam-hu810p.yaml   (LG Cinebeam HU810P projector)
 * irmap-hisense-50u6g.yaml        (Hisense 50U6G TV)
 * irmap-jvc-hr-S9600u.yaml        (JVC-VCR HR-S9600U)
+* irmap-jvc-projector.yaml
+* irmap-sony-projector.yaml
+* irmap-sony-tv.yaml
+  
 
-An alternate strategy for chossing an IRmap is to intentionally chose a mapping for a projector that is already in your universal remote and being replaced.
-This lets the Titan Noir simply take over the old projector's already configured role in your universal remote. However, the old projector cannot be
-used simultaneously under this strategy of re-using an existing projector's IR mapping.
-
-The following IR maps have not been vetted and may not (yet) have correct IR mapping...
+The following IR maps have not been vetted and may have incomplete or incorrect IR mapping...
 
 * irmap-AWOL-projector.yaml
 * irmap-benq-projector.yaml
 * irmap-epson-projector.yaml
 * irmap-hisense-projector.yaml
-* irmap-jvc-projector.yaml
 * irmap-optoma-projector.yaml
-* irmap-sony-projector.yaml
 
 
 ## Hardware Definition Packages
