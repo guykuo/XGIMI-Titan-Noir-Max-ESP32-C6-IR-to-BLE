@@ -177,11 +177,10 @@ Be sure to get exactly [Waveshare ESP S3 LCD 1.47B board](https://www.amazon.com
 
 <img width="550" alt="Screenshot 2026-08-23 at 13 55 31" src="https://github.com/user-attachments/assets/8d91d927-70b3-4f66-9c51-759854cdc0fb" />
 
-<br>
-<br>
-<br>
-### Other ESP32 Boards
-If you want to use an ESP32 board than the two examples illustrated herein, be certain it has at least bluetooth version 4.2 and BLE (Bluetooth Low Energy) capability. Otherwise, power-on broadcast to Xgimi projector will not work.
+
+## Other ESP32 Boards
+
+If you want to use an ESP32 board other than the kinds herein, be certain it has at least bluetooth version 4.2 and BLE (Bluetooth Low Energy) capability. Otherwise, power-on broadcast to Xgimi projector will not work.
 
 Board series that should work:
 
