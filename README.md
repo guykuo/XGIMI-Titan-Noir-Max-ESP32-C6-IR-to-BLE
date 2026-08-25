@@ -108,7 +108,7 @@ An alternate strategy for chossing an IRmap is to intentionally choose a mapping
 This lets the Titan Noir simply take over the old projector's already configured role in your universal remote. However, the old projector cannot be
 used simultaneously under this strategy.
 
-The following IR maps have known to be working IR code sets ...
+The following IR maps have working IR code sets ...
 
 * irmap-tivo-roamio.yaml          (TiVo Roamio)
 * irmap-LG-cinebeam-hu810p.yaml   (LG Cinebeam HU810P projector)
