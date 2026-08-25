@@ -240,6 +240,14 @@ Most users are better off obtaining one of the already tested and known working 
 ESP32-C6-WROOM-1 board has GPIO10 freely usable as input for I used as IR signal input. Pin GPIO10 has already been specified in the "make" files provided in this project. I have marked the connectors of interest on its pinout diagram.
 <img width="1326" height="712" alt="pinouts esp32-c6-wroom-1-marked" src="https://github.com/user-attachments/assets/c01e511b-e68a-442d-b883-c19569586023" />
 
+### ESP32-C6-DevKitC-1 N8 Pinout and GPIO Pin Selection Example
+
+Although this is also an ESP32-C6 board, its pinout differs from above C6 board. I give this as a reminder that when selecting other boards, you MUST obtain its pinout diagram to know which connectors are to be used. On this alternative board, GPIO 10, GND, and 3V are in totally different places. Also GPIO 10 is not pre-assigned and available to use as IR receiver pin. If your board already has GPIO 10 unavailable, you would need to to create a new hardware file with the correct specifications for board and pins.
+
+<img width="1300" alt="5672_esp32-c6-devkitc-1-pin-layout" src="https://github.com/user-attachments/assets/0ffb0a8e-b76c-4adf-bfc6-18cbf68f614f" />
+
+
+
 
 ### ESP32-C3 SuperMini Dev Board with Integrated 0.42-inch OLED Display Example
 
