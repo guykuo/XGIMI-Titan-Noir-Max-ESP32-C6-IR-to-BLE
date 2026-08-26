@@ -4,13 +4,7 @@
 
 
 
-This project transforms an ESP32 board into an IR remote to Bluetooth translator for XGIMI Titan Noir projectors. Titan Noir projectors lack IR control capability and only accept bluetooth signals. This translator works around that limitation by translating infrared signals into bluetooth commands the projector accepts. Typically, users add one of these devices definitions to a universal remote and control their Titan Noir by sending IR codes specified to be translated. This effectively adds IR capability to the otherwise bluetooth bound Titan Noir.
-
-Note: This fork concentrates on direct IR translation to Xgimi Titan Noir bluetooth. Home Assistant usage is not documented here. However, _Home Assistant_ integration capability has been preserved and can also be used.. See mrmachine's original github for _Home Assistant_ related information.
-
-This translator requires the special wake token transmitted by your original Xgimi remote. The translator ESP32 board can itself sniff the token from your original remote. 
-
-You can additionally do a tedious, manual capture and process the hexadecimal token into a secrets.yaml file, but it is much easier to skip that process and let the translator ESP32 sniff and capture the wake token.
+Titan Noir projectors lack IR control capability and only accept bluetooth signals. This translator works around that limitation by translating infrared signals into bluetooth commands the projector accepts This project turns an ESP32 board into an IR to Bluetooth translator. Typical use is to add a Titan Xgimi Noir to a universal IR remote. This translator lets the IR remote control the bluetooth only projector.
 
 ## Requirements
 
@@ -26,19 +20,23 @@ You can additionally do a tedious, manual capture and process the hexadecimal to
     
 *   Data capable USB cable
 
+This fork concentrates on IR translation to Xgimi Titan Noir bluetooth. Home Assistant usage is not documented here. However, _Home Assistant_ integration capability has been preserved. See mrmachine's original github for _Home Assistant_ related information.
+
+Turning on the Xgimi Titan Noir projector requires use of the original Xgimi remote wake token. This translator ESP32 board can acquire the token by sniffing your original remote. 
+
+Optionally, you can performa a more tedious, manual capture of your remote's wake token. Then, process that hexadecimal sequence into a secrets.yaml file. It is much easier to skip that process and let the translator ESP32 sniff and capture the wake token itself.
   
 ## What You Will Accomplish
 Getting the translator to work requires you to...
 
-* Choose IR mapping to translate
+* Choose which IR code setto translate
 * Obtain ESP32 board and IR sensor to be this translator
-* Choose Name of the translator 
 * Assemble ESP32 board and IR sensor
 * Create a copy of make-esp32-TEMPLATE.yaml
 * Rename it something like make-my-spec-board.yaml
 * Edit make-my-spec-board.yaml to specify name for your remote, which ESP32 board you are using, and which IR translation map.
 * Create compiler evironment
-* Compile your new ESP32 firmware and send it to your ESP32 board.
+* Compile your new ESP32 firmware and flash it to your ESP32 board.
 * Set up your universal remote to use the IR mapped codes.
 
 
@@ -54,7 +52,7 @@ Project Git is arranged as below. You will find make, hardware, and IRmap files 
 # The Software
 ## Make Files
 "Make" files are where you specify desired combination of board type, IR mapping, and name your new IR translator. Several example make files are provided.
-These each specify a ESP32 board type and desired IR mapping, but you can also create your own combinations.
+These each specify a ESP32 board type and desired IR mapping
 
 * make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
 * make-esp32-c3-OLED-GPIO1-IR-LGcinebeam.yaml
@@ -64,15 +62,19 @@ These each specify a ESP32 board type and desired IR mapping, but you can also c
 * make-esp32-m5stack-atom-lite-Hisense.yaml
 * make-esp32-TEMPLATE.yaml
 
-You create your own combinations by 
+You can create your own custom make file with your own combinations of ESP32 board and IR signal map by...
 
-1 Cloning make-esp32-TEMPLATE.yaml 
+1 Cloning make-esp32-TEMPLATE.yaml file
+2 Name your custom make file
 2 Editing your custom make file
 
 At the top of your custom make file are places to specify remote name, esp32 board, and desired IR mapping.
 
-Be sure to leave the ir-common-kuo/ prefix when you replaced the HARDWARE and IRMAP
-Also, do not move or rename existing files in ir-common-kuo/ subdirectory
+Be sure to leave the ir-common-kuo/ prefix intact when you replac the HARDWARE and IRMAP
+Also, your custom make file should be in the same directory as the sample make files.
+Do not move or rename existing files in ir-common-kuo/ subdirectory
+
+Here is the file section of a make file that you edit while making a custom make file.
 
 ```YAML
 # ============= BEGIN Configuration Options KUO ==========
@@ -95,20 +97,20 @@ packages:
   # --- IR mapping options
   irmap_package:    !include ir-common-kuo/IRMAP.yaml # <===== Replace IRMAP.yaml with your IRMAP.yaml 
 ```
-You will find available hardware and irmap files in ir-common-kuo/ subdirectory
+Available hardware boards and irmap files are in ir-common-kuo/ subdirectory
 
 
 ## IR Maps
-In terms of IR mapping, this translator project includes several IR translations as irmap files.
+This translator project includes several IR translations as irmap files.
 
-The main IR maps, which have been vetted, were chosen because they are less likely to be in a home theater that is using an Xgimi Titan Noir projector.
-You should usually choose one that does not conflict with existing devices in your system.
+The main IR maps, which have been vetted, were selected to avoid conflicts in a home theater.
+One should usually choose one that does not conflict with existing devices in your system.
 
-An alternate strategy for chossing an IRmap is to intentionally choose a mapping for a projector that is already in your universal remote but is being replaced.
-This lets the Titan Noir simply take over the old projector's already configured role in your universal remote. However, the old projector cannot be
-used simultaneously under this strategy.
+An alternative strategy when chossing an IRmap is to intentionally select a mapping for a projector that already is in your universal remote but being replaced.
+This lets the Titan Noir take over the old projector's role already configured in your universal remote. However, the old projector cannot be
+simultaneously used under this strategy.
 
-The following IR maps have working IR code sets ...
+These IR maps have known working IR code sets ...
 
 * irmap-tivo-roamio.yaml          (TiVo Roamio)
 * irmap-LG-cinebeam-hu810p.yaml   (LG Cinebeam HU810P projector)
@@ -119,7 +121,7 @@ The following IR maps have working IR code sets ...
 * irmap-sony-tv.yaml
   
 
-The following IR maps have not been vetted and may have incomplete or incorrect IR mapping...
+These IR maps are WIP and likely have incomplete or incorrect IR mapping...
 
 * irmap-AWOL-projector.yaml
 * irmap-benq-projector.yaml
@@ -129,7 +131,7 @@ The following IR maps have not been vetted and may have incomplete or incorrect 
 
 
 ## Hardware Definition Packages
-Board specific information are stored in ir-common-kuo/ as hardware.yaml files. These hardware files contain board specific information used to create the translator firmware. Four board types are supplied. You can also create your "hardware" file to support a new ESP32 board type or customize GPIO assignments.
+ESP32 board is defined in ir-common-kuo/ as hardware.yaml files. These hardware files contain board specific information used to create the translator firmware. Four board types are supplied. You can also create your "hardware" file to support a new ESP32 board type or to customize GPIO assignments.
 
 Supplied hardware files are for ESP32 boards ...
 
@@ -138,7 +140,7 @@ Supplied hardware files are for ESP32 boards ...
 * hardware-m5stack-atom-lite.yaml
 * hardware-s3-waveshare-lcd-1.47b.yaml
 
-Look in the hardware file for suggested GPIO pins for IR receiver and optional i2c display
+Look in the hardware file for actual GPIO pins for IR receiver and optional i2c display
   
 # The Hardware
 ## Selecting an ESP32 Board
@@ -158,7 +160,7 @@ I recommend using an ESP32-C3 with on-board OLED display. Although it is possibl
 
 
 ### ESP32-C6-WROOM-1
-The [ESP32-C6-WROOM-1](https://www.amazon.com/dp/B0H1GGL9L1?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1) does not have a display, but does include a multi-color neopixel LED that gives some feedback. 
+The [ESP32-C6-WROOM-1](https://www.amazon.com/dp/B0H1GGL9L1?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1) does not have a display, but does have a multi-color neopixel LED that gives some feedback. 
 <img width="500" alt="ESP32-C6-WROOM-1" src="https://github.com/user-attachments/assets/c580d0eb-c7f6-480c-9d7d-152ecd95c489" />
 
 
@@ -170,10 +172,9 @@ You can optionally connect a [SSD1306 128x32 0.91-inch OLED display module](http
 <br>
 <br>
 ### Waveshare ESP32-S3 1.47inch LCD Display Development Board (Revision B)
-This ESP32-S3 board was used to verify translator functionality on S3 boards. It has a larger LCD display and dissipates quite a bit more power than the C3 and C6 boards. I would only use this as a testing and setup board. The larger screen enables easier reading of captured IR codes while editing irmap files. It is probably to bright and power hungry for home theater deployment as full time translator. There are many similar boards, but variants are not always GPIO pin matches for the ones specified in my hardware-s3-waveshare-lcd-1.47B.yaml
+This ESP32-S3 board was used to verify translator functionality on S3 boards. It has a larger LCD display and dissipates quite a bit more power than the C3 and C6 boards. I would only use this as a testing and setup board. The larger screen enables easier reading of captured IR codes while editing irmap files. It is probably too bright and power hungry for home theater deployment. There are many similar boards with displays, but variants are not always GPIO pin matches for the ones specified in my hardware-s3-waveshare-lcd-1.47B.yaml
 
 Be sure to get exactly [Waveshare ESP S3 LCD 1.47B board](https://www.amazon.com/dp/B0FBWPJPXN) if you want to use my hardware config without searching for correct pinouts.
-
 
 <img width="550" alt="Screenshot 2026-08-23 at 13 55 31" src="https://github.com/user-attachments/assets/8d91d927-70b3-4f66-9c51-759854cdc0fb" />
 
