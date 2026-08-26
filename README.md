@@ -659,9 +659,77 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 | bluetooth\_pairing\_clear | 2 | 0xC244 |
 
 
+<br>
+<br>
+
+## JVC Projector to Xgimi Titan Noir Mapping
+| Xgimi Command | JVC Projector Btn | Hex Code |
+| :--- | :--- | :--- |
+| "back" |  EXIT / BACK | 0xC0 |
+| "cursor_down" |  DOWN ARROW | 0x40 |
+| "cursor_enter" |  OK / ENTER | 0xF4 |
+| "cursor_left" |  LEFT ARROW | 0x6C |
+| "cursor_right" |  RIGHT ARROW | 0x2C |
+| "cursor_up" |  UP ARROW | 0x80 |
+| "focus_auto" |  LENS AP | 0x04 |
+| "focus_manual" |  LENS CONTROL | 0x0C |
+| "home" |  HIDE | 0xB8 |
+| "settings_menu" |  MENU | 0x74 |
+| "game_menu" |  NATURAL | 0x56 |
+| "input" |  HDMI 1 | 0x0E |
+| "volume_up" |  HDR | 0xB7 |
+| "volume_down" |  GAMMA SETTINGS | 0xAF |
+| "mute" |  CINEMA | 0x16 |
+| "picture" |  PIC MODE | 0x2F |
+| "power_on" |  DISCRETE POWER ON | 0xA0 |
+| "power_off" |  STAND BY | 0x60 |
+| "shortcut_1" |  GAMMA | 0xAE |
+| "shortcut_2" |  COLOR TEMP | 0x6E |
+| "shortcut_3" |  3D FORMAT | 0x6B |
+| "shortcut_4" |  PIC ADJ | 0x4E |
+| "token_sniff" |  MODE 1 | 0x1B |
+| "token_clear" |  MODE 2 | 0x9B |
+| "token_recall" |  MODE 3 | 0x5B |
+| "BT_start_pair" |  MPC | 0x0F |
+| "BT_clear_pair" |  CMD | 0x51 |
 
 
 
+<br>
+<br>
+
+## JVC Bravia TV to Xgimi Titan Noir Mapping
+| Xgimi Command | Sony TV Remote | Hex Code |
+| :--- | :--- | :--- |
+| "back" | Back | 0x0062E9 |
+| "cursor_down" | Arrow Down | 0x000AF0 |
+| "cursor_enter" | Arrow Select | 0x000A70 |
+| "cursor_left" | Arrow Left | 0x0002D0 |
+| "cursor_right" | Arrow Right | 0x000CD0 |
+| "cursor_up" | Arrow Up | 0x0002F0 |
+| "focus_auto" | subtitle | 0x000AE9 |
+| "focus_manual" | audio | 0x000E90 |
+| "input" | Input | 0x000A50 |
+| "settings_menu" | Action Menu | 0x006923 |
+| "game_menu" | Google Play | 0x003123 |
+| "mute" | mute | 0x000290 |
+| "home" | Home | 0x000070 |
+| "picture" | TV | 0x000250 |
+| "power_on" | power on discrete | 0x000750 |
+| "power_on_alt" | power (toggle) | 0x000A90 |
+| "power_off" | power off discrete | 0x000F50 |
+| "power_off_alt" | 0 | 0x000910 |
+| "shortcut_1" | yellow | 0x0072E9 |
+| "shortcut_2" | blue | 0x0012E9 |
+| "shortcut_3" | red | 0x0052E9 |
+| "shortcut_4" | green | 0x0032E9 |
+| "volume_down" | volume down | 0x000C90 |
+| "volume_up" | volume up | 0x000490 |
+| "token_sniff" | 4 | 0x000C10 |
+| "token_clear" | 5 | 0x000210 |
+| "token_recall" | 6 | 0x000A10 |
+| "BT_start_pair" | play | 0x002CE9 |
+| "BT_clear_pair" | fast forward | 0x001CE9 |
 
 
 # Recent Changes:
