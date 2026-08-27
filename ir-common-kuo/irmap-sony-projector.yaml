@@ -5,10 +5,11 @@ packages:
 remote_receiver:
   id: ir_receiver
   dump: sony
-  on_nec: []   # Total hardware lockout for cross-talk
-  on_lg: []
-  on_jvc: []
-  
+  on_nec: !remove
+  on_lg: !remove
+  on_jvc: !remove
+  on_pronto: !remove
+
 substitutions:
   target_ir_address: "0x001A"  
   remote_display_name: "Sony Proj"
@@ -83,7 +84,7 @@ script:
                 id(myDisplay_line1) = it->second.name;
               }
               id(myDisplay_line2) = "${remote_display_name}"; 
-              id(myDisplay_line3) = ""; 
+              // myDisplay_line3 already has raw hex code from base architecture
             }
             
             if (it->second.button_obj != nullptr) {
@@ -93,15 +94,12 @@ script:
             if (!id(global_token_clear_armed)) {
               if (!is_hold) {
                 uint8_t bit_depth = (command > 0x007FFF) ? 20 : ((command > 0x000FFF) ? 15 : 12);
-                id(myDisplay_line1) = "Sony Unknown (" + std::to_string(bit_depth) + "b)";
+                id(myDisplay_line1) = "Sony Unk(" + std::to_string(bit_depth) + "b)";
                 
                 char addr_buf[32];
-                snprintf(addr_buf, sizeof(addr_buf), "A:0x%04X  CMD:0x%02X", device_addr, pure_cmd);
+                snprintf(addr_buf, sizeof(addr_buf), "A:0x%04X  C:0x%02X", device_addr, pure_cmd);
                 id(myDisplay_line2) = std::string(addr_buf);
-                
-                char code_buf[32];
-                snprintf(code_buf, sizeof(code_buf), "RAW: 0x%05X", (unsigned int)command);
-                id(myDisplay_line3) = std::string(code_buf);
+                // myDisplay_line3 already has raw hex code from base architecture
               }
             }
           }

@@ -5,9 +5,9 @@ packages:
 remote_receiver:
   id: ir_receiver
   dump: nec
-  on_sony: []   # Total hardware lockout for cross-talk
-  on_lg: []
-  on_jvc: []
+  on_sony: !remove
+  on_lg: !remove
+  on_jvc: !remove
 
 substitutions:
   target_ir_address: "0x3085"
@@ -81,10 +81,18 @@ script:
                 id(myDisplay_line1) = it->second.name;
               }
               id(myDisplay_line2) = "${remote_display_name}"; 
-              id(myDisplay_line3) = ""; 
+              // myDisplay_line3 already has command hex placed by base architecture
             }
             
             if (it->second.button_obj != nullptr) {
               it->second.button_obj->press();
+            }
+          } else {
+            if (!id(global_token_clear_armed)) {
+              if (!is_hold) {
+                id(myDisplay_line1) = "Unassigned";
+                id(myDisplay_line2) = "${remote_display_name}"; 
+                // myDisplay_line3 already has command hex placed by base architecture
+              }
             }
           }

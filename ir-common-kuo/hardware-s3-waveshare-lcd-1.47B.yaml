@@ -20,7 +20,7 @@ esphome:
     then:
       - light.turn_on:
           id: display_backlight
-          brightness: 30%
+          brightness: 10%
 
 globals:
     # ======= myDisplay display globals
@@ -48,7 +48,10 @@ output:
   - platform: ledc
     id: backlight_pwm
     pin: GPIO46    
-    frequency: 1000 Hz
+    frequency: 12000 Hz       # Keeps frequency high to narrow the transistor's gate threshold
+    channel: 0                
+    min_power: 0.001          # MOVED HERE: Scales the hardware floor mapping
+    max_power: 0.08           # MOVED HERE: Caps the hardware ceiling mapping at ~8%
           
 light:
   - platform: esp32_rmt_led_strip # neopixel
@@ -64,7 +67,9 @@ light:
     id: display_backlight
     output: backlight_pwm
     default_transition_length: 0s
-    restore_mode: ALWAYS_ON     # Forces display to turn on automatically at boot
+    gamma_correct: 0          # Keeps response linear 
+    restore_mode: ALWAYS_ON     
+
 
 script:
   - id: flash_led_custom
@@ -126,7 +131,7 @@ font:
     size: 30
   - file: "gfonts://Roboto"
     id: my_fontMedium
-    size: 30
+    size: 35
   - file: "gfonts://Roboto"
     id: my_fontLarge
     size: 40
@@ -144,6 +149,7 @@ display:
     cs_pin: GPIO42
     dc_pin: GPIO41
     reset_pin: GPIO39
+    backlight_pin: no                
     rotation: 270                    
     update_interval: 0.3s
 
@@ -155,21 +161,23 @@ display:
         then:
           - light.turn_on:
               id: display_backlight
-              brightness: 30%
+              brightness: 10% # Changed from 5% to match your new target brightness
+
 
     pages:
       - id: active_page_std
         lambda: |-
-            it.print(5, 30,  id(my_fontMedium), id(myDisplay_line1).c_str());
-            it.print(5, 65,  id(my_fontMedium), id(myDisplay_line2).c_str());
+            it.print(5, 30,  id(my_fontSmall), id(myDisplay_line1).c_str());
+            it.print(5, 65,  id(my_fontSmall), id(myDisplay_line2).c_str());
             it.print(5, 115, id(my_fontLarge),  id(myDisplay_line3).c_str());
 
       - id: active_page_small
         lambda: |-
-            it.print(5, 30,  id(my_fontSmall), id(myDisplay_line1).c_str());
-            it.print(5, 60,  id(my_fontSmall), id(myDisplay_line2).c_str());
-            it.print(5, 90,  id(my_fontSmall), id(myDisplay_line3).c_str());
+            it.print(5, 30,  id(my_fontMedium), id(myDisplay_line1).c_str());
+            it.print(5, 70,  id(my_fontMedium), id(myDisplay_line2).c_str());
+            it.print(5, 110,  id(my_fontMedium), id(myDisplay_line3).c_str());
 
       - id: blank_page
         lambda: |-
           // Leaving lambda completely blank turns all pixels off safely
+

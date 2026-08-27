@@ -5,9 +5,9 @@ packages:
 remote_receiver:
   id: ir_receiver
   dump: nec
-  on_sony: []   # Total hardware lockout for cross-talk
-  on_lg: []
-  on_jvc: []
+  on_sony: !remove
+  on_lg: !remove
+  on_jvc: !remove
 
 substitutions:
   target_ir_address: "0x00FF"
@@ -81,7 +81,7 @@ script:
               } else {
                 id(myDisplay_line1) = it->second.name;
                 id(myDisplay_line2) = "${remote_display_name}"; 
-                id(myDisplay_line3) = ""; 
+                // myDisplay_line3 already has command hex placed by base architecture
                 ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
               }
             }
@@ -94,7 +94,7 @@ script:
               if (!is_hold) {
                 id(myDisplay_line1) = "Unassigned";
                 id(myDisplay_line2) = "${remote_display_name}"; 
-                id(myDisplay_line3) = ""; 
+                // myDisplay_line3 already has command hex placed by base architecture
               }
             }
           }
