@@ -20,7 +20,7 @@ esphome:
     then:
       - light.turn_on:
           id: display_backlight
-          brightness: 10%
+          brightness: 0.7%
 
 globals:
     # ======= myDisplay display globals
@@ -51,7 +51,7 @@ output:
     frequency: 12000 Hz       # Keeps frequency high to narrow the transistor's gate threshold
     channel: 0                
     min_power: 0.001          # MOVED HERE: Scales the hardware floor mapping
-    max_power: 0.08           # MOVED HERE: Caps the hardware ceiling mapping at ~8%
+    max_power: 0.25           # MOVED HERE: Caps the hardware ceiling mapping
           
 light:
   - platform: esp32_rmt_led_strip # neopixel
@@ -153,29 +153,44 @@ display:
     rotation: 270                    
     update_interval: 0.3s
 
+ 
     on_page_change:
-      - to: blank_page
-        then:
-          - light.turn_off: display_backlight
-      - from: blank_page
-        then:
-          - light.turn_on:
-              id: display_backlight
-              brightness: 10% # Changed from 5% to match your new target brightness
+      - then:
+          - if:
+              condition:
+                lambda: 'return to == id(blank_page);'
+              then:
+                - light.turn_off:
+                    id: display_backlight
+
+              else:
+                - light.turn_on:
+                    id: display_backlight
+                    brightness: 100%
+
+
 
 
     pages:
       - id: active_page_std
         lambda: |-
-            it.print(5, 30,  id(my_fontSmall), id(myDisplay_line1).c_str());
-            it.print(5, 65,  id(my_fontSmall), id(myDisplay_line2).c_str());
-            it.print(5, 115, id(my_fontLarge),  id(myDisplay_line3).c_str());
+            auto L1color = Color(255, 100, 0);
+            auto L2color = Color(255, 120, 0);
+            auto L3color = Color(255, 150, 0);
+
+            it.print(5, 30,  id(my_fontSmall), L1color, id(myDisplay_line1).c_str());
+            it.print(5, 75,  id(my_fontSmall), L2color, id(myDisplay_line2).c_str());
+            it.print(5, 115, id(my_fontLarge), L3color,  id(myDisplay_line3).c_str());
 
       - id: active_page_small
         lambda: |-
-            it.print(5, 30,  id(my_fontMedium), id(myDisplay_line1).c_str());
-            it.print(5, 70,  id(my_fontMedium), id(myDisplay_line2).c_str());
-            it.print(5, 110,  id(my_fontMedium), id(myDisplay_line3).c_str());
+            auto L1color = Color(255, 130, 0);
+            auto L2color = Color(255, 130, 0);
+            auto L3color = Color(255, 130, 0);
+            
+            it.print(5, 30,  id(my_fontMedium), L1color, id(myDisplay_line1).c_str());
+            it.print(5, 70,  id(my_fontMedium), L2color, id(myDisplay_line2).c_str());
+            it.print(5, 110,  id(my_fontMedium),L3color, id(myDisplay_line3).c_str());
 
       - id: blank_page
         lambda: |-

@@ -82,7 +82,7 @@ remote_receiver:
           id(global_cached_command) = 0;
           id(global_is_holding) = false;
         }
-    - script.execute: display_timeout_handler
+    - script.execute: display_show
 
 
 
@@ -148,7 +148,7 @@ remote_receiver:
           id(global_cached_command) = 0;
           id(global_is_holding) = false;
         }
-    - script.execute: display_timeout_handler
+    - script.execute: display_show
 
 
   # 4. JVC Handler
@@ -213,7 +213,7 @@ remote_receiver:
           id(global_cached_command) = 0;
           id(global_is_holding) = false;
         }
-    - script.execute: display_timeout_handler
+    - script.execute: display_show
 
 
   # 5. Sony Handler
@@ -286,7 +286,7 @@ remote_receiver:
             }
           }
         }
-    - script.execute: display_timeout_handler
+    - script.execute: display_show
 
 
 globals:

@@ -146,7 +146,7 @@ esphome:
       
               ESP_LOGD("boot_loader", "Active wake token vector now set to hex: %s", hex_log_str.c_str());
             }        
-        - script.execute: display_timeout_handler
+        - script.execute: display_show
 
 
 globals:
@@ -248,7 +248,7 @@ button:
               id(myDisplay_line1) = formatted_hex;
               id(myDisplay_line2) = "Default Token";
               id(myDisplay_line3) = "Being Used";
-              id(display_timeout_handler).execute(); 
+              id(display_show).execute(); 
             }
 
 
@@ -350,11 +350,11 @@ esp32_ble_tracker:
                         id(sniffer_led)->turn_off();
 
                         // 3. Clear display routine backlogs and push static info
-                        id(display_timeout_handler).stop();
+                        id(display_show).stop();
                         id(myDisplay_line1) = "Token Recognized";
                         id(myDisplay_line2) = "Matches";
                         id(myDisplay_line3) = "Existing";
-                        id(display_timeout_handler).execute();
+                        id(display_show).execute();
                         
                         id(sniffer_hit_counter) = 0; 
                         continue;
@@ -389,11 +389,11 @@ esp32_ble_tracker:
                       id(sniffer_status)->publish_state(false);
                       
                       // 3. Clear display delays and push your new text
-                      id(display_timeout_handler).stop();
+                      id(display_show).stop();
                       id(myDisplay_line1) = sniffed_token_last15_hex;
                       id(myDisplay_line2) = "Storing Token";
                       id(myDisplay_line3) = "Wait 5 sec";
-                      id(display_timeout_handler).execute(); 
+                      id(display_show).execute(); 
                       
                       ESP_LOGI("xgimi_sniffer", "SUCCESS! Repeated XGIMI Wake Token detected and updated.");
                     } else {
@@ -403,7 +403,7 @@ esp32_ble_tracker:
                       id(myDisplay_line1) = "Failure";
                       id(myDisplay_line2) = "Bad Format";
                       id(myDisplay_line3) = "Token";
-                      id(display_timeout_handler).execute();
+                      id(display_show).execute();
                     }
                   }
 
@@ -439,7 +439,7 @@ script:
           id(myDisplay_line1) = "Clear Learned"; 
           id(myDisplay_line2) = "Using Default";
           id(myDisplay_line3) = "Wait 5 sec";
-      - script.execute: display_timeout_handler
+      - script.execute: display_show
 
       - lambda: |-
           bool learned_wake_token_exists = false;
@@ -485,7 +485,7 @@ script:
           }
           ESP_LOGD("token_clear", "Active wake token vector now set to hex: %s", hex_log_str.c_str());
 
-      - script.execute: display_timeout_handler      
+      - script.execute: display_show      
       
       
   # --- Sniff for Wake Tokens ---
@@ -526,7 +526,7 @@ script:
           id(myDisplay_line1) = "SNIFFING Token"; 
           id(myDisplay_line2) = "Repeat Press";
           id(myDisplay_line3) = "Xgimi Power";
-      - script.execute: display_timeout_handler
+      - script.execute: display_show
           
       - delay: 20s 
 
@@ -548,11 +548,11 @@ script:
           id(myDisplay_line1) = "Wake Token"; 
           id(myDisplay_line2) = "Sniffing";
           id(myDisplay_line3) = "ENDED";
-      - script.execute: display_timeout_handler
+      - script.execute: display_show
 
 
 # --- myDisplay timeout handler ---
-  - id: display_timeout_handler
+  - id: display_show
     mode: restart 
     # FIXED: No parameter block needed. It reads the global state instead.
     then:
@@ -621,7 +621,7 @@ script:
       - globals.set:
           id: myDisplay_small_text
           value: 'true'
-      - script.execute: display_timeout_handler
+      - script.execute: display_show
  
 
 
