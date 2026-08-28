@@ -765,6 +765,7 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 
 
 # Recent Changes:
+*   Added original _Xgimi Titan_ IR mapping. That would be _Titan_ IR to _Titan Noir_ BLuetooth 
 *   HOLDING boot button down for 5 seconds toggles display on/off. Setting is retained between boots. 
        Click of boot button still starts sniffing for tokens.
 
