@@ -55,11 +55,9 @@ Project Git is arranged as below. You will find make, hardware, and IRmap files 
 These each specify a ESP32 board type and desired IR mapping
 
 * make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
-* make-esp32-c3-OLED-GPIO1-IR-LGcinebeam.yaml
 * make-esp32-c3-OLED-GPIO1-IR-TiVo.yaml
 * make-esp32-c6-wroom-1-GPIO10-IR-Hisense.yaml
 * make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
-* make-esp32-m5stack-atom-lite-Hisense.yaml
 * make-esp32-TEMPLATE.yaml
 
 You can create your own custom make file with your own combinations of ESP32 board and IR signal map by...
