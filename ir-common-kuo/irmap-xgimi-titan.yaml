@@ -1,0 +1,93 @@
+# xgimi titan
+packages:
+  base_ir_engine: !include appkit/ir-architecture-base.yaml
+
+remote_receiver:
+  id: ir_receiver
+  dump: nec
+  on_sony: !remove
+  on_lg: !remove
+  on_jvc: !remove
+
+substitutions:
+  target_ir_address: "Ox21DE"
+  remote_display_name: "Xgimi Titan"
+
+  # =============================================================
+  # DEFINE token clearing gate buttons
+  cmd_token_clear_arm: "0x25"  # token_clear
+  cmd_token_clear_fire: "0x0D"   # cursor_enter
+  
+script:
+  - id: master_ir_processor
+    parameters:
+      command: uint32_t
+      is_hold: bool
+    then:
+      - lambda: |-
+          id(nec_broadcast_processor).execute(command, (uint16_t)(command >> 16), (uint16_t)(command & 0xFFFF), is_hold);
+
+  - id: nec_broadcast_processor
+    parameters:
+      command: uint32_t     
+      device_addr: uint16_t  
+      pure_cmd: uint16_t     
+      is_hold: bool       
+    then:
+      - lambda: |-
+          struct IRCommand {
+            std::string name;
+            esphome::template_::TemplateButton* button_obj;
+          };
+
+          static const std::map<uint16_t, IRCommand> nec_codes = {
+            { 0x0B,       { "cursor_up",     id(cursor_up) } },       // arrow up
+            { 0x0E,       { "cursor_down",   id(cursor_down) } },     // arrow down
+            { 0x10,       { "cursor_left",   id(cursor_left) } },     // arrow left
+            { 0x11,       { "cursor_right",  id(cursor_right) } },    // arrow right
+            { 0x0D,       { "cursor_enter",  id(cursor_enter) } },    // OK
+            { 0x42,       { "back",          id(back) } },            // back
+            { 0x1C,       { "focus_manual",  id(focus_manual) } },    // focus +
+            { 0x1D,       { "focus_auto",    id(focus_auto) } },      // focus -
+            { 0x1A,       { "home",          id(home) } },            // channel up
+            { 0x4F,       { "input",         id(input) } },           // source
+            { 0x45,       { "settings_menu", id(settings_menu) } },   // menu
+            { 0x19,       { "game_menu",     id(game_menu) } },       // OSD
+            { 0x20,       { "picture",       id(picture) } },         // lens shift and zoom
+            { 0x4D,       { "power_on",      id(power_on) } },            // power (as on)
+            { 0x1E,       { "power_off",     id(power_off_immediately)}}, // menu rotation (as off)
+            { 0x41,       { "shortcut_1",    id(shortcut_1) } },      // picture mode Standard
+            { 0x44,       { "shortcut_2",    id(shortcut_2) } },      // picture mode Movie
+            { 0x4A,       { "shortcut_3",    id(shortcut_3) } },      // picture mode Vivid
+            { 0x4B,       { "shortcut_4",    id(shortcut_4) } },      // picture mode TV
+            { 0x18,       { "volume_up",     id(volume_up) } },       // volume up
+            { 0x17,       { "volume_down",   id(volume_down) } },     // volume down
+            { 0x24,       { "token_sniff",   id(token_sniff) } },     // switch to HDMI 1
+            { 0x25,       { "token_clear",   id(token_clear) } },     // switch to HDMI 2
+            { 0x26,       { "token_recall",  id(token_recall) } },    // switch to USB
+          };
+
+          auto it = nec_codes.find(pure_cmd);
+          if (it != nec_codes.end()) {
+            if (!id(global_token_clear_armed)) {
+              if (is_hold) {
+                id(myDisplay_line1) = it->second.name + " (Hold)";
+              } else {
+                id(myDisplay_line1) = it->second.name;
+              }
+              id(myDisplay_line2) = "${remote_display_name}"; 
+              // myDisplay_line3 already has command hex placed by base architecture
+            }
+            
+            if (it->second.button_obj != nullptr) {
+              it->second.button_obj->press();
+            }
+          } else {
+            if (!id(global_token_clear_armed)) {
+              if (!is_hold) {
+                id(myDisplay_line1) = "Unassigned";
+                id(myDisplay_line2) = "${remote_display_name}"; 
+                // myDisplay_line3 already has command hex placed by base architecture
+              }
+            }
+          }
