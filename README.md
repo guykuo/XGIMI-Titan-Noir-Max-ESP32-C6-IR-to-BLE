@@ -507,44 +507,45 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 # Xgimi Command and IR Remote Button Tables
 <br>
 
-## Tivo to Xgimi Titan Noir Mapping
-|Xgimi Remote Command | Tivo Remote | NEC IR code of Tivo Roamio Remote |
+## Tivo Roamio to Xgimi Titan Noir Mapping
+|Xgimi Remote Command | Tivo Remote | (0x3085) + Command |
 |-------- | -------- | -------------------- |
-|back |zoom |address=0x3085, command=0xB044 |
-|cursor\_down |arrow down |address=0x3085, command=0xE016 |
-|cursor\_enter |select |address=0x3085, command=0xE019 |
-|cursor\_left |arrow left |address=0x3085, command=0xE017 |
-|cursor\_right |arrow right |address=0x3085, command=0xE015 |
-|cursor\_up |arrow up |address=0x3085, command=0xE014 |
-|focus\_auto |7 |address=0x3085, command=0xD02E |
-|focus\_manual |8 |address=0x3085, command=0xD02F |
-|home |channel up |address=0x3085, command=0xE01E |
-|input |input |address=0x3085, command=0xC034 |
-|settings\_menu |tivo (actual remote) |address=0x3085, command=0xF00C |
-|settings\_menu |tivo (incorrectly on MyHarmony) |address=0x3085, command=0xF00D |
-|game\_menu |guide |address=0x3085, command=0xC036 |
-|mute |mute |address=0x3085, command=0xE01B |
-|picture |info |address=0x3085, command=0xE013 |
-|power\_on |TV Power (Use as Discrete Power On) |address=0x3085, command=0xE010 |
-|power\_off |Live TV (Use as Discrete Off) |address=0x3085, command=0xE011 |
-|power\_off |0 (equivalent as Discrete OFF) |address=0x3085, command=0xC031 |
-|shortcut\_1 |A yellow |address=0x3085, command=0x9060 |
-|shortcut\_2 |B blue |address=0x3085, command=0x9061 |
-|shortcut\_3 |C red |address=0x3085, command=0x9062 |
-|shortcut\_4 |D green |address=0x3085, command=0x9063 |
-|volume\_down |volume down |address=0x3085, command=0xE01D |
-|volume\_up |volume up |address=0x3085, command=0xE01C |
-|token\_sniff |4 |address=0x3085, command=0xD02B |
-|token\_clear |5 |address=0x3085, command=0xD02C |
-|token\_recall |6 |address=0x3085, command=0xD02D |
-|bluetooth\_pairing\_start |enter |address=0x3085, command=0xC033 |
-|bluetooth\_pairing\_clear |clear |address=0x3085, command=0xC032 |
+|back |zoom |0xB044 |
+|cursor\_down |arrow down |0xE016 |
+|cursor\_enter |select |0xE019 |
+|cursor\_left |arrow left |0xE017 |
+|cursor\_right |arrow right |0xE015 |
+|cursor\_up |arrow up |0xE014 |
+|focus\_auto |7 |0xD02E |
+|focus\_manual |8 |0xD02F |
+|home |channel up |0xE01E |
+|input |input |0xC034 |
+|settings\_menu |tivo (actual remote) |0xF00C |
+|settings\_menu |tivo (on MyHarmony) |0xF00D |
+|game\_menu |guide |0xC036 |
+|mute |mute |0xE01B |
+|picture |info |0xE013 |
+|power\_on |TV Power (Use as Discrete Power On) |0xE010 |
+|power\_off |Live TV (Use as Discrete Off) |0xE011 |
+|power\_off |0 (equivalent as Discrete OFF) |0xC031 |
+|shortcut\_1 |A yellow |0x9060 |
+|shortcut\_2 |B blue |0x9061 |
+|shortcut\_3 |C red |0x9062 |
+|shortcut\_4 |D green |0x9063 |
+|volume\_down |volume down |0xE01D |
+|volume\_up |volume up |0xE01C |
+|token\_sniff |4 |0xD02B |
+|token\_clear |5 |0xD02C |
+|token\_recall |6 |0xD02D |
+|bluetooth\_pairing\_start |enter |0xC033 |
+|bluetooth\_pairing\_clear |clear |0xC032 |
+
 
 <br>
 <br>
 
-## Hisense to Xgimi Titan Noir Mapping
-|Xgimi Remote Command | Hisense Remote Button | NEC IR code of Hisense 50U6G Remote |
+## Hisense 50U6G to Xgimi Titan Noir Mapping
+|Xgimi Remote Command | Hisense Remote Button | (0xEA15) + Command |
 |-------- | -------- | -------------------- |
 |back |back |0xFB04 |
 |cursor\_down |arrow down |0xFB04 |
@@ -583,7 +584,7 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 ## LG Cinebeam HU810P to Xgimi Titan Noir Mapping
 
 (Some items duplicated to accept alternative buttons)
-| Xgimi Remote Command | LG Cinebeam Button | NEC IR Code |
+| Xgimi Remote Command | LG Cinebeam Button | (0xFB04) + Command  |
 | :--- | :--- | :--- |
 | back | back | 0x14EB |
 | cursor down | cursor down | 0x827D |
@@ -621,7 +622,7 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 <br>
 
 ## JVC-VCR to Xgimi Titan Noir Mapping
-| Xgimi Remote Command | JVC VCR Remote Btn | JVC IR code from JVC VCR |
+| Xgimi Remote Command | JVC VCR Btn | (0x03C2) + Command |
 | :--- | :--- | :--- |
 | back | rewind | 0xC2C3 |
 | cursor\_down | arrow down actual | 0xC218 |
@@ -662,7 +663,7 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 <br>
 
 ## JVC Projector to Xgimi Titan Noir Mapping
-| Xgimi Command | JVC Projector Btn | Hex Code |
+| Xgimi Command | JVC Projector Btn | (0xCE) + Command |
 | :--- | :--- | :--- |
 | "back" |  EXIT / BACK | 0xC0 |
 | "cursor_down" |  DOWN ARROW | 0x40 |
@@ -697,7 +698,7 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 <br>
 <br>
 
-## JVC Bravia TV to Xgimi Titan Noir Mapping
+## Sony Bravia TV to Xgimi Titan Noir Mapping
 | Xgimi Command | Sony TV Remote | Hex Code |
 | :--- | :--- | :--- |
 | "back" | Back | 0x0062E9 |
@@ -729,6 +730,38 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 | "token_recall" | 6 | 0x000A10 |
 | "BT_start_pair" | play | 0x002CE9 |
 | "BT_clear_pair" | fast forward | 0x001CE9 |
+
+
+<br>
+<br>
+
+## Xgimi Titan to Xgimi Titan NOIR Mapping
+| Titan Noir Command | Titan  | (Ox21DE) + Command |
+| :--- | :--- | :--- |
+| "cursor_up" | arrow up | 0x0B |
+| "cursor_down" | arrow down | 0x0E |
+| "cursor_left" | arrow left | 0x10 |
+| "cursor_right" | arrow right | 0x11 |
+| "cursor_enter" | OK | 0x0D |
+| "back" | back | 0x42 |
+| "focus_manual" | focus + | 0x1C |
+| "focus_auto" | focus - | 0x1D |
+| "home" | channel up | 0x1A |
+| "input" | source | 0x4F |
+| "settings_menu" | menu | 0x45 |
+| "game_menu" | OSD | 0x19 |
+| "picture" | lens shift and zoom | 0x20 |
+| "power_on" | power (as on) | 0x4D |
+| "power_off" | menu rotation (as off) | 0x1E |
+| "shortcut_1" | picture mode Standard | 0x41 |
+| "shortcut_2" | picture mode Movie | 0x44 |
+| "shortcut_3" | picture mode Vivid | 0x4A |
+| "shortcut_4" | picture mode TV | 0x4B |
+| "volume_up" | volume up | 0x18 |
+| "volume_down" | volume down | 0x17 |
+| "token_sniff" | switch to HDMI 1 | 0x24 |
+| "token_clear" | switch to HDMI 2 | 0x25 |
+| "token_recall" | switch to USB | 0x26 |
 
 
 # Recent Changes:
