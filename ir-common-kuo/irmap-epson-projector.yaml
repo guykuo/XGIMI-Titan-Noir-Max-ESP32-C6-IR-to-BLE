@@ -42,21 +42,21 @@ script:
 
           // hex keys are LSB-First ESPHome sniffer codes. 
           static const std::map<uint16_t, IRCommand> nec_codes = {
-            { 0x7B84,       { "back",          id(back) } },           // Epson: ESC (Back)
+            { 0x6F90,       { "power_on",      id(power_on) } },              // Epson: POWER ON Discrete
+            { 0x6E91,       { "power_off",     id(power_off_immediately) } }, // Epson: POWER OFF Discrete
+            { 0xCA35,       { "cursor_up",     id(cursor_up) } },      // Epson: UP ARROW
             { 0x4DB2,       { "cursor_down",   id(cursor_down) } },    // Epson: DOWN ARROW
-            { 0x7A85,       { "cursor_enter",  id(cursor_enter) } },   // Epson: ENTER
             { 0x4CB3,       { "cursor_left",   id(cursor_left) } },    // Epson: LEFT ARROW
             { 0x4EB1,       { "cursor_right",  id(cursor_right) } },   // Epson: RIGHT ARROW
-            { 0xCA35,       { "cursor_up",     id(cursor_up) } },      // Epson: UP ARROW
-            { 0x748B,       { "focus_auto",    id(focus_auto) } },     // Epson: MEMORY
-            { 0x36C9,       { "focus_manual",  id(focus_manual) } },   // Epson: LENS Button
-            { 0xBC43,       { "home",          id(home) } },           // Epson: Default
-            { 0x8C73,       { "input",         id(input) } },          // Epson: HDMI 1 Button
+            { 0x7A85,       { "cursor_enter",  id(cursor_enter) } },   // Epson: ENTER
             { 0x659A,       { "settings_menu", id(settings_menu) } },  // Epson: MENU
+            { 0x7B84,       { "back",          id(back) } },           // Epson: ESC (Back)
+            { 0xBC43,       { "home",          id(home) } },           // Epson: Default
             { 0x609F,       { "game_menu",     id(game_menu) } },      // Epson: USER
+            { 0x8C73,       { "input",         id(input) } },          // Epson: HDMI 1 Button
             { 0x708F,       { "picture",       id(picture) } },        // Epson: color mode
-            { 0x6F90,       { "power_on",      id(power_on) } },       // Epson: POWER ON Discrete
-            { 0x6E91,       { "power_off",     id(power_off_immediately) } }, // Epson: POWER OFF Discrete
+            { 0x36C9,       { "focus_manual",  id(focus_manual) } },   // Epson: LENS Button
+            { 0x748B,       { "focus_auto",    id(focus_auto) } },     // Epson: MEMORY
             { 0x758A,       { "shortcut_1",    id(shortcut_1) } },     // Epson: ASPECT
             { 0x7C83,       { "shortcut_2",    id(shortcut_2) } },     // Epson: frame interp
             { 0x10EF,       { "shortcut_3",    id(shortcut_3) } },     // Epson: DYNAMIC CONTRAST

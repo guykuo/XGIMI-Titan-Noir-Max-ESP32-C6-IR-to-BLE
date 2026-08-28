@@ -41,21 +41,21 @@ script:
           };
 
           static const std::map<uint16_t, IRCommand> nec_codes = {
+            { 0x4D,       { "power_on",      id(power_on) } },            // power (as on)
+            { 0x1E,       { "power_off",     id(power_off_immediately)}}, // menu rotation (as off)
             { 0x0B,       { "cursor_up",     id(cursor_up) } },       // arrow up
             { 0x0E,       { "cursor_down",   id(cursor_down) } },     // arrow down
             { 0x10,       { "cursor_left",   id(cursor_left) } },     // arrow left
             { 0x11,       { "cursor_right",  id(cursor_right) } },    // arrow right
             { 0x0D,       { "cursor_enter",  id(cursor_enter) } },    // OK
             { 0x42,       { "back",          id(back) } },            // back
-            { 0x1C,       { "focus_manual",  id(focus_manual) } },    // focus +
-            { 0x1D,       { "focus_auto",    id(focus_auto) } },      // focus -
-            { 0x1A,       { "home",          id(home) } },            // channel up
-            { 0x4F,       { "input",         id(input) } },           // source
             { 0x45,       { "settings_menu", id(settings_menu) } },   // menu
             { 0x19,       { "game_menu",     id(game_menu) } },       // OSD
+            { 0x1A,       { "home",          id(home) } },            // channel up
+            { 0x4F,       { "input",         id(input) } },           // source
             { 0x20,       { "picture",       id(picture) } },         // lens shift and zoom
-            { 0x4D,       { "power_on",      id(power_on) } },            // power (as on)
-            { 0x1E,       { "power_off",     id(power_off_immediately)}}, // menu rotation (as off)
+            { 0x1C,       { "focus_manual",  id(focus_manual) } },    // focus +
+            { 0x1D,       { "focus_auto",    id(focus_auto) } },      // focus -
             { 0x41,       { "shortcut_1",    id(shortcut_1) } },      // picture mode Standard
             { 0x44,       { "shortcut_2",    id(shortcut_2) } },      // picture mode Movie
             { 0x4A,       { "shortcut_3",    id(shortcut_3) } },      // picture mode Vivid

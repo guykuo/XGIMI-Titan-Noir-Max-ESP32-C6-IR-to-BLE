@@ -45,28 +45,28 @@ script:
 
           // Strict unique map loaded with genuine JVC production command data codes
           static const std::map<uint16_t, IRCommand> jvc_codes = {
-            { 0xC0,       { "back",          id(back) } },           // JVC: EXIT / BACK
+            { 0xA0,       { "power_on",      id(power_on) } },       // JVC: DISCRETE POWER ON
+            { 0x60,       { "power_off", id(power_off_immediately) } }, // JVC: STAND BY
             { 0x40,       { "cursor_down",   id(cursor_down) } },    // JVC: DOWN ARROW
             { 0xF4,       { "cursor_enter",  id(cursor_enter) } },   // JVC: OK / ENTER
             { 0x6C,       { "cursor_left",   id(cursor_left) } },    // JVC: LEFT ARROW
             { 0x2C,       { "cursor_right",  id(cursor_right) } },   // JVC: RIGHT ARROW
             { 0x80,       { "cursor_up",     id(cursor_up) } },      // JVC: UP ARROW
-            { 0x04,       { "focus_auto",    id(focus_auto) } },     // JVC: LENS AP
-            { 0x0C,       { "focus_manual",  id(focus_manual) } },   // JVC: LENS CONTROL
-            { 0xB8,       { "home",          id(home) } },           // JVC: HIDE
             { 0x74,       { "settings_menu", id(settings_menu) } },  // JVC: MENU
+            { 0xC0,       { "back",          id(back) } },           // JVC: EXIT / BACK
+            { 0xB8,       { "home",          id(home) } },           // JVC: HIDE
             { 0x56,       { "game_menu",     id(game_menu) } },      // JVC: NATURAL
             { 0x0E,       { "input",         id(input) } },          // JVC: HDMI 1
-            { 0xB7,       { "volume_up",     id(volume_up) } },      // JVC: HDR
-            { 0xAF,       { "volume_down",   id(volume_down) } },    // JVC: GAMMA SETTINGS
-            { 0x16,       { "mute",          id(mute) } },           // JVC: CINEMA
             { 0x2F,       { "picture",       id(picture) } },        // JVC: PIC MODE
-            { 0xA0,       { "power_on",      id(power_on) } },       // JVC: DISCRETE POWER ON
-            { 0x60,       { "power_off", id(power_off_immediately) } }, // JVC: STAND BY
+            { 0x04,       { "focus_auto",    id(focus_auto) } },     // JVC: LENS AP
+            { 0x0C,       { "focus_manual",  id(focus_manual) } },   // JVC: LENS CONTROL
             { 0xAE,       { "shortcut_1",    id(shortcut_1) } },     // JVC: GAMMA
             { 0x6E,       { "shortcut_2",    id(shortcut_2) } },     // JVC: COLOR TEMP
             { 0x6B,       { "shortcut_3",    id(shortcut_3) } },     // JVC: 3D FORMAT
             { 0x4E,       { "shortcut_4",    id(shortcut_4) } },     // JVC: PIC ADJ
+            { 0xB7,       { "volume_up",     id(volume_up) } },      // JVC: HDR
+            { 0xAF,       { "volume_down",   id(volume_down) } },    // JVC: GAMMA SETTINGS
+            { 0x16,       { "mute",          id(mute) } },           // JVC: CINEMA
             { 0x1B,       { "token_sniff",   id(token_sniff) } },    // JVC: MODE 1
             { 0x9B,       { "token_clear",   id(token_clear) } },    // JVC: MODE 2
             { 0x5B,       { "token_recall",  id(token_recall) } },   // JVC: MODE 3

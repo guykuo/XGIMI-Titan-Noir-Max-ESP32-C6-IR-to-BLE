@@ -42,27 +42,27 @@ script:
 
           // Resolved duplicate mapping entries to prevent compiler warnings or key overwrites
           static const std::map<uint16_t, IRCommand> nec_codes = {
-            { 0x1AE5,       { "back",          id(back) } },           // BenQ: BACK / EXIT
+            { 0x0CF3,       { "power_on",      id(power_on) } },              // BenQ: DISCRETE POWER ON
+            { 0x0DF2,       { "power_off",     id(power_off_immediately) } }, // BenQ: DISCRETE POWER OFF
+            { 0x15EA,       { "cursor_up",     id(cursor_up) } },      // BenQ: UP ARROW
             { 0x16E9,       { "cursor_down",   id(cursor_down) } },    // BenQ: DOWN ARROW
-            { 0x13EC,       { "cursor_enter",  id(cursor_enter) } },   // BenQ: ENTER / OK
             { 0x17E8,       { "cursor_left",   id(cursor_left) } },    // BenQ: LEFT ARROW
             { 0x18E7,       { "cursor_right",  id(cursor_right) } },   // BenQ: RIGHT ARROW
-            { 0x15EA,       { "cursor_up",     id(cursor_up) } },      // BenQ: UP ARROW
+            { 0x13EC,       { "cursor_enter",  id(cursor_enter) } },   // BenQ: ENTER / OK
+            { 0x1AE5,       { "back",          id(back) } },           // BenQ: BACK / EXIT
+            { 0x10EF,       { "home",          id(home) } },           // BenQ: MENU (Fallback)
+            { 0x26D9,       { "game_menu",     id(game_menu) } },      // BenQ: INFORMATION
+            { 0x31CE,       { "input",         id(input) } },          // BenQ: SOURCE SELECT
+            { 0x25DA,       { "picture",       id(picture) } },        // BenQ: MODE (Picture Profile cycle)
             { 0x22DD,       { "focus_auto",    id(focus_auto) } },     // BenQ: AUTO (Auto Setup adjustment)
             { 0x21DE,       { "focus_manual",  id(focus_manual) } },   // BenQ: QUICK INSTALL / TEST PATTERN
-            { 0x10EF,       { "home",          id(home) } },           // BenQ: MENU (Fallback)
-            { 0x31CE,       { "input",         id(input) } },          // BenQ: SOURCE SELECT
-            { 0x26D9,       { "game_menu",     id(game_menu) } },      // BenQ: INFORMATION
-            { 0x1CE3,       { "mute",          id(mute) } },           // BenQ: ECO BLANK (Blank Screen toggle)
-            { 0x25DA,       { "picture",       id(picture) } },        // BenQ: MODE (Picture Profile cycle)
-            { 0x0CF3,       { "power_on",      id(power_on) } },       // BenQ: DISCRETE POWER ON
-            { 0x0DF2,       { "power_off_immediately", id(power_off_immediately) } }, // BenQ: DISCRETE POWER OFF
             { 0x23DC,       { "shortcut_1",    id(shortcut_1) } },     // BenQ: ASPECT RATIO
             { 0x09F6,       { "shortcut_2",    id(shortcut_2) } },     // BenQ: KEYSTONE +
             { 0x0AF5,       { "shortcut_3",    id(shortcut_3) } },     // BenQ: KEYSTONE -
             { 0x27D8,       { "shortcut_4",    id(shortcut_4) } },     // BenQ: 3D MODE
-            { 0x1EE1,       { "volume_down",   id(volume_down) } },    // BenQ: VOLUME -
             { 0x1DE2,       { "volume_up",     id(volume_up) } },      // BenQ: VOLUME +
+            { 0x1EE1,       { "volume_down",   id(volume_down) } },    // BenQ: VOLUME -
+            { 0x1CE3,       { "mute",          id(mute) } },           // BenQ: ECO BLANK (Blank Screen toggle)
             { 0x01FE,       { "token_sniff",   id(token_sniff) } },    // BenQ: NUMPAD 1 PLACEHOLDER
             { 0x02FD,       { "token_clear",   id(token_clear) } },    // BenQ: NUMPAD 2 PLACEHOLDER
             { 0x03FC,       { "token_recall",  id(token_recall) } },   // BenQ: NUMPAD 3 PLACEHOLDER

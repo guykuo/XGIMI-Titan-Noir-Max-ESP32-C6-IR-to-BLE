@@ -42,28 +42,28 @@ script:
 
           // Strict unique map to prevent compiler errors and map overwrites
           static const std::map<uint16_t, IRCommand> nec_codes = {
+            { 0xD02F,       { "power_on",      id(power_on) } },       // Hisense Proj: DISCRETE POWER ON
+            { 0xD12E,       { "power_off", id(power_off_immediately)}},// Hisense Proj: DISCRETE POWER OFF
             { 0x02FD,       { "back",          id(back) } },           // Hisense Proj: BACK / RETURN
+            { 0x19E6,       { "cursor_up",     id(cursor_up) } },      // Hisense Proj: UP ARROW
             { 0x1AE5,       { "cursor_down",   id(cursor_down) } },    // Hisense Proj: DOWN ARROW
-            { 0x12ED,       { "cursor_enter",  id(cursor_enter) } },   // Hisense Proj: OK / SELECT
             { 0x11EE,       { "cursor_left",   id(cursor_left) } },    // Hisense Proj: LEFT ARROW
             { 0x15EA,       { "cursor_right",  id(cursor_right) } },   // Hisense Proj: RIGHT ARROW
-            { 0x19E6,       { "cursor_up",     id(cursor_up) } },      // Hisense Proj: UP ARROW
-            { 0x48B7,       { "focus_auto",    id(focus_auto) } },     // Hisense Proj: AUTO FOCUS
+            { 0x12ED,       { "cursor_enter",  id(cursor_enter) } },   // Hisense Proj: OK / SELECT
             { 0x49B6,       { "focus_manual",  id(focus_manual) } },   // Hisense Proj: MANUAL FOCUS MENU
+            { 0x48B7,       { "focus_auto",    id(focus_auto) } },     // Hisense Proj: AUTO FOCUS
             { 0x06F9,       { "home",          id(home) } },           // Hisense Proj: HOME (VIDAA / Google Home)
             { 0x0DF2,       { "input",         id(input) } },          // Hisense Proj: INPUT SOURCE SELECT
             { 0x0AF5,       { "settings_menu", id(settings_menu) } },  // Hisense Proj: QUICK SETTINGS MENU
             { 0x45BA,       { "game_menu",     id(game_menu) } },      // Hisense Proj: INFO STATUS
-            { 0x03FC,       { "mute",          id(mute) } },           // Hisense Proj: MUTE
             { 0x1fe0,       { "picture",       id(picture) } },        // Hisense Proj: PICTURE MODE CYCLE
-            { 0xD02F,       { "power_on",      id(power_on) } },       // Hisense Proj: DISCRETE POWER ON
-            { 0xD12E,       { "power_off_immediately", id(power_off_immediately) } }, // Hisense Proj: DISCRETE POWER OFF
             { 0x54AB,       { "shortcut_1",    id(shortcut_1) } },     // Hisense Proj: ECO MODE / GEOM CALIBRATION
             { 0x58A7,       { "shortcut_2",    id(shortcut_2) } },     // Hisense Proj: AUDIO MODE
             { 0x52AD,       { "shortcut_3",    id(shortcut_3) } },     // Hisense Proj: 3D SETTING
             { 0x56A9,       { "shortcut_4",    id(shortcut_4) } },     // Hisense Proj: CUSTOM FUNCTION KEY
-            { 0x17E8,       { "volume_down",   id(volume_down) } },    // Hisense Proj: VOLUME MINUS
             { 0x13EC,       { "volume_up",     id(volume_up) } },      // Hisense Proj: VOLUME PLUS
+            { 0x17E8,       { "volume_down",   id(volume_down) } },    // Hisense Proj: VOLUME MINUS
+            { 0x03FC,       { "mute",          id(mute) } },           // Hisense Proj: MUTE
             { 0x619E,       { "token_sniff",   id(token_sniff) } },    // Hisense Proj: CUSTOM ALLOCATION 1
             { 0x629D,       { "token_clear",   id(token_clear) } },    // Hisense Proj: CUSTOM ALLOCATION 2
             { 0x639C,       { "token_recall",  id(token_recall) } },   // Hisense Proj: CUSTOM ALLOCATION 3
