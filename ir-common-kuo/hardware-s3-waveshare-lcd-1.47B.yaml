@@ -51,7 +51,7 @@ output:
     frequency: 12000 Hz       # Keeps frequency high to narrow the transistor's gate threshold
     channel: 0                
     min_power: 0.001          # MOVED HERE: Scales the hardware floor mapping
-    max_power: 0.25           # MOVED HERE: Caps the hardware ceiling mapping
+    max_power: 0.40           # MOVED HERE: Caps the hardware ceiling mapping
           
 light:
   - platform: esp32_rmt_led_strip # neopixel

@@ -140,9 +140,9 @@ esphome:
                   char buf[3];
                   snprintf(buf, sizeof(buf), "%02x", active_token_vector[i]);
                   hex_log_str += buf;
-                  
+              }    
               id(flash_led_custom).execute(2, 0.0, 0.0, 0.2); // flash two indicate default token.
-              }
+              
       
               ESP_LOGD("boot_loader", "Active wake token vector now set to hex: %s", hex_log_str.c_str());
             }        
@@ -173,7 +173,11 @@ globals:
     restore_value: no
     initial_value: '0'
 
-    
+  - id: myDisplay_suppress # stops display from showing if true
+    type: bool
+    restore_value: yes # remember display suppression between boots.
+    initial_value: 'false'
+
   
 binary_sensor:
   - platform: template
@@ -190,9 +194,43 @@ binary_sensor:
         pullup: true
     name: "Physical sniff button"
     id: physical_sniff_button
-    on_press:
-      then:
-        - button.press: token_sniff
+    filters:
+      - delayed_on: 50 ms
+    on_multi_click:
+      #Short cllick starts token sniffing
+      - timing:
+          - ON for at most 400ms
+          - OFF for at least 50ms
+        then:
+          - button.press: token_sniff
+          - logger.log: "Boot button short click. Starting token sniffing"
+
+      #Long hold
+      - timing:   
+          - On for at least 3s
+        then:
+          - globals.set: #toggle display active status
+              id: myDisplay_suppress
+              value: !lambda |-
+                return !id(myDisplay_suppress);
+          - lambda: |-
+                if (id(myDisplay_suppress)) {
+                  // display became suppressed
+                  id(flash_led_custom).execute(2, 1.0, 0.0, 1.0); // Flash (magenta) x 3 display suppressed
+                  id(display_show).execute(); // blanks display
+
+                }
+                else {
+                  // display became active
+                  id(flash_led_custom).execute(1, 0.0, 1.0, 0.0); // Flash (green) x 1 display active
+                  
+                  id(myDisplay_line1) = "";
+                  id(myDisplay_line2) = "Display";
+                  id(myDisplay_line3) = "Active";
+                  id(display_show).execute(); 
+                }
+          - logger.log: "Boot button long hold. Toggled display suppression"
+
 
 
 button:
@@ -554,23 +592,29 @@ script:
 # --- myDisplay timeout handler ---
   - id: display_show
     mode: restart 
-    # FIXED: No parameter block needed. It reads the global state instead.
     then:
       - if:
           condition:
             lambda: |-
-              return (id(myDisplay_line1) != "TOKENS WIPED" && id(myDisplay_line1) != "ARMED: PRESS");
+              return id(myDisplay_suppress); // Fixed typo and removed mismatched parenthesis
           then:
-            - lambda: |-
-                if (id(myDisplay_small_text)) {
-                  id(myDisplay).show_page(id(active_page_small));
-                } else {
-                  id(myDisplay).show_page(id(active_page_std));
-                }
-            - delay: 40s
             - display.page.show: blank_page
           else:
-            - delay: 40s
+            - if:
+                condition:
+                  lambda: |-
+                    return (id(myDisplay_line1) != "TOKENS WIPED" && id(myDisplay_line1) != "ARMED: PRESS");
+                then:
+                  - lambda: |-
+                      if (id(myDisplay_small_text)) {
+                        id(myDisplay).show_page(id(active_page_small));
+                      } else {
+                        id(myDisplay).show_page(id(active_page_std));
+                      }
+                  - delay: 40s
+                  - display.page.show: blank_page
+                else:
+                  - delay: 40s
 
 
 
