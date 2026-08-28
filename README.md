@@ -734,6 +734,9 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 
 
 # Recent Changes:
+*   HOLDING boot button down for 5 seconds toggles display on/off. Setting is retained between boots. 
+       Click of boot button still starts sniffing for tokens.
+
 *   Further adjusted button acceptance speed to approx 10 press/sec.
 *   Added support for holding down button on remote for fast repeat.
 *   Added hardware file for Waveshare ESP32 S3 LCD 1.47B board.
