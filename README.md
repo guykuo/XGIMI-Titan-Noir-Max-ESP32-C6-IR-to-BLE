@@ -119,12 +119,11 @@ These IR maps have known working IR code sets ...
 * irmap-sony-VPL-XW600ES.yaml_________(Sony VPL-XW600ES projector)
 * irmap-sony-XBR-77A9G.yaml___________(Sony XBR-77A9G TV)
 * irmap-epson-pro-cinema-LS1200-projector.yaml______(Epson Pro Cinema LS1200 projector)
- 
+* irmap-benq-w5800.yaml_______________(BenQ W5800 projector) 
 
 These IR maps are WIP and likely have incomplete or incorrect IR mapping...
 
 * irmap-AWOL-projector.yaml
-* irmap-benq-projector.yaml
 * irmap-hisense-projector.yaml
 * irmap-optoma-projector.yaml
 * irmap-xgimi-titan.yaml
@@ -799,6 +798,39 @@ Be aware that you need to use physical buttons on projector (or IP / serial cont
 | token_recall | pattern | 0x6996 |
 | BT_start_pair | Link Menu | 0x9F60 |
 | BT_clear_pair | Aspect | 0x758A |
+
+<br>
+<br>
+
+## BenQ W5800 Projector to Xgimi Titan Noir Mapping
+| Xgimi Command | BenQ Projector Btn | (0x3000) + Command |
+| power_on | power on | 0xB04F |
+| power_off | power off | 0xB14E |
+| cursor_up | up arrow | 0xF40B |
+| cursor_down | down arrow | 0xF30C |
+| cursor_left | left arrow | 0xF20D |
+| cursor_right | right arrow | 0xF10E |
+| cursor_enter | ok | 0xEA15 |
+| settings_menu | menu | 0xF00F |
+| back | back | 0x7A85 |
+| home | default | 0x8778 |
+| game_menu | guide | 0xEA15 |
+| input | source | 0xFB04 |
+| picture | picure mode | 0xEF10 |
+| focus_manual | aspect | 0xEC13 |
+| focus_auto | auto | 0xF708 |
+| shortcut_1 | brightness | 0xE916 |
+| shortcut_2 | contrast | 0xEE11 |
+| shortcut_3 | dynamic iris | 0x837C |
+| shortcut_4 | light mode | 0xCF30 |
+| volume_up | gamma | 0xA15E |
+| volume_down | sharp | 0x817E |
+| mute | eco blank | 0xF807 |
+| token_sniff | info | 0xF30C |
+| token_clear | invert | 0x629D |
+| token_recall | 3D | 0x639C |
+| BT_start_pair | color temp | 0xA05F |
+| BT_clear_pair | color manage | 0xA45B |
 
 # Recent Changes:
 *   Added original _Xgimi Titan_ IR mapping. That would be _Titan_ IR to _Titan Noir_ BLuetooth 
