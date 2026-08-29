@@ -667,33 +667,34 @@ Be aware that you need to use physical buttons on projector (or IP / serial cont
 
 | Xgimi Command | JVC Projector Btn | (0xCE) + Command |
 | :--- | :--- | :--- |
-| power_on | DISCRETE POWER ON | 0xA0 |
-| power_off | STAND BY | 0x60 |
-| cursor_down | DOWN ARROW | 0x40 |
-| cursor_enter | OK / ENTER | 0xF4 |
-| cursor_left | LEFT ARROW | 0x6C |
-| cursor_right | RIGHT ARROW | 0x2C |
-| cursor_up | UP ARROW | 0x80 |
-| settings_menu | MENU | 0x74 |
-| back | EXIT / BACK | 0xC0 |
-| home | HIDE | 0xB8 |
-| game_menu | NATURAL | 0x56 |
-| input | HDMI 1 | 0x0E |
-| picture | PIC MODE | 0x2F |
-| focus_auto | LENS AP | 0x04 |
-| focus_manual | LENS CONTROL | 0x0C |
-| shortcut_1 | GAMMA | 0xAE |
-| shortcut_2 | COLOR TEMP | 0x6E |
-| shortcut_3 | 3D FORMAT | 0x6B |
-| shortcut_4 | PIC ADJ | 0x4E |
-| volume_up | HDR | 0xB7 |
-| volume_down | GAMMA SETTINGS | 0xAF |
-| mute | CINEMA | 0x16 |
-| token_sniff | MODE 1 | 0x1B |
-| token_clear | MODE 2 | 0x9B |
-| token_recall | MODE 3 | 0x5B |
-| BT_start_pair | MPC | 0x0F |
-| BT_clear_pair | CMD | 0x51 |
+| power_on | power on | 0xA0 |
+| power_off | power off | 0x60 |
+| cursor_up | up arrow | 0x80 |
+| cursor_down | down arrow | 0x40 |
+| cursor_left | left arrow | 0x6C |
+| cursor_right | right arrow | 0x2C |
+| cursor_enter | enter/ok | 0xF4 |
+| settings_menu | menu | 0x74 |
+| back | exit | 0xC0 |
+| home | hide | 0xB8 |
+| game_menu | gamma | 0xAE |
+| input | input HDMI 1 | 0x0E |
+| picture | input HDMI 2 | 0x8E |
+| focus_manual | focus - | 0xCC |
+| focus_auto | focus + | 0x8C |
+| shortcut_1 | input video | 0xD2 |
+| shortcut_2 | input s-video | 0x32 |
+| shortcut_3 | input component | 0xB2 |
+| shortcut_4 | natural | 0x56 |
+| volume_up | brightness up | 0x5E |
+| volume_down | brightness down | 0xDE |
+| mute | hide | 0xB8 |
+| token_sniff | color up | 0x3E |
+| token_clear | color down | 0xBE |
+| token_recall | color temp | 0x6E |
+| BT_start_pair | aspect | 0xEE |
+| BT_clear_pair | cinema | 0x96 |
+
 
 
 
