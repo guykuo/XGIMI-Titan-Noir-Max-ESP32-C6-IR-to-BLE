@@ -18,8 +18,8 @@ substitutions:
 
   # =============================================================
   # DEFINE token clearing gate buttons
-  cmd_token_clear_arm: "0x0CAB54"   # FILM 1
-  cmd_token_clear_fire: "0x002D2A"  # OK / ENTER (Verified)
+  cmd_token_clear_arm: "0x0008AB54"   # BRT TV
+  cmd_token_clear_fire: "0x00002D2A"  # OK / ENTER (Verified)
 
 script:
   - id: master_ir_processor

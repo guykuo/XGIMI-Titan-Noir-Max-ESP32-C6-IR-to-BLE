@@ -51,11 +51,11 @@ script:
             { 0xE017,       { "cursor_left",   id(cursor_left) } },     // arrow left
             { 0xE015,       { "cursor_right",  id(cursor_right) } },    // arrow right
             { 0xE019,       { "cursor_enter",  id(cursor_enter) } },    // select
-            { 0xB044,       { "back",          id(back) } },            // zoom
             { 0xF00C,       { "settings_menu", id(settings_menu) } },   // tivo
             { 0xF00D,       { "settings_menu", id(settings_menu) } },   // tivo (myHarmony version)
-            { 0xC036,       { "game_menu",     id(game_menu) } },       // guide
+            { 0xB044,       { "back",          id(back) } },            // zoom
             { 0xE01E,       { "home",          id(home) } },            // channel up
+            { 0xC036,       { "game_menu",     id(game_menu) } },       // guide
             { 0xC034,       { "input",         id(input) } },           // input
             { 0xE013,       { "picture",       id(picture) } },         // into
             { 0xD02E,       { "focus_auto",    id(focus_auto) } },      // 7

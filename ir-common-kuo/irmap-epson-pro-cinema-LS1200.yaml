@@ -17,8 +17,8 @@ substitutions:
 
   # =============================================================
   # DEFINE token clearing gate buttons
-  cmd_token_clear_arm: "0xC23D"    # Epson: enter
-  cmd_token_clear_fire: "0x7A85"   # Epson: RGBCMY
+  cmd_token_clear_arm: "0xC23D"    # Epson: RGBCMY
+  cmd_token_clear_fire: "0x7A85"   # Epson: enter
 
 script:
   - id: master_ir_processor
