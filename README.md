@@ -118,13 +118,13 @@ These IR maps have known working IR code sets ...
 * irmap-jvc-rs2-codeset-B.yaml________(JVC Projectors code set B - alt code set) 
 * irmap-sony-VPL-XW600ES.yaml_________(Sony VPL-XW600ES projector)
 * irmap-sony-XBR-77A9G.yaml___________(Sony XBR-77A9G TV)
+* irmap-epson-pro-cinema-LS1200-projector.yaml______(Epson Pro Cinema LS1200 projector)
  
 
 These IR maps are WIP and likely have incomplete or incorrect IR mapping...
 
 * irmap-AWOL-projector.yaml
 * irmap-benq-projector.yaml
-* irmap-epson-pro-cinema-LS1200-projector.yaml
 * irmap-hisense-projector.yaml
 * irmap-optoma-projector.yaml
 * irmap-xgimi-titan.yaml
@@ -767,7 +767,38 @@ Be aware that you need to use physical buttons on projector (or IP / serial cont
 | BT_start_pair | BRIGHTNESS DOWN | 0x00007C2A |
 | BT_clear_pair | BRIGHTNESS UP | 0x00003C2A |
 
+<br>
+<br>
 
+## Epson Pro Cinema LS1200 Projector to Xgimi Titan Noir Mapping
+| Xgimi Command | Epson Projector Btn | (0x5583) + Command |
+| power_on | Power On | 0x6F90 |
+| power_off | Power Off | 0x6E91 |
+| cursor_up | up arrow | 0x4FB0 |
+| cursor_down | down arrow | 0x4DB2 |
+| cursor_left | left arrow | 0x4CB3 |
+| cursor_right | right arrow | 0x4EB1 |
+| cursor_enter | enter | 0x7A85 |
+| settings_menu | menu | 0x659A |
+| back | ESC | 0x7B84 |
+| home | default | 0xC639 |
+| game_menu | image enhance | 0x55AA |
+| input | HDMI 1 | 0x8C73 |
+| picture | color mode | 0x708F |
+| focus_manual | skip back | 0xA25D |
+| focus_auto | skip forward | 0xA05F |
+| shortcut_1 | reverse | 0xA55A |
+| shortcut_2 | play | 0xA15E |
+| shortcut_3 | FF | 0xA35C |
+| shortcut_4 | stop record | 0xA659 |
+| volume_up | volume up | 0x6798 |
+| volume_down | volume down | 0x6699 |
+| mute | mute | 0x52AD |
+| token_sniff | frame interp | 0x7C83 |
+| token_clear | RGBCMY | 0xC23D |
+| token_recall | pattern | 0x6996 |
+| BT_start_pair | Link Menu | 0x9F60 |
+| BT_clear_pair | Aspect | 0x758A |
 
 # Recent Changes:
 *   Added original _Xgimi Titan_ IR mapping. That would be _Titan_ IR to _Titan Noir_ BLuetooth 
