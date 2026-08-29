@@ -1,0 +1,97 @@
+# epson projector
+packages:
+  base_ir_engine: !include appkit/ir-architecture-base.yaml
+
+remote_receiver:
+  id: ir_receiver
+  dump: nec
+  on_sony: !remove
+  on_lg: !remove
+  on_jvc: !remove
+
+substitutions:
+  target_ir_address: "0x5583"
+  remote_display_name: "Epson Proj"
+
+  # =============================================================
+  # DEFINE token clearing gate buttons
+  cmd_token_clear_arm: "0x9F60"    # Epson: Link Menu
+  cmd_token_clear_fire: "0x7A85"   # Epson: ENTER
+
+script:
+  - id: master_ir_processor
+    parameters:
+      command: uint32_t
+      is_hold: bool
+    then:
+      - lambda: |-
+          id(nec_broadcast_processor).execute(command, (uint16_t)(command >> 16), (uint16_t)(command & 0xFFFF), is_hold);
+
+  - id: nec_broadcast_processor
+    parameters:
+      command: uint32_t     
+      device_addr: uint16_t  
+      pure_cmd: uint16_t     
+      is_hold: bool       
+    then:
+      - lambda: |-
+          struct IRCommand {
+            std::string name;
+            esphome::template_::TemplateButton* button_obj;
+          };
+
+          // hex keys are LSB-First ESPHome sniffer codes. 
+          static const std::map<uint16_t, IRCommand> nec_codes = {
+            { 0x6F90,       { "power_on",      id(power_on) } },              // Epson: POWER ON Discrete
+            { 0x6E91,       { "power_off",     id(power_off_immediately) } }, // Epson: POWER OFF Discrete
+            { 0xCA35,       { "cursor_up",     id(cursor_up) } },      // Epson: UP ARROW
+            { 0x4DB2,       { "cursor_down",   id(cursor_down) } },    // Epson: DOWN ARROW
+            { 0x4CB3,       { "cursor_left",   id(cursor_left) } },    // Epson: LEFT ARROW
+            { 0x4EB1,       { "cursor_right",  id(cursor_right) } },   // Epson: RIGHT ARROW
+            { 0x7A85,       { "cursor_enter",  id(cursor_enter) } },   // Epson: ENTER
+            { 0x659A,       { "settings_menu", id(settings_menu) } },  // Epson: MENU
+            { 0x7B84,       { "back",          id(back) } },           // Epson: ESC (Back)
+            { 0xBC43,       { "home",          id(home) } },           // Epson: Default
+            { 0x609F,       { "game_menu",     id(game_menu) } },      // Epson: USER
+            { 0x8C73,       { "input",         id(input) } },          // Epson: HDMI 1 Button
+            { 0x708F,       { "picture",       id(picture) } },        // Epson: color mode
+            { 0x36C9,       { "focus_manual",  id(focus_manual) } },   // Epson: LENS Button
+            { 0x748B,       { "focus_auto",    id(focus_auto) } },     // Epson: MEMORY
+            { 0x758A,       { "shortcut_1",    id(shortcut_1) } },     // Epson: ASPECT
+            { 0x7C83,       { "shortcut_2",    id(shortcut_2) } },     // Epson: frame interp
+            { 0x10EF,       { "shortcut_3",    id(shortcut_3) } },     // Epson: DYNAMIC CONTRAST
+            { 0x4B34,       { "shortcut_4",    id(shortcut_4) } },     // Epson: LIGHT SOURCE 
+            { 0x8B74,       { "token_sniff",   id(token_sniff) } },    // Epson: Input LAN
+            { 0x9F60,       { "token_clear",   id(token_clear) } },    // Epson: Link Menu
+            { 0x0BFA,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // Epson: HDR
+            { 0xF40B,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // Epson: PATTERN
+          };
+
+          auto it = nec_codes.find(pure_cmd);
+          if (it != nec_codes.end()) {
+            if (!id(global_token_clear_armed)) {
+              if (is_hold) {
+                id(myDisplay_line1) = it->second.name + " (Hold)";
+                id(myDisplay_line2) = "${remote_display_name}"; 
+                id(myDisplay_line3) = ""; 
+                ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
+              } else {
+                id(myDisplay_line1) = it->second.name;
+                id(myDisplay_line2) = "${remote_display_name}"; 
+                // myDisplay_line3 already has command hex placed by base architecture
+                ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
+              }
+            }
+
+            if (it->second.button_obj != nullptr) {
+              it->second.button_obj->press();
+            }
+          } else {
+            if (!id(global_token_clear_armed)) {
+              if (!is_hold) {
+                id(myDisplay_line1) = "Unassigned";
+                id(myDisplay_line2) = "${remote_display_name}"; 
+                // myDisplay_line3 already has command hex placed by base architecture
+              }
+            }
+          }

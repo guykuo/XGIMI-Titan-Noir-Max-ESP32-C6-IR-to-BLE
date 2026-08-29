@@ -1,4 +1,6 @@
-# hisense tv / projector
+# irmap-hisense-50u6g.yaml
+# Hisense 50u6g TV
+
 packages:
   base_ir_engine: !include appkit/ir-architecture-base.yaml
 
