@@ -110,16 +110,17 @@ simultaneously used under this strategy.
 
 These IR maps have known working IR code sets ...
 
-* irmap-tivo-roamio-TCD846500.yaml____(TiVo Roamio)
-* irmap-LG-cinebeam-hu810p.yaml_______(LG Cinebeam HU810P projector)
+* irmap-benq-w5800.yaml_______________(BenQ W5800 projector)
+* irmap-epson-pro-cinema-LS1200-projector.yaml______(Epson Pro Cinema LS1200 projector)
 * irmap-hisense-50u6g.yaml____________(Hisense 50U6G TV)
 * irmap-jvc-hr-S9600u.yaml____________(JVC HR-S9600U VCR)
 * irmap-jvc-rs2-codeset-A.yaml________(JVC Projectors code set A - default) 
 * irmap-jvc-rs2-codeset-B.yaml________(JVC Projectors code set B - alt code set) 
+* irmap-LG-cinebeam-hu810p.yaml_______(LG Cinebeam HU810P projector)
 * irmap-sony-VPL-XW600ES.yaml_________(Sony VPL-XW600ES projector)
 * irmap-sony-XBR-77A9G.yaml___________(Sony XBR-77A9G TV)
-* irmap-epson-pro-cinema-LS1200-projector.yaml______(Epson Pro Cinema LS1200 projector)
-* irmap-benq-w5800.yaml_______________(BenQ W5800 projector) 
+* irmap-tivo-roamio-TCD846500.yaml____(TiVo Roamio)
+
 
 These IR maps are WIP and likely have incomplete or incorrect IR mapping...
 
