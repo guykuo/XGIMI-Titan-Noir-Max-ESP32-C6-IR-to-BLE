@@ -16,7 +16,7 @@ packages:
   hardware_package: !include ir-common-kuo/hardware-c3.yaml # <===== Replace HARDWAREFILE.yaml with your board.yaml
 
   # --- IR mapping options
-  irmap_package:    !include ir-common-kuo/irmap-tivo-roamio.yaml # <===== Replace IRMAP.yaml with your IRMAP.yaml 
+  irmap_package:    !include ir-common-kuo/irmap-tivo-roamio-TCD846500.yaml # <===== Replace IRMAP.yaml with your IRMAP.yaml 
 
 
   # do not change mrmachine_BLE_package line
