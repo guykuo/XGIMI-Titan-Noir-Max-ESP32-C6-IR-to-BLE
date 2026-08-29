@@ -661,7 +661,10 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 <br>
 <br>
 
-## JVC Projector to Xgimi Titan Noir Mapping
+## JVC RS2 Projector to Xgimi Titan Noir Mapping
+JVC Projectors by default respond to code set A. The can be changed to code set B to avoid control conflicts.
+Be aware that you need to use physical buttons on projector (or IP / serial control) to change code if a remote with current codes set is not available.
+
 | Xgimi Command | JVC Projector Btn | (0xCE) + Command |
 | :--- | :--- | :--- |
 | power_on | DISCRETE POWER ON | 0xA0 |
