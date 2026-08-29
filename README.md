@@ -512,35 +512,35 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 ## Tivo Roamio to Xgimi Titan Noir Mapping
 |Xgimi Remote Command | Tivo Remote | (0x3085) + Command |
 |-------- | -------- | -------------------- |
-|back |zoom |0xB044 |
-|cursor\_down |arrow down |0xE016 |
-|cursor\_enter |select |0xE019 |
-|cursor\_left |arrow left |0xE017 |
-|cursor\_right |arrow right |0xE015 |
-|cursor\_up |arrow up |0xE014 |
-|focus\_auto |7 |0xD02E |
-|focus\_manual |8 |0xD02F |
-|home |channel up |0xE01E |
-|input |input |0xC034 |
-|settings\_menu |tivo (actual remote) |0xF00C |
-|settings\_menu |tivo (on MyHarmony) |0xF00D |
-|game\_menu |guide |0xC036 |
-|mute |mute |0xE01B |
-|picture |info |0xE013 |
-|power\_on |TV Power (Use as Discrete Power On) |0xE010 |
-|power\_off |Live TV (Use as Discrete Off) |0xE011 |
-|power\_off |0 (equivalent as Discrete OFF) |0xC031 |
-|shortcut\_1 |A yellow |0x9060 |
-|shortcut\_2 |B blue |0x9061 |
-|shortcut\_3 |C red |0x9062 |
-|shortcut\_4 |D green |0x9063 |
-|volume\_down |volume down |0xE01D |
-|volume\_up |volume up |0xE01C |
-|token\_sniff |4 |0xD02B |
-|token\_clear |5 |0xD02C |
-|token\_recall |6 |0xD02D |
-|bluetooth\_pairing\_start |enter |0xC033 |
-|bluetooth\_pairing\_clear |clear |0xC032 |
+| power_on | tv power (as discrete on) | 0xE010 |
+| power_off | live TV (as discrete off) | 0xE011 |
+| power_off_alt | 0 | 0xC031 |
+| cursor_up | arrow up | 0xE014 |
+| cursor_down | arrow down | 0xE016 |
+| cursor_left | arrow left | 0xE017 |
+| cursor_right | arrow right | 0xE015 |
+| cursor_enter | select | 0xE019 |
+| back | zoom | 0xB044 |
+| settings_menu | tivo | 0xF00C |
+| settings_menu | tivo (myHarmony version) | 0xF00D |
+| game_menu | guide | 0xC036 |
+| home | channel up | 0xE01E |
+| input | input | 0xC034 |
+| picture | into | 0xE013 |
+| focus_auto | 7 | 0xD02E |
+| focus_manual | 8 | 0xD02F |
+| shortcut_1 | A yellow | 0x9060 |
+| shortcut_2 | B blue | 0x9061 |
+| shortcut_3 | C red | 0x9062 |
+| shortcut_4 | D green | 0x9063 |
+| volume_up | volume up | 0xE01C |
+| volume_down | volume down | 0xE01D |
+| mute | mute | 0xE01B |
+| token_sniff | 4 | 0xD02B |
+| token_clear | 5 | 0xD02C |
+| token_recall | 6 | 0xD02D |
+| BT_start_pair | enter | 0xC033 |
+| BT_clear_pair | clear | 0xC032 |
 
 
 <br>
@@ -549,36 +549,36 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 ## Hisense 50U6G to Xgimi Titan Noir Mapping
 |Xgimi Remote Command | Hisense Remote Button | (0xEA15) + Command |
 |-------- | -------- | -------------------- |
-|back |back |0xFB04 |
-|cursor\_down |arrow down |0xFB04 |
-|cursor\_enter |select |0xA55A |
-|cursor\_left |arrow left |0xA758 |
-|cursor\_right |arrow right |0xA659 |
-|cursor\_up |arrow up |0xA956 |
-|focus\_auto |7 |0xE817 |
-|focus\_manual |8 |0xE718 |
-|settings\_menu |menu (on actual remote) |0xBC43 |
-|settings\_menu |menu (incorrectly in MyHarmony ) |0xB54A |
-|home |home (on actual remote) |0xB54A |
-|home |home (on My Harmony) |0x718E |
-|input |input |0xF609 |
-|game\_menu |apps |0x35CA |
-|mute |mute |0xF609 |
-|picture |channel up |0xFF00 |
-|power\_on |discrete power on |0x8E71 |
-|power\_off |discrete power off |0xEF10 |
-|power\_off |0 (Do NOT USE) |0x8D72 |
-|shortcut\_1 |yellow |0xAB54 |
-|shortcut\_2 |blue |0xAA55 |
-|shortcut\_3 |red |0xAD52 |
-|shortcut\_4 |green |0xAC53 |
-|volume\_down |volume down |0xFC03 |
-|volume\_up |volume up |0xFD02 |
-|token\_sniff |4 |0xEB14 |
-|token\_clear |5 |0xEA15 |
-|token\_recall |6 |0xE916 |
-|bluetooth\_pairing\_start |prime video |0xB847 |
-|bluetooth\_pairing\_clear |youtube |0xB649 |
+| power_on | discrete power on | 0xF708 |
+| power_on_alt | discrete power on (variant) | 0x8E71 |
+| power_off | discrete power off | 0xEF10 |
+| power_off_alt | 0 | 0x8D72 |
+| cursor_up | arrow up | 0xA956 |
+| cursor_down | arrow down | 0xA857 |
+| cursor_left | arrow left | 0xA758 |
+| cursor_right | arrow right | 0xA659 |
+| cursor_enter | select | 0xA55A |
+| back | back | 0xFB04 |
+| home | home | 0xBC43 |
+| input | input | 0xF40B |
+| settings_menu | menu | 0xB54A |
+| settings_menu_alt | menu (variant) | 0x718E |
+| game_menu | apps | 0x35CA |
+| picture | channel up | 0xFF00 |
+| focus_manual | 7 | 0xE817 |
+| focus_auto | 8 | 0xE718 |
+| shortcut_1 | yellow | 0xAB54 |
+| shortcut_2 | blue | 0xAA55 |
+| shortcut_3 | red | 0xAD52 |
+| shortcut_4 | green | 0xAC53 |
+| volume_up | volume up | 0xFD02 |
+| volume_down | volume down | 0xFC03 |
+| mute | mute | 0xF609 |
+| token_sniff | 4 | 0xEB14 |
+| token_clear | 5 | 0xEA15 |
+| token_recall | 6 | 0xE916 |
+| BT_start_pair | prime video | 0xB847 |
+| BT_clear_pair | youtube | 0xB649 |
 
 <br>
 <br>
