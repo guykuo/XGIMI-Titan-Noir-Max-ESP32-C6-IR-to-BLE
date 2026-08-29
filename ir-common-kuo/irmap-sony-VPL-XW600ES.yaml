@@ -1,0 +1,135 @@
+# irmap-sony-VPL-XW600ES-projector.yaml
+# Sony VPL-XW600ES projector
+
+packages:
+  base_ir_engine: !include appkit/ir-architecture-base.yaml
+
+remote_receiver:
+  id: ir_receiver
+  dump: sony
+  on_nec: !remove
+  on_lg: !remove
+  on_jvc: !remove
+  on_pronto: !remove
+
+substitutions:
+  target_ir_address: "0x001A"  
+  remote_display_name: "Sony Proj"
+
+  # =============================================================
+  # DEFINE token clearing gate buttons
+  cmd_token_clear_arm: "0x0CAB54"   # FILM 1
+  cmd_token_clear_fire: "0x002D2A"  # OK / ENTER (Verified)
+
+script:
+  - id: master_ir_processor
+    parameters:
+      command: uint32_t   
+      is_hold: bool       
+    then:
+      - lambda: |-
+          // Fixed LSB-First Extraction: Command is bottom 7 bits, Address is everything above
+          uint8_t pure_command = command & 0x7F;
+          uint16_t dynamic_address = command >> 7; 
+
+          id(sony_broadcast_processor).execute(command, dynamic_address, pure_command, is_hold);
+
+  - id: sony_broadcast_processor
+    parameters:
+      command: uint32_t     
+      device_addr: uint16_t  
+      pure_cmd: uint16_t     
+      is_hold: bool       
+    then:
+      - lambda: |-
+          struct IRCommand {
+            std::string name;
+            esphome::template_::TemplateButton* button_obj;
+          };
+
+          static const std::map<uint32_t, IRCommand> sony_codes = {
+            { 0x00003A2A,       { "power_on",      id(power_on) } },             // Power On (discrete)
+            { 0x00007A2A,       { "power_off",     id(power_off_immediately)}},  // Power Off (discrete)
+            { 0x0000542A,       { "power_on_alt",  id(power_on) } },             // Power Toggle (alt discrete On)
+            { 0x0000562A,       { "cursor_up",     id(cursor_up) } },      // up arrow
+            { 0x0000362A,       { "cursor_down",   id(cursor_down) } },    // down arrow
+            { 0x0000162A,       { "cursor_left",   id(cursor_left) } },    // left arrow
+            { 0x0000662A,       { "cursor_right",  id(cursor_right) } },   // right arrow
+            { 0x00002D2A,       { "cursor_enter",  id(cursor_enter) } },   // OK / Enter
+            { 0x00004A2A,       { "settings_menu", id(settings_menu) } },  // Menu
+            { 0x00006F2A,       { "home",          id(home) } },           // Reset
+            { 0x00018BE4,       { "back",          id(back) } },           // Position
+            { 0x0006AB54,       { "game_menu",     id(game_menu) } },      // Game
+            { 0x000EAB54,       { "picture",       id(picture) } },        // Photo
+            { 0x0000752A,       { "input",         id(input) } },          // Input
+            { 0x00026B54,       { "focus_manual",  id(focus_manual) } },   // Focus
+            { 0x00046B54,       { "focus_auto",    id(focus_auto) } },     // Zoom
+            { 0x00076B54,       { "shortcut_1",    id(shortcut_1) } },     // Aspect Ratio
+            { 0x0000502A,       { "shortcut_2",    id(shortcut_2) } },     // Motion Flow
+            { 0x000DCB54,       { "shortcut_3",    id(shortcut_3) } },     // 3D
+            { 0x000D2B54,       { "shortcut_4",    id(shortcut_4) } },     // Color Space
+            { 0x00000C2A,       { "volume_up",     id(volume_up) } },      // CONTRAST 
+            { 0x00004C2A,       { "volume_down",   id(volume_down) } },    // CONTRAST DOWN
+            { 0x000FAB54,       { "mute",          id(mute) } },           // Advanced Iris
+            { 0x0009AB54,       { "token_sniff",   id(token_sniff) } },    // BRT Cinema
+            { 0x0008AB54,       { "token_clear",   id(token_clear) } },    // BRT TV
+            { 0x0002AB54,       { "token_recall",  id(token_recall) } },   // User
+            { 0x00007C2A,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // BRIGHTNESS DOWN
+            { 0x00003C2A,       { "BT_clear_pair", id(bluetooth_pairing_clear) } },  // BRIGHTNESS UP
+
+
+            { 0x0003AB54,       { "Color Temp",        id(home) } },  // Color Temp
+            { 0x0000702A,       { "Contrast Enhancer", id(home) } },  // Contrast Enhancer
+            { 0x000CAB54,       { "FILM 1",            id(home) } },  // FILM 1
+            { 0x0001AB54,       { "FILM 2",            id(home) } },  // FILM 2
+            { 0x0007AB54,       { "Gamma Correction",  id(home) } },  // Gamma Correction
+            { 0x00006A2A,       { "Input HDMI 1",      id(home) } },  // Input HDMI 1
+            { 0x00001A2A,       { "Input HDMI 2",      id(home) } },  // Input HDMI 2
+            { 0x00018BE4,       { "Position",          id(home) } },  // Position
+            { 0x00004BE4,       { "Position 1.85",     id(home) } },  // Position 1.85
+            { 0x00084BE4,       { "Position 2.35",     id(home) } },  // Position 2.35
+            { 0x000C4BE4,       { "Position Custom 2", id(home) } },  // Position Custom 2
+            { 0x00024BE4,       { "Position Custom 3", id(home) } },  // Position Custom 3
+            { 0x00032B54,       { "Reality creation",  id(home) } },  // Reality creation
+            { 0x000AAB54,       { "REF",               id(home) } },  // REF
+            { 0x0000622A,       { "sharpness down",    id(home) } },  // sharpness down
+            { 0x0000222A,       { "sharpness up",      id(home) } },  // sharpness up
+            { 0x000C6B54,       { "shift",             id(home) } },  // shift
+            { 0x0004AB54,       { "TV",                id(home) } },  // TV
+            { 0x00042BE4,       { "wide mode full",    id(home) } },  // wide mode full
+            { 0x000FCBE4,       { "wide mode full1",   id(home) } },  // wide mode full1
+            { 0x00002BE4,       { "wide mode full2",   id(home) } },  // wide mode full2
+            { 0x00082BE4,       { "wide mode normal",  id(home) } },  // wide mode normal
+            { 0x0007CBE4,       { "wide mode WZoom",   id(home) } },  // wide mode WZoom
+            { 0x000C2BE4,       { "wide mode zoom",    id(home) } },  // wide mode zoom
+            { 0x00022BE4,       { "wide mode anamorphic", id(home) } }  // wide mode anamorphic zoom
+          };
+
+          auto it = sony_codes.find(command);
+          if (it != sony_codes.end()) {
+            if (!id(global_token_clear_armed)) {
+              if (is_hold) {
+                id(myDisplay_line1) = it->second.name + " (Hold)";
+              } else {
+                id(myDisplay_line1) = it->second.name;
+              }
+              id(myDisplay_line2) = "${remote_display_name}"; 
+              // myDisplay_line3 already has raw hex code from base architecture
+            }
+            
+            if (it->second.button_obj != nullptr) {
+              it->second.button_obj->press();
+            }
+          } else {
+            if (!id(global_token_clear_armed)) {
+              if (!is_hold) {
+                uint8_t bit_depth = (command > 0x007FFF) ? 20 : ((command > 0x000FFF) ? 15 : 12);
+                id(myDisplay_line1) = "Sony Unk(" + std::to_string(bit_depth) + "b)";
+                
+                char addr_buf[32];
+                snprintf(addr_buf, sizeof(addr_buf), "A:0x%04X  C:0x%02X", device_addr, pure_cmd);
+                id(myDisplay_line2) = std::string(addr_buf);
+                // myDisplay_line3 already has raw hex code from base architecture
+              }
+            }
+          }

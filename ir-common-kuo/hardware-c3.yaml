@@ -1,0 +1,130 @@
+# ============= BEGIN Configuration Options KUO ==========
+
+substitutions:
+  pin_ir_receiver: GPIO1   # IR sensor. 
+  pin_indicator_LED: GPIO8 # LED indicator (both ESP32-C3 and C6)
+  pin_sniff_btn: GPIO9     # use boot button for snifff. Both ESP32-c3 and ESP32-C6 use pin 9 for boot button. 
+  
+# Core Architecture Declaration
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: esp-idf
+  
+# i2c Display Pins
+i2c: 
+  sda: GPIO5
+  scl: GPIO6
+  frequency: 400kHz
+  scan: false # to prevent startup crashes during boot scans
+  id: bus_a
+  
+# ============= END Configuration Options KUO ==========
+  
+globals:
+    # ======= myDisplay display globals
+  - id: myDisplay_line1
+    type: std::string  
+    restore_value: no
+    initial_value: '"IR to BLE Kuo"'
+
+  - id: myDisplay_line2
+    restore_value: no
+    type: std::string  
+    #assign at boot
+    
+  - id: myDisplay_line3
+    restore_value: no
+    type: std::string  
+    initial_value: '"Translator"'
+
+  - id: myDisplay_small_text
+    type: bool
+    restore_value: no
+    initial_value: 'false'  # This acts as your default value!
+    
+    
+switch:
+  - platform: gpio # indicator LED that lights up when sniffing
+    pin:
+      number: ${pin_indicator_LED}
+      inverted: true
+    id: sniffer_led
+  
+script:
+  - id: flash_led_custom
+    parameters:
+      count: int         # Number of flashes
+      red: float         # Ignored on C3, kept for API matching
+      green: float       # Ignored on C3, kept for API matching
+      blue: float        # Ignored on C3, kept for API matching
+    mode: restart
+    then:
+      - repeat:
+          count: !lambda "return count;"
+          then:
+            # --- TURN BINARY LED ON ---
+            - switch.turn_on: sniffer_led
+            - delay: 150ms
+  
+            # --- TURN BINARY LED OFF ---
+            - switch.turn_off: sniffer_led
+            - delay: 150ms
+               
+  - id: turn_led_on_custom
+    parameters:
+      red: float         # Ignored on C3, kept for API matching
+      green: float       # Ignored on C3, kept for API matching
+      blue: float        # Ignored on C3, kept for API matching
+      brightness: float  # Ignored on C3, kept for API matching
+    mode: restart
+    then:
+      - switch.turn_on: sniffer_led
+
+  - id: turn_led_off_custom
+    mode: restart
+    then:
+      - switch.turn_off: sniffer_led
+
+# ========  Display Specific Implementation ========
+
+font:
+  - file: "gfonts://Roboto"
+    id: my_fontSmall
+    size: 9
+
+  - file: "gfonts://Roboto"
+    id: my_fontMedium
+    size: 10
+
+  - file: "gfonts://Roboto"
+    id: my_fontLarge
+    size: 12
+
+    
+# Built-in 72x40 SSD1306 OLED screen
+display:
+  - platform: ssd1306_i2c
+    model: "SSD1306 72x40"
+    address: 0x3C
+    id: myDisplay
+    update_interval: 0.3s
+    offset_x: 0
+    offset_y: 0
+    rotation: 0
+    pages:
+      - id: active_page_std
+        lambda: |-
+          it.print(0, 0,  id(my_fontMedium), id(myDisplay_line1).c_str());
+          it.print(0, 11, id(my_fontLarge), id(myDisplay_line2).c_str());
+          it.print(0, 24, id(my_fontLarge), id(myDisplay_line3).c_str());
+
+      - id: active_page_small
+        lambda: |-
+          it.print(0, 0,  id(my_fontSmall), id(myDisplay_line1).c_str());
+          it.print(0, 12, id(my_fontSmall), id(myDisplay_line2).c_str());
+          it.print(0, 24, id(my_fontSmall), id(myDisplay_line3).c_str());
+
+      - id: blank_page
+        lambda: |-
+          // Leaving lambda completely blank turns all pixels off safely

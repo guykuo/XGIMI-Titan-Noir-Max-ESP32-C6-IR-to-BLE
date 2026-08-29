@@ -1,0 +1,423 @@
+# ir-common-kuo/ir-architecture-base.yaml
+remote_receiver:
+  id: ir_receiver
+  pin:
+    number: ${pin_ir_receiver}
+    inverted: true
+    mode:
+      input: true
+      pullup: true
+  filter: 50us       
+  idle: 10ms         
+  tolerance: 25%     
+  #dump: [raw]           # Baseline configuration placeholder
+    
+  # 1. Updates timestamp every single time ANY raw IR pulse or repeat packet burst hits the pin
+  on_raw:
+    - lambda: |-
+        id(global_last_raw_packet_time) = millis();
+        if (!id(ir_timeout_watcher).is_running()) {
+          id(ir_timeout_watcher).execute();
+        }
+
+  # ======= MULTI-PROTOCOL INTERCEPT CORE GATES =======
+
+  # 2. NEC Handler
+  on_nec:
+    - lambda: |-
+        uint32_t arm_code = ${cmd_token_clear_arm};
+        uint32_t fire_code = ${cmd_token_clear_fire};
+
+        if (x.command == arm_code) {
+          id(global_token_clear_armed) = true;
+          id(token_clear_safety_timeout).execute(); 
+          id(myDisplay_line1) = "Token Clear Requested";
+          id(myDisplay_line2) = "To Confirm";
+          id(myDisplay_line3) = "Press Select ";
+          return; // STOP FLOW: Armed to await fire_code
+        }
+        if (x.command == fire_code && id(global_token_clear_armed)) {
+          id(global_token_clear_armed) = false;
+          id(token_clear_safety_timeout).stop();
+          id(token_clear)->press(); // clears token and reports on myDisplay
+          return; // STOP FLOW: Fire_code received. Token cleared.
+        }
+        if (x.command != fire_code && id(global_token_clear_armed)) {
+          id(global_token_clear_armed) = false;
+          id(token_clear_safety_timeout).stop();
+          id(myDisplay_line1) = "No Confirmation";
+          id(myDisplay_line2) = "Wrong Key";
+          id(myDisplay_line3) = "Canceled ";
+          return; // STOP FLOW: Unexpected non-fire code arrived. Cancel arming
+        }
+
+        // --- Normal Non-Security Fallthrough Path ---
+        uint32_t now = millis();
+        static uint32_t last_nec_press = 0;
+        if (now - last_nec_press < 30) return;
+        last_nec_press = now;
+
+        std::stringstream ss1, ss2; // put command and address in lines 2 and 3 of display
+        ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.command;
+        ss2 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.address;
+        id(myDisplay_line2) = ss2.str(); 
+        id(myDisplay_line3) = ss1.str(); 
+        
+        if (x.address == ${target_ir_address}) {
+          id(myDisplay_line2) = "${remote_display_name}"; 
+          if (id(global_cached_command) != x.command || id(global_initial_press_time) == 0) {
+            id(global_cached_command) = x.command;
+            id(global_initial_press_time) = now; 
+            id(global_last_processed_time) = now;
+            id(global_is_holding) = false;      
+            id(master_ir_processor).execute(x.command, false);
+          } else if (now - id(global_last_processed_time) > 130) {
+            id(global_initial_press_time) = now; 
+            id(global_last_processed_time) = now;
+            id(global_is_holding) = true;      
+            id(master_ir_processor).execute(x.command, true);
+          }
+        } else {
+          id(myDisplay_line1) = "NEC Prot Not Address"; 
+          id(global_cached_command) = 0;
+          id(global_is_holding) = false;
+        }
+    - script.execute: display_show
+
+
+
+  # 3. LG Handler
+  on_lg:
+    - lambda: |-
+        uint16_t lg_command = x.data & 0xFFFF;
+        uint32_t arm_code = ${cmd_token_clear_arm};
+        uint32_t fire_code = ${cmd_token_clear_fire};
+
+        if (lg_command == arm_code) {
+          id(global_token_clear_armed) = true;
+          id(token_clear_safety_timeout).execute();
+          id(myDisplay_line1) = "Token Clear Requested";
+          id(myDisplay_line2) = "To Confirm";
+          id(myDisplay_line3) = "Press Select ";
+          return; // STOP FLOW: Armed to await fire_code
+        }
+        if (lg_command == fire_code && id(global_token_clear_armed)) {
+          id(global_token_clear_armed) = false;
+          id(token_clear_safety_timeout).stop();
+          id(token_clear)->press(); // clears token and reports on myDisplay
+          return; // STOP FLOW: Fire_code received. Token cleared.
+        }
+        if (lg_command != fire_code && id(global_token_clear_armed)) {
+          id(global_token_clear_armed) = false;
+          id(token_clear_safety_timeout).stop();
+          id(myDisplay_line1) = "No Confirmation";
+          id(myDisplay_line2) = "Wrong Key";
+          id(myDisplay_line3) = "Canceled ";
+          return; // STOP FLOW: Unexpected non-fire code arrived. Cancel arming
+        }
+
+        // --- Normal Path ---
+        uint32_t now = millis();
+        static uint32_t last_lg_press = 0;
+        if (now - last_lg_press < 30) return;
+        last_lg_press = now;
+        uint16_t lg_address = (x.data >> 16) & 0xFFF;
+
+        std::stringstream ss1, ss2;
+        ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << lg_command;
+        ss2 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << lg_address;
+        id(myDisplay_line2) = ss2.str(); 
+        id(myDisplay_line3) = ss1.str(); 
+        
+        if (lg_address == ${target_ir_address}) {
+          id(myDisplay_line2) = "${remote_display_name}"; 
+          if (id(global_cached_command) != lg_command || id(global_initial_press_time) == 0) {
+            id(global_cached_command) = lg_command;
+            id(global_initial_press_time) = now; 
+            id(global_last_processed_time) = now;
+            id(global_is_holding) = false;      
+            id(master_ir_processor).execute(lg_command, false); 
+          } else if (now - id(global_last_processed_time) > 130) {
+            id(global_initial_press_time) = now; 
+            id(global_last_processed_time) = now;
+            id(global_is_holding) = true;      
+            id(master_ir_processor).execute(lg_command, true);
+          }
+        } else {
+          id(myDisplay_line1) = "LG Prot Not Address"; 
+          id(global_cached_command) = 0;
+          id(global_is_holding) = false;
+        }
+    - script.execute: display_show
+
+
+  # 4. JVC Handler
+  on_jvc:
+    - lambda: |-
+        uint16_t jvc_command = x.data & 0xFF;
+        uint32_t arm_code = ${cmd_token_clear_arm};
+        uint32_t fire_code = ${cmd_token_clear_fire};
+
+        if (jvc_command == arm_code) {
+          id(global_token_clear_armed) = true;
+          id(token_clear_safety_timeout).execute();
+          id(myDisplay_line1) = "Token Clear Requested";
+          id(myDisplay_line2) = "To Confirm";
+          id(myDisplay_line3) = "Press Select ";
+          return; // STOP FLOW: Armed to await fire_code
+        }
+        if (jvc_command == fire_code && id(global_token_clear_armed)) {
+          id(global_token_clear_armed) = false;
+          id(token_clear_safety_timeout).stop();
+          id(token_clear)->press(); // clears token and reports on myDisplay
+          return; // STOP FLOW: Fire_code received. Token cleared.
+        }
+        if (jvc_command != fire_code && id(global_token_clear_armed)) {
+          id(global_token_clear_armed) = false;
+          id(token_clear_safety_timeout).stop();
+          id(myDisplay_line1) = "No Confirmation";
+          id(myDisplay_line2) = "Wrong Key";
+          id(myDisplay_line3) = "Canceled ";
+          return; // STOP FLOW: Unexpected non-fire code arrived. Cancel arming
+        }
+
+        // --- Normal Path ---
+        uint32_t now = millis();
+        static uint32_t last_jvc_press = 0;
+        if (now - last_jvc_press < 30) return;
+        last_jvc_press = now;
+        uint16_t jvc_address = (x.data >> 8) & 0xFF;
+
+        std::stringstream ss1, ss2;
+        ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(2) << std::hex << jvc_command;
+        ss2 << "0x" << std::uppercase << std::setfill('0') << std::setw(2) << std::hex << jvc_address;
+        id(myDisplay_line2) = ss2.str(); 
+        id(myDisplay_line3) = ss1.str(); 
+        
+        if (jvc_address == ${target_ir_address}) {
+          id(myDisplay_line2) = "${remote_display_name}"; 
+          if (id(global_cached_command) != jvc_command || id(global_initial_press_time) == 0) {
+            id(global_cached_command) = jvc_command;
+            id(global_initial_press_time) = now; 
+            id(global_last_processed_time) = now;
+            id(global_is_holding) = false;      
+            id(master_ir_processor).execute(jvc_command, false); 
+          } else if (now - id(global_last_processed_time) > 130) {
+            id(global_initial_press_time) = now; 
+            id(global_last_processed_time) = now;
+            id(global_is_holding) = true;      
+            id(master_ir_processor).execute(jvc_command, true);
+          }
+        } else {
+          id(myDisplay_line1) = "JVC Prot Not Address"; 
+          id(global_cached_command) = 0;
+          id(global_is_holding) = false;
+        }
+    - script.execute: display_show
+
+
+  # 5. Sony Handler
+  on_sony:
+    # Sony is handled differently because it does not have a true, separate per device address
+    # Instead, Sony has a single long code of variable length the entirety of which must be tested against.
+    - lambda: |-
+        uint32_t arm_code = ${cmd_token_clear_arm};
+        uint32_t fire_code = ${cmd_token_clear_fire};
+
+        if (x.data == arm_code) {
+          id(global_token_clear_armed) = true;
+          id(token_clear_safety_timeout).execute();
+          id(myDisplay_line1) = "Token Clear Requested";
+          id(myDisplay_line2) = "To Confirm";
+          id(myDisplay_line3) = "Press Select ";
+          return; // STOP FLOW: Armed to await fire_code
+        }
+        if (x.data == fire_code && id(global_token_clear_armed)) {
+          id(global_token_clear_armed) = false;
+          id(token_clear_safety_timeout).stop();
+          id(token_clear)->press(); // clears token and reports on myDisplay
+          return; // STOP FLOW: Fire_code received. Token cleared.
+        }
+        if (x.data != fire_code && id(global_token_clear_armed)) {
+          id(global_token_clear_armed) = false;
+          id(token_clear_safety_timeout).stop();
+          id(myDisplay_line1) = "No Confirmation";
+          id(myDisplay_line2) = "Wrong Key";
+          id(myDisplay_line3) = "Canceled ";
+          return; // STOP FLOW: Unexpected non-fire code arrived. Cancel arming
+        }
+
+        // --- Normal Path ---
+        uint32_t now = millis();
+        static uint32_t last_sony_press = 0;
+        if (now - last_sony_press < 30) return;
+        last_sony_press = now;
+        
+        uint32_t sony_command = x.data;
+
+        std::stringstream ss1;
+        ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(6) << std::hex << sony_command;
+        id(myDisplay_line2) = "Sony Protocol" ;
+        id(myDisplay_line3) = ss1.str(); 
+
+       
+        if (id(global_cached_command) != x.data || id(global_initial_press_time) == 0) {
+          id(global_cached_command) = x.data; 
+          id(global_initial_press_time) = now; 
+          id(global_last_processed_time) = now;
+          id(global_sony_stream_time) = now;   
+          id(global_is_holding) = false;      
+          id(global_sony_frame_count) = 1; 
+          id(master_ir_processor).execute(x.data, false); 
+        } else if (now - id(global_sony_stream_time) > 80) {
+          id(global_initial_press_time) = now; 
+          id(global_last_processed_time) = now;
+          id(global_sony_stream_time) = now;
+          id(global_is_holding) = false;      
+          id(global_sony_frame_count) = 1;
+          id(master_ir_processor).execute(x.data, false);
+        } else {
+          id(global_sony_stream_time) = now;
+          id(global_sony_frame_count)++; 
+          if (id(global_sony_frame_count) > 3) {
+            if (!id(global_is_holding)) {
+              id(global_is_holding) = true;
+              id(master_ir_processor).execute(x.data, true); 
+            }
+          }
+        }
+    - script.execute: display_show
+
+
+globals:
+  - id: global_cached_command
+    type: uint32_t
+    initial_value: '0'
+  - id: global_last_raw_packet_time
+    type: uint32_t
+    initial_value: '0'
+  - id: global_initial_press_time
+    type: uint32_t
+    initial_value: '0'
+  - id: global_last_processed_time
+    type: uint32_t
+    initial_value: '0'
+  - id: global_sony_stream_time
+    type: uint32_t
+    initial_value: '0'
+  - id: global_sony_frame_count
+    type: int
+    initial_value: '0'
+  - id: global_is_holding
+    type: bool
+    initial_value: 'false'
+  # SEQUENTIAL ENGINE STATE VARIABLES
+  - id: global_token_clear_armed
+    type: bool
+    initial_value: 'false'
+  - id: debounce_safety_lock
+    type: bool
+    initial_value: 'false'
+  - id: global_intercept_active
+    type: bool
+    initial_value: 'false'
+    
+script:
+  # A. High Speed Timeout Watcher Register Cleanup
+  - id: ir_timeout_watcher
+    mode: restart
+    then:
+      - while:
+          condition:
+            lambda: 'return (millis() - id(global_last_raw_packet_time) < 140);'
+          then:
+            - delay: 15ms
+      - lambda: |-
+          id(global_cached_command) = 0;
+          id(global_initial_press_time) = 0;  
+          id(global_sony_stream_time) = 0;
+          id(global_is_holding) = false;
+          id(global_sony_frame_count) = 0;
+
+  # B. Automatic hardware lock release timer step
+  - id: release_debounce_lock
+    then:
+      - delay: 110ms
+      - globals.set:
+          id: debounce_safety_lock
+          value: 'false'
+
+  # C. Automated 5-Second Expiration Timer
+  - id: token_clear_safety_timeout
+    mode: restart
+    then:
+      - delay: 5s
+      - if:
+          condition:
+            lambda: 'return id(global_token_clear_armed);'
+          then:
+            - globals.set:
+                id: global_token_clear_armed
+                value: 'false'
+            - lambda: |-
+                ESP_LOGI("IR Safety", "Sequence timed out. Gate locked.");
+                id(myDisplay_line1) = "Timed Out";
+                id(myDisplay_line2) = "Clear Token";
+                id(myDisplay_line3) = "Canceled";
+
+
+  # D. CENTRAL UNIFIED SAFETY ENGINE - INTERCEPT FILTER FOR ALL PROTOCOLS
+  - id: central_safety_gate_processor
+    mode: queued
+    parameters:
+      command: uint32_t
+      is_hold: bool
+    then:
+      # Step 1: Drop frames instantly if the 110ms freeze block safety lock is active
+      - if:
+          condition:
+            lambda: 'return id(debounce_safety_lock);'
+          then:
+            - script.stop: central_safety_gate_processor
+
+      # Step 2: Engage hardware lock for the next 110ms to prevent double-triggering
+      - globals.set:
+          id: debounce_safety_lock
+          value: 'true'
+      - script.execute: release_debounce_lock
+
+      # Step 3: Global Intercept Evaluation
+      - lambda: |-
+          uint32_t arm_code = ${cmd_token_clear_arm};
+          uint32_t fire_code = ${cmd_token_clear_fire};
+
+          if (command == arm_code && !is_hold) {
+            id(global_token_clear_armed) = true;
+            id(token_clear_safety_timeout).execute(); // Start/Reset 5s auto-lock out
+            
+            id(myDisplay_line1) = "Token Clear Requested";
+            id(myDisplay_line2) = "To Confirm";
+            id(myDisplay_line3) = "Press Select ";
+            ESP_LOGW("IR Safety", "Global Intercept: System Gated Clear ARMED via code 0x%05X", (unsigned int)command);
+            
+            // Set safety lock state to true so calling handlers abort downstream routing
+            id(global_intercept_active) = true;
+          } 
+          else if (command == fire_code && !is_hold) {
+            if (id(global_token_clear_armed)) {
+              id(global_token_clear_armed) = false;
+              id(token_clear_safety_timeout).stop(); // Disarm auto-lock timer
+              
+              id(myDisplay_line1) = "Token Clearing";
+              id(myDisplay_line2) = "Taking Effect";
+              id(myDisplay_line3) = "Wait 5 Seconds";
+              ESP_LOGE("IR Safety", "Global Intercept: Security Gate Fired Successfully.");
+              
+              id(token_clear)->press(); // Run final physical routine action
+              id(global_intercept_active) = true;
+            } else {
+              id(global_intercept_active) = false;
+            }
+          } else {
+            id(global_intercept_active) = false;
+          }

@@ -1,0 +1,198 @@
+# ============= BEGIN Configuration Options KUO ==========
+
+substitutions:
+  pin_ir_receiver: GPIO2
+  pin_indicator_LED: GPIO38
+  pin_sniff_btn: GPIO0 # use boot button to start sniff
+
+# Core Architecture Declaration
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3 # variant needed to keep compiler tuned for the S3 chip core
+  framework:
+    type: esp-idf
+
+# ============= END Configuration Options KUO ==========
+
+esphome:
+  on_boot:
+    priority: 200.0            # Dim display backlight after hardware components setup
+    then:
+      - light.turn_on:
+          id: display_backlight
+          brightness: 0.7%
+
+globals:
+    # ======= myDisplay display globals
+  - id: myDisplay_line1
+    type: std::string  
+    restore_value: no
+    initial_value: '"IR to BLE Kuo"'
+
+  - id: myDisplay_line2
+    restore_value: no
+    type: std::string  
+    #assign at boot
+    
+  - id: myDisplay_line3
+    restore_value: no
+    type: std::string  
+    initial_value: '"Translator"'
+
+  - id: myDisplay_small_text
+    type: bool
+    restore_value: no
+    initial_value: 'false'  # This acts as your default value!
+          
+output:
+  - platform: ledc
+    id: backlight_pwm
+    pin: GPIO46    
+    frequency: 12000 Hz       # Keeps frequency high to narrow the transistor's gate threshold
+    channel: 0                
+    min_power: 0.001          # MOVED HERE: Scales the hardware floor mapping
+    max_power: 0.40           # MOVED HERE: Caps the hardware ceiling mapping
+          
+light:
+  - platform: esp32_rmt_led_strip # neopixel
+    id: sniffer_led
+    pin: ${pin_indicator_LED}
+    chipset: WS2812
+    num_leds: 1
+    rgb_order: RGB
+    name: "Sniffer Indicator"
+
+  - platform: monochromatic  
+    name: "Display Backlight"
+    id: display_backlight
+    output: backlight_pwm
+    default_transition_length: 0s
+    gamma_correct: 0          # Keeps response linear 
+    restore_mode: ALWAYS_ON     
+
+
+script:
+  - id: flash_led_custom
+    parameters:
+      count: int         # Number of flashes
+      red: float         # Red value (0.0 to 1.0)
+      green: float       # Green value (0.0 to 1.0)
+      blue: float        # Blue value (0.0 to 1.0)
+    mode: restart
+    then:
+      - repeat:
+          count: !lambda "return count;"
+          then:
+            # --- TURN RGB LED ON WITH DYNAMIC COLOR ---
+            - light.turn_on:
+                id: sniffer_led
+                red: !lambda "return red;"
+                green: !lambda "return green;"
+                blue: !lambda "return blue;"
+                brightness: 0.2
+                transition_length: 0s
+            - delay: 150ms
+
+            # --- TURN RGB LED OFF ---
+            - light.turn_off:
+                id: sniffer_led
+                transition_length: 0s
+            - delay: 150ms
+            
+  - id: turn_led_on_custom
+    parameters:
+      red: float         # Red channel (0.0 to 1.0)
+      green: float       # Green channel (0.0 to 1.0)
+      blue: float        # Blue channel (0.0 to 1.0)
+      brightness: float  # Brightness (0.0 to 1.0)
+    mode: restart
+    then:
+      - light.turn_on:
+          id: sniffer_led
+          red: !lambda "return red;"
+          green: !lambda "return green;"
+          blue: !lambda "return blue;"
+          brightness: !lambda "return brightness;"
+          transition_length: 0s  
+          
+  - id: turn_led_off_custom
+    mode: restart
+    then:
+      - light.turn_off:
+          id: sniffer_led
+          transition_length: 0s  
+
+
+# ========  Display Specific Implementation ========
+
+font:
+  - file: "gfonts://Roboto"
+    id: my_fontSmall
+    size: 30
+  - file: "gfonts://Roboto"
+    id: my_fontMedium
+    size: 35
+  - file: "gfonts://Roboto"
+    id: my_fontLarge
+    size: 40
+
+    
+spi:
+  clk_pin: GPIO40
+  mosi_pin: GPIO45
+
+# Master Display Component Configuration
+display:
+  - platform: st7789v
+    id: myDisplay
+    model: WAVESHARE_1.47IN_172X320  
+    cs_pin: GPIO42
+    dc_pin: GPIO41
+    reset_pin: GPIO39
+    backlight_pin: no                
+    rotation: 270                    
+    update_interval: 0.3s
+
+ 
+    on_page_change:
+      - then:
+          - if:
+              condition:
+                lambda: 'return to == id(blank_page);'
+              then:
+                - light.turn_off:
+                    id: display_backlight
+
+              else:
+                - light.turn_on:
+                    id: display_backlight
+                    brightness: 100%
+
+
+
+
+    pages:
+      - id: active_page_std
+        lambda: |-
+            auto L1color = Color(255, 100, 0);
+            auto L2color = Color(255, 120, 0);
+            auto L3color = Color(255, 150, 0);
+
+            it.print(5, 30,  id(my_fontSmall), L1color, id(myDisplay_line1).c_str());
+            it.print(5, 75,  id(my_fontSmall), L2color, id(myDisplay_line2).c_str());
+            it.print(5, 115, id(my_fontLarge), L3color,  id(myDisplay_line3).c_str());
+
+      - id: active_page_small
+        lambda: |-
+            auto L1color = Color(255, 130, 0);
+            auto L2color = Color(255, 130, 0);
+            auto L3color = Color(255, 130, 0);
+            
+            it.print(5, 30,  id(my_fontMedium), L1color, id(myDisplay_line1).c_str());
+            it.print(5, 70,  id(my_fontMedium), L2color, id(myDisplay_line2).c_str());
+            it.print(5, 110,  id(my_fontMedium),L3color, id(myDisplay_line3).c_str());
+
+      - id: blank_page
+        lambda: |-
+          // Leaving lambda completely blank turns all pixels off safely
+

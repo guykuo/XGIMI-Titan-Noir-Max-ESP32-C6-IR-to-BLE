@@ -1,0 +1,106 @@
+# irmap-jvc-rs2-codeset-B.yaml
+# JVC RS2 projector code set B (default)
+
+packages:
+  base_ir_engine: !include appkit/ir-architecture-base.yaml
+
+remote_receiver:
+  id: ir_receiver
+  dump: jvc
+  on_nec: !remove
+  on_sony: !remove
+  on_lg: !remove
+  
+substitutions:
+  #target_ir_address: "0xCE" # JVC remote code set A (default)
+  target_ir_address: "0x36" # JVC remote code B
+
+  remote_display_name: "JVC Proj"
+  
+  # =============================================================
+  # DEFINE token clearing gate buttons
+  cmd_token_clear_arm: "0x9B"      # JVC: MODE 2
+  cmd_token_clear_fire: "0xF4"     # JVC: OK / ENTER
+
+script:
+  - id: master_ir_processor
+    parameters:
+      command: uint32_t
+      is_hold: bool
+    then:
+      - lambda: |-
+          // JVC Payload Matrix: Extract address (upper 8 bits) and command (lower 8 bits)
+          id(jvc_broadcast_processor).execute(command, (uint16_t)((command >> 8) & 0xFF), (uint16_t)(command & 0xFF), is_hold);
+
+  - id: jvc_broadcast_processor
+    parameters:
+      command: uint32_t     
+      device_addr: uint16_t  
+      pure_cmd: uint16_t     
+      is_hold: bool       
+    then:
+      - lambda: |-
+          struct IRCommand {
+            std::string name;
+            esphome::template_::TemplateButton* button_obj;
+          };
+
+          // Strict unique map loaded with genuine JVC production command data codes
+          static const std::map<uint16_t, IRCommand> jvc_codes = {
+            { 0xA0,       { "power_on",      id(power_on) } },       // JVC: DISCRETE POWER ON
+            { 0x60,       { "power_off", id(power_off_immediately) } }, // JVC: STAND BY
+            { 0x40,       { "cursor_down",   id(cursor_down) } },    // JVC: DOWN ARROW
+            { 0xF4,       { "cursor_enter",  id(cursor_enter) } },   // JVC: OK / ENTER
+            { 0x6C,       { "cursor_left",   id(cursor_left) } },    // JVC: LEFT ARROW
+            { 0x2C,       { "cursor_right",  id(cursor_right) } },   // JVC: RIGHT ARROW
+            { 0x80,       { "cursor_up",     id(cursor_up) } },      // JVC: UP ARROW
+            { 0x74,       { "settings_menu", id(settings_menu) } },  // JVC: MENU
+            { 0xC0,       { "back",          id(back) } },           // JVC: EXIT / BACK
+            { 0xB8,       { "home",          id(home) } },           // JVC: HIDE
+            { 0x56,       { "game_menu",     id(game_menu) } },      // JVC: NATURAL
+            { 0x0E,       { "input",         id(input) } },          // JVC: HDMI 1
+            { 0x2F,       { "picture",       id(picture) } },        // JVC: PIC MODE
+            { 0x04,       { "focus_auto",    id(focus_auto) } },     // JVC: LENS AP
+            { 0x0C,       { "focus_manual",  id(focus_manual) } },   // JVC: LENS CONTROL
+            { 0xAE,       { "shortcut_1",    id(shortcut_1) } },     // JVC: GAMMA
+            { 0x6E,       { "shortcut_2",    id(shortcut_2) } },     // JVC: COLOR TEMP
+            { 0x6B,       { "shortcut_3",    id(shortcut_3) } },     // JVC: 3D FORMAT
+            { 0x4E,       { "shortcut_4",    id(shortcut_4) } },     // JVC: PIC ADJ
+            { 0xB7,       { "volume_up",     id(volume_up) } },      // JVC: HDR
+            { 0xAF,       { "volume_down",   id(volume_down) } },    // JVC: GAMMA SETTINGS
+            { 0x16,       { "mute",          id(mute) } },           // JVC: CINEMA
+            { 0x1B,       { "token_sniff",   id(token_sniff) } },    // JVC: MODE 1
+            { 0x9B,       { "token_clear",   id(token_clear) } },    // JVC: MODE 2
+            { 0x5B,       { "token_recall",  id(token_recall) } },   // JVC: MODE 3
+            { 0x0F,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // JVC: MPC
+            { 0x51,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // JVC: CMD
+          };
+
+          auto it = jvc_codes.find(pure_cmd);
+          if (it != jvc_codes.end()) {
+            if (!id(global_token_clear_armed)) {
+              if (is_hold) {
+                id(myDisplay_line1) = it->second.name + " (Hold)";
+                id(myDisplay_line2) = "${remote_display_name}"; 
+                id(myDisplay_line3) = ""; 
+                ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
+              } else {
+                id(myDisplay_line1) = it->second.name;
+                id(myDisplay_line2) = "${remote_display_name}"; 
+                // myDisplay_line3 already has command hex placed by base architecture
+                ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
+              }
+            }
+
+            if (it->second.button_obj != nullptr) {
+              it->second.button_obj->press();
+            }
+          } else {
+            if (!id(global_token_clear_armed)) {
+              if (!is_hold) {
+                id(myDisplay_line1) = "Unassigned";
+                id(myDisplay_line2) = "${remote_display_name}"; 
+                // myDisplay_line3 already has command hex placed by base architecture
+              }
+            }
+          }
