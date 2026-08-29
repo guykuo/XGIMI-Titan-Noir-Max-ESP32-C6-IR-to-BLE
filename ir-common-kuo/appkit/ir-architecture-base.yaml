@@ -155,8 +155,13 @@ remote_receiver:
   on_jvc:
     - lambda: |-
         uint16_t jvc_command = x.data & 0xFF;
+        uint16_t jvc_address = (x.data >> 8) & 0xFF;
         uint32_t arm_code = ${cmd_token_clear_arm};
         uint32_t fire_code = ${cmd_token_clear_fire};
+        
+        ESP_LOGD("main", "Address:-- 0x%02X --, Command:---- 0x%02X ----", jvc_address, jvc_command);
+
+
 
         if (jvc_command == arm_code) {
           id(global_token_clear_armed) = true;
@@ -186,7 +191,6 @@ remote_receiver:
         static uint32_t last_jvc_press = 0;
         if (now - last_jvc_press < 30) return;
         last_jvc_press = now;
-        uint16_t jvc_address = (x.data >> 8) & 0xFF;
 
         std::stringstream ss1, ss2;
         ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(2) << std::hex << jvc_command;
