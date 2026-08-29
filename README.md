@@ -109,7 +109,7 @@ This lets the Titan Noir take over the old projector's role already configured i
 simultaneously used under this strategy.
 
 These IR maps have known working IR code sets ...
-
+`
 * irmap-tivo-roamio-TCD846500.yaml   (TiVo Roamio)
 * irmap-LG-cinebeam-hu810p.yaml      (LG Cinebeam HU810P projector)
 * irmap-hisense-50u6g.yaml           (Hisense 50U6G TV)
@@ -118,7 +118,7 @@ These IR maps have known working IR code sets ...
 * irmap-jvc-rs2-codeset-B.yaml       (JVC Projectors code set B - alt code set) 
 * irmap-sony-VPL-XW600ES.yaml        (Sony VPL-XW600ES projector)
 * irmap-sony-XBR-77A9G.yaml          (Sony XBR-77A9G TV)
-  
+`  
 
 These IR maps are WIP and likely have incomplete or incorrect IR mapping...
 
