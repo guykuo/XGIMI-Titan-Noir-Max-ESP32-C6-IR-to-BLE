@@ -110,22 +110,24 @@ simultaneously used under this strategy.
 
 These IR maps have known working IR code sets ...
 
-* irmap-tivo-roamio.yaml          (TiVo Roamio)
-* irmap-LG-cinebeam-hu810p.yaml   (LG Cinebeam HU810P projector)
-* irmap-hisense-50u6g.yaml        (Hisense 50U6G TV)
-* irmap-jvc-hr-S9600u.yaml        (JVC-VCR HR-S9600U)
-* irmap-jvc-projector.yaml
-* irmap-sony-projector.yaml
-* irmap-sony-tv.yaml
+* irmap-tivo-roamio-TCD846500.yaml   (TiVo Roamio)
+* irmap-LG-cinebeam-hu810p.yaml      (LG Cinebeam HU810P projector)
+* irmap-hisense-50u6g.yaml           (Hisense 50U6G TV)
+* irmap-jvc-hr-S9600u.yaml           (JVC HR-S9600U VCR)
+* irmap-jvc-rs2-codeset-A.yaml       (JVC Projectors code set A - default) 
+* irmap-jvc-rs2-codeset-B.yaml       (JVC Projectors code set B - alt code set) 
+* irmap-sony-VPL-XW600ES.yaml        (Sony VPL-XW600ES projector)
+* irmap-sony-XBR-77A9G.yaml          (Sony XBR-77A9G TV)
   
 
 These IR maps are WIP and likely have incomplete or incorrect IR mapping...
 
 * irmap-AWOL-projector.yaml
 * irmap-benq-projector.yaml
-* irmap-epson-projector.yaml
+* irmap-epson-pro-cinema-LS1200-projector.yaml
 * irmap-hisense-projector.yaml
 * irmap-optoma-projector.yaml
+* irmap-xgimi-titan.yaml
 
 
 ## Hardware Definition Packages
