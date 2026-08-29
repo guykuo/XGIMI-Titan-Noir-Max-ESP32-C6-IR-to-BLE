@@ -588,37 +588,34 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 (Some items duplicated to accept alternative buttons)
 | Xgimi Remote Command | LG Cinebeam Button | (0xFB04) + Command  |
 | :--- | :--- | :--- |
-| back | back | 0x14EB |
-| cursor down | cursor down | 0x827D |
-| cursor enter |OK  | 0x22DD |
-| cursor left | cursor left | 0xE01F |
-| cursor right | cursor right | 0x609F |
-| cursor up | cursor up | 0x02FD |
-| focus auto | aspect ratio | 0x9E61 |
-| focus manual | play | 0x0DF2 |
-| home | home menu | 0x3EC1 |
-| input | input | 0xD02F |
-| settings_menu | Quick Menu | 0xC23D |
-| settings_menu | Picture Mode | 0xB24D |
-| game_menu | channel down | 0x807F |
-| mute | mute | 0x906F |
-| picture | picture | 0xA956 |
-| power on | Discrete Power On | 0xB34C |
-| power on | Discrete Power On | 0x23DC |
-| power on | Power Toggle | 0x10EF |
-| power off | Discrete Power Off | 0xA53C |
-| power off | 0 | 0x08F7 |
-| shortcut 1 | red | 0x4EB1 |
-| shortcut 2 | green | 0x8E71 |
-| shortcut 3 | yellow | 0xC639 |
-| shortcut 4 | blue | 0x8679 |
-| volume down | volume down | 0xC03F |
-| volume up | volume up | 0x40BF |
-| token sniff | 4 | 0x28D7 |
-| token clear | 5 | 0xA857 |
-| token recall | 6 | 0x6897 |
-| BT start pairing | netflix | 0x6A95 |
-| BT clear pairing | prime | 0x3AC5 |
+| power_on | power toggle | 0xF708 |
+| power_on-alt | Discrete Power On | 0x23DC |
+| power_off | Discrete Power Off | 0x2CC3 |
+| power_off_alt | 0 | 0xEF10 |
+| back | Back / Return | 0xD728 |
+| cursor_left | cursor left | 0x7807 |
+| cursor_right | cursor right | 0xF906 |
+| cursor_up | cursor up | 0xBF40 |
+| cursor_down | cursor down | 0xBE41 |
+| cursor_enter | OK / Select | 0xBB44 |
+| settings_menu | menu | 0xBC43 |
+| home | home | 0x837C |
+| input | Input Toggle | 0xF40B |
+| game_menu | channel down | 0xFE01 |
+| picture | Picture Mode | 0xB24D |
+| focus_manual | aspect ratio | 0x8679 |
+| focus_auto | play | 0x4FB0 |
+| shortcut_1 | red | 0x8d72 |
+| shortcut_2 | green | 0x8e71 |
+| shortcut_3 | yellow | 0x9C63 |
+| shortcut_4 | blue | 0x9E61 |
+| volume_up | volume up | 0xFD02 |
+| volume_down | volume down | 0xFC03 |
+| mute | mute | 0xF609 |
+| token_sniff | 4 | 0xEB14 |
+| token_clear | 5 | 0xEA15 |
+| token_recall | 6 | 0xE916 |
+| BT_start_pair | netflix | 0xA956 |
 
 <br>
 <br>
@@ -626,39 +623,39 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 ## JVC-VCR to Xgimi Titan Noir Mapping
 | Xgimi Remote Command | JVC VCR Btn | (0x03C2) + Command |
 | :--- | :--- | :--- |
-| back | rewind | 0xC2C3 |
-| cursor\_down | arrow down actual | 0xC218 |
-| cursor\_down | arrow down harmony | 0xC261 |
-| cursor\_enter | OK | 0xC23C |
-| cursor\_left | arrow left | 0xC2A8 |
-| cursor\_right | arrow right | 0xC228 |
-| cursor\_up | arrow up harmony | 0xC241 |
-| cursor\_up | arrow up actual | 0xC298 |
-| focus\_auto | 7 | 0xC2E4 |
-| focus\_manual | 8 | 0xC214 |
+| power_on | power (as discrete) | 0xC2D0 |
+| power_on_alt | power (alternate) | 0xC2B8 |
+| power_off | discrete off | 0xC258 |
+| power_off_alt1 | audio monitor | 0xC2E8 |
+| power_off_alt2 | 0 | 0xC2CC |
+| back | review | 0xC2C3 |
+| cursor_up | cursor up | 0xC241 |
+| cursor_up_alt | cursor up (harmony) | 0xC298 |
+| cursor_down | cursor down | 0xC218 |
+| cursor_down_alt | cursor down (harmony) | 0xC261 |
+| cursor_left | cursor left | 0xC2A8 |
+| cursor_right | cursor right (harmony) | 0xC228 |
+| cursor_enter | OK | 0xC23C |
+| settings_menu | menu | 0xC2EC |
+| settings_menu_alt | memu (alternate) | 0xC207 |
 | home | cancel | 0xC26C |
+| game_menu | game menu | 0xC230 |
 | input | tv/vcr | 0xC2C8 |
-| settings\_menu | menu actual remote | 0xC2EC |
-| settings\_menu | menu harmony | 0xC207 |
-| game\_menu | play | 0xC230 |
-| mute | pause | 0xC2B0 |
 | picture | fast forward | 0xC260 |
-| power\_on | power toggle | 0xC2D0 |
-| power\_on | power on | 0xC2B8 |
-| power\_off | power off | 0xC258 |
-| power\_off | audio monitor | 0xC2E8 |
-| power\_off | 0 | 0xC2CC |
-| shortcut\_1 | Prog | 0xC283 |
-| shortcut\_2 | Prog Check | 0xC2BC |
-| shortcut\_3 | SP/EP | 0xC28C |
-| shortcut\_4 | Skip Search | 0xC269 |
-| volume\_down | Start - | 0xC293 |
-| volume\_up | Start + | 0xC213 |
-| token\_sniff | 4| 0xC224 |
-| token\_clear | 5 | 0xC2A4 |
-| token\_recall | 6| 0xC264 |
-| bluetooth\_pairing\_start | 1 | 0xC284 |
-| bluetooth\_pairing\_clear | 2 | 0xC244 |
+| focus_manual | 8 | 0xC214 |
+| focus_auto | 7 | 0xC2E4 |
+| shortcut_1 | prog | 0xC283 |
+| shortcut_2 | prog check | 0xC2BC |
+| shortcut_3 | SP/EP | 0xC28C |
+| shortcut_4 | skip search | 0xC269 |
+| volume_up | start down | 0xC213 |
+| volume_down | start up | 0xC293 |
+| mute | pause | 0xC2B0 |
+| token_sniff | 4 | 0xC224 |
+| token_clear | 5 | 0xC2A4 |
+| token_recall | 6 | 0xC264 |
+| BT_start_pair | 1 | 0xC284 |
+| BT_clear_pair | 2 | 0xC244 |
 
 
 <br>
@@ -667,103 +664,106 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: bo
 ## JVC Projector to Xgimi Titan Noir Mapping
 | Xgimi Command | JVC Projector Btn | (0xCE) + Command |
 | :--- | :--- | :--- |
-| "back" |  EXIT / BACK | 0xC0 |
-| "cursor_down" |  DOWN ARROW | 0x40 |
-| "cursor_enter" |  OK / ENTER | 0xF4 |
-| "cursor_left" |  LEFT ARROW | 0x6C |
-| "cursor_right" |  RIGHT ARROW | 0x2C |
-| "cursor_up" |  UP ARROW | 0x80 |
-| "focus_auto" |  LENS AP | 0x04 |
-| "focus_manual" |  LENS CONTROL | 0x0C |
-| "home" |  HIDE | 0xB8 |
-| "settings_menu" |  MENU | 0x74 |
-| "game_menu" |  NATURAL | 0x56 |
-| "input" |  HDMI 1 | 0x0E |
-| "volume_up" |  HDR | 0xB7 |
-| "volume_down" |  GAMMA SETTINGS | 0xAF |
-| "mute" |  CINEMA | 0x16 |
-| "picture" |  PIC MODE | 0x2F |
-| "power_on" |  DISCRETE POWER ON | 0xA0 |
-| "power_off" |  STAND BY | 0x60 |
-| "shortcut_1" |  GAMMA | 0xAE |
-| "shortcut_2" |  COLOR TEMP | 0x6E |
-| "shortcut_3" |  3D FORMAT | 0x6B |
-| "shortcut_4" |  PIC ADJ | 0x4E |
-| "token_sniff" |  MODE 1 | 0x1B |
-| "token_clear" |  MODE 2 | 0x9B |
-| "token_recall" |  MODE 3 | 0x5B |
-| "BT_start_pair" |  MPC | 0x0F |
-| "BT_clear_pair" |  CMD | 0x51 |
+| power_on | DISCRETE POWER ON | 0xA0 |
+| power_off | STAND BY | 0x60 |
+| cursor_down | DOWN ARROW | 0x40 |
+| cursor_enter | OK / ENTER | 0xF4 |
+| cursor_left | LEFT ARROW | 0x6C |
+| cursor_right | RIGHT ARROW | 0x2C |
+| cursor_up | UP ARROW | 0x80 |
+| settings_menu | MENU | 0x74 |
+| back | EXIT / BACK | 0xC0 |
+| home | HIDE | 0xB8 |
+| game_menu | NATURAL | 0x56 |
+| input | HDMI 1 | 0x0E |
+| picture | PIC MODE | 0x2F |
+| focus_auto | LENS AP | 0x04 |
+| focus_manual | LENS CONTROL | 0x0C |
+| shortcut_1 | GAMMA | 0xAE |
+| shortcut_2 | COLOR TEMP | 0x6E |
+| shortcut_3 | 3D FORMAT | 0x6B |
+| shortcut_4 | PIC ADJ | 0x4E |
+| volume_up | HDR | 0xB7 |
+| volume_down | GAMMA SETTINGS | 0xAF |
+| mute | CINEMA | 0x16 |
+| token_sniff | MODE 1 | 0x1B |
+| token_clear | MODE 2 | 0x9B |
+| token_recall | MODE 3 | 0x5B |
+| BT_start_pair | MPC | 0x0F |
+| BT_clear_pair | CMD | 0x51 |
 
 
 
 <br>
 <br>
 
-## Sony Bravia TV to Xgimi Titan Noir Mapping
+## Sony Bravia XBR-77A9G TV to Xgimi Titan Noir Mapping
 | Xgimi Command | Sony TV Remote | Hex Code |
-| :--- | :--- | :--- |
-| "back" | Back | 0x0062E9 |
-| "cursor_down" | Arrow Down | 0x000AF0 |
-| "cursor_enter" | Arrow Select | 0x000A70 |
-| "cursor_left" | Arrow Left | 0x0002D0 |
-| "cursor_right" | Arrow Right | 0x000CD0 |
-| "cursor_up" | Arrow Up | 0x0002F0 |
-| "focus_auto" | subtitle | 0x000AE9 |
-| "focus_manual" | audio | 0x000E90 |
-| "input" | Input | 0x000A50 |
-| "settings_menu" | Action Menu | 0x006923 |
-| "game_menu" | Google Play | 0x003123 |
-| "mute" | mute | 0x000290 |
-| "home" | Home | 0x000070 |
-| "picture" | TV | 0x000250 |
-| "power_on" | power on discrete | 0x000750 |
-| "power_on_alt" | power (toggle) | 0x000A90 |
-| "power_off" | power off discrete | 0x000F50 |
-| "power_off_alt" | 0 | 0x000910 |
-| "shortcut_1" | yellow | 0x0072E9 |
-| "shortcut_2" | blue | 0x0012E9 |
-| "shortcut_3" | red | 0x0052E9 |
-| "shortcut_4" | green | 0x0032E9 |
-| "volume_down" | volume down | 0x000C90 |
-| "volume_up" | volume up | 0x000490 |
-| "token_sniff" | 4 | 0x000C10 |
-| "token_clear" | 5 | 0x000210 |
-| "token_recall" | 6 | 0x000A10 |
-| "BT_start_pair" | play | 0x002CE9 |
-| "BT_clear_pair" | fast forward | 0x001CE9 |
+| power_on | power on discrete | 0x000750 |
+| power_on_alt | power (toggle) | 0x000A90 |
+| power_off | power off discrete | 0x000F50 |
+| power_off_alt | 0 | 0x000910 |
+| cursor_left | Arrow Left | 0x0002D0 |
+| cursor_right | Arrow Right | 0x000CD0 |
+| cursor_up | Arrow Up | 0x0002F0 |
+| cursor_down | Arrow Down | 0x000AF0 |
+| cursor_enter | Arrow Select | 0x000A70 |
+| settings_menu | Action Menu | 0x006923 |
+| back | Back | 0x0062E9 |
+| home | Home | 0x000070 |
+| game_menu | Google Play | 0x003123 |
+| input | Input | 0x000A50 |
+| picture | TV | 0x000250 |
+| focus_auto | subtitle | 0x000AE9 |
+| focus_manual | audio | 0x000E90 |
+| shortcut_1 | yellow | 0x0072E9 |
+| shortcut_2 | blue | 0x0012E9 |
+| shortcut_3 | red | 0x0052E9 |
+| shortcut_4 | green | 0x0032E9 |
+| volume_up | volume up | 0x000490 |
+| volume_down | volume down | 0x000C90 |
+| mute | mute | 0x000290 |
+| token_sniff | 4 | 0x000C10 |
+| token_clear | 5 | 0x000210 |
+| token_recall | 6 | 0x000A10 |
+| BT_start_pair | play | 0x002CE9 |
+| BT_clear_pair | fast forward | 0x001CE9 |
 
 
 <br>
 <br>
 
-## Xgimi Titan to Xgimi Titan NOIR Mapping
-| Titan Noir Command | Titan  | (Ox21DE) + Command |
-| :--- | :--- | :--- |
-| "cursor_up" | arrow up | 0x0B |
-| "cursor_down" | arrow down | 0x0E |
-| "cursor_left" | arrow left | 0x10 |
-| "cursor_right" | arrow right | 0x11 |
-| "cursor_enter" | OK | 0x0D |
-| "back" | back | 0x42 |
-| "focus_manual" | focus + | 0x1C |
-| "focus_auto" | focus - | 0x1D |
-| "home" | channel up | 0x1A |
-| "input" | source | 0x4F |
-| "settings_menu" | menu | 0x45 |
-| "game_menu" | OSD | 0x19 |
-| "picture" | lens shift and zoom | 0x20 |
-| "power_on" | power (as on) | 0x4D |
-| "power_off" | menu rotation (as off) | 0x1E |
-| "shortcut_1" | picture mode Standard | 0x41 |
-| "shortcut_2" | picture mode Movie | 0x44 |
-| "shortcut_3" | picture mode Vivid | 0x4A |
-| "shortcut_4" | picture mode TV | 0x4B |
-| "volume_up" | volume up | 0x18 |
-| "volume_down" | volume down | 0x17 |
-| "token_sniff" | switch to HDMI 1 | 0x24 |
-| "token_clear" | switch to HDMI 2 | 0x25 |
-| "token_recall" | switch to USB | 0x26 |
+## Sony VPL-XW600ES Projector to Xgimi Titan Noir Mapping
+| Xgimi Command | Sony Projector Remote | Hex Code |
+| power_on | Power On (discrete) | 0x00003A2A |
+| power_off | Power Off (discrete) | 0x00007A2A |
+| power_on_alt | Power Toggle (alt discrete On) | 0x0000542A |
+| cursor_up | up arrow | 0x0000562A |
+| cursor_down | down arrow | 0x0000362A |
+| cursor_left | left arrow | 0x0000162A |
+| cursor_right | right arrow | 0x0000662A |
+| cursor_enter | OK / Enter | 0x00002D2A |
+| settings_menu | Menu | 0x00004A2A |
+| home | Reset | 0x00006F2A |
+| back | Position | 0x00018BE4 |
+| game_menu | Game | 0x0006AB54 |
+| picture | Photo | 0x000EAB54 |
+| input | Input | 0x0000752A |
+| focus_manual | Focus | 0x00026B54 |
+| focus_auto | Zoom | 0x00046B54 |
+| shortcut_1 | Aspect Ratio | 0x00076B54 |
+| shortcut_2 | Motion Flow | 0x0000502A |
+| shortcut_3 | 3D | 0x000DCB54 |
+| shortcut_4 | Color Space | 0x000D2B54 |
+| volume_up | CONTRAST | 0x00000C2A |
+| volume_down | CONTRAST DOWN | 0x00004C2A |
+| mute | Advanced Iris | 0x000FAB54 |
+| token_sniff | BRT Cinema | 0x0009AB54 |
+| token_clear | BRT TV | 0x0008AB54 |
+| token_recall | User | 0x0002AB54 |
+| BT_start_pair | BRIGHTNESS DOWN | 0x00007C2A |
+| BT_clear_pair | BRIGHTNESS UP | 0x00003C2A |
+
 
 
 # Recent Changes:
