@@ -117,16 +117,15 @@ These IR maps have known working IR code sets ...
 * irmap-jvc-rs2-codeset-A.yaml________(JVC Projectors code set A - default) 
 * irmap-jvc-rs2-codeset-B.yaml________(JVC Projectors code set B - alt code set) 
 * irmap-LG-cinebeam-hu810p.yaml_______(LG Cinebeam HU810P projector)
+* irmap-optoma-UHD50X.yaml____________(Optoma UHD50X projector)
 * irmap-sony-VPL-XW600ES.yaml_________(Sony VPL-XW600ES projector)
 * irmap-sony-XBR-77A9G.yaml___________(Sony XBR-77A9G TV)
 * irmap-tivo-roamio-TCD846500.yaml____(TiVo Roamio)
 
 
-These IR maps are WIP and likely have incomplete or incorrect IR mapping...
+These IR maps are WIP and may have incomplete or incorrect IR mapping...
 
 * irmap-AWOL-projector.yaml
-* irmap-hisense-projector.yaml
-* irmap-optoma-projector.yaml
 * irmap-xgimi-titan.yaml
 
 
@@ -833,6 +832,39 @@ Be aware that you need to use physical buttons on projector (or IP / serial cont
 | token_recall | 3D | 0x639C |
 | BT_start_pair | color temp | 0xA05F |
 | BT_clear_pair | color manage | 0xA45B |
+
+<br>
+<br>
+
+## Optoma UHD50X Projector to Xgimi Titan Noir Mapping
+| Xgimi Command | Optoma Projector Btn | (0xCD32) + Command |
+| power_on | power on | 0xFD02 |
+| power_off | power off | 0xD12E |
+| cursor_left | left arrow | 0xEF10 |
+| cursor_right | right arrow | 0xED12 |
+| cursor_up | up arrow | 0xEE11 |
+| cursor_down | down arrow | 0xEB14 |
+| cursor_enter | ok | 0xF00F |
+| settings_menu | menu | 0xF10E |
+| back | sleep | 0x9C63 |
+| input | input HDMI 1 | 0xE916 |
+| game_menu | input HDMI 2 | 0xCF30 |
+| picture | mode | 0xFA05 |
+| focus_manual | aspect | 0x9B64 |
+| focus_auto | DB | 0xBB44 |
+| shortcut_1 | input VGA 1 | 0xE41B |
+| shortcut_2 | input VGA 2 | 0xE11E |
+| shortcut_3 | input video | 0xE31C |
+| shortcut_4 | input YPbPr | 0xE817 |
+| volume_up | 3D | 0x7689 |
+| volume_down | keystone | 0xF807 |
+| mute | mute | 0xAD52 |
+| token_sniff | user 1 | 0xC936 |
+| token_clear | user 2 | 0x9A65 |
+| token_recall | user 3 | 0x9966 |
+| BT_start_pair | brightness | 0xBE41 |
+| BT_clear_pair | contrast | 0xBD42 |
+
 
 # Recent Changes:
 *   Added original _Xgimi Titan_ IR mapping. That would be _Titan_ IR to _Titan Noir_ BLuetooth 
