@@ -130,7 +130,7 @@ These IR maps are WIP and may have incomplete or incorrect IR mapping...
 
 
 ## Hardware Definition Packages
-ESP32 board is defined in ir-common-kuo/ as hardware.yaml files. These hardware files contain board specific information used to create the translator firmware. Four board types are supplied. You can also create your "hardware" file to support a new ESP32 board type or to customize GPIO assignments.
+ESP32 board is defined in ir-common-kuo/ as hardware.yaml files. These hardware files contain board specific information used to create the translator firmware. Several board types are supplied. You can also create your "hardware" file to support a new ESP32 board type or to customize GPIO assignments.
 
 Supplied hardware files are for ESP32 boards ...
 
@@ -138,6 +138,7 @@ Supplied hardware files are for ESP32 boards ...
 * hardware-c6.yaml
 * hardware-m5stack-atom-lite.yaml
 * hardware-s3-waveshare-lcd-1.47b.yaml
+* hardware-s3-hosyond-lcd-3.5-touch.yaml
 
 Look in the hardware file for actual GPIO pins for IR receiver and optional i2c display
   
