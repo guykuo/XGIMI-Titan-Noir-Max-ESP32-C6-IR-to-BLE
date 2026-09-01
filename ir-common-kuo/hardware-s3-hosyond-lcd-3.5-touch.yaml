@@ -1,0 +1,279 @@
+# Hosyond ESP32-S3 Touchscreen Module, 3.5" 240x320 IPS LCD EPS32 Display
+# ============= BEGIN Configuration Options KUO ==========
+
+substitutions:
+  pin_ir_receiver: GPIO45 # spare GPIO on expansion pin connector
+  pin_indicator_LED: GPIO40 # neopixel
+  pin_sniff_btn: GPIO0 # use boot button to start sniff
+
+# Core Architecture Declaration
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3 # variant needed to keep compiler tuned for the S3 chip core
+  framework:
+    type: esp-idf
+
+# ============= END Configuration Options KUO ==========
+
+esphome:
+  name: esp32s3-hello-world
+  friendly_name: ESP32-S3 Hello World
+
+  # HARDWARE COLD-BOOT STABILIZATION
+  on_boot:
+    # Executed 1st (Higher numbers run first in ESPHome)
+    - priority: 800.0
+      then:
+        - output.turn_on: hardware_reset_line
+        - delay: 100ms
+        - output.turn_off: hardware_reset_line
+        - delay: 250ms
+        - output.turn_on: hardware_reset_line
+        - delay: 150ms
+        - output.set_level:
+            id: display_backlight
+            level: 60%
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+globals:
+    # ======= myDisplay display globals
+  - id: myDisplay_line1
+    type: std::string  
+    restore_value: no
+    initial_value: '"IR to BLE Kuo"'
+
+  - id: myDisplay_line2
+    restore_value: no
+    type: std::string  
+    #assign at boot
+    
+  - id: myDisplay_line3
+    restore_value: no
+    type: std::string  
+    initial_value: '"Translator"'
+
+  - id: myDisplay_small_text
+    type: bool
+    restore_value: no
+    initial_value: 'false'  # This acts as your default value!
+          
+          
+light:
+  - platform: esp32_rmt_led_strip # neopixel
+    id: sniffer_led
+    pin: ${pin_indicator_LED}
+    chipset: WS2812
+    num_leds: 1
+    rgb_order: GRB # unusual order
+    name: "Sniffer Indicator"
+
+output: 
+  - platform: ledc # display backlight engine
+    pin: GPIO41       
+    id: display_backlight
+    frequency: 4000Hz    
+
+  - platform: gpio
+    pin: GPIO48
+    id: hardware_reset_line
+
+script:
+  - id: flash_led_custom
+    parameters:
+      count: int         # Number of flashes
+      red: float         # Red value (0.0 to 1.0)
+      green: float       # Green value (0.0 to 1.0)
+      blue: float        # Blue value (0.0 to 1.0)
+    mode: restart
+    then:
+      - repeat:
+          count: !lambda "return count;"
+          then:
+            # --- TURN RGB LED ON WITH DYNAMIC COLOR ---
+            - light.turn_on:
+                id: sniffer_led
+                red: !lambda "return red;"
+                green: !lambda "return green;"
+                blue: !lambda "return blue;"
+                brightness: 0.2
+                transition_length: 0s
+            - delay: 150ms
+
+            # --- TURN RGB LED OFF ---
+            - light.turn_off:
+                id: sniffer_led
+                transition_length: 0s
+            - delay: 150ms
+            
+  - id: turn_led_on_custom
+    parameters:
+      red: float         # Red channel (0.0 to 1.0)
+      green: float       # Green channel (0.0 to 1.0)
+      blue: float        # Blue channel (0.0 to 1.0)
+      brightness: float  # Brightness (0.0 to 1.0)
+    mode: restart
+    then:
+      - light.turn_on:
+          id: sniffer_led
+          red: !lambda "return red;"
+          green: !lambda "return green;"
+          blue: !lambda "return blue;"
+          brightness: !lambda "return brightness;"
+          transition_length: 0s  
+          
+  - id: turn_led_off_custom
+    mode: restart
+    then:
+      - light.turn_off:
+          id: sniffer_led
+          transition_length: 0s  
+
+
+# ========  Display Specific Implementation ========
+
+font:
+  - file: "gfonts://Roboto"
+    id: my_fontSmall
+    size: 30
+  - file: "gfonts://Roboto"
+    id: my_fontMedium
+    size: 35
+  - file: "gfonts://Roboto"
+    id: my_fontLarge
+    size: 40
+
+    
+# Configure the 4-bit Hardware Quad-SPI bus
+spi:
+  id: tft_qspi
+  type: quad        
+  clk_pin: GPIO12   
+  data_pins: [GPIO11, GPIO13, GPIO14, GPIO9]
+
+# Master Display Component Configuration
+display:
+  - platform: mipi_spi
+    id: myDisplay
+    spi_id: tft_qspi
+    model: ST7789V
+    bus_mode: quad
+    cs_pin: GPIO10
+    reset_pin: GPIO43 # Not real reset GPIO0, just declaring one helps boot up display after flashing.
+    rotation: 0
+    dimensions: 320X480     
+    invert_colors: true
+    color_order: RGB    
+    data_rate: 80MHz    
+    
+    # factory initialization matrix sequence
+    init_sequence:
+      - [0xF1, 0x00]
+      - [0x60, 0x00, 0x00, 0x00]
+      - [0x65, 0x80]
+      - [0x79, 0x06]
+      - [0x7B, 0x00, 0x08, 0x08]
+      - [0x80, 0x55, 0x62, 0x2F, 0x17, 0xF0, 0x52, 0x70, 0xD2, 0x52, 0x62, 0xEA]
+      - [0x81, 0x26, 0x52, 0x72, 0x27]
+      - [0x84, 0x92, 0x25]
+      - [0x87, 0x10, 0x10, 0x58, 0x00, 0x02, 0x3A]
+      - [0x88, 0x00, 0x00, 0x2C, 0x10, 0x04, 0x00, 0x00, 0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x00, 0x06]
+      - [0x89, 0x00, 0x00, 0x00]
+      - [0x8A, 0x13, 0x00, 0x2C, 0x00, 0x00, 0x2C, 0x10, 0x10, 0x00, 0x3E, 0x19]
+      - [0x8B, 0x15, 0xB1, 0xB1, 0x44, 0x96, 0x2C, 0x10, 0x97, 0x8E]
+      - [0x8C, 0x1D, 0xB1, 0xB1, 0x44, 0x96, 0x2C, 0x10, 0x50, 0x0F, 0x01, 0xC5, 0x12, 0x09]
+      - [0x8D, 0x0C]
+      - [0x8E, 0x33, 0x01, 0x0C, 0x13, 0x01, 0x01]
+      - [0xB3, 0x00, 0x30]
+      - [0xF1, 0x00]
+      - [0x71, 0xD0]
+      - [0x66, 0x02, 0x3F]
+      - [0xBE, 0x26, 0x00, 0x9D]
+      - [0x70, 0x01, 0xA0, 0x11, 0x40, 0xE0, 0x00, 0x11, 0x69, 0x11, 0x00, 0x00, 0x1A]
+      - [0x90, 0x04, 0x04, 0x55, 0x74, 0x00, 0x40, 0x43, 0x27, 0x27]
+      - [0x91, 0x04, 0x04, 0x55, 0x75, 0x00, 0x40, 0x42, 0x27, 0x27]
+      - [0x92, 0x04, 0x44, 0x55, 0xC0, 0x06, 0x00, 0x07, 0x05, 0x90, 0x27]
+      - [0x93, 0x04, 0x43, 0x11, 0x00, 0x00, 0x00, 0x00, 0x05, 0x90, 0x27]
+      - [0x94, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+      - [0x95, 0x96, 0x16, 0x00, 0x00, 0xFF]
+      - [0x96, 0x44, 0x53, 0x03, 0x12, 0x23, 0x24, 0x06, 0x05, 0x94, 0x27, 0x00, 0x44]
+      - [0x97, 0x44, 0x53, 0x47, 0x56, 0x20, 0x20, 0x02, 0x01, 0x94, 0x27, 0x00, 0x44]
+      - [0xBA, 0x55, 0x94, 0x2D, 0x94, 0x27]
+      - [0x9A, 0x40, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00]
+      - [0x9B, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00]
+      - [0x9C, 0x5C, 0x12, 0x00, 0x00, 0x10, 0x12, 0x00, 0x00, 0x10, 0x02, 0x00, 0x00, 0x00]
+      - [0x9D, 0x8A, 0x51, 0x00, 0x00, 0x00, 0x80, 0x1E, 0x01]
+      - [0x9E, 0x51, 0x00, 0x00, 0x00, 0x80, 0x1E, 0x01]
+      - [0xB4, 0x1D, 0x1C, 0x1E, 0x0B, 0x14, 0x02, 0x13, 0x09, 0x1E, 0x00, 0x1E, 0x10]
+      - [0xB5, 0x1D, 0x1C, 0x1E, 0x0A, 0x15, 0x03, 0x11, 0x08, 0x1E, 0x01, 0x1E, 0x12]
+      - [0xB6, 0x77, 0x77, 0x00, 0x0A, 0xFF, 0x0A, 0xFF]
+      - [0x86, 0xCD, 0x04, 0xB1, 0x02, 0x58, 0x12, 0x58, 0x0C, 0x13, 0x01, 0xA5, 0x00, 0xA5, 0xA5]
+      - [0xB7, 0x07, 0x0A, 0x0E, 0x06, 0x05, 0x03, 0x2B, 0x03, 0x03, 0x42, 0x07, 0x10, 0x10, 0x2E, 0x3F, 0x0D]
+      - [0xB8, 0x07, 0x0A, 0x0D, 0x05, 0x05, 0x02, 0x2B, 0x02, 0x03, 0x42, 0x06, 0x10, 0x0F, 0x2E, 0x3F, 0x0D]
+      - [0xB9, 0x23, 0x23]
+      - [0xBF, 0x10, 0x14, 0x14, 0x0B, 0x0B, 0x0B]
+      - [0xF2, 0x00]
+      - [0x73, 0x04, 0xDA, 0x12, 0x54, 0x47]
+      - [0x77, 0x6B, 0x5B, 0xFD, 0xC3, 0xC5]
+      - [0x7A, 0x15, 0x27]
+      - [0x7B, 0x04, 0x57]
+      - [0x7E, 0x01, 0x0E]
+      - [0xBF, 0x36]
+      - [0xE3, 0x40, 0x40]
+      - [0xF0, 0x00]
+      - [0xD0, 0x00]
+      - [0x2A, 0x00, 0x00, 0x01, 0x3F]
+      - [0x2B, 0x00, 0x00, 0x01, 0xDF]
+      - [0x21]
+      - [0x11]
+      - DELAY 120ms
+      - [0x29]
+      - [0x2C]
+      # - [0x3A, 0x01]
+      - [0x36, 0x00]
+      - [0x35, 0x01]
+      - DELAY 20ms
+   # update_interval: 16ms
+
+    on_page_change:
+      - then:
+          - if:
+              condition:
+                lambda: 'return to == id(blank_page);'
+              then:
+                - output.set_level:
+                    id: display_backlight
+                    level: 0%
+
+              else:
+                - output.set_level:
+                    id: display_backlight
+                    level: 60%
+
+    pages:
+      - id: active_page_std
+        lambda: |-
+            auto L1color = Color(255, 100, 0);
+            auto L2color = Color(255, 120, 0);
+            auto L3color = Color(255, 150, 0);
+
+            it.print(5, 30,  id(my_fontSmall), L1color, id(myDisplay_line1).c_str());
+            it.print(5, 75,  id(my_fontSmall), L2color, id(myDisplay_line2).c_str());
+            it.print(5, 115, id(my_fontLarge), L3color,  id(myDisplay_line3).c_str());
+
+      - id: active_page_small
+        lambda: |-
+            auto L1color = Color(255, 130, 0);
+            auto L2color = Color(255, 130, 0);
+            auto L3color = Color(255, 130, 0);
+            
+            it.print(5, 30,  id(my_fontMedium), L1color, id(myDisplay_line1).c_str());
+            it.print(5, 70,  id(my_fontMedium), L2color, id(myDisplay_line2).c_str());
+            it.print(5, 110,  id(my_fontMedium),L3color, id(myDisplay_line3).c_str());
+
+      - id: blank_page
+        lambda: |-
+          // Leaving lambda completely blank turns all pixels off safely
+
