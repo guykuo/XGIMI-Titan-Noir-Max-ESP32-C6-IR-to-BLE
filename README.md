@@ -497,9 +497,9 @@ Sniffing for the wake token should be done with projector power disconnected bec
 
 
 # What the token buttons on your IR remote do
-  - Token Sniff - Button (4) ESP32 sniffs for an Xgimi a wake token for 20 seconds. If one is accepted, It is stored into NV storage.
-  - Token Clear - Button (5) Must be pressed twice within 5 seconds. Stored token is removed from NV storage. Active wake token becomes the one supplied in secrets.yaml
-  - Token Recall - Button (6) displays currently stored token (if one is present). This is useful to verifying the token that was sniffed correctly.
+  - Token Sniff - ESP32 sniffs for an Xgimi a wake token for 20 seconds. If one is captured, It is stored into NV storage.
+  - Token Clear - Must be pressed and confirmed with OK button. Stored token is removed from NV storage. Active wake token becomes the one supplied in secrets.yaml
+  - Token Recall - Makes currently stored token the active token. Shows on display, if one is present). This is useful to verifying the token that was sniffed correctly.
 
 Three buttons on your remote are assigned to control wake token. The actual buttons depend on which IRmap you are using.
 |IRmap Set | Token Action | Button |
