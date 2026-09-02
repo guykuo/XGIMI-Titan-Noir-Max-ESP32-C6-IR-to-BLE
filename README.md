@@ -479,17 +479,8 @@ Sniffing for the wake token should be done with projector power disconnected bec
 - Remove AC power from Xgimi Titan Noir Projector
 - ESP32 should be plugged into 5 volt USB-C power
 
-- There are two ways to start Sniffing for wake tokens. Sniffing remains active for 20 seconds. A light comes on to indicate sniffing mode.
-  1 Briefly press BOOT button on ESP32 board
-  2 Point IR remote and push button on remote that is that IRmap's token sniff button
-
-  TiVo and Hisense IRmaps<br>
-  
-  
-- Point infrared remote at ESP32 IR receiver and press its "4" button to start sniffing.
-      Alternatively, press the "boot" button of your ESP32 to start sniffing.
-      Sniffing remains active for 20 seconds. Light comes on to indicate sniffing mode.
-  
+- There are two ways to start Sniffing for wake tokens. Easiest is to _briefly_ press BOOT button on your ESP32 board. The other way is to press the correct button on your IR remote that starts token sniffing. Which IR button depends on your IRmap. A light will come on to indicate sniffing mode. Sniffing remains active for 20 seconds. 
+    
 - Repeatedly press power button on Xgimi remote with it near your ESP32 board.
       Usually, just 4 to 6 presses are needed to sniff a valid token. 
       If you have an ESP32-C3 with built-in OLED display, sniff mode and capture will be shown.
@@ -503,13 +494,52 @@ Sniffing for the wake token should be done with projector power disconnected bec
      specified in secret.yaml. Because sniffing a token is so simple, you likely did not manually
      capture and place one in your secrets.yaml. Easiest is to sniff with the ESP board.
 
-What the token buttons do
+
+What the token buttons on your IR remote do
   - Token Sniff - Button (4) ESP32 sniffs for an Xgimi a wake token for 20 seconds. If one is accepted, It is stored into NV storage.
   - Token Clear - Button (5) Must be pressed twice within 5 seconds. Stored token is removed from NV storage. Active wake token becomes the one supplied in secrets.yaml
   - Token Recall - Button (6) displays currently stored token (if one is present). This is useful to verifying the token that was sniffed correctly.
 
+Three buttons on your remote are assigned to control wake token. The actual buttons depend on which IRmap you are using.
+|IRmap Set | Button | Action |
+|-------- | -------- | ------- |
+| TiVo Roamio | Sniff | 4 | 
+|  | Clear | 5 |
+|  | Recall | 6 |
+|-------- | -------- | ------- |
+| Hisense HU | Sniff | 4 |
+|  | Clear | 5 |
+|  | Recall | 6 |
+|-------- | -------- | ------- |
+| BenQ W5800 | Sniff | info |
+|  | Clear | invert |
+|  | Recall | 3D |
+|-------- | -------- | ------- |
+| Epson Pro Cinema | Sniff | Frame Interp |
+|  | Clear | RGMCMY |
+|  | Recall | Pattern |
+|-------- | -------- | ------- |
+| JVC RS2 | Sniff | color up |
+|  | Clear | color down |
+|  | Recall | color temp |
+|-------- | -------- | ------- |
+| LG Cinebeam | Sniff | 4 | 
+|  | Clear | 5 |
+|  | Recall | 6 |
+|-------- | -------- | ------- |
+| Optoma UHD50X | Sniff | user 1 | 
+|  | Clear | user 2 |
+|  | Recall | user 3 |    
+|-------- | -------- | ------- |
+| Sony VPL-XW600ES | Sniff | Brt Cinema | 
+|  | Clear | Brt TV |
+|  | Recall | User |
+|-------- | -------- | ------- |
+| Sony XBR-77A9G | Sniff | 4 | 
+|  | Clear | 5 |
+|  | Recall | 6 |
 
-    
+
 
 CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: both contain device credentials, and the binary also embeds the wake token.
 
