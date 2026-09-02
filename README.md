@@ -4,13 +4,13 @@
 
 
 
-Titan Noir projectors lack IR control capability and only accept bluetooth signals. This translator works around that limitation by translating infrared signals into bluetooth commands the projector accepts This project turns an ESP32 board into an IR to Bluetooth translator. Typical use is to add a Titan Xgimi Noir to a universal IR remote. This translator lets the IR remote control the bluetooth only projector.
+Titan Noir projectors lack IR control capability and only accept bluetooth signals. This project works around that limitation by translating infrared signals into bluetooth commands the Titan Noir projectors accept. Typical use is to add an Xgimi Titan Noir to a universal IR remote. Depending on which IR code set you choose, you can add as a completely new projector or have the XTN projector masquerade as an existing projector already in your remote. This project runs on low cost ESP32 board.
 
 ## Requirements
 
 *   A BlueTooth BLE Capable ESP32 Board. Two boards detailed here are...
-    * ESP32-C3 SuperMini dev board with integrated 0.42-inch OLED display (current preferred)
-    * ESP32-C6-WROOM-1 (good choice)
+    * ESP32-C3 SuperMini dev board with integrated 0.42-inch OLED display (my preferred board)
+    * ESP32-C6-WROOM-1 (also good choice)
 
 *   IR sensor module (three pin) for ESP32
     
@@ -20,24 +20,26 @@ Titan Noir projectors lack IR control capability and only accept bluetooth signa
     
 *   Data capable USB cable
 
-This fork concentrates on IR translation to Xgimi Titan Noir bluetooth. Home Assistant usage is not documented here. However, _Home Assistant_ integration capability has been preserved. See mrmachine's original github for _Home Assistant_ related information.
+This fork concentrates on IR translation to Xgimi Titan Noir bluetooth. The parent fork used Home Assistant HID connectivity which is not documented here. However, _Home Assistant_ integration capability has been preserved. See mrmachine's original github for _Home Assistant_ related information.
 
-Turning on the Xgimi Titan Noir projector requires use of the original Xgimi remote wake token. This translator ESP32 board can acquire the token by sniffing your original remote. 
+Turning on the Xgimi Titan Noir projector requires use of the original Xgimi remote wake token. This translator can acquire that token by sniffing your original remote with the ESP32. 
 
-Optionally, you can performa a more tedious, manual capture of your remote's wake token. Then, process that hexadecimal sequence into a secrets.yaml file. It is much easier to skip that process and let the translator ESP32 sniff and capture the wake token itself.
+Optionally, you can performa a more tedious, manual capture of your remote's wake token. Then, process that hexadecimal sequence into a secrets.yaml file. It is much easier to skip that process and let the translator ESP32 sniff and capture the wake token.
   
 ## What You Will Accomplish
 Getting the translator to work requires you to...
 
-* Choose which IR code setto translate
+* Choose which IR code set to translate
 * Obtain ESP32 board and IR sensor to be this translator
-* Assemble ESP32 board and IR sensor
+* Connect ESP32 board to IR sensor (three wires)
 * Create a copy of make-esp32-TEMPLATE.yaml
-* Rename it something like make-my-spec-board.yaml
-* Edit make-my-spec-board.yaml to specify name for your remote, which ESP32 board you are using, and which IR translation map.
+* Rename it something like make-my-translator.yaml
+* Edit make-my-translator.yaml to specify name for your remote, which ESP32 board you are using, and which IR translation map.
 * Create compiler evironment
 * Compile your new ESP32 firmware and flash it to your ESP32 board.
-* Set up your universal remote to use the IR mapped codes.
+* Set up your universal remote to use the IR mapped codes. 
+       (If you chose an IR mapping which matches a projector already in your remote, 
+       your remote can simply control the XTN as that existing projector)
 
 
 # Layout of this Git
