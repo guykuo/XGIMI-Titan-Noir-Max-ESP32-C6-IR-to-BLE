@@ -6,6 +6,8 @@ substitutions:
   pin_indicator_LED: GPIO40 # neopixel
   pin_sniff_btn: GPIO0 # use boot button to start sniff
 
+  display_BL_percent: 50%
+  
 # Core Architecture Declaration
 esp32:
   board: esp32-s3-devkitc-1
@@ -32,8 +34,7 @@ esphome:
         - delay: 150ms
         - output.set_level:
             id: display_backlight
-            level: 60%
-
+            level: ${display_BL_percent}
 psram:
   mode: octal
   speed: 80MHz
@@ -167,7 +168,8 @@ display:
     invert_colors: true
     color_order: RGB    
     data_rate: 80MHz    
-    
+    update_interval: 0.3s
+
     # factory initialization matrix sequence
     init_sequence:
       - [0xF1, 0x00]
@@ -235,7 +237,6 @@ display:
       - [0x36, 0x00]
       - [0x35, 0x01]
       - DELAY 20ms
-   # update_interval: 16ms
 
     on_page_change:
       - then:
@@ -250,7 +251,7 @@ display:
               else:
                 - output.set_level:
                     id: display_backlight
-                    level: 60%
+                    level: ${display_BL_percent}
 
     pages:
       - id: active_page_std

@@ -78,7 +78,7 @@ remote_receiver:
             id(master_ir_processor).execute(x.command, true);
           }
         } else {
-          id(myDisplay_line1) = "NEC Prot Not Address"; 
+          id(myDisplay_line1) = "NEC Prot Addr Different "; 
           id(global_cached_command) = 0;
           id(global_is_holding) = false;
         }
@@ -144,7 +144,7 @@ remote_receiver:
             id(master_ir_processor).execute(lg_command, true);
           }
         } else {
-          id(myDisplay_line1) = "LG Prot Not Address"; 
+          id(myDisplay_line1) = "LG Prot Addr Different"; 
           id(global_cached_command) = 0;
           id(global_is_holding) = false;
         }
@@ -213,7 +213,7 @@ remote_receiver:
             id(master_ir_processor).execute(jvc_command, true);
           }
         } else {
-          id(myDisplay_line1) = "JVC Prot Not Address"; 
+          id(myDisplay_line1) = "JVC Prot Addr Different"; 
           id(global_cached_command) = 0;
           id(global_is_holding) = false;
         }
@@ -223,7 +223,7 @@ remote_receiver:
   # 5. Sony Handler
   on_sony:
     # Sony is handled differently because it does not have a true, separate per device address
-    # Instead, Sony has a single long code of variable length the entirety of which must be tested against.
+    # Instead, Sony has a single long code of variable length. The entirety of which must be tested against.
     - lambda: |-
         uint32_t arm_code = ${cmd_token_clear_arm};
         uint32_t fire_code = ${cmd_token_clear_fire};
