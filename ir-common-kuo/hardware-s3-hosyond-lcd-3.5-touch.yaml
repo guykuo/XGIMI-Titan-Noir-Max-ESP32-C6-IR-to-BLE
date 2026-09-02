@@ -21,20 +21,13 @@ esphome:
   name: esp32s3-hello-world
   friendly_name: ESP32-S3 Hello World
 
-  # HARDWARE COLD-BOOT STABILIZATION
   on_boot:
-    # Executed 1st (Higher numbers run first in ESPHome)
-    - priority: 800.0
+    - priority: 100.0
       then:
-        - output.turn_on: hardware_reset_line
-        - delay: 100ms
-        - output.turn_off: hardware_reset_line
-        - delay: 250ms
-        - output.turn_on: hardware_reset_line
-        - delay: 150ms
         - output.set_level:
             id: display_backlight
             level: ${display_BL_percent}
+
 psram:
   mode: octal
   speed: 80MHz
@@ -101,13 +94,13 @@ script:
                 blue: !lambda "return blue;"
                 brightness: 0.2
                 transition_length: 0s
-            - delay: 150ms
+            - delay: 200ms
 
             # --- TURN RGB LED OFF ---
             - light.turn_off:
                 id: sniffer_led
                 transition_length: 0s
-            - delay: 150ms
+            - delay: 200ms
             
   - id: turn_led_on_custom
     parameters:

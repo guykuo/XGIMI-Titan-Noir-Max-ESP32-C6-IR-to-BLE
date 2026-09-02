@@ -91,13 +91,13 @@ script:
                 blue: !lambda "return blue;"
                 brightness: 0.2
                 transition_length: 0s
-            - delay: 150ms
+            - delay: 200ms
 
             # --- TURN RGB LED OFF ---
             - light.turn_off:
                 id: sniffer_led
                 transition_length: 0s
-            - delay: 150ms
+            - delay: 200ms
             
   - id: turn_led_on_custom
     parameters:

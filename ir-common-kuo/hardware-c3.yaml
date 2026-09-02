@@ -65,11 +65,11 @@ script:
           then:
             # --- TURN BINARY LED ON ---
             - switch.turn_on: sniffer_led
-            - delay: 150ms
+            - delay: 200ms
   
             # --- TURN BINARY LED OFF ---
             - switch.turn_off: sniffer_led
-            - delay: 150ms
+            - delay: 200ms
                
   - id: turn_led_on_custom
     parameters:
