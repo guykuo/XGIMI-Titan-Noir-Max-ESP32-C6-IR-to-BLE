@@ -502,39 +502,39 @@ What the token buttons on your IR remote do
 
 Three buttons on your remote are assigned to control wake token. The actual buttons depend on which IRmap you are using.
 |IRmap Set | Button | Action |
-|-------- | -------- | ------- |
+|–––|–––|–––|
 | TiVo Roamio | Sniff | 4 | 
 |  | Clear | 5 |
 |  | Recall | 6 |
-|-------- | -------- | ------- |
+|–––|–––|–––|
 | Hisense HU | Sniff | 4 |
 |  | Clear | 5 |
 |  | Recall | 6 |
-|-------- | -------- | ------- |
+|–––|–––|–––|
 | BenQ W5800 | Sniff | info |
 |  | Clear | invert |
 |  | Recall | 3D |
-|-------- | -------- | ------- |
+|–––|–––|–––|
 | Epson Pro Cinema | Sniff | Frame Interp |
 |  | Clear | RGMCMY |
 |  | Recall | Pattern |
-|-------- | -------- | ------- |
+|–––|–––|–––|
 | JVC RS2 | Sniff | color up |
 |  | Clear | color down |
 |  | Recall | color temp |
-|-------- | -------- | ------- |
+|–––|–––|–––|
 | LG Cinebeam | Sniff | 4 | 
 |  | Clear | 5 |
 |  | Recall | 6 |
-|-------- | -------- | ------- |
+|–––|–––|–––|
 | Optoma UHD50X | Sniff | user 1 | 
 |  | Clear | user 2 |
 |  | Recall | user 3 |    
-|-------- | -------- | ------- |
+|–––|–––|–––|
 | Sony VPL-XW600ES | Sniff | Brt Cinema | 
 |  | Clear | Brt TV |
 |  | Recall | User |
-|-------- | -------- | ------- |
+|–––|–––|–––|
 | Sony XBR-77A9G | Sniff | 4 | 
 |  | Clear | 5 |
 |  | Recall | 6 |
