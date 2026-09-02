@@ -24,7 +24,7 @@ This fork concentrates on IR translation to Xgimi Titan Noir bluetooth. The pare
 
 Turning on the Xgimi Titan Noir projector requires use of the original Xgimi remote wake token. This translator can acquire that token by sniffing your original remote with the ESP32. 
 
-Optionally, you can performa a more tedious, manual capture of your remote's wake token. Then, process that hexadecimal sequence into a secrets.yaml file. It is much easier to skip that process and let the translator ESP32 sniff and capture the wake token.
+Optionally, you can perform a more tedious, manual capture of your remote's wake token. Then, process that hexadecimal sequence into a secrets.yaml file. It is much easier to skip that process and let the translator ESP32 sniff and capture the wake token.
   
 ## What You Will Accomplish
 Getting the translator to work requires you to...
