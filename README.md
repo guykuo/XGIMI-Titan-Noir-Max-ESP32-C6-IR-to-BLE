@@ -172,7 +172,7 @@ You can optionally connect a [SSD1306 128x32 0.91-inch OLED display module](http
 
 <br>
 <br>
-<br>
+
 ### Waveshare ESP32-S3 1.47inch LCD Display Development Board (Revision B)
 This ESP32-S3 board was used to verify translator functionality on S3 boards. It has a larger LCD display and dissipates quite a bit more power than the C3 and C6 boards. I would only use this as a testing and setup board. The larger screen enables easier reading of captured IR codes while editing irmap files. It is probably too bright and power hungry for home theater deployment. There are many similar boards with displays, but variants are not always GPIO pin matches for the ones specified in my hardware-s3-waveshare-lcd-1.47B.yaml
 
