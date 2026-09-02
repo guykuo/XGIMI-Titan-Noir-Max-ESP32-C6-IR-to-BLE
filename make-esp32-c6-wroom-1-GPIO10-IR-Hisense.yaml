@@ -148,6 +148,32 @@ esphome:
             }        
         - script.execute: display_show
 
+    - priority: 100 
+      then: # if display is disabled briefly show a message how to enable screen
+        - if:
+            condition:
+              lambda: |-
+                return id(myDisplay_disabled);
+            then:
+              # set display active
+              - globals.set:
+                  id: myDisplay_disabled
+                  value: 'false'
+              - lambda: |-
+                  id(myDisplay_line1) = "Display Disabled ";
+                  id(myDisplay_line2) = "To Re-enable";
+                  id(myDisplay_line3) = "Hold Boot Btn";
+                  id(display_show).execute();
+              - delay: 10s    
+              - globals.set:
+                  id: myDisplay_disabled
+                  value: 'true'
+              - lambda: |-
+                  id(myDisplay_line1) = "";
+                  id(myDisplay_line2) = "";
+                  id(myDisplay_line3) = "";
+                  id(display_show).execute();
+
 
 globals:
 
@@ -173,7 +199,7 @@ globals:
     restore_value: no
     initial_value: '0'
 
-  - id: myDisplay_suppress # stops display from showing if true
+  - id: myDisplay_disabled # stops display from showing if true
     type: bool
     restore_value: yes # remember display suppression between boots.
     initial_value: 'false'
@@ -212,19 +238,19 @@ binary_sensor:
           - if:
               condition:
                 lambda: |-
-                  return id(myDisplay_suppress);
+                  return id(myDisplay_disabled);
               then:
                 # set display active
                 - globals.set:
-                    id: myDisplay_suppress
+                    id: myDisplay_disabled
                     value: 'false'
                 - lambda: |-
                     id(flash_led_custom).execute(3, 0.0, 1.0, 0.0); // Flash (green) x 3 display active
                     id(myDisplay_line1) = "";
                     id(myDisplay_line2) = "Display";
-                    id(myDisplay_line3) = "Active";
+                    id(myDisplay_line3) = "Enabled";
                     id(display_show).execute(); 
-                - logger.log: "Boot button long hold. Display active."
+                - logger.log: "Boot button long hold. Display enabled."
               else:
                 # becoming display suppressed. Show notification before actually making suppressed
                 - lambda: |-
@@ -236,7 +262,7 @@ binary_sensor:
                     id(flash_led_custom).execute(5, 1.0, 0.0, 1.0); // Flash (magenta) x 5 display suppressed
                 - delay: 10s
                 - globals.set: # set display to suppressed
-                    id: myDisplay_suppress
+                    id: myDisplay_disabled
                     value: 'true'
                 - lambda: |-
                     id(myDisplay_line1) = ""; // Empty display lines
@@ -609,25 +635,18 @@ script:
       - if:
           condition:
             lambda: |-
-              return id(myDisplay_suppress); // Fixed typo and removed mismatched parenthesis
+              return id(myDisplay_disabled);
           then:
             - display.page.show: blank_page
           else:
-            - if:
-                condition:
-                  lambda: |-
-                    return (id(myDisplay_line1) != "TOKENS WIPED" && id(myDisplay_line1) != "ARMED: PRESS");
-                then:
-                  - lambda: |-
-                      if (id(myDisplay_small_text)) {
-                        id(myDisplay).show_page(id(active_page_small));
-                      } else {
-                        id(myDisplay).show_page(id(active_page_std));
-                      }
-                  - delay: 40s
-                  - display.page.show: blank_page
-                else:
-                  - delay: 40s
+            - lambda: |-
+                if (id(myDisplay_small_text)) {
+                  id(myDisplay).show_page(id(active_page_small));
+                } else {
+                  id(myDisplay).show_page(id(active_page_std));
+                }
+            - delay: 40s
+            - display.page.show: blank_page
 
 
 
