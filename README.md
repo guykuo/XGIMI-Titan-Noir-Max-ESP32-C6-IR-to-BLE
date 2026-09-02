@@ -480,7 +480,7 @@ Sniffing for the wake token should be done with projector power disconnected bec
 - Remove AC power from Xgimi Titan Noir Projector
 - ESP32 should be plugged into 5 volt USB-C power
 
-- There are two ways to start Sniffing for wake tokens. Easiest is to _briefly_ press BOOT button on your ESP32 board. The other way is to press the correct button on your IR remote that starts token sniffing. Which IR button depends on your IRmap. A light will come on to indicate sniffing mode. Sniffing remains active for 20 seconds. 
+- There are two ways to start Sniffing for wake tokens. Easiest is to _briefly_ press BOOT button on your ESP32 board. The other way is to press the correct button on your IR remote that starts token sniffing. Which IR button depends on your IRmap (see table below). A light will come on to indicate sniffing mode. Sniffing remains active for 20 seconds. 
     
 - Repeatedly press power button on Xgimi remote with it near your ESP32 board.
       Usually, just 4 to 6 presses are needed to sniff a valid token. 
@@ -490,16 +490,15 @@ Sniffing for the wake token should be done with projector power disconnected bec
 
 - Wait at least five seconds to let the ESP32 commit the token to NVS flash storage.
      Once flashed to permanent storage, the learned token persists across power and boot cycles.
-     There is also a clear token (5 on remote). To clear a learned token press 5 twice within 5 seconds.
      Normally, there is no need to clear a learned token, unless you wish to revert to the one
      specified in secret.yaml. Because sniffing a token is so simple, you likely did not manually
      capture and place one in your secrets.yaml. Easiest is to sniff with the ESP board.
 
 
-# What the token buttons on your IR remote do
+# What the Token Buttons on Your IR Remote do
   - Token Sniff - ESP32 sniffs for an Xgimi a wake token for 20 seconds. If one is captured, It is stored into NV storage.
   - Token Clear - Must be pressed and confirmed with OK button. Stored token is removed from NV storage. Active wake token becomes the one supplied in secrets.yaml
-  - Token Recall - Makes currently stored token the active token. Shows on display, if one is present). This is useful to verifying the token that was sniffed correctly.
+  - Token Recall - Makes currently stored token the active token. Shows on display, if one is present). This is useful to verify token was sniffed correctly.
 
 Three buttons on your remote are assigned to control wake token. The actual buttons depend on which IRmap you are using.
 |IRmap Set | Token Action | Button |
