@@ -412,6 +412,7 @@ Windows Powershell
 Now you should have a secrets.yaml file that (optionally) contains your specific token.
 
 The helper script refuses to overwrite an existing `secrets.yaml`.
+CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary to GitHub. Both contain device credentials, and the binary also embeds the wake token.
 
 ## 5. Build and Flash Firmware for Your Choice of IR Remote
 
@@ -495,53 +496,52 @@ Sniffing for the wake token should be done with projector power disconnected bec
      capture and place one in your secrets.yaml. Easiest is to sniff with the ESP board.
 
 
-What the token buttons on your IR remote do
+# What the token buttons on your IR remote do
   - Token Sniff - Button (4) ESP32 sniffs for an Xgimi a wake token for 20 seconds. If one is accepted, It is stored into NV storage.
   - Token Clear - Button (5) Must be pressed twice within 5 seconds. Stored token is removed from NV storage. Active wake token becomes the one supplied in secrets.yaml
   - Token Recall - Button (6) displays currently stored token (if one is present). This is useful to verifying the token that was sniffed correctly.
 
 Three buttons on your remote are assigned to control wake token. The actual buttons depend on which IRmap you are using.
 |IRmap Set | Button | Action |
-| ---- | ---- | ---- |
-| TiVo Roamio | Sniff | 4 | 
-|  | Clear | 5 |
-|  | Recall | 6 |
-| ---- | ---- | ---- |
-| Hisense HU | Sniff | 4 |
-|  | Clear | 5 |
-|  | Recall | 6 |
+
 | ---- | ---- | ---- |
 | BenQ W5800 | Sniff | info |
-|  | Clear | invert |
-|  | Recall | 3D |
+| BenQ W5800 | Clear | invert |
+| BenQ W5800 | Recall | 3D |
 | ---- | ---- | ---- |
 | Epson Pro Cinema | Sniff | Frame Interp |
-|  | Clear | RGMCMY |
-|  | Recall | Pattern |
+| Epson Pro Cinema | Clear | RGMCMY |
+| Epson Pro Cinema | Recall | Pattern |
+| ---- | ---- | ---- |
+| Hisense 50U6G | Sniff | 4 |
+| Hisense 50U6G | Clear | 5 |
+| Hisense 50U6G | Recall | 6 |
 | ---- | ---- | ---- |
 | JVC RS2 | Sniff | color up |
-|  | Clear | color down |
-|  | Recall | color temp |
+| JVC RS2 | Clear | color down |
+| JVC RS2 | Recall | color temp |
 | ---- | ---- | ---- |
 | LG Cinebeam | Sniff | 4 | 
-|  | Clear | 5 |
-|  | Recall | 6 |
+| LG Cinebeam | Clear | 5 |
+| LG Cinebeam | Recall | 6 |
 | ---- | ---- | ---- |
 | Optoma UHD50X | Sniff | user 1 | 
-|  | Clear | user 2 |
-|  | Recall | user 3 |    
+| Optoma UHD50X | Clear | user 2 |
+| Optoma UHD50X | Recall | user 3 |    
 | ---- | ---- | ---- |
 | Sony VPL-XW600ES | Sniff | Brt Cinema | 
-|  | Clear | Brt TV |
-|  | Recall | User |
+| Sony VPL-XW600ES | Clear | Brt TV |
+| Sony VPL-XW600ES | Recall | User |
 | ---- | ---- | ---- |
 | Sony XBR-77A9G | Sniff | 4 | 
-|  | Clear | 5 |
-|  | Recall | 6 |
+| Sony XBR-77A9G | Clear | 5 |
+| Sony XBR-77A9G | Recall | 6 |
+| ---- | ---- | ---- |
+| TiVo Roamio | Sniff | 4 | 
+| TiVo Roamio | Clear | 5 |
+| TiVo Roamio | Recall | 6 |
 
 
-
-CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary: both contain device credentials, and the binary also embeds the wake token.
 
 <br>
 <br>
