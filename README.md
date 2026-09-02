@@ -478,6 +478,14 @@ Sniffing for the wake token should be done with projector power disconnected bec
 
 - Remove AC power from Xgimi Titan Noir Projector
 - ESP32 should be plugged into 5 volt USB-C power
+
+- There are two ways to start Sniffing for wake tokens. Sniffing remains active for 20 seconds. A light comes on to indicate sniffing mode.
+  1 Briefly press BOOT button on ESP32 board
+  2 Point IR remote and push button on remote that is that IRmap's token sniff button
+
+  TiVo and Hisense IRmaps<br>
+  
+  
 - Point infrared remote at ESP32 IR receiver and press its "4" button to start sniffing.
       Alternatively, press the "boot" button of your ESP32 to start sniffing.
       Sniffing remains active for 20 seconds. Light comes on to indicate sniffing mode.
