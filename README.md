@@ -340,11 +340,11 @@ Cloning and downloading controls are within Gitbub green "<> Code" button.
 
 Launch PowerShell or Terminal (which depends on your OS).
 
-Type cd /<a space/>
+Type cd -space-
 
 Drag directory of this project into terminal window. Dragging directory into terminal window enters the filepath for you.
 
-Type /<return/>
+Type a return
 
 That should set your shell window working directory to be the one containing this Git.
 
