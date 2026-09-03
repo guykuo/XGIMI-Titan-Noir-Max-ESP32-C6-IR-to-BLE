@@ -171,6 +171,8 @@ You can optionally connect a [SSD1306 128x32 0.91-inch OLED display module](http
 <img width="636" height="222" alt="0 91-inch OLED display module" src="https://github.com/user-attachments/assets/49b91c07-67c8-4109-bf33-dbb260e0f5d2" />
 
 <br>
+<img width="800" height="692" alt="esp32-c6-with-LCD" src="https://github.com/user-attachments/assets/fadb88ea-8d0b-4cbd-857c-5a6d7f854924" />
+
 <br>
 
 ### Waveshare ESP32-S3 1.47inch LCD Display Development Board (Revision B)
