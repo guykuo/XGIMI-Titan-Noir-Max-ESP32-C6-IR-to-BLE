@@ -65,8 +65,8 @@ These each specify a ESP32 board type and desired IR mapping
 
 You can create your own custom make file with your own combinations of ESP32 board and IR signal map...
 
-1 Duplicate make-esp32-TEMPLATE.yaml to create your custom make file
-2 Name your custom make file
+1 Duplicate make-esp32-TEMPLATE.yaml to create your custom make file<br>
+2 Name your custom make file<br>
 3 Edit your custom make file
 
 At the top of your custom make file are places to specify remote name, esp32 board, and desired IR mapping.
