@@ -143,16 +143,18 @@ spi:
 
 # Master Display Component Configuration
 display:
-  - platform: st7789v
+  - platform: mipi_spi
     id: myDisplay
-    model: WAVESHARE_1.47IN_172X320  
+    model: ST7789V
+    dimensions: 220X320  
     cs_pin: GPIO42
     dc_pin: GPIO41
     reset_pin: GPIO39
-    backlight_pin: no                
-    rotation: 270                    
+    rotation: 270   
+    invert_colors: true
+    color_order: BGR    
+    # data_rate: 80MHz                     
     update_interval: 0.3s
-
  
     on_page_change:
       - then:
@@ -178,9 +180,9 @@ display:
             auto L2color = Color(255, 120, 0);
             auto L3color = Color(255, 150, 0);
 
-            it.print(5, 30,  id(my_fontSmall), L1color, id(myDisplay_line1).c_str());
-            it.print(5, 75,  id(my_fontSmall), L2color, id(myDisplay_line2).c_str());
-            it.print(5, 115, id(my_fontLarge), L3color,  id(myDisplay_line3).c_str());
+            it.print(5, 50,  id(my_fontSmall), L1color, id(myDisplay_line1).c_str());
+            it.print(5, 95,  id(my_fontSmall), L2color, id(myDisplay_line2).c_str());
+            it.print(5, 135, id(my_fontLarge), L3color,  id(myDisplay_line3).c_str());
 
       - id: active_page_small
         lambda: |-
@@ -188,9 +190,9 @@ display:
             auto L2color = Color(255, 130, 0);
             auto L3color = Color(255, 130, 0);
             
-            it.print(5, 30,  id(my_fontMedium), L1color, id(myDisplay_line1).c_str());
-            it.print(5, 70,  id(my_fontMedium), L2color, id(myDisplay_line2).c_str());
-            it.print(5, 110,  id(my_fontMedium),L3color, id(myDisplay_line3).c_str());
+            it.print(5, 50,  id(my_fontMedium), L1color, id(myDisplay_line1).c_str());
+            it.print(5, 90,  id(my_fontMedium), L2color, id(myDisplay_line2).c_str());
+            it.print(5, 130,  id(my_fontMedium),L3color, id(myDisplay_line3).c_str());
 
       - id: blank_page
         lambda: |-
