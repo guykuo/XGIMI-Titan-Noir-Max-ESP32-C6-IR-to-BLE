@@ -1,0 +1,120 @@
+# irmap-epson-pro-cinema-LS12000-projector.yaml
+# Epson Pro Cinema LS12000 as mapped on My Harmony
+
+packages:
+  base_ir_engine: !include appkit/ir-architecture-base.yaml
+
+remote_receiver:
+  id: ir_receiver
+  dump: nec
+  on_sony: !remove
+  on_lg: !remove
+  on_jvc: !remove
+
+substitutions:
+  target_ir_address: "0x5583"
+  remote_display_name: "Epson Projectors"
+
+  # =============================================================
+  # DEFINE token clearing gate buttons
+  cmd_token_clear_arm: "0xC23D"    # Epson: RGBCMY
+  cmd_token_clear_fire: "0x7A85"   # Epson: enter
+
+script:
+  - id: master_ir_processor
+    parameters:
+      command: uint32_t
+      is_hold: bool
+    then:
+      - lambda: |-
+          id(nec_broadcast_processor).execute(command, (uint16_t)(command >> 16), (uint16_t)(command & 0xFFFF), is_hold);
+
+  - id: nec_broadcast_processor
+    parameters:
+      command: uint32_t     
+      device_addr: uint16_t  
+      pure_cmd: uint16_t     
+      is_hold: bool       
+    then:
+      - lambda: |-
+          struct IRCommand {
+            std::string name;
+            esphome::template_::TemplateButton* button_obj;
+          };
+
+          // hex keys are LSB-First ESPHome sniffer codes. 
+          static const std::map<uint16_t, IRCommand> nec_codes = {
+            { 0x6F90,       { "power_on",         id(power_on) } },              // Power On
+            { 0x6E91,       { "power_off",        id(power_off_immediately) } }, // Power Off
+            { 0x4FB0,       { "cursor_up",        id(cursor_up) } },      // up arrow
+            { 0x4DB2,       { "cursor_down",      id(cursor_down) } },    // down arrow
+            { 0x4CB3,       { "cursor_left",      id(cursor_left) } },    // left arrow
+            { 0x4EB1,       { "cursor_right",     id(cursor_right) } },   // right arrow
+            { 0x7A85,       { "cursor_enter",     id(cursor_enter) } },   // enter
+            { 0x659A,       { "settings_menu",    id(settings_menu) } },  // menu
+            { 0x7B84,       { "back",             id(back) } },           // ESC
+            { 0xC639,       { "home",             id(home) } },           // default
+            { 0x708F,       { "game_menu",        id(game_menu) } },      // color mode
+            { 0xA956,       { "input",            id(input) } },          // HDMI link
+            { 0x55AA,       { "picture",          id(picture) } },        // image enhance
+            { 0xA25D,       { "focus_manual",     id(focus_manual) } },   // skip back
+            { 0x728D,       { "focus_manual_alt", id(focus_manual) } },   // lens (not in MyHarmony)
+            { 0xA45B,       { "focus_auto",       id(focus_auto) } },     // pause
+            { 0xA55A,       { "shortcut_1",       id(shortcut_1) } },     // reverse
+            { 0xA15E,       { "shortcut_2",       id(shortcut_2) } },     // play
+            { 0xA35C,       { "shortcut_3",       id(shortcut_3) } },     // FF
+            { 0xA05F,       { "shortcut_4",       id(shortcut_4) } },     // skip forward 
+            { 0x8C73,       { "shortcut_1_alt",   id(shortcut_1) } },     // HDMI 1
+            { 0x8877,       { "shortcut_2_alt",   id(shortcut_2) } },     // HDMI 2
+            { 0x7D82,       { "shortcut_3_alt",   id(shortcut_3) } },     // P-in-P (not in myHarmony)
+            { 0x629D,       { "shortcut_4_alt",   id(shortcut_4) } },     // PC (not in myHarmony)
+            { 0x6798,       { "volume_up",        id(volume_up) } },      // volume up
+            { 0x6699,       { "volume_down",      id(volume_down) } },    // volume down
+            { 0x52AD,       { "mute",             id(mute) } },           // mute
+            { 0x7C83,       { "token_sniff",      id(token_sniff) } },    // frame interp
+            { 0xC23D,       { "token_clear",      id(token_clear) } },    // RGBCMY
+            { 0x6996,       { "token_recall",     id(token_recall) } },   // pattern
+            { 0xC43B,       { "BT_start_pair",    id(bluetooth_pairing_start) } }, // 3D format
+            { 0x758A,       { "BT_clear_pair",    id(bluetooth_pairing_clear) } }, // Aspect
+  
+            { 0x6A95,       { "Home",          id(home) } }, // home
+            { 0x8B74,       { "input LAN",     id(home) } }, // input LAN
+            { 0x609F,       { "user",          id(home) } }, // user
+            { 0xA45B,       { "pause",         id(home) } }, // pause
+            { 0x9F60,       { "Link Menu",     id(home) } }, // link menu
+            { 0x6C93,       { "blank",         id(home) } },  // blank  (not in MyHarmony)
+            { 0x748B,       { "memory",        id(home) } },  // memory (not in MyHarmony)
+            { 0x51AE,       { "lens1",         id(home) } },  // lens1  (not in MyHarmony)
+            { 0x50AF,       { "lens2",         id(home) } },  // lens2  (not in MyHarmony)
+
+
+          };
+
+          auto it = nec_codes.find(pure_cmd);
+          if (it != nec_codes.end()) {
+            if (!id(global_token_clear_armed)) {
+              if (is_hold) {
+                id(myDisplay_line1) = it->second.name + " (Hold)";
+                id(myDisplay_line2) = "${remote_display_name}"; 
+                id(myDisplay_line3) = ""; 
+                ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
+              } else {
+                id(myDisplay_line1) = it->second.name;
+                id(myDisplay_line2) = "${remote_display_name}"; 
+                // myDisplay_line3 already has command hex placed by base architecture
+                ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
+              }
+            }
+
+            if (it->second.button_obj != nullptr) {
+              it->second.button_obj->press();
+            }
+          } else {
+            if (!id(global_token_clear_armed)) {
+              if (!is_hold) {
+                id(myDisplay_line1) = "Unassigned";
+                id(myDisplay_line2) = "${remote_display_name}"; 
+                // myDisplay_line3 already has command hex placed by base architecture
+              }
+            }
+          }
