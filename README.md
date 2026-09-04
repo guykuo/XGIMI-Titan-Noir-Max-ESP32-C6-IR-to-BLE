@@ -781,6 +781,7 @@ Be aware that you need to use physical buttons on projector (or IP / serial cont
 | BT_clear_pair | BRIGHTNESS UP | 0x00003C2A |
 
 ## Epson Pro Cinema LS1200 Projector to Xgimi Titan Noir Mapping
+This IRmap also works with other Epson projectors such as the 5050UB
 | Xgimi Command | Epson Projector Btn | (0x5583) + Command |
 | :--- | :--- | :--- |
 | power_on | Power On | 0x6F90 |
