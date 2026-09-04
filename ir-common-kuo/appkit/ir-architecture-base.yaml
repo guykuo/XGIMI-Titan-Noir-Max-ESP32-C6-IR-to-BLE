@@ -82,7 +82,20 @@ remote_receiver:
           id(global_cached_command) = 0;
           id(global_is_holding) = false;
         }
-    - script.execute: display_show
+        
+    - if:
+        condition: 
+          - lambda: |-
+              return(id(showing_special_info) = true);   
+              
+        then:
+          - globals.set: #turn off showing_special_info, but don't display
+              id: showing_special_info
+              value: 'false'
+        else:       
+          - script.execute: #not showing token, we show the address and command.
+              id: display_show
+              small_text: false
 
 
 
@@ -148,7 +161,20 @@ remote_receiver:
           id(global_cached_command) = 0;
           id(global_is_holding) = false;
         }
-    - script.execute: display_show
+
+    - if:
+        condition: 
+          - lambda: |-
+              return(id(showing_special_info) = true);   
+              
+        then:
+          - globals.set: #turn off showing_special_info, but don't display
+              id: showing_special_info
+              value: 'false'
+        else:       
+          - script.execute: #not showing token, we show the address and command.
+              id: display_show
+              small_text: false
 
 
   # 4. JVC Handler
@@ -217,7 +243,20 @@ remote_receiver:
           id(global_cached_command) = 0;
           id(global_is_holding) = false;
         }
-    - script.execute: display_show
+
+    - if:
+        condition: 
+          - lambda: |-
+              return(id(showing_special_info) = true);   
+              
+        then:
+          - globals.set: #turn off showing_special_info, but don't display
+              id: showing_special_info
+              value: 'false'
+        else:       
+          - script.execute: #not showing token, we show the address and command.
+              id: display_show
+              small_text: false
 
 
   # 5. Sony Handler
@@ -290,7 +329,20 @@ remote_receiver:
             }
           }
         }
-    - script.execute: display_show
+
+    - if:
+        condition: 
+          - lambda: |-
+              return(id(showing_special_info) = true);   
+              
+        then:
+          - globals.set: #turn off showing_special_info, but don't display
+              id: showing_special_info
+              value: 'false'
+        else:       
+          - script.execute: #not showing token, we show the address and command.
+              id: display_show
+              small_text: false
 
 
 globals:

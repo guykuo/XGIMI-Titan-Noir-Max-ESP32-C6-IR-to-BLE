@@ -38,11 +38,6 @@ globals:
     restore_value: no
     type: std::string  
     initial_value: '"Translator"'
-
-  - id: myDisplay_small_text
-    type: bool
-    restore_value: no
-    initial_value: 'false'  # This acts as your default value!
           
 output:
   - platform: ledc

@@ -146,8 +146,10 @@ esphome:
       
               ESP_LOGD("boot_loader", "Active wake token vector now set to hex: %s", hex_log_str.c_str());
             }        
-        - script.execute: display_show
-
+        - script.execute: 
+            id: display_show
+            small_text: false
+            
     - priority: 100 
       then: # if display is disabled briefly show a message how to enable screen
         - if:
@@ -163,7 +165,7 @@ esphome:
                   id(myDisplay_line1) = "Display Disabled ";
                   id(myDisplay_line2) = "To Re-enable";
                   id(myDisplay_line3) = "Hold Boot Btn";
-                  id(display_show).execute();
+                  id(display_show).execute(false);
               - delay: 10s    
               - globals.set:
                   id: myDisplay_disabled
@@ -172,7 +174,7 @@ esphome:
                   id(myDisplay_line1) = "";
                   id(myDisplay_line2) = "";
                   id(myDisplay_line3) = "";
-                  id(display_show).execute();
+                  id(display_show).execute(false);
 
 
 globals:
@@ -204,6 +206,10 @@ globals:
     restore_value: yes # remember display suppression between boots.
     initial_value: 'false'
 
+  - id: showing_special_info
+    type: bool
+    restore_value: no
+    initial_value: 'false'
   
 binary_sensor:
   - platform: template
@@ -249,7 +255,7 @@ binary_sensor:
                     id(myDisplay_line1) = "";
                     id(myDisplay_line2) = "Display";
                     id(myDisplay_line3) = "Enabled";
-                    id(display_show).execute(); 
+                    id(display_show).execute(false); 
                 - logger.log: "Boot button long hold. Display enabled."
               else:
                 # becoming display suppressed. Show notification before actually making suppressed
@@ -258,7 +264,7 @@ binary_sensor:
                     id(myDisplay_line1) = "Disabling Display";
                     id(myDisplay_line2) = "To Re-enable";
                     id(myDisplay_line3) = "Hold Boot Btn";
-                    id(display_show).execute();
+                    id(display_show).execute(false);
                     id(flash_led_custom).execute(5, 1.0, 0.0, 0.5); // Flash (magenta) x 5 display suppressed
                 - delay: 10s
                 - globals.set: # set display to suppressed
@@ -268,7 +274,7 @@ binary_sensor:
                     id(myDisplay_line1) = ""; // Empty display lines
                     id(myDisplay_line2) = "";
                     id(myDisplay_line3) = "";
-                    id(display_show).execute(); // display_show forced to show page_blank because suppressed 
+                    id(display_show).execute(false); // display_show forced to show page_blank because suppressed 
                 - logger.log: "Boot button long hold. Display suppressed."
 
 
@@ -280,6 +286,10 @@ button:
     icon: "mdi:bluetooth"
     on_press:
       then:
+        - globals.set: 
+            id: showing_special_info # indicate we are showing special info that should not be overwritten
+            value: 'true'
+        
         - lambda: |-
             bool learned_wake_token_exists = false; // check if any bytes are not 0x00
             for (int i = 0; i < 15; i++) {
@@ -305,13 +315,12 @@ button:
               
             } else {
 
-              // 🛠️ THE C HELPER BRIDGE INJECTION: Safely sync parsed secret vector data to active arrays
+              // Safely sync parsed secret vector data to active array
               std::vector<uint8_t> active_token_vector = get_secret_wake_token();
               for (size_t i = 0; i < 15; ++i) {
                 id(active_wake_token)[i] = active_token_vector[i];
               }
 
-              // 🛠️ ADDED: Build full hexadecimal string of active_wake_token for myDisplay_line1
               std::string formatted_hex = "";
               for (size_t i = 0; i < 15; ++i) {
                   if (i > 0) {
@@ -325,7 +334,7 @@ button:
               id(myDisplay_line1) = formatted_hex;
               id(myDisplay_line2) = "Default Token";
               id(myDisplay_line3) = "Being Used";
-              id(display_show).execute(); 
+              id(display_show).execute(true); 
             }
 
 
@@ -431,7 +440,7 @@ esp32_ble_tracker:
                         id(myDisplay_line1) = "Token Recognized";
                         id(myDisplay_line2) = "Matches";
                         id(myDisplay_line3) = "Existing";
-                        id(display_show).execute();
+                        id(display_show).execute(false);
                         
                         id(sniffer_hit_counter) = 0; 
                         continue;
@@ -470,7 +479,7 @@ esp32_ble_tracker:
                       id(myDisplay_line1) = sniffed_token_last15_hex;
                       id(myDisplay_line2) = "Storing Token";
                       id(myDisplay_line3) = "Wait 5 sec";
-                      id(display_show).execute(); 
+                      id(display_show).execute(false); 
                       
                       ESP_LOGI("xgimi_sniffer", "SUCCESS! Repeated XGIMI Wake Token detected and updated.");
                     } else {
@@ -480,7 +489,7 @@ esp32_ble_tracker:
                       id(myDisplay_line1) = "Failure";
                       id(myDisplay_line2) = "Bad Format";
                       id(myDisplay_line3) = "Token";
-                      id(display_show).execute();
+                      id(display_show).execute(false);
                     }
                   }
 
@@ -512,12 +521,6 @@ script:
       - script.execute:
           id: turn_led_off_custom
                
-      - lambda: |-
-          id(myDisplay_line1) = "Clear Learned"; 
-          id(myDisplay_line2) = "Using Default";
-          id(myDisplay_line3) = "Wait 5 sec";
-      - script.execute: display_show
-
       - lambda: |-
           bool learned_wake_token_exists = false;
           for (int i = 0; i < 15; i++) {
@@ -562,8 +565,9 @@ script:
           }
           ESP_LOGD("token_clear", "Active wake token vector now set to hex: %s", hex_log_str.c_str());
 
-      - script.execute: display_show      
-      
+      - script.execute: 
+          id: display_show
+          small_text: false
       
   # --- Sniff for Wake Tokens ---
   - id: sniffing_sequence
@@ -603,8 +607,10 @@ script:
           id(myDisplay_line1) = "SNIFFING Token"; 
           id(myDisplay_line2) = "Repeat Press";
           id(myDisplay_line3) = "Xgimi Power";
-      - script.execute: display_show
-          
+      - script.execute: 
+          id: display_show
+          small_text: false
+              
       - delay: 20s 
 
       # This section only runs if the 20s completely expires without finding a token
@@ -625,12 +631,16 @@ script:
           id(myDisplay_line1) = "Wake Token"; 
           id(myDisplay_line2) = "Sniffing";
           id(myDisplay_line3) = "ENDED";
-      - script.execute: display_show
+      - script.execute: 
+          id: display_show
+          small_text: false
 
 
 # --- myDisplay timeout handler ---
   - id: display_show
     mode: restart 
+    parameters:
+      small_text: bool
     then:
       - if:
           condition:
@@ -639,14 +649,17 @@ script:
           then:
             - display.page.show: blank_page
           else:
-            - lambda: |-
-                if (id(myDisplay_small_text)) {
-                  id(myDisplay).show_page(id(active_page_small));
-                } else {
-                  id(myDisplay).show_page(id(active_page_std));
-                }
-            - delay: 40s
-            - display.page.show: blank_page
+            - if:
+                condition:
+                  lambda: |-
+                    return small_text;
+                then:
+                   - display.page.show: active_page_small
+                else:
+                   - display.page.show: active_page_std
+
+      - delay: 40s
+      - display.page.show: blank_page
 
 
 
@@ -694,10 +707,9 @@ script:
             id(myDisplay_line3) = "Invalid";
           }
           
-      - globals.set:
-          id: myDisplay_small_text
-          value: 'true'
-      - script.execute: display_show
+      - script.execute: 
+          id: display_show
+          small_text: true
  
 
 
