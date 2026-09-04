@@ -113,7 +113,7 @@ simultaneously used under this strategy.
 These IR maps have known working IR code sets ...
 
 * irmap-benq-w5800.yaml_______________(BenQ W5800 projector)
-* irmap-epson-pro-cinema-LS1200-projector.yaml______(Epson Pro Cinema LS1200 projector)
+* irmap-epson-pro-cinema-LS1200-projector.yaml______(Epson Projectors)
 * irmap-hisense-50u6g.yaml____________(Hisense 50U6G TV)
 * irmap-jvc-hr-S9600u.yaml____________(JVC HR-S9600U VCR)
 * irmap-jvc-rs2-codeset-A.yaml________(JVC Projectors code set A - default) 
@@ -823,22 +823,27 @@ Be aware that you need to use physical buttons on projector (or IP / serial cont
 | settings_menu | menu | 0x659A |
 | back | ESC | 0x7B84 |
 | home | default | 0xC639 |
-| game_menu | image enhance | 0x55AA |
-| input | HDMI 1 | 0x8C73 |
-| picture | color mode | 0x708F |
+| game_menu | color mode | 0x708F |
+| input | HDMI link | 0xA956 |
+| picture | image enhance | 0x55AA |
 | focus_manual | skip back | 0xA25D |
-| focus_auto | skip forward | 0xA05F |
+| focus_manual_alt | lens (not in MyHarmony) | 0x728D |
+| focus_auto | pause | 0xA45B |
 | shortcut_1 | reverse | 0xA55A |
 | shortcut_2 | play | 0xA15E |
 | shortcut_3 | FF | 0xA35C |
-| shortcut_4 | stop record | 0xA659 |
+| shortcut_4 | skip forward | 0xA05F |
+| shortcut_1_alt | HDMI 1 | 0x8C73 |
+| shortcut_2_alt | HDMI 2 | 0x8877 |
+| shortcut_3_alt | P-in-P (not in myHarmony) | 0x7D82 |
+| shortcut_4_alt | PC (not in myHarmony) | 0x629D |
 | volume_up | volume up | 0x6798 |
 | volume_down | volume down | 0x6699 |
 | mute | mute | 0x52AD |
 | token_sniff | frame interp | 0x7C83 |
 | token_clear | RGBCMY | 0xC23D |
 | token_recall | pattern | 0x6996 |
-| BT_start_pair | Link Menu | 0x9F60 |
+| BT_start_pair | 3D format | 0xC43B |
 | BT_clear_pair | Aspect | 0x758A |
 
 <br>
