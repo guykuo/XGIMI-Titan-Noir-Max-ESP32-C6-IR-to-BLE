@@ -542,17 +542,10 @@ Three buttons on your remote are assigned to control wake token. The actual butt
 | TiVo Roamio | Recall | 6 |
 
 
-
-<br>
-<br>
-
 # Xgimi Command and IR Remote Button Tables
-<br>
-
 ## Tivo Roamio to Xgimi Titan Noir Mapping
-
 |Xgimi Remote Command | Tivo Remote | (0x3085) + Command |
-|-------- | -------- | -------------------- |
+| :--- | :--- | :--- |
 | power_on | tv power (as discrete on) | 0xE010 |
 | power_off | live TV (as discrete off) | 0xE011 |
 | power_off_alt | 0 | 0xC031 |
@@ -583,14 +576,9 @@ Three buttons on your remote are assigned to control wake token. The actual butt
 | BT_start_pair | enter | 0xC033 |
 | BT_clear_pair | clear | 0xC032 |
 
-
-<br>
-<br>
-
 ## Hisense 50U6G to Xgimi Titan Noir Mapping
-
 |Xgimi Remote Command | Hisense Remote Button | (0xEA15) + Command |
-|-------- | -------- | -------------------- |
+| :--- | :--- | :--- |
 | power_on | discrete power on | 0xF708 |
 | power_on_alt | discrete power on (variant) | 0x8E71 |
 | power_off | discrete power off | 0xEF10 |
@@ -622,11 +610,7 @@ Three buttons on your remote are assigned to control wake token. The actual butt
 | BT_start_pair | prime video | 0xB847 |
 | BT_clear_pair | youtube | 0xB649 |
 
-<br>
-<br>
-
 ## LG Cinebeam HU810P to Xgimi Titan Noir Mapping
-
 (Some items duplicated to accept alternative buttons)
 | Xgimi Remote Command | LG Cinebeam Button | (0xFB04) + Command  |
 | :--- | :--- | :--- |
@@ -659,11 +643,7 @@ Three buttons on your remote are assigned to control wake token. The actual butt
 | token_recall | 6 | 0xE916 |
 | BT_start_pair | netflix | 0xA956 |
 
-<br>
-<br>
-
 ## JVC-VCR to Xgimi Titan Noir Mapping
-
 | Xgimi Remote Command | JVC VCR Btn | (0x03C2) + Command |
 | :--- | :--- | :--- |
 | power_on | power (as discrete) | 0xC2D0 |
@@ -700,14 +680,9 @@ Three buttons on your remote are assigned to control wake token. The actual butt
 | BT_start_pair | 1 | 0xC284 |
 | BT_clear_pair | 2 | 0xC244 |
 
-
-<br>
-<br>
-
 ## JVC RS2 Projector to Xgimi Titan Noir Mapping
 JVC Projectors by default respond to code set A. The can be changed to code set B to avoid control conflicts.
 Be aware that you need to use physical buttons on projector (or IP / serial control) to change code if a remote with current codes set is not available.
-
 | Xgimi Command | JVC Projector Btn | (0xCE) + Command |
 | :--- | :--- | :--- |
 | power_on | power on | 0xA0 |
@@ -740,13 +715,9 @@ Be aware that you need to use physical buttons on projector (or IP / serial cont
 
 
 
-
-<br>
-<br>
-
 ## Sony Bravia XBR-77A9G TV to Xgimi Titan Noir Mapping
-
 | Xgimi Command | Sony TV Remote | Hex Code |
+| :--- | :--- | :--- |
 | power_on | power on discrete | 0x000750 |
 | power_on_alt | power (toggle) | 0x000A90 |
 | power_off | power off discrete | 0x000F50 |
@@ -777,13 +748,9 @@ Be aware that you need to use physical buttons on projector (or IP / serial cont
 | BT_start_pair | play | 0x002CE9 |
 | BT_clear_pair | fast forward | 0x001CE9 |
 
-
-<br>
-<br>
-
 ## Sony VPL-XW600ES Projector to Xgimi Titan Noir Mapping
-
 | Xgimi Command | Sony Projector Remote | Hex Code |
+| :--- | :--- | :--- |
 | power_on | Power On (discrete) | 0x00003A2A |
 | power_off | Power Off (discrete) | 0x00007A2A |
 | power_on_alt | Power Toggle (alt discrete On) | 0x0000542A |
@@ -813,12 +780,9 @@ Be aware that you need to use physical buttons on projector (or IP / serial cont
 | BT_start_pair | BRIGHTNESS DOWN | 0x00007C2A |
 | BT_clear_pair | BRIGHTNESS UP | 0x00003C2A |
 
-<br>
-<br>
-
 ## Epson Pro Cinema LS1200 Projector to Xgimi Titan Noir Mapping
-
 | Xgimi Command | Epson Projector Btn | (0x5583) + Command |
+| :--- | :--- | :--- |
 | power_on | Power On | 0x6F90 |
 | power_off | Power Off | 0x6E91 |
 | cursor_up | up arrow | 0x4FB0 |
@@ -852,12 +816,9 @@ Be aware that you need to use physical buttons on projector (or IP / serial cont
 | BT_start_pair | 3D format | 0xC43B |
 | BT_clear_pair | Aspect | 0x758A |
 
-<br>
-<br>
-
 ## BenQ W5800 Projector to Xgimi Titan Noir Mapping
-
 | Xgimi Command | BenQ Projector Btn | (0x3000) + Command |
+| :--- | :--- | :--- |
 | power_on | power on | 0xB04F |
 | power_off | power off | 0xB14E |
 | cursor_up | up arrow | 0xF40B |
@@ -886,12 +847,9 @@ Be aware that you need to use physical buttons on projector (or IP / serial cont
 | BT_start_pair | color temp | 0xA05F |
 | BT_clear_pair | color manage | 0xA45B |
 
-<br>
-<br>
-
 ## Optoma UHD50X Projector to Xgimi Titan Noir Mapping
-
 | Xgimi Command | Optoma Projector Btn | (0xCD32) + Command |
+| :--- | :--- | :--- |
 | power_on | power on | 0xFD02 |
 | power_off | power off | 0xD12E |
 | cursor_left | left arrow | 0xEF10 |
