@@ -56,17 +56,18 @@ Project Git is arranged as below. You will find make, hardware, and IRmap files 
 "Make" files are where you specify desired combination of board type, IR mapping, and name your new IR translator. Several example make files are provided.
 These each specify a ESP32 board type and desired IR mapping
 
-* make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
+* make-esp32-c3-OLED-GPIO1-IR-JVC.yaml
 * make-esp32-c3-OLED-GPIO1-IR-TiVo.yaml
-* make-esp32-c6-wroom-1-GPIO10-IR-Hisense.yaml
+* make-esp32-c6-wroom-1-GPIO10-IR-Epson.yaml
 * make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
 * make-esp32-TEMPLATE.yaml
 
-You can create your own custom make file with your own combinations of ESP32 board and IR signal map by...
 
-1 Cloning make-esp32-TEMPLATE.yaml file
+You can create your own custom make file with your own combinations of ESP32 board and IR signal map...
+
+1 Duplicate make-esp32-TEMPLATE.yaml to create your custom make file
 2 Name your custom make file
-2 Editing your custom make file
+2 Edit your custom make file
 
 At the top of your custom make file are places to specify remote name, esp32 board, and desired IR mapping.
 
