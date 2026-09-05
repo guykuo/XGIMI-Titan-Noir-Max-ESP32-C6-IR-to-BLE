@@ -53,29 +53,23 @@ Project Git is arranged as below. You will find make, hardware, and IRmap files 
 
 # The Software
 ## Make Files
-"Make" files are where you specify desired combination of board type, IR mapping, and name your new IR translator. Several example make files are provided.
-These each specify a ESP32 board type and desired IR mapping
+"Make" files are where you specify desired combination of board type, IR mapping, and name your new IR translator. A templete make files is provided.
+Duplicate the template file and edit it to specify a ESP32 board type and desired IR mapping
 
-* make-esp32-c3-OLED-GPIO1-IR-JVC.yaml
-* make-esp32-c3-OLED-GPIO1-IR-TiVo.yaml
-* make-esp32-c6-wroom-1-GPIO10-IR-Epson.yaml
-* make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
 * make-esp32-TEMPLATE.yaml
-
-
-You can create your own custom make file with your own combinations of ESP32 board and IR signal map...
 
 1 Duplicate make-esp32-TEMPLATE.yaml to create your custom make file<br>
 2 Name your custom make file<br>
 3 Edit your custom make file
 
 At the top of your custom make file are places to specify remote name, esp32 board, and desired IR mapping.
+Uncomment one and only one option for board and also for IRmap.
 
-Be sure to leave the ir-common-kuo/ prefix intact when you replac the HARDWARE and IRMAP
-Also, your custom make file should be in the same directory as the sample make files.
-Do not move or rename existing files in ir-common-kuo/ subdirectory
+Your custom make file should be left in the same directory as the template make files.
+Never move or rename files in ir-common-kuo/ subdirectory
 
 Here is the file section of a make file that you edit while making a custom make file.
+In this example, hardware-c3.yaml and irmap-epson-pro-cinema-LS12000.yaml have been specified by uncommenting
 
 ```YAML
 # ============= BEGIN Configuration Options KUO ==========
@@ -86,17 +80,39 @@ Here is the file section of a make file that you edit while making a custom make
 #   irmap_package
 
 substitutions:
-  ble_remote_name: "IR to Xgimi"  # <===== Name your IR remote. (20 char max)
+  ble_remote_name: "Epson Xgimi"  # <===== Name your IR remote. (20 char max)
 
 packages: 
 
-  # ******* NB do not accidentally leave out prefix ir-common-kuo/
+  # --- ESP32 board, Uncomment one (and only one) for your board
+  hardware_package: !include ir-common-kuo/hardware-c3.yaml
+  #hardware_package: !include ir-common-kuo/hardware-c6.yaml
+  #hardware_package: !include ir-common-kuo/hardware-m5stack-atom-lite.yaml
+  #hardware_package: !include ir-common-kuo/hardware-s3-hosyond-lcd-3.5-touch.yaml
+  #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-lcd-1.47B.yaml
+  #hardware_package: !include ir-common-kuo/HARDWARE.YAML # Or uncomment this line and replace HARDWARE.YAML with your file.
 
-  # --- hardware settings of ESP32 board
-  hardware_package: !include ir-common-kuo/HARDWAREFILE.yaml # <===== Replace HARDWAREFILE.yaml with your board.yaml
+  # --- IR Map, Uncomment one (and only one) for your IRmap
+  #irmap_package: !include ir-common-kuo/irmap-benq-w5800.yaml 
+  irmap_package: !include ir-common-kuo/irmap-epson-pro-cinema-LS12000.yaml 
+  #irmap_package: !include ir-common-kuo/irmap-hisense-50u6g.yaml 
+  #irmap_package: !include ir-common-kuo/irmap-jvc-hr-S9600u.yaml 
+  #irmap_package: !include ir-common-kuo/irmap-jvc-rs2-codeset-A.yaml 
+  #irmap_package: !include ir-common-kuo/irmap-jvc-rs2-codeset-B.yaml 
+  #irmap_package: !include ir-common-kuo/irmap-LG-cinebeam-hu810p.yaml 
+  #irmap_package: !include ir-common-kuo/irmap-optoma-UHD50X.yaml 
+  #irmap_package: !include ir-common-kuo/irmap-sony-VPL-XW600ES.yaml 
+  #irmap_package: !include ir-common-kuo/irmap-sony-XBR-77A9G.yaml 
+  #irmap_package: !include ir-common-kuo/irmap-tivo-roamio-TCD846500.yaml 
+  #irmap_package: !include ir-common-kuo/irmap-AWOL-projector.yaml # untested, uses Hisense IR codes
+  #irmap_package: !include ir-common-kuo/irmap-xgimi-titan.yaml    # untested, original Titan IR codes
+  #irmap_package: !include ir-common-kuo/IRMAP.YAML # Or uncomment this line and replace IRMAP.YAML with your file 
 
-  # --- IR mapping options
-  irmap_package:    !include ir-common-kuo/IRMAP.yaml # <===== Replace IRMAP.yaml with your IRMAP.yaml 
+
+
+
+
+# ============= END Configuration Options KUO ===========
 ```
 Available hardware boards and irmap files are in ir-common-kuo/ subdirectory
 
