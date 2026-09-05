@@ -49,8 +49,7 @@ script:
             { 0x2CC3,       { "power_off", id(power_off_immediately) } }, // Discrete Power Off
             { 0xEF10,       { "power_off_alt", id(power_off_immediately) } }, // 0
             { 0xD728,       { "back",          id(back) } },          // Back / Return
-            { 0x7807,       { "cursor_left",   id(cursor_left) } },   // cursor left
-            { 0xF807,       { "cursor_left_alt", id(cursor_left) } }, // cursor left
+            { 0xF807,       { "cursor_left",   id(cursor_left) } },   // cursor left
             { 0xF906,       { "cursor_right",  id(cursor_right) } },  // cursor right
             { 0xBF40,       { "cursor_up",     id(cursor_up) } },     // cursor up
             { 0xBE41,       { "cursor_down",   id(cursor_down) } },   // cursor down
