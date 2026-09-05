@@ -6,27 +6,50 @@
 #   irmap_package
 
 substitutions:
-  ble_remote_name: "IR to Xgimi"  # <===== Name your IR remote. (20 char max)
+  ble_remote_name: "Epson Xgimi"  # <===== Name your IR remote. (20 char max)
 
 packages: 
 
-  # ******* NB do not accidentally leave out prefix ir-common-kuo/
+  # --- ESP32 board, Uncomment one (and only one) for your board
+  hardware_package: !include ir-common-kuo/hardware-c3.yaml
+  #hardware_package: !include ir-common-kuo/hardware-c6.yaml
+  #hardware_package: !include ir-common-kuo/hardware-m5stack-atom-lite.yaml
+  #hardware_package: !include ir-common-kuo/hardware-s3-hosyond-lcd-3.5-touch.yaml
+  #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-lcd-1.47B.yaml
+  #hardware_package: !include ir-common-kuo/HARDWARE.YAML # Or uncomment this line and replace HARDWARE.YAML with your file.
 
-  # --- hardware settings of ESP32 board
-  hardware_package: !include ir-common-kuo/HARDWAREFILE.YAML # <===== Replace HARDWAREFILE.yaml with your board.yaml
+  # --- IR Map, Uncomment one (and only one) for your IRmap
+  #irmap_package: !include ir-common-kuo/irmap-benq-w5800.yaml 
+  irmap_package: !include ir-common-kuo/irmap-epson-pro-cinema-LS12000.yaml 
+  #irmap_package: !include ir-common-kuo/irmap-hisense-50u6g.yaml 
+  #irmap_package: !include ir-common-kuo/irmap-jvc-hr-S9600u.yaml 
+  #irmap_package: !include ir-common-kuo/irmap-jvc-rs2-codeset-A.yaml 
+  #irmap_package: !include ir-common-kuo/irmap-jvc-rs2-codeset-B.yaml 
+  #irmap_package: !include ir-common-kuo/irmap-LG-cinebeam-hu810p.yaml 
+  #irmap_package: !include ir-common-kuo/irmap-optoma-UHD50X.yaml 
+  #irmap_package: !include ir-common-kuo/irmap-sony-VPL-XW600ES.yaml 
+  #irmap_package: !include ir-common-kuo/irmap-sony-XBR-77A9G.yaml 
+  #irmap_package: !include ir-common-kuo/irmap-tivo-roamio-TCD846500.yaml 
+  #irmap_package: !include ir-common-kuo/irmap-AWOL-projector.yaml # untested, uses Hisense IR codes
+  #irmap_package: !include ir-common-kuo/irmap-xgimi-titan.yaml    # untested, original Titan IR codes
+  #irmap_package: !include ir-common-kuo/IRMAP.YAML # Or uncomment this line and replace IRMAP.YAML with your file 
 
-  # --- IR mapping options
-  irmap_package:    !include ir-common-kuo/IRMAP.YAML # <===== Replace IRMAP.yaml with your IRMAP.yaml 
 
 
-  # do not change mrmachine_BLE_package line
-  mrmachine_BLE_package: !include ir-common-kuo/appkit/mrmachine_bluetoothV_old.yaml # required, modified mrmachine original BLE package
-  # do not change mrmachine_BLE_package line
+
 
 # ============= END Configuration Options KUO ===========
-
 # code after this point typically does not need to be changed.
 
+
+
+
+
+
+
+
+  # do not change mrmachine_BLE_package
+  mrmachine_BLE_package: !include ir-common-kuo/appkit/mrmachine_bluetoothV_old.yaml # required, modified mrmachine BLE package
 
 preferences:
   flash_write_interval: 3s # More quickly commits sniffed tokens to flash. Global data rarely changes.
