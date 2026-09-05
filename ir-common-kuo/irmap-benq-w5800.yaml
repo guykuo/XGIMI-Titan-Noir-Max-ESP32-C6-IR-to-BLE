@@ -43,7 +43,7 @@ script:
           };
 
           // Resolved duplicate mapping entries to prevent compiler warnings or key overwrites
-          static const std::map<uint16_t, IRCommand> nec_codes = {
+          static const std::map<uint16_t, IRCommand> cmd_codes = {
             { 0xB04F,       { "power_on",      id(power_on) } },              // power on
             { 0xB14E,       { "power_off",     id(power_off_immediately) } }, // power off
             { 0xF40B,       { "cursor_up",     id(cursor_up) } },      // up arrow
@@ -54,7 +54,7 @@ script:
             { 0xF00F,       { "settings_menu", id(settings_menu) } },  // menu
             { 0x7A85,       { "back",          id(back) } },           // back
             { 0x8778,       { "home",          id(home) } },           // default
-            { 0xEA15,       { "game_menu",     id(game_menu) } },      // guide
+            { 0x41BE,       { "game_menu",     id(game_menu) } },      // cinema master
             { 0xFB04,       { "input",         id(input) } },          // source
             { 0xEF10,       { "picture",       id(picture) } },        // picure mode
             { 0xEC13,       { "focus_manual",  id(focus_manual) } },   // aspect
@@ -66,43 +66,34 @@ script:
             { 0xA15E,       { "volume_up",     id(volume_up) } },      // gamma
             { 0x817E,       { "volume_down",   id(volume_down) } },    // sharp
             { 0xF807,       { "mute",          id(mute) } },           // eco blank
-            { 0xF30C,       { "token_sniff",   id(token_sniff) } },    // info
+            { 0xC33C,       { "token_sniff",   id(token_sniff) } },    // HDR
             { 0x629D,       { "token_clear",   id(token_clear) } },    // invert
             { 0x639C,       { "token_recall",  id(token_recall) } },   // 3D
             { 0xA05F,       { "BT_start_pair", id(bluetooth_pairing_start) } },  // color temp
             { 0xA45B,       { "BT_clear_pair", id(bluetooth_pairing_clear) } },  // color manage
             
-            { 0x41BE,       { "cinema master", id(home) } },           // cinema master
-            { 0xC33C,       { "HDR",           id(home) } },           // HDR
             { 0x6B94,       { "test pattern",  id(home) } }            // test pattern            
             
           };
 
-          auto it = nec_codes.find(pure_cmd);
-          if (it != nec_codes.end()) {
+          auto it = cmd_codes.find(pure_cmd);
+          if (it != cmd_codes.end()) {
             if (!id(global_token_clear_armed)) {
               if (is_hold) {
-                id(myDisplay_line1) = it->second.name + " (Hold)";
-                id(myDisplay_line2) = "${remote_display_name}"; 
-                id(myDisplay_line3) = ""; 
+                id(commandName) = it->second.name + " (Hold)";
                 ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
               } else {
-                id(myDisplay_line1) = it->second.name;
-                id(myDisplay_line2) = "${remote_display_name}"; 
-                // myDisplay_line3 already has command hex placed by base architecture
+                id(commandName) = it->second.name;
                 ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
               }
             }
-
+            // press button action
             if (it->second.button_obj != nullptr) {
               it->second.button_obj->press();
             }
+            
           } else {
-            if (!id(global_token_clear_armed)) {
-              if (!is_hold) {
-                id(myDisplay_line1) = "Unassigned";
-                id(myDisplay_line2) = "${remote_display_name}"; 
-                // myDisplay_line3 already has command hex placed by base architecture
-              }
-            }
+            // did not find in map
+            id(commandName) = "Unassigned"; // indicate no command was found
+            
           }

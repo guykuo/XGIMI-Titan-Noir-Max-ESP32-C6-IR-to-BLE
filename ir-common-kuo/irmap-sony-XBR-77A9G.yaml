@@ -10,10 +10,11 @@ remote_receiver:
   on_nec: !remove
   on_lg: !remove
   on_jvc: !remove
-  
+  on_pronto: !remove
+
 substitutions:
-  target_ir_address: "0x0001"        
-  remote_display_name: "Sony TV"     
+  target_ir_address: "0x0000"  
+  remote_display_name: "Sony Protocol"   
 
   # =============================================================
   # DEFINE token clearing gate buttons
@@ -43,7 +44,7 @@ script:
             esphome::template_::TemplateButton* button_obj;
           };
 
-          static const std::map<uint32_t, IRCommand> sony_codes = {
+          static const std::map<uint32_t, IRCommand> cmd_codes = {
             { 0x000750,       { "power_on",      id(power_on) } },             // power on discrete
             { 0x000A90,       { "power_on_alt",  id(power_on) } },             // power (toggle)
             { 0x000F50,       { "power_off",     id(power_off_immediately)} }, // power off discrete
@@ -75,16 +76,14 @@ script:
             { 0x001CE9,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // fast forward
           };
 
-          auto it = sony_codes.find(command);
-          if (it != sony_codes.end()) {
+          auto it = cmd_codes.find(command);
+          if (it != cmd_codes.end()) {
             if (!id(global_token_clear_armed)) {
               if (is_hold) {
-                id(myDisplay_line1) = it->second.name + " (Hold)";
+                id(commandName) = it->second.name + " (Hold)";
               } else {
-                id(myDisplay_line1) = it->second.name;
+                id(commandName) = it->second.name;
               }
-              id(myDisplay_line2) = "${remote_display_name}"; 
-              // myDisplay_line3 already has raw hex code from base architecture
             }
             
             if (it->second.button_obj != nullptr) {
@@ -94,12 +93,10 @@ script:
             if (!id(global_token_clear_armed)) {
               if (!is_hold) {
                 uint8_t bit_depth = (command > 0x007FFF) ? 20 : ((command > 0x000FFF) ? 15 : 12);
-                id(myDisplay_line1) = "Sony Unk(" + std::to_string(bit_depth) + "b)";
+                id(commandName) = "Sony Unk(" + std::to_string(bit_depth) + "b)";
                 
                 char addr_buf[32];
                 snprintf(addr_buf, sizeof(addr_buf), "A:0x%04X  C:0x%02X", device_addr, pure_cmd);
-                id(myDisplay_line2) = std::string(addr_buf);
-                // myDisplay_line3 already has raw hex code from base architecture
               }
             }
           }

@@ -1,4 +1,5 @@
 # ir-common-kuo/ir-architecture-base.yaml
+  
 remote_receiver:
   id: ir_receiver
   pin:
@@ -25,325 +26,62 @@ remote_receiver:
   # 2. NEC Handler
   on_nec:
     - lambda: |-
-        uint32_t arm_code = ${cmd_token_clear_arm};
-        uint32_t fire_code = ${cmd_token_clear_fire};
-
-        if (x.command == arm_code) {
-          id(global_token_clear_armed) = true;
-          id(token_clear_safety_timeout).execute(); 
-          id(myDisplay_line1) = "Token Clear Requested";
-          id(myDisplay_line2) = "To Confirm";
-          id(myDisplay_line3) = "Press Select ";
-          return; // STOP FLOW: Armed to await fire_code
-        }
-        if (x.command == fire_code && id(global_token_clear_armed)) {
-          id(global_token_clear_armed) = false;
-          id(token_clear_safety_timeout).stop();
-          id(token_clear)->press(); // clears token and reports on myDisplay
-          return; // STOP FLOW: Fire_code received. Token cleared.
-        }
-        if (x.command != fire_code && id(global_token_clear_armed)) {
-          id(global_token_clear_armed) = false;
-          id(token_clear_safety_timeout).stop();
-          id(myDisplay_line1) = "No Confirmation";
-          id(myDisplay_line2) = "Wrong Key";
-          id(myDisplay_line3) = "Canceled ";
-          return; // STOP FLOW: Unexpected non-fire code arrived. Cancel arming
-        }
-
-        // --- Normal Non-Security Fallthrough Path ---
-        uint32_t now = millis();
-        static uint32_t last_nec_press = 0;
-        if (now - last_nec_press < 30) return;
-        last_nec_press = now;
-
-        std::stringstream ss1, ss2; // put command and address in lines 2 and 3 of display
-        ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.command;
-        ss2 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << x.address;
-        id(myDisplay_line2) = ss2.str(); 
-        id(myDisplay_line3) = ss1.str(); 
+        // set up common format address, command, command_repeats
+        std::string wrong_addressStr = "NEC Prot Addr Different";
         
-        if (x.address == ${target_ir_address}) {
-          id(myDisplay_line2) = "${remote_display_name}"; 
-          if (id(global_cached_command) != x.command || id(global_initial_press_time) == 0) {
-            id(global_cached_command) = x.command;
-            id(global_initial_press_time) = now; 
-            id(global_last_processed_time) = now;
-            id(global_is_holding) = false;      
-            id(master_ir_processor).execute(x.command, false);
-          } else if (now - id(global_last_processed_time) > 130) {
-            id(global_initial_press_time) = now; 
-            id(global_last_processed_time) = now;
-            id(global_is_holding) = true;      
-            id(master_ir_processor).execute(x.command, true);
-          }
-        } else {
-          id(myDisplay_line1) = "NEC Prot Addr Different "; 
-          id(global_cached_command) = 0;
-          id(global_is_holding) = false;
-        }
+        uint16_t ir_address = x.address;
+        uint16_t ir_command = x.command;
+        uint16_t ir_command_repeats = x.command_repeats;
+
+        ESP_LOGD("main", "NEC Address:-- 0x%02X --, Command:---- 0x%02X ----", ir_address, ir_command);
         
-    - if:
-        condition: 
-          - lambda: |-
-              return(id(showing_special_info) = true);   
-              
-        then:
-          - globals.set: #turn off showing_special_info, but don't display
-              id: showing_special_info
-              value: 'false'
-        else:       
-          - script.execute: #not showing token, we show the address and command.
-              id: display_show
-              small_text: false
-
-
+        id(general_IR_received_handler)->execute(wrong_addressStr, ir_address, ir_command, ir_command_repeats);
+        
 
   # 3. LG Handler
   on_lg:
     - lambda: |-
-        uint16_t lg_command = x.data & 0xFFFF;
-        uint32_t arm_code = ${cmd_token_clear_arm};
-        uint32_t fire_code = ${cmd_token_clear_fire};
-
-        if (lg_command == arm_code) {
-          id(global_token_clear_armed) = true;
-          id(token_clear_safety_timeout).execute();
-          id(myDisplay_line1) = "Token Clear Requested";
-          id(myDisplay_line2) = "To Confirm";
-          id(myDisplay_line3) = "Press Select ";
-          return; // STOP FLOW: Armed to await fire_code
-        }
-        if (lg_command == fire_code && id(global_token_clear_armed)) {
-          id(global_token_clear_armed) = false;
-          id(token_clear_safety_timeout).stop();
-          id(token_clear)->press(); // clears token and reports on myDisplay
-          return; // STOP FLOW: Fire_code received. Token cleared.
-        }
-        if (lg_command != fire_code && id(global_token_clear_armed)) {
-          id(global_token_clear_armed) = false;
-          id(token_clear_safety_timeout).stop();
-          id(myDisplay_line1) = "No Confirmation";
-          id(myDisplay_line2) = "Wrong Key";
-          id(myDisplay_line3) = "Canceled ";
-          return; // STOP FLOW: Unexpected non-fire code arrived. Cancel arming
-        }
-
-        // --- Normal Path ---
-        uint32_t now = millis();
-        static uint32_t last_lg_press = 0;
-        if (now - last_lg_press < 30) return;
-        last_lg_press = now;
-        uint16_t lg_address = (x.data >> 16) & 0xFFF;
-
-        std::stringstream ss1, ss2;
-        ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << lg_command;
-        ss2 << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << lg_address;
-        id(myDisplay_line2) = ss2.str(); 
-        id(myDisplay_line3) = ss1.str(); 
+        // set up common format address, command, command_repeats, etc
+        std::string wrong_addressStr = "LG Prot Addr Different";
         
-        if (lg_address == ${target_ir_address}) {
-          id(myDisplay_line2) = "${remote_display_name}"; 
-          if (id(global_cached_command) != lg_command || id(global_initial_press_time) == 0) {
-            id(global_cached_command) = lg_command;
-            id(global_initial_press_time) = now; 
-            id(global_last_processed_time) = now;
-            id(global_is_holding) = false;      
-            id(master_ir_processor).execute(lg_command, false); 
-          } else if (now - id(global_last_processed_time) > 130) {
-            id(global_initial_press_time) = now; 
-            id(global_last_processed_time) = now;
-            id(global_is_holding) = true;      
-            id(master_ir_processor).execute(lg_command, true);
-          }
-        } else {
-          id(myDisplay_line1) = "LG Prot Addr Different"; 
-          id(global_cached_command) = 0;
-          id(global_is_holding) = false;
-        }
+        uint16_t ir_address = (x.data >> 16) & 0xFFF;
+        uint16_t ir_command = x.data & 0xFFFF;
+        uint16_t ir_command_repeats = 0; // LG protocol does not have have command_repeats 
 
-    - if:
-        condition: 
-          - lambda: |-
-              return(id(showing_special_info) = true);   
-              
-        then:
-          - globals.set: #turn off showing_special_info, but don't display
-              id: showing_special_info
-              value: 'false'
-        else:       
-          - script.execute: #not showing token, we show the address and command.
-              id: display_show
-              small_text: false
+        ESP_LOGD("main", "LG Address:-- 0x%02X --, Command:---- 0x%02X ----", ir_address, ir_command);
 
+        id(general_IR_received_handler)->execute(wrong_addressStr, ir_address, ir_command, ir_command_repeats);
 
   # 4. JVC Handler
   on_jvc:
     - lambda: |-
-        uint16_t jvc_command = x.data & 0xFF;
-        uint16_t jvc_address = (x.data >> 8) & 0xFF;
-        uint32_t arm_code = ${cmd_token_clear_arm};
-        uint32_t fire_code = ${cmd_token_clear_fire};
+        // set up common format address, command, command_repeats, etc
+        std::string wrong_addressStr = "JVC Prot Addr Different";
         
-        ESP_LOGD("main", "Address:-- 0x%02X --, Command:---- 0x%02X ----", jvc_address, jvc_command);
+        uint16_t ir_address = (x.data >> 8) & 0xFF;
+        uint16_t ir_command = x.data & 0xFF;
+        uint16_t ir_command_repeats = 0; // JVC protocol does not have have command_repeats 
 
+        ESP_LOGD("main", "JVC Address:-- 0x%02X --, Command:---- 0x%02X ----", ir_address, ir_command);
 
-
-        if (jvc_command == arm_code) {
-          id(global_token_clear_armed) = true;
-          id(token_clear_safety_timeout).execute();
-          id(myDisplay_line1) = "Token Clear Requested";
-          id(myDisplay_line2) = "To Confirm";
-          id(myDisplay_line3) = "Press Select ";
-          return; // STOP FLOW: Armed to await fire_code
-        }
-        if (jvc_command == fire_code && id(global_token_clear_armed)) {
-          id(global_token_clear_armed) = false;
-          id(token_clear_safety_timeout).stop();
-          id(token_clear)->press(); // clears token and reports on myDisplay
-          return; // STOP FLOW: Fire_code received. Token cleared.
-        }
-        if (jvc_command != fire_code && id(global_token_clear_armed)) {
-          id(global_token_clear_armed) = false;
-          id(token_clear_safety_timeout).stop();
-          id(myDisplay_line1) = "No Confirmation";
-          id(myDisplay_line2) = "Wrong Key";
-          id(myDisplay_line3) = "Canceled ";
-          return; // STOP FLOW: Unexpected non-fire code arrived. Cancel arming
-        }
-
-        // --- Normal Path ---
-        uint32_t now = millis();
-        static uint32_t last_jvc_press = 0;
-        if (now - last_jvc_press < 30) return;
-        last_jvc_press = now;
-
-        std::stringstream ss1, ss2;
-        ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(2) << std::hex << jvc_command;
-        ss2 << "0x" << std::uppercase << std::setfill('0') << std::setw(2) << std::hex << jvc_address;
-        id(myDisplay_line2) = ss2.str(); 
-        id(myDisplay_line3) = ss1.str(); 
-        
-        if (jvc_address == ${target_ir_address}) {
-          id(myDisplay_line2) = "${remote_display_name}"; 
-          if (id(global_cached_command) != jvc_command || id(global_initial_press_time) == 0) {
-            id(global_cached_command) = jvc_command;
-            id(global_initial_press_time) = now; 
-            id(global_last_processed_time) = now;
-            id(global_is_holding) = false;      
-            id(master_ir_processor).execute(jvc_command, false); 
-          } else if (now - id(global_last_processed_time) > 130) {
-            id(global_initial_press_time) = now; 
-            id(global_last_processed_time) = now;
-            id(global_is_holding) = true;      
-            id(master_ir_processor).execute(jvc_command, true);
-          }
-        } else {
-          id(myDisplay_line1) = "JVC Prot Addr Different"; 
-          id(global_cached_command) = 0;
-          id(global_is_holding) = false;
-        }
-
-    - if:
-        condition: 
-          - lambda: |-
-              return(id(showing_special_info) = true);   
-              
-        then:
-          - globals.set: #turn off showing_special_info, but don't display
-              id: showing_special_info
-              value: 'false'
-        else:       
-          - script.execute: #not showing token, we show the address and command.
-              id: display_show
-              small_text: false
-
+        id(general_IR_received_handler)->execute(wrong_addressStr, ir_address, ir_command, ir_command_repeats);
 
   # 5. Sony Handler
   on_sony:
     # Sony is handled differently because it does not have a true, separate per device address
     # Instead, Sony has a single long code of variable length. The entirety of which must be tested against.
     - lambda: |-
-        uint32_t arm_code = ${cmd_token_clear_arm};
-        uint32_t fire_code = ${cmd_token_clear_fire};
-
-        if (x.data == arm_code) {
-          id(global_token_clear_armed) = true;
-          id(token_clear_safety_timeout).execute();
-          id(myDisplay_line1) = "Token Clear Requested";
-          id(myDisplay_line2) = "To Confirm";
-          id(myDisplay_line3) = "Press Select ";
-          return; // STOP FLOW: Armed to await fire_code
-        }
-        if (x.data == fire_code && id(global_token_clear_armed)) {
-          id(global_token_clear_armed) = false;
-          id(token_clear_safety_timeout).stop();
-          id(token_clear)->press(); // clears token and reports on myDisplay
-          return; // STOP FLOW: Fire_code received. Token cleared.
-        }
-        if (x.data != fire_code && id(global_token_clear_armed)) {
-          id(global_token_clear_armed) = false;
-          id(token_clear_safety_timeout).stop();
-          id(myDisplay_line1) = "No Confirmation";
-          id(myDisplay_line2) = "Wrong Key";
-          id(myDisplay_line3) = "Canceled ";
-          return; // STOP FLOW: Unexpected non-fire code arrived. Cancel arming
-        }
-
-        // --- Normal Path ---
-        uint32_t now = millis();
-        static uint32_t last_sony_press = 0;
-        if (now - last_sony_press < 30) return;
-        last_sony_press = now;
+        // set up common format address, command, command_repeats
+        std::string wrong_addressStr = "Sony Prot Addr Different"; 
         
-        uint32_t sony_command = x.data;
+        uint16_t ir_address = 0; // Sony does not have separate address. In Sony IRmaps we also set target_address to zero so it ALWAYS matches.
+        uint16_t ir_command = x.data;
+        uint16_t ir_command_repeats = 0; // Sony does not have command_repeats
 
-        std::stringstream ss1;
-        ss1 << "0x" << std::uppercase << std::setfill('0') << std::setw(6) << std::hex << sony_command;
-        id(myDisplay_line2) = "Sony Protocol" ;
-        id(myDisplay_line3) = ss1.str(); 
+        ESP_LOGD("main", "Sony Command:---- 0x%04X ----", ir_command);
 
-       
-        if (id(global_cached_command) != x.data || id(global_initial_press_time) == 0) {
-          id(global_cached_command) = x.data; 
-          id(global_initial_press_time) = now; 
-          id(global_last_processed_time) = now;
-          id(global_sony_stream_time) = now;   
-          id(global_is_holding) = false;      
-          id(global_sony_frame_count) = 1; 
-          id(master_ir_processor).execute(x.data, false); 
-        } else if (now - id(global_sony_stream_time) > 80) {
-          id(global_initial_press_time) = now; 
-          id(global_last_processed_time) = now;
-          id(global_sony_stream_time) = now;
-          id(global_is_holding) = false;      
-          id(global_sony_frame_count) = 1;
-          id(master_ir_processor).execute(x.data, false);
-        } else {
-          id(global_sony_stream_time) = now;
-          id(global_sony_frame_count)++; 
-          if (id(global_sony_frame_count) > 3) {
-            if (!id(global_is_holding)) {
-              id(global_is_holding) = true;
-              id(master_ir_processor).execute(x.data, true); 
-            }
-          }
-        }
-
-    - if:
-        condition: 
-          - lambda: |-
-              return(id(showing_special_info) = true);   
-              
-        then:
-          - globals.set: #turn off showing_special_info, but don't display
-              id: showing_special_info
-              value: 'false'
-        else:       
-          - script.execute: #not showing token, we show the address and command.
-              id: display_show
-              small_text: false
-
+        id(general_IR_received_handler)->execute(wrong_addressStr, ir_address, ir_command, ir_command_repeats);
+      
 
 globals:
   - id: global_cached_command
@@ -378,7 +116,126 @@ globals:
     type: bool
     initial_value: 'false'
     
+  - id: last_ir_press #time data for debouncing.
+    type: uint32_t
+    initial_value: '0'
+      
+  - id: commandName # used to pass name of command back from IRmap
+    type: std::string
+    restore_value: no
+    initial_value: ''
+
+
 script:
+  - id: general_IR_received_handler
+    parameters:
+      wrong_addressStr: std::string
+      ir_address: uint16_t
+      ir_command: uint16_t
+      ir_command_repeats: uint16_t
+    then:
+      - lambda: |-
+          uint32_t target_address = ${target_ir_address};
+          uint32_t arm_code = ${cmd_token_clear_arm};
+          uint32_t fire_code = ${cmd_token_clear_fire};
+
+          uint32_t now = millis();
+          if (now - id(last_ir_press) < 30) return;
+          id(last_ir_press) = now;
+
+          // Handle token clear arming, and trigger first
+          
+          if (ir_address == target_address) {
+            if (ir_command == arm_code) {
+              id(global_token_clear_armed) = true;
+              id(token_clear_safety_timeout).execute();
+              
+              id(display_show)->execute(false,
+                                       "Token Clear Requested",
+                                       "To Confirm",
+                                       "Press Select");
+              return; // STOP FLOW Armed to await fire_code
+              
+            }
+            if (ir_command == fire_code && id(global_token_clear_armed)) {
+              id(global_token_clear_armed) = false;
+              id(token_clear_safety_timeout).stop();
+              id(token_clear)->press(); // clears token and reports on myDisplay
+              return; // STOP FLOW Fire_code received. Token cleared.
+              
+            }
+            if (ir_command != fire_code && ir_command != arm_code && id(global_token_clear_armed)) {
+              id(global_token_clear_armed) = false;
+              id(token_clear_safety_timeout).stop();
+    
+              id(display_show)->execute(false,
+                                       "Not Confirmed",
+                                       "Wrong Key",
+                                       "Canceled");
+              return; // STOP FLOW Unexpected non-fire code arrived. Cancel arming
+              
+            }
+          }  
+  
+          // --- Normal Fallthrough Path ---
+  
+          std::stringstream commandStrStream, addressStrStream; 
+          commandStrStream << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << ir_command;
+          addressStrStream << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << ir_address;
+                  
+          // Extract raw hex strings first
+          std::string commandStr = commandStrStream.str();
+          std::string addressStr = addressStrStream.str();
+                  
+          if (ir_address != ${target_ir_address}) {
+            // does not match target device adddress
+            id(display_show)->execute(false,
+                           wrong_addressStr,
+                           addressStr,
+                           commandStr);
+            
+            id(global_cached_command) = 0;
+            id(global_is_holding) = false;
+            return; // STOP FLOW
+  
+          } else { 
+            // matches device address. Change addressStr to human readable name
+            addressStr = "${remote_display_name}"; 
+  
+            if (id(global_cached_command) != ir_command || id(global_initial_press_time) == 0) {
+              id(global_cached_command) = ir_command;
+              id(global_initial_press_time) = now; 
+              id(global_last_processed_time) = now;
+              id(global_is_holding) = false;      
+              id(master_ir_processor).execute(ir_command, false);
+              
+            } else if (now - id(global_last_processed_time) > 130) {
+              id(global_initial_press_time) = now; 
+              id(global_last_processed_time) = now;
+              id(global_is_holding) = true;      
+              id(master_ir_processor).execute(ir_command, true);
+            }
+          }
+          
+          // underwent main IR processing. If it was processed and we usually show commandName, addressStr, and commandStr
+          // however, commands like show token sets showing_special_info so we don nott immediately overwrite special info 
+          
+          if (id(showing_special_info) == true) {
+            // showing special info like token, do not show current address, command just this once. Toggle state
+            id(showing_special_info) = false;
+          
+          } else {
+            // do usual showing of info. commandName is global which gives human readable name of successfully mapped command.
+            id(display_show)->execute(false,
+                                         id(commandName),
+                                         addressStr,
+                                         commandStr);
+          }       
+      
+      
+  
+  
+  #----------------------------------------
   # A. High Speed Timeout Watcher Register Cleanup
   - id: ir_timeout_watcher
     mode: restart

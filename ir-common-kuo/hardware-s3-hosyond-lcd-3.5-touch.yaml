@@ -37,18 +37,17 @@ globals:
   - id: myDisplay_line1
     type: std::string  
     restore_value: no
-    initial_value: '"IR to BLE Kuo"'
+    initial_value: ''
 
   - id: myDisplay_line2
     restore_value: no
     type: std::string  
-    #assign at boot
+    initial_value: ''
     
   - id: myDisplay_line3
     restore_value: no
     type: std::string  
-    initial_value: '"Translator"'
-          
+    initial_value: ''          
           
 light:
   - platform: esp32_rmt_led_strip # neopixel
@@ -156,7 +155,7 @@ display:
     invert_colors: true
     color_order: RGB    
     data_rate: 80MHz    
-    update_interval: 0.3s
+    update_interval: 0.1s
 
     # factory initialization matrix sequence
     init_sequence:

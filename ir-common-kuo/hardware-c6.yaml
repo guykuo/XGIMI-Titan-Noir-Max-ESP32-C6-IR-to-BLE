@@ -28,18 +28,18 @@ globals:
   - id: myDisplay_line1
     type: std::string  
     restore_value: no
-    initial_value: '"IR to BLE Kuo"'
+    initial_value: ''
 
   - id: myDisplay_line2
     restore_value: no
     type: std::string  
-    #assign at boot
+    initial_value: ''
     
   - id: myDisplay_line3
     restore_value: no
     type: std::string  
-    initial_value: '"Translator"'
-  
+    initial_value: ''
+      
 light:
   - platform: esp32_rmt_led_strip # neopixel
     id: sniffer_led
@@ -130,6 +130,8 @@ display:
     offset_x: 0
     offset_y: 0
     rotation: 0
+    update_interval: 0.1s
+
     pages:
       - id: active_page_std
         lambda: |-

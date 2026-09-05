@@ -46,7 +46,7 @@ script:
           };
 
           // Strict unique map loaded with genuine JVC production command data codes
-          static const std::map<uint16_t, IRCommand> jvc_codes = {
+          static const std::map<uint16_t, IRCommand> cmd_codes = {
             { 0xA0,       { "power_on",      id(power_on) } },          // power on
             { 0x60,       { "power_off", id(power_off_immediately) } }, // power off
             { 0x80,       { "cursor_up",     id(cursor_up) } },       // up arrow
@@ -91,8 +91,8 @@ script:
 
           };
 
-          auto it = jvc_codes.find(pure_cmd);
-          if (it != jvc_codes.end()) {
+          auto it = cmd_codes.find(pure_cmd);
+          if (it != cmd_codes.end()) {
             if (!id(global_token_clear_armed)) {
               if (is_hold) {
                 id(myDisplay_line1) = it->second.name + " (Hold)";
@@ -101,7 +101,6 @@ script:
                 ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
               } else {
                 id(myDisplay_line1) = it->second.name;
-                id(myDisplay_line2) = "${remote_display_name}"; 
                 // myDisplay_line3 already has command hex placed by base architecture
                 ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
               }
