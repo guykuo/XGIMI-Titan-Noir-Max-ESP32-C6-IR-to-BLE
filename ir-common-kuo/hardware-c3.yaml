@@ -102,7 +102,6 @@ display:
     model: "SSD1306 72x40"
     address: 0x3C
     id: myDisplay
-    update_interval: 0.3s
     offset_x: 0
     offset_y: 0
     rotation: 0
