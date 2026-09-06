@@ -9,8 +9,8 @@ remote_receiver:
       input: true
       pullup: true
   filter: 50us       
-  idle: 10ms         
-  tolerance: 25%     
+  idle: 20ms         
+  tolerance: 35%     
   #dump: [raw]           # Baseline configuration placeholder
     
   # 1. Updates timestamp every single time ANY raw IR pulse or repeat packet burst hits the pin
@@ -242,7 +242,8 @@ script:
     then:
       - while:
           condition:
-            lambda: 'return (millis() - id(global_last_raw_packet_time) < 140);'
+            lambda: |-
+               return (millis() - id(global_last_raw_packet_time) < 200);
           then:
             - delay: 15ms
       - lambda: |-
@@ -334,3 +335,26 @@ script:
           } else {
             id(global_intercept_active) = false;
           }
+
+
+interval: # implement repeat of buttons held down
+  - interval: 80ms # must be sooner than limit time
+    then:
+      - lambda: |-
+          uint32_t now = millis();
+          
+          if (id(global_cached_command) != 0) {
+            uint32_t command = id(global_cached_command);
+
+            if (now - id(global_last_raw_packet_time) >= 100) return; // rate faster with lower limit time here
+
+            if (id(global_is_holding)) {
+              id(master_ir_processor).execute(id(global_cached_command), true);
+            } else {
+              if (now - id(global_initial_press_time) >= 300) { // required time held before hold takes effect
+                id(global_is_holding) = true;
+                id(master_ir_processor).execute(id(global_cached_command), true);
+              }
+            }
+          }
+
