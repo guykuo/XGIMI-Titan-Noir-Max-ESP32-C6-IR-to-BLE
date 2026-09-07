@@ -13,7 +13,7 @@ remote_receiver:
 
 substitutions:
   target_ir_address: "0xFB04"
-  remote_display_name: "LG Cinebeam"
+  remote_display_name: "LG Projector"
   
   # =============================================================
   # DEFINE token clearing gate buttons

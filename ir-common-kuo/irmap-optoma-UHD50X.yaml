@@ -13,7 +13,7 @@ remote_receiver:
 
 substitutions:
   target_ir_address: "0xCD32"
-  remote_display_name: "Optoma Proj"
+  remote_display_name: "Optoma Projector"
   
   # =============================================================
   # DEFINE token clearing gate buttons

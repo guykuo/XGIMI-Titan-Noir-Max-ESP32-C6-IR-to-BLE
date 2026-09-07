@@ -13,7 +13,7 @@ remote_receiver:
 
 substitutions:
   target_ir_address: "0x5583"
-  remote_display_name: "Epson Projectors"
+  remote_display_name: "Epson Projector"
 
   # =============================================================
   # DEFINE token clearing gate buttons

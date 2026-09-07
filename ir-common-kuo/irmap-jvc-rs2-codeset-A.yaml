@@ -15,7 +15,7 @@ substitutions:
   target_ir_address: "0xCE" # JVC remote code set A (default)
   #target_ir_address: "0x36" # JVC remote code B
 
-  remote_display_name: "JVC Proj"
+  remote_display_name: "JVC Projector"
   
   # =============================================================
   # DEFINE token clearing gate buttons

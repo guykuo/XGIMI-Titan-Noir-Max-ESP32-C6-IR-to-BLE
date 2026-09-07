@@ -11,7 +11,7 @@ remote_receiver:
 
 substitutions:
   target_ir_address: "0x7300"
-  remote_display_name: "Valerion Prj"
+  remote_display_name: "Valerion Projector"
 
   # =============================================================
   # DEFINE token clearing gate buttons
