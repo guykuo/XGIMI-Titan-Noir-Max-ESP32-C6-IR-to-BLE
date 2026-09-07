@@ -14,7 +14,7 @@ wifi:
   ap:
     ssid: "${ble_remote_name}"
     password: !secret fallback_ap_password
-    ap_timeout: 15s
+    ap_timeout: 60s
 
 captive_portal:
 improv_serial:

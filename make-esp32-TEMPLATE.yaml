@@ -69,10 +69,11 @@ logger:
 api:
   encryption:
     key: !secret api_encryption_key
+  reboot_timeout: 30min #time before reboot if HomeAssistant is not present. 
 
-ota:
-  - platform: esphome
-    password: !secret ota_password
+# ota:
+#   - platform: esphome
+#     password: !secret ota_password
     
   
 esphome:
@@ -116,7 +117,7 @@ esphome:
               // create human readable hex string of active_wake_token
               std::string formatted_hex = "";
               
-              // 🛠️ FIXED: Turned a single 'char' variable into a sized character array to fix line 79 crash
+              // turn single 'char' variable into a sized character array to avoid crash
               char slice_buf[4];
               for (size_t i = 0; i < 5; i++) {
                 uint8_t byte = id(active_wake_token)[i];
@@ -713,7 +714,7 @@ script:
     then:
       - lambda: |-
           if (token_param.size() >= 15) {
-            // FIXED: Fully declared array bounds buffer to stop compiler panics
+            // fully declare array bounds buffer to stop compiler panics
             char slice_buf[4];
 
             // Line 1: First 5 bytes (Indices 0 to 4)
