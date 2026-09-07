@@ -11,9 +11,9 @@ substitutions:
 packages: 
 
   # --- ESP32 board, Uncomment one (and only one) for your board
-  hardware_package: !include ir-common-kuo/hardware-c3.yaml
-  #hardware_package: !include ir-common-kuo/hardware-c6.yaml
-  #hardware_package: !include ir-common-kuo/hardware-m5stack-atom-lite.yaml
+  hardware_package: !include ir-common-kuo/hardware-c3.yaml                  # supports built-in 0.42 inch OLED display
+  #hardware_package: !include ir-common-kuo/hardware-c6.yaml                 # supports external 0.9 inch i2c OLED display
+  #hardware_package: !include ir-common-kuo/hardware-m5stack-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
   #hardware_package: !include ir-common-kuo/hardware-s3-hosyond-lcd-3.5-touch.yaml
   #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-lcd-1.47B.yaml
   #hardware_package: !include ir-common-kuo/HARDWARE.YAML # Or uncomment this line and replace HARDWARE.YAML with your file.

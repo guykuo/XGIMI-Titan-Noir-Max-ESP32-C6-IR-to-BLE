@@ -2,9 +2,14 @@
 
 substitutions:
   
-  pin_ir_receiver: GPIO32   # IR sensor on Grove white/RX
+  # M5stacks own IR Unit IR SKU:U002 has IR receiver and emitter compatible with Grove connector of Atom Lite
+  # If using other IR sensor, beware that Grove connector Vcc is 5 volts. Connector J4 supplies safer 3 volt Vcc.
+  
+  pin_ir_receiver: GPIO32   # IR sensor of M5stack Unit IR via a Grove HY2.0-4P interface white/RX wire
   pin_indicator_LED: GPIO27 # LED indicator
-  pin_sniff_btn: GPIO9      # use front button for sniff on m5stack atom
+  pin_sniff_btn: GPI39      # use front button for sniff on m5stack atom
+  
+  
   
   
 # Core Architecture Declaration
@@ -16,8 +21,8 @@ esp32:
   
 # i2c Display Pins
 i2c: 
-  sda: GPIO25 # M5Stack Atom Display Kit
-  scl: GPIO21 # M5Stack Atom Display Kit
+  sda: GPIO25 # optional OLED
+  scl: GPIO21 # optional OLED
   frequency: 400kHz
   scan: false # to prevent startup crashes during boot scans
   id: bus_a
@@ -121,7 +126,7 @@ font:
     size: 11
 
     
-# Built-in 72x40 SSD1306 OLED screen
+# External SSD1306 128x32 OLED screen
 display:
   - platform: ssd1306_i2c
     model: "SSD1306 128x32"

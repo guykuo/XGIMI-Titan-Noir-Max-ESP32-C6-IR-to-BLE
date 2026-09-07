@@ -120,7 +120,7 @@ font:
     size: 11
 
     
-# Built-in 72x40 SSD1306 OLED screen
+# External SSD1306 128x32 OLED screen
 display:
   - platform: ssd1306_i2c
     model: "SSD1306 128x32"
