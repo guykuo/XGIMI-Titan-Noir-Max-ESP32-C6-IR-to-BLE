@@ -125,7 +125,7 @@ globals:
 
 
 script:
-  // handle ir button presses for all protocols after IR data converted to common format address, command, command_repeats
+  # handle ir button presses for all protocols after IR data converted to common format address, command, command_repeats
   - id: general_IR_received_handler
     parameters:
       wrong_addressStr: std::string
@@ -282,7 +282,7 @@ script:
   - id: showing_special_expiration_timer
     mode: restart
     then:
-      - delay: 2s // how long without another IR button press before special display times out.
+      - delay: 2s # how long without another IR button press before special display times out.
       - lambda: |-
                 ESP_LOGD("Info Show", "Showing special info timed out.");
                 id(showing_special_info) = false;
