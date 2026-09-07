@@ -115,11 +115,9 @@ globals:
   - id: global_intercept_active
     type: bool
     initial_value: 'false'
-    
   - id: last_ir_press #time data for debouncing.
     type: uint32_t
     initial_value: '0'
-      
   - id: commandName # used to pass name of command back from IRmap
     type: std::string
     restore_value: no
@@ -127,6 +125,7 @@ globals:
 
 
 script:
+  // handle ir button presses for all protocols after IR data converted to common format address, command, command_repeats
   - id: general_IR_received_handler
     parameters:
       wrong_addressStr: std::string
@@ -217,26 +216,25 @@ script:
             }
           }
           
-          // underwent main IR processing. If it was processed and we usually show commandName, addressStr, and commandStr
-          // however, commands like show token sets showing_special_info so we don nott immediately overwrite special info 
-          
+          // Usually display of commandName, addressStr, and commandStr
+          // However, if during processing the command, special info became displayed, showing_special_info indicates
+          // we should not immediately overwrite special info. However, start a timer to clear showing_special_info state.
+
           if (id(showing_special_info) == true) {
-            // showing special info like token, do not show current address, command just this once. Toggle state
-            id(showing_special_info) = false;
+            ESP_LOGD("Info Show", "Showing special info. Timer started.");
+            id(showing_special_expiration_timer).execute();
           
           } else {
-            // do usual showing of info. commandName is global which gives human readable name of successfully mapped command.
+            // do usual showing of info. commandName is global in which IRmap leaves human readable name of successfully mapped command.
             id(display_show)->execute(false,
                                          id(commandName),
                                          addressStr,
                                          commandStr);
           }       
       
-      
-  
   
   #----------------------------------------
-  # A. High Speed Timeout Watcher Register Cleanup
+  # High Speed Timeout Watcher Register Cleanup
   - id: ir_timeout_watcher
     mode: restart
     then:
@@ -253,7 +251,7 @@ script:
           id(global_is_holding) = false;
           id(global_sony_frame_count) = 0;
 
-  # B. Automatic hardware lock release timer step
+  # Automatic hardware lock release timer step
   - id: release_debounce_lock
     then:
       - delay: 110ms
@@ -261,7 +259,7 @@ script:
           id: debounce_safety_lock
           value: 'false'
 
-  # C. Automated 5-Second Expiration Timer
+  # Automated 5-Second Expiration Timer
   - id: token_clear_safety_timeout
     mode: restart
     then:
@@ -280,64 +278,17 @@ script:
                 id(myDisplay_line3) = "Canceled";
 
 
-  # D. CENTRAL UNIFIED SAFETY ENGINE - INTERCEPT FILTER FOR ALL PROTOCOLS
-  - id: central_safety_gate_processor
-    mode: queued
-    parameters:
-      command: uint32_t
-      is_hold: bool
+  # Showing special info expiration timer
+  - id: showing_special_expiration_timer
+    mode: restart
     then:
-      # Step 1: Drop frames instantly if the 110ms freeze block safety lock is active
-      - if:
-          condition:
-            lambda: 'return id(debounce_safety_lock);'
-          then:
-            - script.stop: central_safety_gate_processor
-
-      # Step 2: Engage hardware lock for the next 110ms to prevent double-triggering
-      - globals.set:
-          id: debounce_safety_lock
-          value: 'true'
-      - script.execute: release_debounce_lock
-
-      # Step 3: Global Intercept Evaluation
+      - delay: 2s // how long without another IR button press before special display times out.
       - lambda: |-
-          uint32_t arm_code = ${cmd_token_clear_arm};
-          uint32_t fire_code = ${cmd_token_clear_fire};
-
-          if (command == arm_code && !is_hold) {
-            id(global_token_clear_armed) = true;
-            id(token_clear_safety_timeout).execute(); // Start/Reset 5s auto-lock out
-            
-            id(myDisplay_line1) = "Token Clear Requested";
-            id(myDisplay_line2) = "To Confirm";
-            id(myDisplay_line3) = "Press Select ";
-            ESP_LOGW("IR Safety", "Global Intercept: System Gated Clear ARMED via code 0x%05X", (unsigned int)command);
-            
-            // Set safety lock state to true so calling handlers abort downstream routing
-            id(global_intercept_active) = true;
-          } 
-          else if (command == fire_code && !is_hold) {
-            if (id(global_token_clear_armed)) {
-              id(global_token_clear_armed) = false;
-              id(token_clear_safety_timeout).stop(); // Disarm auto-lock timer
-              
-              id(myDisplay_line1) = "Token Clearing";
-              id(myDisplay_line2) = "Taking Effect";
-              id(myDisplay_line3) = "Wait 5 Seconds";
-              ESP_LOGE("IR Safety", "Global Intercept: Security Gate Fired Successfully.");
-              
-              id(token_clear)->press(); // Run final physical routine action
-              id(global_intercept_active) = true;
-            } else {
-              id(global_intercept_active) = false;
-            }
-          } else {
-            id(global_intercept_active) = false;
-          }
+                ESP_LOGD("Info Show", "Showing special info timed out.");
+                id(showing_special_info) = false;
 
 
-interval: # implement repeat of buttons held down
+interval: # implement repeat of IR button held down
   - interval: 80ms # must be sooner than limit time
     then:
       - lambda: |-
