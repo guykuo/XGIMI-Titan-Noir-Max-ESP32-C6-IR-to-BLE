@@ -534,9 +534,9 @@ Three buttons on your remote are assigned to control wake token. The actual butt
 | Hisense 50U6G | Clear | 5 |
 | Hisense 50U6G | Recall | 6 |
 | ---- | ---- | ---- |
-| JVC RS2 | Sniff | cinema |
-| JVC RS2 | Clear | natural |
-| JVC RS2 | Recall | gamma or HDR |
+| JVC Projectors | Sniff | cinema |
+| JVC Projectors | Clear | natural |
+| JVC Projectors | Recall | gamma or HDR |
 | ---- | ---- | ---- |
 | LG Cinebeam | Sniff | 4 | 
 | LG Cinebeam | Clear | 5 |
