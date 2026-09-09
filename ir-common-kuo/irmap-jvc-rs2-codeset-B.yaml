@@ -1,5 +1,5 @@
-# irmap-jvc-rs2-codeset-A.yaml
-# JVC RS2 projector code set B (alternative set)
+# irmap-jvc-rs2-codeset-B.yaml
+# JVC RS2 projector code set B (alternate set)
 
 packages:
   base_ir_engine: !include appkit/ir-architecture-base.yaml
@@ -19,7 +19,7 @@ substitutions:
   
   # =============================================================
   # DEFINE token clearing gate buttons
-  cmd_token_clear_arm: "0xBE"      # JVC: color down
+  cmd_token_clear_arm: "0x56"      # JVC: natural
   cmd_token_clear_fire: "0xF4"     # JVC: OK / ENTER
 
 script:
@@ -57,38 +57,61 @@ script:
             { 0x74,       { "settings_menu", id(settings_menu) } },   // menu
             { 0xC0,       { "back",          id(back) } },            // exit
             { 0xB8,       { "home",          id(home) } },            // hide
-            { 0xAE,       { "game_menu",     id(game_menu) } },       // gamma
+            
+            { 0xD6,       { "game_menu",     id(game_menu) } },       // dynamic
+            { 0xCE,       { "game_menu_alt", id(game_menu) } },       // advanced menu_
+
+
             { 0x0E,       { "input",         id(input) } },           // input HDMI 1
+            
             { 0x8E,       { "picture",       id(picture) } },         // input HDMI 2
+            { 0x2F,       { "picture_alt",   id(picture) } },         // picture mode_
+
             { 0xCC,       { "focus_manual",  id(focus_manual) } },    // focus -
             { 0x8C,       { "focus_auto",    id(focus_auto) } },      // focus +
-            { 0xD2,       { "shortcut_1",    id(shortcut_1) } },      // input video
-            { 0x32,       { "shortcut_2",    id(shortcut_2) } },      // input s-video
-            { 0xB2,       { "shortcut_3",    id(shortcut_3) } },      // input component
-            { 0x56,       { "shortcut_4",    id(shortcut_4) } },      // natural
-            { 0x5E,       { "volume_up",     id(volume_up) } },       // brightness up
-            { 0xDE,       { "volume_down",   id(volume_down) } },     // brightness down
-            { 0xB8,       { "mute",          id(mute) } },            // hide
-            { 0x3E,       { "token_sniff",   id(token_sniff) } },     // color up
-            { 0xBE,       { "token_clear",   id(token_clear) } },     // color down
-            { 0x6E,       { "token_recall",  id(token_recall) } },    // color temp
-            { 0xEE,       { "BT_start_pair",  id(bluetooth_pairing_start) } },    // aspect
-            { 0x96,       { "BT_clear_pair",  id(bluetooth_pairing_clear) } },    // cinema
+            { 0x11,       { "focus_manual_alt", id(focus_manual) } },   // color profile_
+            { 0xAF,       { "focus_auto_alt",   id(focus_auto) } },     // gamma settings_
             
+            { 0x36,       { "shortcut_1",       id(shortcut_1) } },    // user 1
+            { 0xB6,       { "shortcut_2",       id(shortcut_2) } },    // user 2
+            { 0x76,       { "shortcut_3",       id(shortcut_3) } },    // user 3
+            { 0xEE,       { "shortcut_4",       id(shortcut_4) } },    // aspect
             
-            { 0x9E,       { "contrast down", id(home) } },    // contrast down
-            { 0x1E,       { "contast up",    id(home) } },    // contrast up
-            { 0xD6,       { "dynamic",       id(home) } },    // dynamic
-            { 0xE0,       { "light",         id(home) } },    // light
-            { 0xFE,       { "sharp down",    id(home) } },    // sharp down
-            { 0x9A,       { "sharp up",      id(home) } },    // sharp up
-            { 0x36,       { "test",          id(home) } },    // test
-            { 0x36,       { "user 1",        id(home) } },    // user 1
-            { 0xB6,       { "user 2",        id(home) } },    // user 2
-            { 0x76,       { "user 3",        id(home) } },    // user 3
-            { 0xAC,       { "zoom T",        id(home) } },    // zoom T
-            { 0xEC,       { "zoom W",        id(home) } }     // zoom W
+            { 0x1B,       { "shortcut_1_alt",   id(shortcut_1) } },    // mode 1_
+            { 0x9B,       { "shortcut_2_alt",   id(shortcut_2) } },    // mode 2_
+            { 0x5B,       { "shortcut_3_alt",   id(shortcut_3) } },    // mode 3_
+            { 0x2E,       { "shortcut_4_alt",   id(shortcut_4) } },    // info
+           
+            { 0x5E,       { "volume_up",       id(volume_up) } },        // brightness up
+            { 0xDE,       { "volume_down",     id(volume_down) } },      // brightness down
+            { 0x6E,       { "mute",            id(mute) } },             // color temp
 
+            { 0x04,       { "volume_up_alt",   id(volume_up) } },        // lens AP_
+            { 0x0C,       { "volume_down_alt", id(volume_down) } },      // lens control_
+            { 0xA3,       { "mute_alt",        id(mute) } },             // anamorphic_
+
+            { 0x16,       { "token_sniff",      id(token_sniff) } },   // cinema_
+            { 0x96,       { "token_sniff_alt",  id(token_sniff) } },   // cinema
+            { 0x56,       { "token_clear",      id(token_clear) } },   // natural
+            { 0xAE,       { "token_recall",     id(token_recall) } },  // gamma
+            { 0xB7,       { "token_recall_alt", id(token_recall) } },  // HDR_
+
+            { 0xFE,       { "BT_start_pair",      id(bluetooth_pairing_start) } },  // sharp down
+            { 0x9A,       { "BT_clear_pair",      id(bluetooth_pairing_clear) } },  // sharp up
+            { 0x51,       { "BT_start_pair_alt",  id(bluetooth_pairing_start) } },  // CMD_
+            { 0x0F,       { "BT_clear_pair_alt",  id(bluetooth_pairing_clear) } },  // mpc_
+           
+            { 0x3E,       { "color up",      id(home) } },    // color up
+            { 0xBE,       { "color down",    id(home) } },    // color down
+            { 0x1E,       { "contast up",    id(home) } },    // contrast up
+            { 0x9E,       { "contrast down", id(home) } },    // contrast down
+            { 0x36,       { "test",          id(home) } },    // test
+            { 0xAC,       { "zoom T",        id(home) } },    // zoom T
+            { 0xEC,       { "zoom W",        id(home) } },    // zoom W
+            { 0x6B,       { "3D format_",      id(home) } },      // 3D format_
+            { 0x4E,       { "pic adjust_",     id(home) } }       // pic adjust_
+
+           
           };
 
           auto it = cmd_codes.find(pure_cmd);

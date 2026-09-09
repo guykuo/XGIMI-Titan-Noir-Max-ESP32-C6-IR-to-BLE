@@ -71,31 +71,24 @@ script:
             { 0xC7,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // Back + Home
           };
 
-          auto it = nec_codes.find(pure_cmd);
-          if (it != nec_codes.end()) {
+          auto it = cmd_codes.find(pure_cmd);
+          if (it != cmd_codes.end()) {
             if (!id(global_token_clear_armed)) {
               if (is_hold) {
-                id(myDisplay_line1) = it->second.name + " (Hold)";
-                id(myDisplay_line2) = "${remote_display_name}"; 
-                id(myDisplay_line3) = ""; 
+                id(commandName) = it->second.name + " (Hold)";
                 ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
               } else {
-                id(myDisplay_line1) = it->second.name;
-                id(myDisplay_line2) = "${remote_display_name}"; 
-                // myDisplay_line3 already has command hex placed by base architecture
+                id(commandName) = it->second.name;
                 ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
               }
             }
-
+            // press button action
             if (it->second.button_obj != nullptr) {
               it->second.button_obj->press();
             }
+            
           } else {
-            if (!id(global_token_clear_armed)) {
-              if (!is_hold) {
-                id(myDisplay_line1) = "Unassigned";
-                id(myDisplay_line2) = "${remote_display_name}"; 
-                // myDisplay_line3 already has command hex placed by base architecture
-              }
-            }
+            // did not find in map
+            id(commandName) = "Unassigned"; // indicate no command was found
+            
           }
