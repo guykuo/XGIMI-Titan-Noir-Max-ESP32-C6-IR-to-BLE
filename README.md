@@ -534,9 +534,9 @@ Three buttons on your remote are assigned to control wake token. The actual butt
 | Hisense 50U6G | Clear | 5 |
 | Hisense 50U6G | Recall | 6 |
 | ---- | ---- | ---- |
-| JVC RS2 | Sniff | color up |
-| JVC RS2 | Clear | color down |
-| JVC RS2 | Recall | color temp |
+| JVC RS2 | Sniff | cinema |
+| JVC RS2 | Clear | natural |
+| JVC RS2 | Recall | gamma or HDR |
 | ---- | ---- | ---- |
 | LG Cinebeam | Sniff | 4 | 
 | LG Cinebeam | Clear | 5 |
@@ -697,38 +697,57 @@ Three buttons on your remote are assigned to control wake token. The actual butt
 | BT_start_pair | 1 | 0xC284 |
 | BT_clear_pair | 2 | 0xC244 |
 
-## JVC RS2 Projector to Xgimi Titan Noir Mapping
-JVC Projectors by default respond to code set A. The can be changed to code set B to avoid control conflicts.
-Be aware that you need to use physical buttons on projector (or IP / serial control) to change code if a remote with current codes set is not available.
+## JVC Projector to Xgimi Titan Noir Mapping
+The JVC IRmap accomodates several generations of JVC projectors. Buttons on their respective IR remotes have changed over the generations. Some buttons may no longer exist and must be replaced by ones for newer remotes. For this reason, you will see several _alt button mappings for some functions. These let the mapping adapt between older and more current projector remotes.
+
+JVC projectors by default respond to code set A. The can be changed to code set B to avoid control conflicts.
+Be aware that you need to use physical buttons on projector (or IP / serial control) to change projector code set if a remote with current codes set is not available.
+
 | Xgimi Command | JVC Projector Btn | (0xCE) + Command |
 | :--- | :--- | :--- |
-| power_on | power on | 0xA0 |
-| power_off | power off | 0x60 |
-| cursor_up | up arrow | 0x80 |
-| cursor_down | down arrow | 0x40 |
-| cursor_left | left arrow | 0x6C |
-| cursor_right | right arrow | 0x2C |
-| cursor_enter | enter/ok | 0xF4 |
-| settings_menu | menu | 0x74 |
-| back | exit | 0xC0 |
-| home | hide | 0xB8 |
-| game_menu | gamma | 0xAE |
-| input | input HDMI 1 | 0x0E |
-| picture | input HDMI 2 | 0x8E |
-| focus_manual | focus - | 0xCC |
-| focus_auto | focus + | 0x8C |
-| shortcut_1 | input video | 0xD2 |
-| shortcut_2 | input s-video | 0x32 |
-| shortcut_3 | input component | 0xB2 |
-| shortcut_4 | natural | 0x56 |
-| volume_up | brightness up | 0x5E |
-| volume_down | brightness down | 0xDE |
-| mute | hide | 0xB8 |
-| token_sniff | color up | 0x3E |
-| token_clear | color down | 0xBE |
-| token_recall | color temp | 0x6E |
-| BT_start_pair | aspect | 0xEE |
-| BT_clear_pair | cinema | 0x96 |
+| power_on |  power on | 0xA0 |
+| power_off |  power off | 0x60 |
+| cursor_up |  up arrow | 0x80 |
+| cursor_down |  down arrow | 0x40 |
+| cursor_left |  left arrow | 0x6C |
+| cursor_right |  right arrow | 0x2C |
+| cursor_enter |  enter/ok | 0xF4 |
+| settings_menu |  menu | 0x74 |
+| back |  exit | 0xC0 |
+| home |  hide | 0xB8 |
+| game_menu |  dynamic | 0xD6 |
+| game_menu_alt |  advanced menu_ | 0xCE |
+| input |  input HDMI 1 | 0x0E |
+| picture |  input HDMI 2 | 0x8E |
+| picture_alt |  picture mode_ | 0x2F |
+| focus_manual |  focus - | 0xCC |
+| focus_auto |  focus + | 0x8C |
+| focus_manual_alt |  color profile_ | 0x11 |
+| focus_auto_alt |  gamma settings_ | 0xAF |
+| shortcut_1 |  user 1 | 0x36 |
+| shortcut_2 |  user 2 | 0xB6 |
+| shortcut_3 |  user 3 | 0x76 |
+| shortcut_4 |  aspect | 0xEE |
+| shortcut_1_alt |  mode 1_ | 0x1B |
+| shortcut_2_alt |  mode 2_ | 0x9B |
+| shortcut_3_alt |  mode 3_ | 0x5B |
+| shortcut_4_alt |  info | 0x2E |
+| volume_up |  brightness up | 0x5E |
+| volume_down |  brightness down | 0xDE |
+| mute |  color temp | 0x6E |
+| volume_up_alt |  lens AP_ | 0x04 |
+| volume_down_alt |  lens control_ | 0x0C |
+| mute_alt |  anamorphic_ | 0xA3 |
+| token_sniff |  cinema_ | 0x16 |
+| token_sniff_alt |  cinema | 0x96 |
+| token_clear |  natural | 0x56 |
+| token_recall |  gamma | 0xAE |
+| token_recall_alt |  HDR_ | 0xB7 |
+| BT_start_pair |  sharp down | 0xFE |
+| BT_clear_pair |  sharp up | 0x9A |
+| BT_start_pair_alt |  CMD_ | 0x51 |
+| BT_clear_pair_alt |  mpc_ | 0x0F |
+
 
 
 
