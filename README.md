@@ -559,7 +559,7 @@ The translator listens for an IR signal. Identifies the projector by matching th
 Learning requires a display on your ESP32 board or having the ESP32 board connected to a serial logging session.
 Technically, it will work without a display or log, but that would mean blindly pressing a sequence of IR buttons perfectly.
 
-* Triple-click boot button to begin learning mote.
+* Triple-click boot button to enter learning mode.
 * As each button namem appears on screen, press the corresponding button on your IR remote
 * Once done with all buttons, you select which memory slot to store your new profile via the remote.
 
