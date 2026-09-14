@@ -3,7 +3,7 @@
 substitutions:
   pin_ir_receiver:   GPIO44 # on UART RXD. 4 pin JIS 1.0 connector also has 3V and Gnd connections for IR receiver.
   pin_indicator_LED: GPIO43 # on UART TXD. No indicator LED on this board. Use GPIO43 as dummy
-  pin_sniff_btn: GPIO0 # use boot button to start sniff
+  pin_action_btn: GPIO0 # use boot button to start actions
 
 # Core Architecture Declaration
 esp32:

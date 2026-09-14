@@ -1,56 +1,48 @@
-# ============= BEGIN Configuration Options KUO ==========
+# ============= BEGIN Configuration Options KUO ======================================================================
 
 # Only three things to configure here
 #   ble_remote_name
+#   Default IR profile
 #   hardware_package
-#   irmap_package
 
 substitutions:
-  ble_remote_name: "Epson Xgimi"  # <===== Name your IR remote. (20 char max)
+  ble_remote_name: "IR to Xgimi Kuo"  # <===== Name your IR remote. (20 char max. No special characters)
+
+
+  # --- Default IR profile. Uncomment one (and only one)
+  #def_profile: "0"  # AWOL-projector (untested, Hisense IR codes)
+  #def_profile: "1"  # benq-w5800
+  def_profile: "2"  # epson-pro-cinema-LS12000
+  #def_profile: "3"  # hisense-50u6g
+  #def_profile: "4"  # jvc-hr-S9600u
+  #def_profile: "5"  # jvc-rs2-codeset-A 
+  #def_profile: "6"  # jvc-rs2-codeset-B 
+  #def_profile: "7"  # LG-cinebeam-hu810p 
+  #def_profile: "8"  # optoma-UHD50X
+  #def_profile: "9"  # sony-VPL-XW600ES 
+  #def_profile: "10" # sony-XBR-77A9G 
+  #def_profile: "11" # tivo-roamio-TCD846500 
+  #def_profile: "13" # xgimi-titan (untested, published Original Titan IR codes)
+
 
 packages: 
-
   # --- ESP32 board, Uncomment one (and only one) for your board
   hardware_package: !include ir-common-kuo/hardware-c3.yaml                  # supports built-in 0.42 inch OLED display
   #hardware_package: !include ir-common-kuo/hardware-c6.yaml                 # supports external 0.9 inch i2c OLED display
   #hardware_package: !include ir-common-kuo/hardware-m5stack-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
   #hardware_package: !include ir-common-kuo/hardware-s3-hosyond-lcd-3.5-touch.yaml
   #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-esp32-s3-touch-lcd-2.8.yaml
-  #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-lcd-1.47B.yaml
+
   #hardware_package: !include ir-common-kuo/HARDWARE.YAML # Or uncomment this line and replace HARDWARE.YAML with your file.
 
-  # --- IR Map, Uncomment one (and only one) for your IRmap
-  #irmap_package: !include ir-common-kuo/irmap-benq-w5800.yaml 
-  irmap_package: !include ir-common-kuo/irmap-epson-pro-cinema-LS12000.yaml 
-  #irmap_package: !include ir-common-kuo/irmap-hisense-50u6g.yaml 
-  #irmap_package: !include ir-common-kuo/irmap-jvc-hr-S9600u.yaml 
-  #irmap_package: !include ir-common-kuo/irmap-jvc-rs2-codeset-A.yaml 
-  #irmap_package: !include ir-common-kuo/irmap-jvc-rs2-codeset-B.yaml 
-  #irmap_package: !include ir-common-kuo/irmap-LG-cinebeam-hu810p.yaml 
-  #irmap_package: !include ir-common-kuo/irmap-optoma-UHD50X.yaml 
-  #irmap_package: !include ir-common-kuo/irmap-sony-VPL-XW600ES.yaml 
-  #irmap_package: !include ir-common-kuo/irmap-sony-XBR-77A9G.yaml 
-  #irmap_package: !include ir-common-kuo/irmap-tivo-roamio-TCD846500.yaml 
-  #irmap_package: !include ir-common-kuo/irmap-AWOL-projector.yaml # untested, uses Hisense IR codes
-  #irmap_package: !include ir-common-kuo/irmap-xgimi-titan.yaml    # untested, original Titan IR codes
-  #irmap_package: !include ir-common-kuo/IRMAP.YAML # Or uncomment this line and replace IRMAP.YAML with your file 
 
 
+# ========== END Configuration Options KUO ==============================================================================
+# Code after this point typically does not need to be changed.
+# =======================================================================================================================
 
-
-
-# ============= END Configuration Options KUO ===========
-# code after this point typically does not need to be changed.
-
-
-
-
-
-
-
-
-  # do not change mrmachine_BLE_package
-  mrmachine_BLE_package: !include ir-common-kuo/appkit/mrmachine_bluetoothV_old.yaml # required, modified mrmachine BLE package
+  ir_hub_package:         !include ir-common-kuo/appkit/ir_hub.yaml
+  mrmachine_BLE_package:  !include ir-common-kuo/appkit/mrmachine_bluetooth_V1.0.0.yaml # required, modified mrmachine BLE package
 
 preferences:
   flash_write_interval: 3s # More quickly commits sniffed tokens to flash. Global data rarely changes.
@@ -60,47 +52,93 @@ external_components:
     type: local
     path: components
   components: [esp32_ble_server, xgimi_remote]
-  
+
 esp32:
   partitions: ir-common-kuo/appkit/partitions.csv  #larger app partition needed 
-      
 
 logger:
+  level: DEBUG 
+  
+wifi:
+  reboot_timeout: 0s
+  ap:
+    ssid: "${ble_remote_name}"
+    password: !secret fallback_ap_password
+    ap_timeout: 60s
+
+captive_portal:
+    
+ota:
+  - platform: esphome
+    password: !secret ota_password
 
 api:
   encryption:
     key: !secret api_encryption_key
   reboot_timeout: 30min #time before reboot if HomeAssistant is not present. 
+  services:
+    - service: import_json_profiles
+      variables:
+        json_data: string
+      then:
+        - lambda: |-
+            ESP_LOGW("JSON Import", "Incoming remote migration configuration data packet received from Home Assistant API.");
+            
+            // Execute the import verification logic built right inside your ir_profile.h header file
+            bool import_success = import_profiles_from_json(json_data);
+            
+            if (import_success) {
+              ESP_LOGI("JSON Import", "Migration successful. Re-linking layout action object pointers...");
+              
+              // Safely refresh structural layout pointers and refresh physical layout display entities
+              link_hardware_buttons();
+              id(setup_ir_receiver_for_current_profile).execute();
+              id(ir_receiver_mode) = 1; // Set to action mode
+              
+              id(display_token_remote_profile).execute();
+              
+              // Force update our text component so Home Assistant instantly synchronizes to the fresh dataset
+              id(sync_json_backup_sensor).execute();
+              
+              id(display_show)->execute(true, "JSON Imported!", "Profiles Recovered", "Database Active");
+            } else {
+              ESP_LOGE("JSON Import", "Failed parsing configuration payload string! Incompatible or corrupted JSON layout format.");
+              id(display_show)->execute(false, "Import Failed", "Corrupted File", "Rejected");
+            }
 
-# ota:
-#   - platform: esphome
-#     password: !secret ota_password
-    
+# ============================================================
   
 esphome:
   name: ${device_name}
   friendly_name: ${friendly_name}
-  comment: General-purpose ESP32 with XGIMI BLE wake and remote emulation # KUO name for generic ESP32
+  comment: ESP32 with XGIMI BLE Translator
   includes:
     - <sstream>
     - <iomanip>
     - <array>
+    - <vector>
     - ir-common-kuo/appkit/secrets_bridge.h
-
+    - ir-common-kuo/appkit/ir_profile.h
+  libraries:
+    - ArduinoJson  
   project:
-    name: xgimi.titan-noir-esp32-rc # KUO name for generic ESP32
-    version: 2.23.0
-
+    name: xgimi.titan-noir-esp32-ir-kuo
+    version: 26.09.10.001
 
   on_boot:
-    - priority: 250 
+    - priority: -200 
+      then:
+        - esp32_ble_tracker.stop_scan: {}
+        - logger.log: "BLE Tracker safely disabled on boot to protect HID Server initialization."
+
+    - priority: -50
       then:
         - binary_sensor.template.publish:
             id: sniffer_status
             state: OFF
         
         - lambda: |-
-           bool learned_wake_token_exists = false; // check if any bytes are not 0x00
+            bool learned_wake_token_exists = false; // check if any bytes are not 0x00
             for (int i = 0; i < 15; i++) {
               if (id(learned_wake_token)[i] != 0x00) {
                 learned_wake_token_exists = true;
@@ -131,10 +169,6 @@ esphome:
               ESP_LOGD("boot_loader", "Using learned 15-byte token from NVS flash: %s", formatted_hex.c_str());
               
               id(flash_led_custom).execute(8, 0.0, 0.6, 0.0); // flash 8 times indicate has learned token.
-              id(display_show).execute(false, 
-                                       formatted_hex, 
-                                       "${ble_remote_name}", 
-                                       "Stored Token");
 
 
             } else {
@@ -155,10 +189,6 @@ esphome:
               
               id(xgimi_remote_controller)->set_wake_token(active_token_vector);
                   
-              id(display_show).execute(false, 
-                                       formatted_hex, 
-                                       "${ble_remote_name}", 
-                                       "Default Token");
 
               ESP_LOGD("boot_loader", "Flash memory is empty. Suggest sniffing BLE new wake token.");
  
@@ -174,9 +204,8 @@ esphome:
               
               ESP_LOGD("boot_loader", "Active wake token vector now set to hex: %s", hex_log_str.c_str());
             }        
- 
             
-    - priority: 100 
+    - priority: 150
       then: # if display is disabled briefly show a message how to enable screen
         - if:
             condition:
@@ -207,9 +236,13 @@ esphome:
                   line2: ''
                   line3: ''
 
-
+# ============================================================
 globals:
-
+  - id: default_profile
+    type: int
+    initial_value: ${def_profile}
+  
+    
     # ======= wake_token globals
     # During boot, if a token has been previously stored, this overrides the one supplied secrets      
   - id: learned_wake_token # Learned wake token is stored here. Persistent upon globals sync.
@@ -241,7 +274,8 @@ globals:
     type: bool
     restore_value: no
     initial_value: 'false'
-  
+
+# ============================================================
 binary_sensor:
   - platform: template
     name: "XGIMI Sniffer Active Status"
@@ -250,134 +284,119 @@ binary_sensor:
 
   - platform: gpio # Implement physical button for sniff
     pin:
-      number: ${pin_sniff_btn}
+      number: ${pin_action_btn}
       inverted: true
       mode:
         input: true
         pullup: true
-    name: "Physical sniff button"
-    id: physical_sniff_button
+    name: "physical action button"
+    id: physical_action_button
     filters:
       - delayed_on: 50 ms
     on_multi_click:
-      # Short click starts token sniffing
+      # 1. TRIPLE CLICK starts learning mode
+      - timing:
+          - ON for at most 0.5s
+          - OFF for at most 0.3s
+          - ON for at most 0.5s
+          - OFF for at most 0.3s
+          - ON for at most 0.5s
+          - OFF for at least 0.2s
+        then:
+          - script.execute: start_learning_mode
+          - logger.log: "Triple click detected. IR hub entering sequential learning mode."
+
+      # 2. DOUBLE CLICK starts setting of IRmap (Profile Selection Mode)
+      - timing:
+          - ON for at most 0.5s
+          - OFF for at most 0.3s
+          - ON for at most 0.5s
+          - OFF for at least 0.35s
+        then:
+          - script.execute: 
+              id: display_show
+              small_text: true
+              line1: 'Set IR Profile'
+              line2: 'Press a Btn'
+              line3: 'On Remote'
+          - lambda: |-
+              id(ir_receiver_allowed_protocol) = "ALL";
+              id(ir_receiver_mode) = 2; // set profile mode active
+              id(set_profile_timeout_watcher).execute();
+          - logger.log: "Double click detected. IR hub in set profile mode."
+
+      # 3. SINGLE CLICK starts token sniffing
       - timing:
           - ON for at most 400ms
-          - OFF for at least 80ms
+          - OFF for at least 0.4s
         then:
           - button.press: token_sniff
           - logger.log: "Boot button short click. Starting token sniffing"
 
-      # Long hold
-      - timing:   
-          - ON for at least 3s
-        then:
-          - if:
-              condition:
+      # 4. LONG HOLD (Wipes dynamic slots if in Learning Mode, otherwise toggles screen display)
+      - timing: 
+          - ON for at least 5s
+        then: 
+          - if: 
+              condition: 
                 lambda: |-
-                  return id(myDisplay_disabled);
-              then:
-                # set display active
-                - globals.set:
-                    id: myDisplay_disabled
-                    value: 'false'
-                - script.execute: 
-                    id: display_show
-                    small_text: false
-                    line1: 'Setting'
-                    line2: 'Display'
-                    line3: 'Enabled'
+                  return id(ir_receiver_mode) == 3;
+              then: 
+                - script.stop: learn_mode_timeout_watcher
+                - script.execute: wipe_all_nvs_profiles
                 - lambda: |-
-                    id(flash_led_custom).execute(3, 0.0, 1.0, 0.0); // Flash (green) x 3 display active
-                   
-                - logger.log: "Boot button long hold. Display enabled."
+                    id(ir_receiver_mode) = 1; // Safely re-engage normal active state
               else:
-                # set display suppressed. Show notification before actually making suppressed
-                - script.execute: 
-                    id: display_show
-                    small_text: false
-                    line1: 'Disabling Display'
-                    line2: 'To Re-enable'
-                    line3: 'Hold Boot Btn'
-                - lambda: |-
-                    id(flash_led_custom).execute(5, 1.0, 0.0, 0.5); // Flash (magenta) x 5 display suppressed
-                - delay: 10s
-                
-                - globals.set: # set display to suppressed
-                    id: myDisplay_disabled
-                    value: 'true'
-                - script.execute: 
-                    id: display_show
-                    small_text: false
-                    line1: ''
-                    line2: ''
-                    line3: ''
- 
-                - logger.log: "Boot button long hold. Display suppressed."
+                # FIXED: The nested condition must open as a distinct list element item
+                - if:
+                    condition: 
+                      lambda: |-
+                        return id(myDisplay_disabled);
+                    then:
+                      - globals.set:
+                          id: myDisplay_disabled
+                          value: 'false'
+                      - script.execute: 
+                          id: display_show
+                          small_text: false
+                          line1: 'Setting'
+                          line2: 'Display'
+                          line3: 'Enabled'
+                      - logger.log: "Display enabled via long hold."
+                    else:
+                      - script.execute: 
+                          id: display_show
+                          small_text: false
+                          line1: 'Disabling Display'
+                          line2: 'To Re-enable'
+                          line3: 'Hold Boot Btn'
+                      - delay: 3s
+                      - globals.set:
+                          id: myDisplay_disabled
+                          value: 'true'
+                      - script.execute: 
+                          id: display_show
+                          small_text: false
+                          line1: ''
+                          line2: ''
+                          line3: ''
+                      - logger.log: "Display suppressed via long hold."
 
-
-
+# ============================================================
 button:
+  
   - platform: template # retrieve stored template, display, and use as active token
-    name: "Token Recall"
+    name: "token_recall"
     id: token_recall
     icon: "mdi:bluetooth"
     on_press:
       then:
-        - globals.set: 
-            id: showing_special_info # indicate we are showing special info that should not be overwritten
-            value: 'true'
-        
-        - lambda: |-
-            bool learned_wake_token_exists = false; // check if any bytes are not 0x00
-            for (int i = 0; i < 15; i++) {
-              if (id(learned_wake_token)[i] != 0x00) {
-                learned_wake_token_exists = true;
-                break;
-              }
-            }
-            
-            if (learned_wake_token_exists) {
-
-              // Copy learned_wake_token into active_wake_token
-              memcpy(id(active_wake_token), id(learned_wake_token), 15);
-              
-              // submit active_wake_token as one to use
-              std::vector<uint8_t> active_token_vector(id(active_wake_token), id(active_wake_token) + 15);
-              id(xgimi_remote_controller)->set_wake_token(active_token_vector);
-
-              // Display entire learned token via a display script
-              //   must convert array into integer vector for to pass as script
-              std::vector<int> token_int_pass(id(active_wake_token), id(active_wake_token) + 15); 
-              id(display_wake_token).execute(token_int_pass);            
-              
-            } else {
-
-              // Safely sync parsed secret vector data to active array
-              std::vector<uint8_t> active_token_vector = get_secret_wake_token();
-              for (size_t i = 0; i < 15; ++i) {
-                id(active_wake_token)[i] = active_token_vector[i];
-              }
-
-              std::string formatted_hex = "";
-              for (size_t i = 0; i < 15; ++i) {
-                  if (i > 0) {
-                      formatted_hex += " ";
-                  }
-                  char buf[3];
-                  snprintf(buf, sizeof(buf), "%02x", id(active_wake_token)[i]);
-                  formatted_hex += buf;
-              }
- 
-              id(display_show).execute(true,
-                                       formatted_hex,
-                                       "Default Token",
-                                       "Being Used");
-            }
+        - script.execute: execute_token_recall_routine
+      
 
 
   - platform: template # clear stored template. Revert to secrets wake token
-    name: "Token Clear"
+    name: "token_clear"
     id: token_clear
     on_press:
       then:
@@ -390,17 +409,18 @@ button:
         - lambda: |-
             // Force fire your local hardware data-erasing flash worker
             id(run_token_clear_worker).execute(); 
-     
+
             
   - platform: template # button to start sniffing for wake token. W
-    name: "Token Sniff"
+    name: "token_sniff"
     id: token_sniff
     icon: "mdi:bluetooth-audio"
     on_press:
       then:
         - script.execute: sniffing_sequence
-            
-            
+    
+
+# ============================================================
 # ====== BLE TRACKING performs sniffing for wake tokens
 # Upon finding one, stores and begins using new token
 
@@ -543,9 +563,49 @@ esp32_ble_tracker:
 
 
 
+# ============================================================
 
-#=================  utility scripts ==============
 script:
+  - id: execute_token_recall_routine
+    mode: single       
+    then:
+      - globals.set: 
+          id: showing_special_info # indicate we are showing special info that should not be overwritten
+          value: 'true'
+      
+      - lambda: |-
+          bool learned_wake_token_exists = false; // check if any bytes are not 0x00
+          for (int i = 0; i < 15; i++) {
+            if (id(learned_wake_token)[i] != 0x00) {
+              learned_wake_token_exists = true;
+              break;
+            }
+          }
+          
+          if (learned_wake_token_exists) {
+
+            // Copy learned_wake_token into active_wake_token
+            memcpy(id(active_wake_token), id(learned_wake_token), 15);
+            
+            // submit active_wake_token as one to use
+            std::vector<uint8_t> active_token_vector(id(active_wake_token), id(active_wake_token) + 15);
+            id(xgimi_remote_controller)->set_wake_token(active_token_vector);
+            
+            
+          } else {
+
+            // Safely sync parsed secret vector data to active array
+            std::vector<uint8_t> active_token_vector = get_secret_wake_token();
+            for (size_t i = 0; i < 15; ++i) {
+              id(active_wake_token)[i] = active_token_vector[i];
+            }
+            
+          }
+          // Display entire learned token via a display script
+          // must convert array into integer vector for script
+          std::vector<int> token_int_pass(id(active_wake_token), id(active_wake_token) + 15); 
+          id(display_wake_token).execute(token_int_pass);            
+
 
   # --- THREAD-ISOLATED CLEAR ACTION ---
   - id: run_token_clear_worker
@@ -634,8 +694,6 @@ script:
       - esp32_ble_tracker.start_scan: 
           continuous: false
      
-      # ----------
-
       - binary_sensor.template.publish: 
           id: sniffer_status
           state: ON
@@ -672,7 +730,7 @@ script:
           line3: 'ENDED'
 
 
-# --- myDisplay timeout handler ---
+# --- myDisplay timeout auto dims display ---
   - id: display_show
     mode: restart 
     parameters:
@@ -702,7 +760,7 @@ script:
                 else:
                    - display.page.show: active_page_std
 
-      - delay: 40s
+      - delay: 40s #how long display remains on
       - display.page.show: blank_page
 
 
@@ -756,8 +814,55 @@ script:
           }
           
 
+  # --- show token, name of remote, active profile on display ---
+  - id: display_token_remote_profile
+    then:
+      - lambda: |-
+      
+          // build token_hex_str for logging report
+          std::string token_hex_str = "";
+          // Use the underlying C-array via ->value()
+          unsigned char* token_bytes = active_wake_token->value();
+          
+          for (size_t i = 0; i < 15; ++i) {
+            if (i > 0) token_hex_str += " ";
+            
+            char buf[3]; // Fixed buffer size to hold 2 hex digits + null terminator
+            // Force cast to int to prevent compiler warnings with %02X
+            snprintf(buf, sizeof(buf), "%02X", static_cast<int>(token_bytes[i]));
+            token_hex_str += buf;
+          }
+          
+          // get current profile name
+          int current_idx = id(active_remote_layout);
+          if (!(0 <= current_idx && current_idx < remote_profiles.size())) {
+            id(display_show).execute(true,
+                                     "${ble_remote_name}",
+                                     token_hex_str,
+                                     "No profile");
+          } else {
+            const auto& active_profile = remote_profiles[current_idx]; // Get the active_profile struct
+              
+            id(display_show).execute(true,
+                                     token_hex_str,
+                                     "${ble_remote_name}",
+                                     active_profile.profile_name);
+
+          }
+
+  #--------
+  # Helper script to refresh our download text sensor state
+  - id: sync_json_backup_sensor
+    then:
+      - text_sensor.template.publish:
+          id: ir_hub_backup_database_json
+          state: !lambda 'return export_profiles_to_json();'
 
 
-
-
-
+#===========================
+text_sensor:
+  - platform: template
+    name: "IR Hub Backup Database JSON"
+    id: ir_hub_backup_database_json
+    icon: "mdi:code-json"
+    update_interval: never # Manual sync updates only to preserve RAM memory limits

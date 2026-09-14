@@ -4,7 +4,7 @@
 substitutions:
   pin_ir_receiver: GPIO45 # spare GPIO on expansion pin connector
   pin_indicator_LED: GPIO40 # neopixel
-  pin_sniff_btn: GPIO0 # use boot button to start sniff
+  pin_action_btn: GPIO0 # use boot button to start actions
 
   display_BL_percent: 50%
   
