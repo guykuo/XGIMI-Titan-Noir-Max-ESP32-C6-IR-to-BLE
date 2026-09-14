@@ -549,6 +549,31 @@ Three buttons on your remote are assigned to control wake token. The actual butt
 | TiVo Roamio | Clear | 5 |
 | TiVo Roamio | Recall | 6 |
 
+# Selecting and Learning Profiles
+## Selecting Profile
+* Double-click boot button to put translator into profile setting mode.
+*Press a button on your desired remote and the translator should switch to that remote's profile.
+The translator listens for an IR signal. Identifies the projector by matching that signal against signals it knows. User learned remotes have higher precedence over "factory" profiles.
+
+## Learning a new Profile from IR Remote
+Learning requires a display on your ESP32 board or having the ESP32 board connected to a serial logging session.
+Technically, it will work without a display or log, but that would mean blindly pressing a sequence of IR buttons perfectly.
+
+* Triple-click boot button to begin learning mote.
+* As each button namem appears on screen, press the corresponding button on your IR remote
+* Once done with all buttons, you select which memory slot to store your new profile via the remote.
+
+  OK = memory 0
+  Up = memory 1
+  Rt = memory 2
+  Down = memory 3
+  Left = memory 4
+
+
+
+
+
+
 
 # Xgimi Command and IR Remote Button Tables
 ## Tivo Roamio to Xgimi Titan Noir Mapping
