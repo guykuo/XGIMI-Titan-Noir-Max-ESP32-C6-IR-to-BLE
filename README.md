@@ -44,8 +44,8 @@ Getting the translator to work requires you to...
 
 # Layout of this Git
 Project Git is arranged as below. You will find make, hardware, and IRmap files that are combined to create your own combination of IR code set translation and particular ESP32 board the translator is to run upon.
+<img width="858" height="648" alt="project git layout" src="https://github.com/user-attachments/assets/fe9c50c5-b773-4f4f-9fae-a9b09bbe8d99" />
 
-<img width="1200" height="1319" alt="project git layout" src="https://github.com/user-attachments/assets/4c0e3408-2380-4790-8e67-8c003cb49541" />
 
 
 
@@ -72,80 +72,78 @@ Here is the file section of a make file that you edit while making a custom make
 In this example, hardware-c3.yaml and irmap-epson-pro-cinema-LS12000.yaml have been specified by uncommenting
 
 ```YAML
-# ============= BEGIN Configuration Options KUO ==========
+# ============= BEGIN Configuration Options KUO ======================================================================
 
 # Only three things to configure here
 #   ble_remote_name
+#   Default IR profile
 #   hardware_package
-#   irmap_package
 
 substitutions:
-  ble_remote_name: "Epson Xgimi"  # <===== Name your IR remote. (20 char max)
+  ble_remote_name: "IR to Xgimi Kuo"  # <===== Name your IR remote. (20 char max. No special characters)
+
+
+  # --- Default IR profile. Uncomment one (and only one)
+  #def_profile: "0"  # AWOL-projector (untested, Hisense IR codes)
+  #def_profile: "1"  # benq-w5800
+  def_profile: "2"  # epson-pro-cinema-LS12000
+  #def_profile: "3"  # hisense-50u6g
+  #def_profile: "4"  # jvc-hr-S9600u
+  #def_profile: "5"  # jvc-rs2-codeset-A 
+  #def_profile: "6"  # jvc-rs2-codeset-B 
+  #def_profile: "7"  # LG-cinebeam-hu810p 
+  #def_profile: "8"  # optoma-UHD50X
+  #def_profile: "9"  # sony-VPL-XW600ES 
+  #def_profile: "10" # sony-XBR-77A9G 
+  #def_profile: "11" # tivo-roamio-TCD846500 
+  #def_profile: "13" # xgimi-titan (untested, published Original Titan IR codes)
+
 
 packages: 
-
   # --- ESP32 board, Uncomment one (and only one) for your board
-  hardware_package: !include ir-common-kuo/hardware-c3.yaml
-  #hardware_package: !include ir-common-kuo/hardware-c6.yaml
-  #hardware_package: !include ir-common-kuo/hardware-m5stack-atom-lite.yaml
+  hardware_package: !include ir-common-kuo/hardware-c3.yaml                  # supports built-in 0.42 inch OLED display
+  #hardware_package: !include ir-common-kuo/hardware-c6.yaml                 # supports external 0.9 inch i2c OLED display
+  #hardware_package: !include ir-common-kuo/hardware-m5stack-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
   #hardware_package: !include ir-common-kuo/hardware-s3-hosyond-lcd-3.5-touch.yaml
-  #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-lcd-1.47B.yaml
+  #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-esp32-s3-touch-lcd-2.8.yaml
+
   #hardware_package: !include ir-common-kuo/HARDWARE.YAML # Or uncomment this line and replace HARDWARE.YAML with your file.
 
-  # --- IR Map, Uncomment one (and only one) for your IRmap
-  #irmap_package: !include ir-common-kuo/irmap-benq-w5800.yaml 
-  irmap_package: !include ir-common-kuo/irmap-epson-pro-cinema-LS12000.yaml 
-  #irmap_package: !include ir-common-kuo/irmap-hisense-50u6g.yaml 
-  #irmap_package: !include ir-common-kuo/irmap-jvc-hr-S9600u.yaml 
-  #irmap_package: !include ir-common-kuo/irmap-jvc-rs2-codeset-A.yaml 
-  #irmap_package: !include ir-common-kuo/irmap-jvc-rs2-codeset-B.yaml 
-  #irmap_package: !include ir-common-kuo/irmap-LG-cinebeam-hu810p.yaml 
-  #irmap_package: !include ir-common-kuo/irmap-optoma-UHD50X.yaml 
-  #irmap_package: !include ir-common-kuo/irmap-sony-VPL-XW600ES.yaml 
-  #irmap_package: !include ir-common-kuo/irmap-sony-XBR-77A9G.yaml 
-  #irmap_package: !include ir-common-kuo/irmap-tivo-roamio-TCD846500.yaml 
-  #irmap_package: !include ir-common-kuo/irmap-AWOL-projector.yaml # untested, uses Hisense IR codes
-  #irmap_package: !include ir-common-kuo/irmap-xgimi-titan.yaml    # untested, original Titan IR codes
-  #irmap_package: !include ir-common-kuo/IRMAP.YAML # Or uncomment this line and replace IRMAP.YAML with your file 
 
 
-
-
-
-# ============= END Configuration Options KUO ===========
+# ========== END Configuration Options KUO ==============================================================================
 ```
 Available hardware boards and irmap files are in ir-common-kuo/ subdirectory
 
 
 ## IR Maps
-This translator project includes several IR translations as irmap files.
+This translator project has several built-in IR profiles and can also learn up to five new IR remote profiles.
 
-The main IR maps, which have been vetted, were selected to avoid conflicts in a home theater.
+The "factory" IR profiles, were selected to avoid conflicts in a home theater.
 One should usually choose one that does not conflict with existing devices in your system.
 
-An alternative strategy when chossing an IRmap is to intentionally select a mapping for a projector that already is in your universal remote but being replaced.
-This lets the Titan Noir take over the old projector's role already configured in your universal remote. However, the old projector cannot be
-simultaneously used under this strategy.
+An alternative strategy is to intentionally select a projector that is already configured in your universal remote but being replaced.
+This lets the Titan Noir masquerade as the old projector without reconfiguring your universal remote. However, the old projector cannot be
+simultaneously used under masquerading strategy.
 
-These IR maps have known working IR code sets ...
+These "factory" IR profiles have known working IR code sets ...
 
-* irmap-benq-w5800.yaml_______________(BenQ W5800 projector)
-* irmap-epson-pro-cinema-LS1200-projector.yaml______(Epson Projectors)
-* irmap-hisense-50u6g.yaml____________(Hisense 50U6G TV)
-* irmap-jvc-hr-S9600u.yaml____________(JVC HR-S9600U VCR)
-* irmap-jvc-rs2-codeset-A.yaml________(JVC Projectors code set A - default) 
-* irmap-jvc-rs2-codeset-B.yaml________(JVC Projectors code set B - alt code set) 
-* irmap-LG-cinebeam-hu810p.yaml_______(LG Cinebeam HU810P projector)
-* irmap-optoma-UHD50X.yaml____________(Optoma UHD50X projector)
-* irmap-sony-VPL-XW600ES.yaml_________(Sony VPL-XW600ES projector)
-* irmap-sony-XBR-77A9G.yaml___________(Sony XBR-77A9G TV)
-* irmap-tivo-roamio-TCD846500.yaml____(TiVo Roamio)
+* benq-w5800.yaml_______________(BenQ W5800 projector)
+* epson-pro-cinema-LS1200-projector.yaml______(Epson Projectors)
+* hisense-50u6g.yaml____________(Hisense 50U6G TV)
+* jvc-hr-S9600u.yaml____________(JVC HR-S9600U VCR)
+* jvc-rs2-codeset-A.yaml________(JVC Projectors code set A - default) 
+* jvc-rs2-codeset-B.yaml________(JVC Projectors code set B - alt code set) 
+* LG-cinebeam-hu810p.yaml_______(LG Cinebeam HU810P projector)
+* optoma-UHD50X.yaml____________(Optoma UHD50X projector)
+* sony-VPL-XW600ES.yaml_________(Sony VPL-XW600ES projector)
+* sony-XBR-77A9G.yaml___________(Sony XBR-77A9G TV)
+* tivo-roamio-TCD846500.yaml____(TiVo Roamio)
 
+These two "factory" IR maps are WIP and may have incomplete or incorrect IR mapping...
 
-These IR maps are WIP and may have incomplete or incorrect IR mapping...
-
-* irmap-AWOL-projector.yaml
-* irmap-xgimi-titan.yaml
+* AWOL-projector.yaml_______ Valerion
+* xgimi-titan.yaml__________ NOTE: this is ORIGINAL Titan, not NOIR
 
 
 ## Hardware Definition Packages
@@ -156,8 +154,8 @@ Supplied hardware files are for ESP32 boards ...
 * hardware-c3.yaml
 * hardware-c6.yaml
 * hardware-m5stack-atom-lite.yaml
-* hardware-s3-waveshare-lcd-1.47b.yaml
 * hardware-s3-hosyond-lcd-3.5-touch.yaml
+* hardware-s3-waveshare-esp32-s3-touch-lcd-2.8.yaml
 
 Look in the hardware file for actual GPIO pins for IR receiver and optional i2c display
   
@@ -192,14 +190,6 @@ You can optionally connect a [SSD1306 128x32 0.91-inch OLED display module](http
 
 <br>
 
-### Waveshare ESP32-S3 1.47inch LCD Display Development Board (Revision B)
-This ESP32-S3 board was used to verify translator functionality on S3 boards. It has a larger LCD display and dissipates quite a bit more power than the C3 and C6 boards. I would only use this as a testing and setup board. The larger screen enables easier reading of captured IR codes while editing irmap files. It is probably too bright and power hungry for home theater deployment. There are many similar boards with displays, but variants are not always GPIO pin matches for the ones specified in my hardware-s3-waveshare-lcd-1.47B.yaml
-
-Be sure to get exactly [Waveshare ESP S3 LCD 1.47B board](https://www.amazon.com/dp/B0FBWPJPXN) if you want to use my hardware config without searching for correct pinouts.
-
-<img width="550" alt="Screenshot 2026-08-23 at 13 55 31" src="https://github.com/user-attachments/assets/8d91d927-70b3-4f66-9c51-759854cdc0fb" />
-
-
 ## Other ESP32 Boards
 
 If you want to use an ESP32 board other than the kinds herein, be certain it has at least bluetooth version 4.2 and BLE (Bluetooth Low Energy) capability. Otherwise, power-on broadcast to Xgimi projector will not work.
@@ -216,6 +206,7 @@ Boards that will NOT work
 
 *   Original ESP32 (WROOM-32 /DevKitC)
 *   ESP32-S2 series
+*   Waveshare-esp32-s3-touch-lcd-2.8 (incompatible with selectable profile system)
     
 <br>
 Each variation of ESP board has its own pinout and specific GPIO pins suitable for for IR signal input. It is particularly important to obtain pinout information and know which GPIO pins are actually free for use (not strapping pins or already assigned to other board functions). Because that process can be overwhelming, four board configuration "hardware" files have been supplied. These pre-define board type and pinouts. Most likely, you can simply specify one of the supplied hardware files within your make file.
