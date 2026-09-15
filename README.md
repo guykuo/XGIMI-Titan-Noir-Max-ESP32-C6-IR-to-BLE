@@ -113,11 +113,11 @@ packages:
 
 # ========== END Configuration Options KUO ==============================================================================
 ```
-Available hardware boards and irmap files are in ir-common-kuo/ subdirectory
+Available hardware boards are in ir-common-kuo/ subdirectory.
 
 
-## IR Maps
-This translator project has several built-in IR profiles and can also learn up to five new IR remote profiles.
+## IR Profiles
+This translator project has several "factory" IR profiles built-in. You and can also learn up to five new IR remote profiles if none of the factory profiles are suitable.
 
 The "factory" IR profiles, were selected to avoid conflicts in a home theater.
 One should usually choose one that does not conflict with existing devices in your system.
@@ -426,11 +426,12 @@ CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary to 
 
 ## 5. Build and Flash Firmware for Your Choice of IR Remote
 
-For your convenience, YAML "make" files have been created to directly support the two example ESP32 boards with any of three IR code sets. The name of provided make files indicate board type, GPIO pin, and IR code set.  
-  
-Substitute name of specific "make" file for the one listed in below example scripts to create the version desired.  
-If you create a "make" file for a different board / IR mapping combination, substitute your own make filename in the scripts.
+Find and duplicate the supplied _make-esp32-TEMPLATE.yaml_ file.
 
+Give your copy a unique name. We'll rename it ***makemine.yaml***
+
+Open ***makemine.yaml*** in a text editor. At the top of the file you will see three
+  
 ### 5a. Example Build firmware for TIVO on ESP32-C6
 
 Connect the new ESP32-C6 by USB, validate, compile and flash:
