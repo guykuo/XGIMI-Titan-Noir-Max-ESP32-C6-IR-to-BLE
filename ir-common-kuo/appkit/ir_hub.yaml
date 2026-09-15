@@ -1,0 +1,1715 @@
+# ir-common-kuo/ir-hub.yaml
+esphome:
+
+  on_boot:
+    - priority: -100
+      then:
+        - lambda: |-
+            if (!remote_profiles.empty()) return; // Protect against duplicate runs on connection resets
+    
+            // ====================================================================
+            // INDEX 0: Mapping 1 (AWOL Valerion Projector)
+            // ====================================================================
+            remote_profiles.push_back({
+              "AWOL Projector", "NEC", 0x7300, 0x17, 0x14, // HDMI 1, OK
+              {
+                { 0xA7,       { "power_on",      id(power_on) } },          // power on
+                { 0x67,       { "power_off",     id(power_off_immediately) } }, // power off
+                { 0x24,       { "cursor_left",   id(cursor_left) } },    // left arrow
+                { 0xA4,       { "cursor_right",  id(cursor_right) } },   // right arrow
+                { 0x64,       { "cursor_up",     id(cursor_up) } },      // up arrow
+                { 0xE4,       { "cursor_down",   id(cursor_down) } },    // down arrow
+                { 0x14,       { "cursor_enter",  id(cursor_enter) } },   // ok
+                { 0x5A,       { "settings_menu", id(settings_menu) } },  // menu
+                { 0x3A,       { "back",          id(back) } },           // back
+                { 0xDA,       { "home",          id(home) } },           // home
+                { 0x1B,       { "game_menu",     id(game_menu) } },      // profile
+                { 0x48,       { "input",         id(input) } },          // input
+                { 0xCA,       { "picture",       id(picture) } },        // picture mode
+                { 0x9B,       { "focus_manual",  id(focus_manual) } },   // focus
+                { 0x47,       { "focus_auto",    id(focus_auto) } },     // live guide
+                { 0xBB,       { "shortcut_1",    id(shortcut_1) } },     // Prime Video
+                { 0x3B,       { "shortcut_2",    id(shortcut_2) } },     // Netflix
+                { 0x7B,       { "shortcut_3",    id(shortcut_3) } },     // Disney
+                { 0xDB,       { "shortcut_4",    id(shortcut_4) } },     // YouTube
+                { 0x50,       { "volume_up",     id(volume_up) } },      // volume up
+                { 0xD0,       { "volume_down",   id(volume_down) } },    // volume down
+                { 0xD8,       { "mute",          id(mute) } },           // mute
+                { 0xE7,       { "token_sniff",   id(token_sniff) } },    // HDMI 1
+                { 0x17,       { "token_clear",   id(token_clear) } },    // HDMI 2
+                { 0x97,       { "token_recall",  id(token_recall) } },   // HDMI 3
+                { 0x07,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // Back + Down
+                { 0xC7,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // Back + Home
+              }
+            });
+    
+            // ====================================================================
+            // INDEX 1: Mapping 2 (BenQ W5800 Projector)
+            // ====================================================================
+            remote_profiles.push_back({
+              "BenQ Projector", "NEC", 0x3000, 0x629D, 0xEA15, // Play, OK
+              {
+                { 0xB04F,       { "power_on",      id(power_on) } },              // power on
+                { 0xB14E,       { "power_off",     id(power_off_immediately) } }, // power off
+                { 0xF40B,       { "cursor_up",     id(cursor_up) } },      // up arrow
+                { 0xF30C,       { "cursor_down",   id(cursor_down) } },    // down arrow
+                { 0xF20D,       { "cursor_left",   id(cursor_left) } },    // left arrow
+                { 0xF10E,       { "cursor_right",  id(cursor_right) } },   // right arrow
+                { 0xEA15,       { "cursor_enter",  id(cursor_enter) } },   // ok
+                { 0xF00F,       { "settings_menu", id(settings_menu) } },  // menu
+                { 0x7A85,       { "back",          id(back) } },           // back
+                { 0x8778,       { "home",          id(home) } },           // default
+                { 0x41BE,       { "game_menu",     id(game_menu) } },      // cinema master
+                { 0xFB04,       { "input",         id(input) } },          // source
+                { 0xEF10,       { "picture",       id(picture) } },        // picure mode
+                { 0xEC13,       { "focus_manual",  id(focus_manual) } },   // aspect
+                { 0xF708,       { "focus_auto",    id(focus_auto) } },     // auto
+                { 0xE916,       { "shortcut_1",    id(shortcut_1) } },     // brightness
+                { 0xEE11,       { "shortcut_2",    id(shortcut_2) } },     // contrast
+                { 0x837C,       { "shortcut_3",    id(shortcut_3) } },     // dynamic iris
+                { 0xCF30,       { "shortcut_4",    id(shortcut_4) } },     // light mode
+                { 0xA15E,       { "volume_up",     id(volume_up) } },      // gamma
+                { 0x817E,       { "volume_down",   id(volume_down) } },    // sharp
+                { 0xF807,       { "mute",          id(mute) } },           // eco blank
+                { 0xC33C,       { "token_sniff",   id(token_sniff) } },    // HDR
+                { 0x629D,       { "token_clear",   id(token_clear) } },    // invert
+                { 0x639C,       { "token_recall",  id(token_recall) } },   // 3D
+                { 0xA05F,       { "BT_start_pair", id(bluetooth_pairing_start) } },  // color temp
+                { 0xA45B,       { "BT_clear_pair", id(bluetooth_pairing_clear) } },  // color manage
+                
+                { 0x6B94,       { "test pattern",  id(home) } }            // test pattern            
+              }
+            });
+    
+            // ====================================================================
+            // INDEX 2: Mapping 3 (Epson Pro Cinema LS12000)
+            // ====================================================================
+            remote_profiles.push_back({
+              "Epson Projector", "NEC", 0x5583, 0xC23D, 0x7A85, // RGBCMY, enter
+              {
+                { 0x6F90,       { "power_on",         id(power_on) } },              // Power On
+                { 0x6E91,       { "power_off",        id(power_off_immediately) } }, // Power Off
+                { 0x4FB0,       { "cursor_up",        id(cursor_up) } },      // up arrow
+                { 0x4DB2,       { "cursor_down",      id(cursor_down) } },    // down arrow
+                { 0x4CB3,       { "cursor_left",      id(cursor_left) } },    // left arrow
+                { 0x4EB1,       { "cursor_right",     id(cursor_right) } },   // right arrow
+                { 0x7A85,       { "cursor_enter",     id(cursor_enter) } },   // enter
+                { 0x659A,       { "settings_menu",    id(settings_menu) } },  // menu
+                { 0x7B84,       { "back",             id(back) } },           // ESC
+                { 0xC639,       { "home",             id(home) } },           // default
+                { 0x708F,       { "game_menu",        id(game_menu) } },      // color mode
+                { 0xA956,       { "input",            id(input) } },          // HDMI link
+                { 0x55AA,       { "picture",          id(picture) } },        // image enhance
+                { 0xA25D,       { "focus_manual",     id(focus_manual) } },   // skip back
+                { 0x728D,       { "focus_manual_alt", id(focus_manual) } },   // lens (not in MyHarmony)
+                { 0xA45B,       { "focus_auto",       id(focus_auto) } },     // pause
+                { 0xA55A,       { "shortcut_1",       id(shortcut_1) } },     // reverse
+                { 0xA15E,       { "shortcut_2",       id(shortcut_2) } },     // play
+                { 0xA35C,       { "shortcut_3",       id(shortcut_3) } },     // FF
+                { 0xA05F,       { "shortcut_4",       id(shortcut_4) } },     // skip forward 
+                { 0x8C73,       { "shortcut_1_alt",   id(shortcut_1) } },     // HDMI 1
+                { 0x8877,       { "shortcut_2_alt",   id(shortcut_2) } },     // HDMI 2
+                { 0x7D82,       { "shortcut_3_alt",   id(shortcut_3) } },     // P-in-P (not in myHarmony)
+                { 0x629D,       { "shortcut_4_alt",   id(shortcut_4) } },     // PC (not in myHarmony)
+                { 0x6798,       { "volume_up",        id(volume_up) } },      // volume up
+                { 0x6699,       { "volume_down",      id(volume_down) } },    // volume down
+                { 0x52AD,       { "mute",             id(mute) } },           // mute
+                { 0x7C83,       { "token_sniff",      id(token_sniff) } },    // frame interp
+                { 0xC23D,       { "token_clear",      id(token_clear) } },    // RGBCMY
+                { 0x6996,       { "token_recall",     id(token_recall) } },   // pattern
+                { 0xC43B,       { "BT_start_pair",    id(bluetooth_pairing_start) } }, // 3D format
+                { 0x758A,       { "BT_clear_pair",    id(bluetooth_pairing_clear) } }, // Aspect
+      
+                { 0x6A95,       { "Home",          id(home) } }, // home
+                { 0x8B74,       { "input LAN",     id(home) } }, // input LAN
+                { 0x609F,       { "user",          id(home) } }, // user
+                { 0xA45B,       { "pause",         id(home) } }, // pause
+                { 0x9F60,       { "Link Menu",     id(home) } }, // link menu
+                { 0x6C93,       { "blank",         id(home) } },  // blank  (not in MyHarmony)
+                { 0x748B,       { "memory",        id(home) } },  // memory (not in MyHarmony)
+                { 0x51AE,       { "lens1",         id(home) } },  // lens1  (not in MyHarmony)
+                { 0x50AF,       { "lens2",         id(home) } }   // lens2  (not in MyHarmony)
+              }
+            });
+    
+            // ====================================================================
+            // INDEX 3: Mapping 4 (Hisense 50u6g TV)
+            // ====================================================================
+            remote_profiles.push_back({
+              "Hisense", "NEC", 0xFB04, 0xEA15, 0xA55A, // 5, select
+              {
+                { 0xF708,       { "power_on",      id(power_on) } },              // discrete power on
+                { 0x8E71,       { "power_on_alt",  id(power_on) } },              // discrete power on (variant)
+                { 0xEF10,       { "power_off",     id(power_off_immediately) } }, // discrete power off
+                { 0x8D72,       { "power_off_alt", id(power_off_immediately) } }, // 0
+                { 0xA956,       { "cursor_up",     id(cursor_up) } },      // arrow up
+                { 0xA857,       { "cursor_down",   id(cursor_down) } },    // arrow down
+                { 0xA758,       { "cursor_left",   id(cursor_left) } },    // arrow left
+                { 0xA659,       { "cursor_right",  id(cursor_right) } },   // arrow right
+                { 0xA55A,       { "cursor_enter",  id(cursor_enter) } },   // select
+                { 0xFB04,       { "back",          id(back) } },           // back
+                { 0xBC43,       { "home",          id(home) } },           // home
+                { 0xF40B,       { "input",         id(input) } },          // input
+                { 0xB54A,       { "settings_menu", id(settings_menu) } },  // menu
+                { 0x718E,       { "settings_menu_alt", id(settings_menu) } }, // menu (variant)
+                { 0x35CA,       { "game_menu",     id(game_menu) } },      // apps
+                { 0xFF00,       { "picture",       id(picture) } },        // channel up
+                { 0xE817,       { "focus_manual",  id(focus_manual) } },   // 7
+                { 0xE718,       { "focus_auto",    id(focus_auto) } },     // 8
+                { 0xAB54,       { "shortcut_1",    id(shortcut_1) } },     // yellow
+                { 0xAA55,       { "shortcut_2",    id(shortcut_2) } },     // blue
+                { 0xAD52,       { "shortcut_3",    id(shortcut_3) } },     // red
+                { 0xAC53,       { "shortcut_4",    id(shortcut_4) } },     // green
+                { 0xFD02,       { "volume_up",     id(volume_up) } },      // volume up
+                { 0xFC03,       { "volume_down",   id(volume_down) } },    // volume down
+                { 0xF609,       { "mute",          id(mute) } },           // mute
+                { 0xEB14,       { "token_sniff",   id(token_sniff) } },    // 4
+                { 0xEA15,       { "token_clear",   id(token_clear) } },    // 5
+                { 0xE916,       { "token_recall",  id(token_recall) } },   // 6
+                { 0xB847,       { "BT_start_pair", id(bluetooth_pairing_start) } },  // prime video
+                { 0xB649,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }   // youtube
+              }
+            });
+    
+            // ====================================================================
+            // INDEX 4: Mapping 5 (JVC HR-S9600u VCR)
+            // ====================================================================
+            remote_profiles.push_back({
+              "JVC HR-S9600u VCR", "JVC", 0x03C2, 0xC2A4, 0xC23C, // 5, OK
+              {
+                { 0xC2D0,       { "power_on",      id(power_on) } },      // power (as discrete)
+                { 0xC2B8,       { "power_on_alt",  id(power_on) } },      // power (alternate)
+                { 0xC258,       { "power_off",     id(power_off_immediately) } }, // discrete off
+                { 0xC2E8,       { "power_off_alt1", id(power_off_immediately) } }, // audio monitor
+                { 0xC2CC,       { "power_off_alt2", id(power_off_immediately) } }, // 0
+                { 0xC2C3,       { "back",          id(back) } },          // review
+                { 0xC241,       { "cursor_up",     id(cursor_up) } },     // cursor up
+                { 0xC298,       { "cursor_up_alt", id(cursor_up) } },     // cursor up (harmony)
+                { 0xC218,       { "cursor_down",   id(cursor_down) } },   // cursor down
+                { 0xC261,       { "cursor_down_alt", id(cursor_down) } }, // cursor down (harmony)
+                { 0xC2A8,       { "cursor_left",   id(cursor_left) } },   // cursor left
+                { 0xC228,       { "cursor_right",  id(cursor_right) } },  // cursor right (harmony)
+                { 0xC23C,       { "cursor_enter",  id(cursor_enter) } },  // OK
+                { 0xC2EC,       { "settings_menu", id(settings_menu) } }, // menu
+                { 0xC207,       { "settings_menu_alt", id(settings_menu) } }, // memu (alternate) 
+                { 0xC26C,       { "home",        id(home) } },          // cancel
+                { 0xC230,       { "game_menu",     id(game_menu) } },     // game menu
+                { 0xC2C8,       { "input",         id(input) } },         // tv/vcr
+                { 0xC260,       { "picture",       id(picture) } },       // fast forward
+                { 0xC214,       { "focus_manual",  id(focus_manual) } },  // 8
+                { 0xC2E4,       { "focus_auto",    id(focus_auto) } },    // 7
+                { 0xC283,       { "shortcut_1",    id(shortcut_1) } },    // prog
+                { 0xC2BC,       { "shortcut_2",    id(shortcut_2) } },    // prog check
+                { 0xC28C,       { "shortcut_3",    id(shortcut_3) } },    // SP/EP
+                { 0xC269,       { "shortcut_4",    id(shortcut_4) } },    // skip search
+                { 0xC213,       { "volume_up",     id(volume_up) } },     // start down
+                { 0xC293,       { "volume_down",   id(volume_down) } },   // start up
+                { 0xC2B0,       { "mute",          id(mute) } },          // pause
+                { 0xC224,       { "token_sniff",   id(token_sniff) } },   // 4
+                { 0xC2A4,       { "token_clear",   id(token_clear) } },   // 5
+                { 0xC264,       { "token_recall",  id(token_recall) } },  // 6
+                { 0xC284,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // 1
+                { 0xC244,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // 2
+              }
+            });
+    
+            // ====================================================================
+            // INDEX 5: Mapping 6 (JVC projectors code set A)
+            // ====================================================================
+            remote_profiles.push_back({
+              "JVC Projector A", "JVC", 0xCE, 0x56, 0xF4, // natural, OK
+              {
+                { 0xA0,       { "power_on",      id(power_on) } },          // power on
+                { 0x60,       { "power_off", id(power_off_immediately) } }, // power off
+                { 0x80,       { "cursor_up",     id(cursor_up) } },       // up arrow
+                { 0x40,       { "cursor_down",   id(cursor_down) } },     // down arrow
+                { 0x6C,       { "cursor_left",   id(cursor_left) } },     // left arrow
+                { 0x2C,       { "cursor_right",  id(cursor_right) } },    // right arrow
+                { 0xF4,       { "cursor_enter",  id(cursor_enter) } },    // enter/ok
+                { 0x74,       { "settings_menu", id(settings_menu) } },   // menu
+                { 0xC0,       { "back",          id(back) } },            // exit
+                { 0xB8,       { "home",          id(home) } },            // hide
+                
+                { 0xD6,       { "game_menu",     id(game_menu) } },       // dynamic
+                { 0xCE,       { "game_menu_alt", id(game_menu) } },       // advanced menu_
+    
+    
+                { 0x0E,       { "input",         id(input) } },           // input HDMI 1
+                
+                { 0x8E,       { "picture",       id(picture) } },         // input HDMI 2
+                { 0x2F,       { "picture_alt",   id(picture) } },         // picture mode_
+    
+                { 0xCC,       { "focus_manual",  id(focus_manual) } },    // focus -
+                { 0x8C,       { "focus_auto",    id(focus_auto) } },      // focus +
+                { 0x11,       { "focus_manual_alt", id(focus_manual) } },   // color profile_
+                { 0xAF,       { "focus_auto_alt",   id(focus_auto) } },     // gamma settings_
+                
+                { 0x36,       { "shortcut_1",       id(shortcut_1) } },    // user 1
+                { 0xB6,       { "shortcut_2",       id(shortcut_2) } },    // user 2
+                { 0x76,       { "shortcut_3",       id(shortcut_3) } },    // user 3
+                { 0xEE,       { "shortcut_4",       id(shortcut_4) } },    // aspect
+                
+                { 0x1B,       { "shortcut_1_alt",   id(shortcut_1) } },    // mode 1_
+                { 0x9B,       { "shortcut_2_alt",   id(shortcut_2) } },    // mode 2_
+                { 0x5B,       { "shortcut_3_alt",   id(shortcut_3) } },    // mode 3_
+                { 0x2E,       { "shortcut_4_alt",   id(shortcut_4) } },    // info
+               
+                { 0x5E,       { "volume_up",       id(volume_up) } },        // brightness up
+                { 0xDE,       { "volume_down",     id(volume_down) } },      // brightness down
+                { 0x6E,       { "mute",            id(mute) } },             // color temp
+    
+                { 0x04,       { "volume_up_alt",   id(volume_up) } },        // lens AP_
+                { 0x0C,       { "volume_down_alt", id(volume_down) } },      // lens control_
+                { 0xA3,       { "mute_alt",        id(mute) } },             // anamorphic_
+    
+                { 0x16,       { "token_sniff",      id(token_sniff) } },   // cinema_
+                { 0x96,       { "token_sniff_alt",  id(token_sniff) } },   // cinema
+                { 0x56,       { "token_clear",      id(token_clear) } },   // natural
+                { 0xAE,       { "token_recall",     id(token_recall) } },  // gamma
+                { 0xB7,       { "token_recall_alt", id(token_recall) } },  // HDR_
+    
+                { 0xFE,       { "BT_start_pair",      id(bluetooth_pairing_start) } },  // sharp down
+                { 0x9A,       { "BT_clear_pair",      id(bluetooth_pairing_clear) } },  // sharp up
+                { 0x51,       { "BT_start_pair_alt",  id(bluetooth_pairing_start) } },  // CMD_
+                { 0x0F,       { "BT_clear_pair_alt",  id(bluetooth_pairing_clear) } },  // mpc_
+               
+                { 0x3E,       { "color up",      id(home) } },    // color up
+                { 0xBE,       { "color down",    id(home) } },    // color down
+                { 0x1E,       { "contast up",    id(home) } },    // contrast up
+                { 0x9E,       { "contrast down", id(home) } },    // contrast down
+                { 0x36,       { "test",          id(home) } },    // test
+                { 0xAC,       { "zoom T",        id(home) } },    // zoom T
+                { 0xEC,       { "zoom W",        id(home) } },    // zoom W
+                { 0x6B,       { "3D format_",      id(home) } },      // 3D format_
+                { 0x4E,       { "pic adjust_",     id(home) } }       // pic adjust_
+              }
+            });
+    
+            // ====================================================================
+            // INDEX 6: Mapping 7 (JVC projectors code set B)
+            // ====================================================================
+            remote_profiles.push_back({
+              "JVC Projector B", "JVC", 0x36, 0x56, 0xF4, // natural, OK
+              {
+                { 0xA0,       { "power_on",      id(power_on) } },          // power on
+                { 0x60,       { "power_off", id(power_off_immediately) } }, // power off
+                { 0x80,       { "cursor_up",     id(cursor_up) } },       // up arrow
+                { 0x40,       { "cursor_down",   id(cursor_down) } },     // down arrow
+                { 0x6C,       { "cursor_left",   id(cursor_left) } },     // left arrow
+                { 0x2C,       { "cursor_right",  id(cursor_right) } },    // right arrow
+                { 0xF4,       { "cursor_enter",  id(cursor_enter) } },    // enter/ok
+                { 0x74,       { "settings_menu", id(settings_menu) } },   // menu
+                { 0xC0,       { "back",          id(back) } },            // exit
+                { 0xB8,       { "home",          id(home) } },            // hide
+                
+                { 0xD6,       { "game_menu",     id(game_menu) } },       // dynamic
+                { 0xCE,       { "game_menu_alt", id(game_menu) } },       // advanced menu_
+    
+    
+                { 0x0E,       { "input",         id(input) } },           // input HDMI 1
+                
+                { 0x8E,       { "picture",       id(picture) } },         // input HDMI 2
+                { 0x2F,       { "picture_alt",   id(picture) } },         // picture mode_
+    
+                { 0xCC,       { "focus_manual",  id(focus_manual) } },    // focus -
+                { 0x8C,       { "focus_auto",    id(focus_auto) } },      // focus +
+                { 0x11,       { "focus_manual_alt", id(focus_manual) } },   // color profile_
+                { 0xAF,       { "focus_auto_alt",   id(focus_auto) } },     // gamma settings_
+                
+                { 0x36,       { "shortcut_1",       id(shortcut_1) } },    // user 1
+                { 0xB6,       { "shortcut_2",       id(shortcut_2) } },    // user 2
+                { 0x76,       { "shortcut_3",       id(shortcut_3) } },    // user 3
+                { 0xEE,       { "shortcut_4",       id(shortcut_4) } },    // aspect
+                
+                { 0x1B,       { "shortcut_1_alt",   id(shortcut_1) } },    // mode 1_
+                { 0x9B,       { "shortcut_2_alt",   id(shortcut_2) } },    // mode 2_
+                { 0x5B,       { "shortcut_3_alt",   id(shortcut_3) } },    // mode 3_
+                { 0x2E,       { "shortcut_4_alt",   id(shortcut_4) } },    // info
+               
+                { 0x5E,       { "volume_up",       id(volume_up) } },        // brightness up
+                { 0xDE,       { "volume_down",     id(volume_down) } },      // brightness down
+                { 0x6E,       { "mute",            id(mute) } },             // color temp
+    
+                { 0x04,       { "volume_up_alt",   id(volume_up) } },        // lens AP_
+                { 0x0C,       { "volume_down_alt", id(volume_down) } },      // lens control_
+                { 0xA3,       { "mute_alt",        id(mute) } },             // anamorphic_
+    
+                { 0x16,       { "token_sniff",      id(token_sniff) } },   // cinema_
+                { 0x96,       { "token_sniff_alt",  id(token_sniff) } },   // cinema
+                { 0x56,       { "token_clear",      id(token_clear) } },   // natural
+                { 0xAE,       { "token_recall",     id(token_recall) } },  // gamma
+                { 0xB7,       { "token_recall_alt", id(token_recall) } },  // HDR_
+    
+                { 0xFE,       { "BT_start_pair",      id(bluetooth_pairing_start) } },  // sharp down
+                { 0x9A,       { "BT_clear_pair",      id(bluetooth_pairing_clear) } },  // sharp up
+                { 0x51,       { "BT_start_pair_alt",  id(bluetooth_pairing_start) } },  // CMD_
+                { 0x0F,       { "BT_clear_pair_alt",  id(bluetooth_pairing_clear) } },  // mpc_
+               
+                { 0x3E,       { "color up",      id(home) } },    // color up
+                { 0xBE,       { "color down",    id(home) } },    // color down
+                { 0x1E,       { "contast up",    id(home) } },    // contrast up
+                { 0x9E,       { "contrast down", id(home) } },    // contrast down
+                { 0x36,       { "test",          id(home) } },    // test
+                { 0xAC,       { "zoom T",        id(home) } },    // zoom T
+                { 0xEC,       { "zoom W",        id(home) } },    // zoom W
+                { 0x6B,       { "3D format_",      id(home) } },      // 3D format_
+                { 0x4E,       { "pic adjust_",     id(home) } }       // pic adjust_
+              }
+            });
+    
+    
+    
+            // ====================================================================
+            // INDEX 7: Mapping 8 (LG Cinebeam HU810p)
+            // ====================================================================
+            remote_profiles.push_back({
+              "LG Projector", "NEC", 0xFB04, 0xEA15, 0xBB44, // 5, OK
+              {
+                { 0xF708,       { "power_on",      id(power_on) } },          // power toggle
+                { 0x23DC,       { "power_on-alt",  id(power_on) } },          // Discrete Power On
+                { 0x2CC3,       { "power_off", id(power_off_immediately) } }, // Discrete Power Off
+                { 0xEF10,       { "power_off_alt", id(power_off_immediately) } }, // 0
+                { 0xD728,       { "back",          id(back) } },          // Back / Return
+                { 0xF807,       { "cursor_left",   id(cursor_left) } },   // cursor left
+                { 0xF906,       { "cursor_right",  id(cursor_right) } },  // cursor right
+                { 0xBF40,       { "cursor_up",     id(cursor_up) } },     // cursor up
+                { 0xBE41,       { "cursor_down",   id(cursor_down) } },   // cursor down
+                { 0xBB44,       { "cursor_enter",  id(cursor_enter) } },  // OK / Select
+                { 0xBC43,       { "settings_menu", id(settings_menu) } }, // menu
+                { 0x837C,       { "home",          id(home) } },          // home
+                { 0xF40B,       { "input",         id(input) } },         // Input Toggle
+                { 0xFE01,       { "game_menu",     id(game_menu) } },     // channel down
+                { 0xB24D,       { "picture",       id(picture) } },       // Picture Mode
+                { 0x8679,       { "focus_manual",  id(focus_manual) } },  // aspect ratio
+                { 0x4FB0,       { "focus_auto",    id(focus_auto) } },    // play
+                { 0x8d72,       { "shortcut_1",    id(shortcut_1) } },    // red
+                { 0x8e71,       { "shortcut_2",    id(shortcut_2) } },    // green
+                { 0x9C63,       { "shortcut_3",    id(shortcut_3) } },    // yellow
+                { 0x9E61,       { "shortcut_4",    id(shortcut_4) } },    // blue
+                { 0xFD02,       { "volume_up",     id(volume_up) } },     // volume up
+                { 0xFC03,       { "volume_down",   id(volume_down) } },   // volume down
+                { 0xF609,       { "mute",          id(mute) } },          // mute
+                { 0xEB14,       { "token_sniff",   id(token_sniff) } },   // 4
+                { 0xEA15,       { "token_clear",   id(token_clear) } },   // 5
+                { 0xE916,       { "token_recall",  id(token_recall) } },  // 6
+                { 0xA956,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // netflix
+                { 0xA35C,       { "BT_clear_pair", id(bluetooth_pairing_clear) } },  // prime video
+                
+                { 0xEE11,       { "1",             id(home) } },   // 1
+                { 0xED12,       { "2",             id(home) } },   // 2
+                { 0xEC13,       { "3",             id(home) } },   // 3
+                { 0xE817,       { "7",             id(home) } },   // 7
+                { 0xE718,       { "8",             id(home) } },   // 8
+                { 0xE619,       { "9",             id(home) } },   // 9
+                { 0x54AB,       { "ch_list_guide", id(home) } },   // ch list guide
+                { 0xB34C,       { "-",             id(home) } },   // -
+                { 0xE51A,       { "pre-ch",        id(home) } },   // pre-ch
+                { 0xF10E,       { "sleep",         id(home) } },   // sleep
+                { 0xF30C,       { "portal",        id(home) } },   // portal
+                { 0xC639,       { "cc",            id(home) } }    // cc
+              }
+            });
+    
+            // ====================================================================
+            // INDEX 8: Mapping 9 (Optoma UHD50X projector)
+            // ====================================================================
+            remote_profiles.push_back({
+              "Optoma Projector", "NEC", 0xCD32, 0x9A65, 0xF00F, // User 1, OK
+              {
+                { 0xFD02,       { "power_on",      id(power_on) } },              // power on
+                { 0xD12E,       { "power_off",     id(power_off_immediately) } }, // power off
+                { 0xEF10,       { "cursor_left",   id(cursor_left) } },    // left arrow
+                { 0xED12,       { "cursor_right",  id(cursor_right) } },   // right arrow
+                { 0xEE11,       { "cursor_up",     id(cursor_up) } },      // up arrow
+                { 0xEB14,       { "cursor_down",   id(cursor_down) } },    // down arrow
+                { 0xF00F,       { "cursor_enter",  id(cursor_enter) } },   // ok
+                { 0xF10E,       { "settings_menu", id(settings_menu) } },  // menu
+                { 0x9C63,       { "back",          id(back) } },           // sleep
+                { 0xE916,       { "input",         id(input) } },          // input HDMI 1
+                { 0xCF30,       { "game_menu",     id(game_menu) } },      // input HDMI 2
+                { 0xFA05,       { "picture",       id(picture) } },        // mode
+                { 0x9B64,       { "focus_manual",  id(focus_manual) } },   // aspect
+                { 0xBB44,       { "focus_auto",    id(focus_auto) } },     // DB
+                { 0xE41B,       { "shortcut_1",    id(shortcut_1) } },     // input VGA 1
+                { 0xE11E,       { "shortcut_2",    id(shortcut_2) } },     // input VGA 2
+                { 0xE31C,       { "shortcut_3",    id(shortcut_3) } },     // input video
+                { 0xE817,       { "shortcut_4",    id(shortcut_4) } },     // input YPbPr
+                { 0x7689,       { "volume_up",     id(volume_up) } },      // 3D
+                { 0xF807,       { "volume_down",   id(volume_down) } },    // keystone
+                { 0xAD52,       { "mute",          id(mute) } },           // mute
+                { 0xC936,       { "token_sniff",   id(token_sniff) } },    // user 1
+                { 0x9A65,       { "token_clear",   id(token_clear) } },    // user 2
+                { 0x9966,       { "token_recall",  id(token_recall) } },    // user 3
+                { 0xBE41,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // brightness
+                { 0xBD42,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // contrast
+              }
+            });
+    
+            // ====================================================================
+            // INDEX 9: Mapping 10 (Sony VPL-XW600ES projector)
+            // ====================================================================
+            remote_profiles.push_back({
+              "Sony Projector", "SONY", 0x0000, 0x0008AB54, 0x00002D2A, // BRT TV, OK
+              {
+                { 0x00003A2A,       { "power_on",      id(power_on) } },             // Power On (discrete)
+                { 0x00007A2A,       { "power_off",     id(power_off_immediately)}},  // Power Off (discrete)
+                { 0x0000542A,       { "power_on_alt",  id(power_on) } },             // Power Toggle as on discrete
+                { 0x0000562A,       { "cursor_up",     id(cursor_up) } },      // up arrow
+                { 0x0000362A,       { "cursor_down",   id(cursor_down) } },    // down arrow
+                { 0x0000162A,       { "cursor_left",   id(cursor_left) } },    // left arrow
+                { 0x0000662A,       { "cursor_right",  id(cursor_right) } },   // right arrow
+                { 0x00002D2A,       { "cursor_enter",  id(cursor_enter) } },   // OK / Enter
+                { 0x00004A2A,       { "settings_menu", id(settings_menu) } },  // Menu
+                { 0x00006F2A,       { "home",          id(home) } },           // Reset
+                { 0x00018BE4,       { "back",          id(back) } },           // Position
+                { 0x0006AB54,       { "game_menu",     id(game_menu) } },      // Game
+                { 0x000EAB54,       { "picture",       id(picture) } },        // Photo
+                { 0x0000752A,       { "input",         id(input) } },          // Input
+                { 0x00026B54,       { "focus_manual",  id(focus_manual) } },   // Focus
+                { 0x00046B54,       { "focus_auto",    id(focus_auto) } },     // Zoom
+                { 0x00076B54,       { "shortcut_1",    id(shortcut_1) } },     // Aspect Ratio
+                { 0x0000502A,       { "shortcut_2",    id(shortcut_2) } },     // Motion Flow
+                { 0x000DCB54,       { "shortcut_3",    id(shortcut_3) } },     // 3D
+                { 0x000D2B54,       { "shortcut_4",    id(shortcut_4) } },     // Color Space
+                { 0x00000C2A,       { "volume_up",     id(volume_up) } },      // CONTRAST 
+                { 0x00004C2A,       { "volume_down",   id(volume_down) } },    // CONTRAST DOWN
+                { 0x000FAB54,       { "mute",          id(mute) } },           // Advanced Iris
+                { 0x0009AB54,       { "token_sniff",   id(token_sniff) } },    // BRT Cinema
+                { 0x0008AB54,       { "token_clear",   id(token_clear) } },    // BRT TV
+                { 0x0002AB54,       { "token_recall",  id(token_recall) } },   // User
+                { 0x00007C2A,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // BRIGHTNESS DOWN
+                { 0x00003C2A,       { "BT_clear_pair", id(bluetooth_pairing_clear) } },  // BRIGHTNESS UP
+    
+                { 0x0003AB54,       { "Color Temp",        id(home) } },  // Color Temp
+                { 0x0000702A,       { "Contrast Enhancer", id(home) } },  // Contrast Enhancer
+                { 0x000CAB54,       { "FILM 1",            id(home) } },  // FILM 1
+                { 0x0001AB54,       { "FILM 2",            id(home) } },  // FILM 2
+                { 0x0007AB54,       { "Gamma Correction",  id(home) } },  // Gamma Correction
+                { 0x00006A2A,       { "Input HDMI 1",      id(home) } },  // Input HDMI 1
+                { 0x00001A2A,       { "Input HDMI 2",      id(home) } },  // Input HDMI 2
+                { 0x00004BE4,       { "Position 1.85",     id(home) } },  // Position 1.85
+                { 0x00084BE4,       { "Position 2.35",     id(home) } },  // Position 2.35
+                { 0x000C4BE4,       { "Position Custom 2", id(home) } },  // Position Custom 2
+                { 0x00024BE4,       { "Position Custom 3", id(home) } },  // Position Custom 3
+                { 0x00032B54,       { "Reality creation",  id(home) } },  // Reality creation
+                { 0x000AAB54,       { "REF",               id(home) } },  // REF
+                { 0x0000622A,       { "sharpness down",    id(home) } },  // sharpness down
+                { 0x0000222A,       { "sharpness up",      id(home) } },  // sharpness up
+                { 0x000C6B54,       { "shift",             id(home) } },  // shift
+                { 0x0004AB54,       { "TV",                id(home) } },  // TV
+                { 0x00042BE4,       { "wide mode full",    id(home) } },  // wide mode full
+                { 0x000FCBE4,       { "wide mode full1",   id(home) } },  // wide mode full1
+                { 0x00002BE4,       { "wide mode full2",   id(home) } },  // wide mode full2
+                { 0x00082BE4,       { "wide mode normal",  id(home) } },  // wide mode normal
+                { 0x0007CBE4,       { "wide mode WZoom",   id(home) } },  // wide mode WZoom
+                { 0x000C2BE4,       { "wide mode zoom",    id(home) } },  // wide mode zoom
+                { 0x00022BE4,       { "wide mode anamorphic", id(home) } }  // wide mode anamorphic zoom
+              }
+            });
+    
+            // ====================================================================
+            // INDEX 10: Mapping 11 (Sony XBR-77A9G TV)
+            // ====================================================================
+            remote_profiles.push_back({
+              "Sony XBR", "SONY", 0x0000, 0x000210, 0x000A70, // 5, Arrow Select
+              {
+                { 0x000750,       { "power_on",      id(power_on) } },             // power on discrete
+                { 0x000A90,       { "power_on_alt",  id(power_on) } },             // power (toggle)
+                { 0x000F50,       { "power_off",     id(power_off_immediately)} }, // power off discrete
+                { 0x000910,       { "power_off_alt", id(power_off_immediately)} }, // 0
+                { 0x0002D0,       { "cursor_left",   id(cursor_left) } },    // Arrow Left
+                { 0x000CD0,       { "cursor_right",  id(cursor_right) } },   // Arrow Right
+                { 0x0002F0,       { "cursor_up",     id(cursor_up) } },      // Arrow Up
+                { 0x000AF0,       { "cursor_down",   id(cursor_down) } },    // Arrow Down
+                { 0x000A70,       { "cursor_enter",  id(cursor_enter) } },   // Arrow Select
+                { 0x006923,       { "settings_menu", id(settings_menu) } },  // Action Menu
+                { 0x0062E9,       { "back",          id(back) } },           // Back
+                { 0x000070,       { "home",          id(home) } },           // Home
+                { 0x003123,       { "game_menu",     id(game_menu) } },      // Google Play
+                { 0x000A50,       { "input",         id(input) } },          // Input
+                { 0x000250,       { "picture",       id(picture) } },        // TV
+                { 0x000AE9,       { "focus_auto",    id(focus_auto) } },     // subtitle
+                { 0x000E90,       { "focus_manual",  id(focus_manual) } },   // audio
+                { 0x0072E9,       { "shortcut_1",    id(shortcut_1) } },     // yellow
+                { 0x0012E9,       { "shortcut_2",    id(shortcut_2) } },     // blue
+                { 0x0052E9,       { "shortcut_3",    id(shortcut_3) } },     // red
+                { 0x0032E9,       { "shortcut_4",    id(shortcut_4) } },     // green
+                { 0x000490,       { "volume_up",     id(volume_up) } },      // volume up
+                { 0x000C90,       { "volume_down",   id(volume_down) } },    // volume down
+                { 0x000290,       { "mute",          id(mute) } },           // mute
+                { 0x000C10,       { "token_sniff",   id(token_sniff) } },    // 4
+                { 0x000210,       { "token_clear",   id(token_clear) } },    // 5
+                { 0x000A10,       { "token_recall",  id(token_recall) } },   // 6
+                { 0x002CE9,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // play
+                { 0x001CE9,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // fast forward
+              }
+            });
+    
+            // ====================================================================
+            // INDEX 11: Mapping 12 (TiVo Roamio TCD846500)
+            // ====================================================================
+            remote_profiles.push_back({
+              "TiVo Roamio", "NEC", 0x3085, 0xD02C, 0xE019, // 5, Arrow Select
+              {
+                { 0xE010,       { "power_on",      id(power_on) } },              // tv power (as discrete on)
+                { 0xE011,       { "power_off",     id(power_off_immediately) } }, // live TV (as discrete off)
+                { 0xC031,       { "power_off_alt", id(power_off) } },             // 0 
+                { 0xE014,       { "cursor_up",     id(cursor_up) } },       // arrow up
+                { 0xE016,       { "cursor_down",   id(cursor_down) } },     // arrow down
+                { 0xE017,       { "cursor_left",   id(cursor_left) } },     // arrow left
+                { 0xE015,       { "cursor_right",  id(cursor_right) } },    // arrow right
+                { 0xE019,       { "cursor_enter",  id(cursor_enter) } },    // select
+                { 0xF00C,       { "settings_menu", id(settings_menu) } },   // tivo
+                { 0xF00D,       { "settings_menu", id(settings_menu) } },   // tivo (myHarmony version)
+                { 0xB044,       { "back",          id(back) } },            // zoom
+                { 0xE01E,       { "home",          id(home) } },            // channel up
+                { 0xC036,       { "game_menu",     id(game_menu) } },       // guide
+                { 0xC034,       { "input",         id(input) } },           // input
+                { 0xE013,       { "picture",       id(picture) } },         // into
+                { 0xD02E,       { "focus_auto",    id(focus_auto) } },      // 7
+                { 0xD02F,       { "focus_manual",  id(focus_manual) } },    // 8
+                { 0x9060,       { "shortcut_1",    id(shortcut_1) } },      // A yellow
+                { 0x9061,       { "shortcut_2",    id(shortcut_2) } },      // B blue
+                { 0x9062,       { "shortcut_3",    id(shortcut_3) } },      // C red
+                { 0x9063,       { "shortcut_4",    id(shortcut_4) } },      // D green
+                { 0xE01C,       { "volume_up",     id(volume_up) } },       // volume up
+                { 0xE01D,       { "volume_down",   id(volume_down) } },     // volume down
+                { 0xE01B,       { "mute",          id(mute) } },            // mute
+                { 0xD02B,       { "token_sniff",   id(token_sniff) } },     // 4
+                { 0xD02C,       { "token_clear",   id(token_clear) } },     // 5
+                { 0xD02D,       { "token_recall",  id(token_recall) } },    // 6
+                { 0xC033,       { "BT_start_pair", id(bluetooth_pairing_start) } },    //enter
+                { 0xC032,       { "BT_clear_pair", id(bluetooth_pairing_clear) } },    //clear
+              }
+            });
+    
+            // ====================================================================
+            // INDEX 12: Mapping 13 (Xgimi Titan, Original)
+            // ====================================================================
+            remote_profiles.push_back({
+              "Xgimi Titan", "NEC", 0x21DE, 0x25, 0x0D, // HDMI 2, enter
+              {
+                { 0x4D,       { "power_on",      id(power_on) } },            // power (as on)
+                { 0x1E,       { "power_off",     id(power_off_immediately)}}, // menu rotation (as off)
+                { 0x0B,       { "cursor_up",     id(cursor_up) } },       // arrow up
+                { 0x0E,       { "cursor_down",   id(cursor_down) } },     // arrow down
+                { 0x10,       { "cursor_left",   id(cursor_left) } },     // arrow left
+                { 0x11,       { "cursor_right",  id(cursor_right) } },    // arrow right
+                { 0x0D,       { "cursor_enter",  id(cursor_enter) } },    // OK
+                { 0x42,       { "back",          id(back) } },            // back
+                { 0x45,       { "settings_menu", id(settings_menu) } },   // menu
+                { 0x19,       { "game_menu",     id(game_menu) } },       // OSD
+                { 0x1A,       { "home",          id(home) } },            // channel up
+                { 0x4F,       { "input",         id(input) } },           // source
+                { 0x20,       { "picture",       id(picture) } },         // lens shift and zoom
+                { 0x1C,       { "focus_manual",  id(focus_manual) } },    // focus +
+                { 0x1D,       { "focus_auto",    id(focus_auto) } },      // focus -
+                { 0x41,       { "shortcut_1",    id(shortcut_1) } },      // picture mode Standard
+                { 0x44,       { "shortcut_2",    id(shortcut_2) } },      // picture mode Movie
+                { 0x4A,       { "shortcut_3",    id(shortcut_3) } },      // picture mode Vivid
+                { 0x4B,       { "shortcut_4",    id(shortcut_4) } },      // picture mode TV
+                { 0x18,       { "volume_up",     id(volume_up) } },       // volume up
+                { 0x17,       { "volume_down",   id(volume_down) } },     // volume down
+                { 0x24,       { "token_sniff",   id(token_sniff) } },     // switch to HDMI 1
+                { 0x25,       { "token_clear",   id(token_clear) } },     // switch to HDMI 2
+                { 0x26,       { "token_recall",  id(token_recall) } },    // switch to USB
+              }
+            });
+  
+            ESP_LOGI("ir_hub", "Factory profiles and custom NVS slots loaded.");
+
+
+  
+
+#====================================================================
+#=========================== IR Receiver ============================  
+remote_receiver:
+  id: ir_receiver
+  pin:
+    number: ${pin_ir_receiver}
+    inverted: true
+    mode:
+      input: true
+      pullup: true
+  filter: 50us       
+  idle: 20ms         
+  tolerance: 35%     
+  dump:
+    - raw
+    - nec
+    - jvc
+    - sony
+    - lg
+    - panasonic
+    - rc5
+    - rc6
+    
+  # 1. Updates timestamp every single time ANY raw IR pulse or repeat packet burst hits the pin
+  on_raw:
+    - lambda: |-
+        id(global_last_raw_packet_time) = millis();
+        if (!id(ir_timeout_watcher).is_running()) {
+          id(ir_timeout_watcher).execute();
+        }
+
+    - lambda: |-
+        if (x.size() < 2) return;
+
+        uint32_t head_mark = x[0];
+        uint32_t head_space = std::abs(x[1]);
+        size_t total_pulses = x.size();
+
+        std::string proto = "UNKNOWN";
+
+        // --- 1. MANCHESTER / SHORT-HEADER PROTOCOLS (RC5 & RC6) ---
+        if (head_mark >= 700 && head_mark <= 1100 && total_pulses >= 18 && total_pulses <= 30) {
+          proto = "RC5";
+        }
+        else if (head_mark >= 2400 && head_mark <= 2900 && head_space >= 700 && head_space <= 1100) {
+          if (total_pulses >= 34 && total_pulses <= 46) {
+            proto = "RC6";
+          }
+        }
+
+        // --- 2. STANDARD SPACE/DISTANCE PROTOCOLS ---
+        if (proto == "UNKNOWN") {
+          // JVC Test: 8.4ms Mark / 4.2ms Space. (Accepts large pulse arrays to accommodate compound repeat buffers)
+          if (head_mark >= 7600 && head_mark < 8800 && head_space >= 3800 && head_space <= 4600) {
+            proto = "JVC";
+          }
+          // SONY Test: Header pulse 2.4ms, short space < 900us, max 42 pulses
+          else if (head_mark >= 2100 && head_mark <= 2700 && head_space < 900 && total_pulses <= 42) {
+            proto = "SONY";
+          }
+          // PANASONIC Test: Header 3.4ms, space 1.7ms
+          else if (head_mark >= 3100 && head_mark <= 3700 && head_space >= 1500 && head_space <= 2000) {
+            proto = "PANASONIC";
+          }
+          // LG Test: Symmetric 4.5ms Mark / 4.5ms Space
+          else if (head_mark >= 4000 && head_mark <= 5000 && head_space >= 4000 && head_space <= 5000) {
+            proto = "LG";
+          }
+          // NEC / TViX Test: 9.0ms Mark
+          else if (head_mark >= 8500 && head_mark <= 9500) {
+            proto = "NEC";
+          }
+        }
+        
+        // --- 3. FALLBACK SANITY CHECK (For Headerless Repeat Packets) ---
+        if (proto == "UNKNOWN") {
+          // Captures JVC headerless repeat data streams (Exact 34 pulses, small initial timing signature)
+          if (total_pulses == 34 && head_mark >= 400 && head_mark <= 600 && head_space >= 1400 && head_space <= 1800) {
+            proto = "JVC";
+          }
+          // Check Sony second (captures Sony 12-bit, 15-bit, and 20-bit codes with native short spacing)
+          else if (total_pulses >= 24 && total_pulses <= 42 && head_space < 1000) {
+            proto = "SONY";
+          } 
+          else if (total_pulses >= 64 && total_pulses <= 68) proto = "NEC";
+          else if (total_pulses >= 96 && total_pulses <= 102) proto = "PANASONIC";
+        }
+
+        // Assign back to global hub learning variable
+        id(learn_detected_protocol) = proto;
+        
+        ESP_LOGD("IR_RECOGNIZER", "Detected Protocol: %s (Mark: %uus, Space: %uus, Pulses: %u)", 
+         proto.c_str(), (unsigned int)head_mark, (unsigned int)head_space, total_pulses);
+
+
+
+  # ======= MULTI-PROTOCOL CONVERSION GATES =======
+
+  on_nec:
+    - lambda: |-
+        if (id(ir_receiver_allowed_protocol) == "NEC" || id(ir_receiver_allowed_protocol) == "ALL") {
+          // set up common format address, command, command_repeats
+          std::string ir_protocolStr = "NEC";
+          
+          uint32_t ir_address = x.address;
+          uint32_t ir_command = x.command;
+          uint16_t ir_command_repeats = x.command_repeats;
+  
+          ESP_LOGD("main", "NEC Address:-- 0x%02X --, Command:---- 0x%02X ----", (unsigned int)ir_address, (unsigned int)ir_command);
+          
+          id(general_IR_received_handler)->execute(ir_protocolStr, ir_address, ir_command, ir_command_repeats);
+        }
+
+  on_jvc:
+    - lambda: |-
+        if (id(ir_receiver_allowed_protocol) == "JVC" || id(ir_receiver_allowed_protocol) == "ALL") {
+          // set up common format address, command, command_repeats, etc
+          std::string ir_protocolStr = "JVC";
+          
+          uint32_t ir_address = (x.data >> 8) & 0xFF;
+          uint32_t ir_command = x.data & 0xFF;
+          uint16_t ir_command_repeats = 0; // JVC protocol does not have have command_repeats 
+  
+          ESP_LOGD("main", "JVC Address:-- 0x%02X --, Command:---- 0x%02X ----", (unsigned int)ir_address, (unsigned int)ir_command);
+  
+          id(general_IR_received_handler)->execute(ir_protocolStr, ir_address, ir_command, ir_command_repeats);
+        }
+
+  on_sony:
+    # Sony is handled differently because it does not have a true, separate per device address
+    # Instead, Sony has a single long code of variable length. The entirety of which must be tested against.
+    - lambda: |-
+        if (id(ir_receiver_allowed_protocol) == "SONY" || id(ir_receiver_allowed_protocol) == "ALL") {
+          // set up common format address, command, command_repeats
+          std::string ir_protocolStr = "SONY"; 
+          
+          uint32_t ir_address = 0; // Sony does not have separate address. In Sony IRmaps we set target_address to zero.
+          uint32_t ir_command = x.data;
+          uint16_t ir_command_repeats = 0; // Sony does not have command_repeats
+  
+          ESP_LOGD("main", "Sony Command:---- 0x%04X ----", (unsigned int)ir_command);
+  
+          id(general_IR_received_handler)->execute(ir_protocolStr, ir_address, ir_command, ir_command_repeats);
+        }
+      
+  on_lg:
+    - lambda: |-
+        if (id(ir_receiver_allowed_protocol) == "LG" || id(ir_receiver_allowed_protocol) == "ALL") {
+          // set up common format address, command, command_repeats
+          std::string ir_protocolStr = "LG";
+          
+          uint32_t ir_address = 0; // LG does not have separate address. In LG IRmaps we set target_address to zero.
+          uint32_t ir_command = x.data;
+          uint16_t ir_command_repeats = 0; // LG does not have command_repeats
+  
+          ESP_LOGD("main", "LG Command:---- 0x%04X ----", (unsigned int)ir_command);
+  
+          id(general_IR_received_handler)->execute(ir_protocolStr, ir_address, ir_command, ir_command_repeats);
+        }
+
+
+  on_panasonic:
+    - lambda: |-
+        if (id(ir_receiver_allowed_protocol) == "PANASONIC" || id(ir_receiver_allowed_protocol) == "ALL") {
+          // set up common format address, command, command_repeats
+          std::string ir_protocolStr = "PANASONIC";
+          
+          uint32_t ir_address = x.address;
+          uint32_t ir_command = x.command;
+          uint16_t ir_command_repeats = 0; // RC5 does not have command_repeats
+  
+          ESP_LOGD("main", "PANASONIC Address:-- 0x%02X --, Command:---- 0x%02X ----", (unsigned int)ir_address, (unsigned int)ir_command);
+  
+          id(general_IR_received_handler)->execute(ir_protocolStr, ir_address, ir_command, ir_command_repeats);
+        }
+
+
+  on_rc5:
+    - lambda: |-
+        if (id(ir_receiver_allowed_protocol) == "RC5" || id(ir_receiver_allowed_protocol) == "ALL") {
+          // set up common format address, command, command_repeats
+          std::string ir_protocolStr = "RC5";
+          
+          uint32_t ir_address = x.address;
+          uint32_t ir_command = x.command;
+          uint16_t ir_command_repeats = 0; // RC5 does not have command_repeats
+  
+          ESP_LOGD("main", "RC5 Address:-- 0x%02X --, Command:---- 0x%02X ----", (unsigned int)ir_address, (unsigned int)ir_command);
+  
+          id(general_IR_received_handler)->execute(ir_protocolStr, ir_address, ir_command, ir_command_repeats);
+        }
+
+
+  on_rc6:
+    - lambda: |-
+        if (id(ir_receiver_allowed_protocol) == "RC6" || id(ir_receiver_allowed_protocol) == "ALL") {
+          // set up common format address, command, command_repeats
+          std::string ir_protocolStr = "RC6";
+          
+          uint32_t ir_address = x.address;
+          uint32_t ir_command = x.command;
+          uint16_t ir_command_repeats = 0; // RC5 does not have command_repeats
+  
+          ESP_LOGD("main", "RC6 Address:-- 0x%02X --, Command:---- 0x%02X ----", (unsigned int)ir_address, (unsigned int)ir_command);
+  
+          id(general_IR_received_handler)->execute(ir_protocolStr, ir_address, ir_command, ir_command_repeats);
+        }
+
+
+
+
+
+globals:
+  - id: active_remote_layout
+    type: int
+    initial_value: ${def_profile}
+    restore_value: yes
+
+  - id: ir_receiver_allowed_protocol #ALL, NEC, JVC, SONY, LG, PANASONIC, RC5, RC6
+    type: std::string
+    restore_value: no
+    
+  - id: ir_receiver_mode
+    # 0 deactivated (no active profile found)
+    # 1 action
+    # 2 set profile
+    # 3 learn
+    
+    type: uint32_t
+    restore_value: no
+    initial_value: "1"
+
+  - id: global_cached_command
+    type: uint32_t
+    initial_value: '0'
+  - id: global_last_raw_packet_time
+    type: uint32_t
+    initial_value: '0'
+  - id: global_initial_press_time
+    type: uint32_t
+    initial_value: '0'
+  - id: global_last_processed_time
+    type: uint32_t
+    initial_value: '0'
+  - id: global_sony_stream_time
+    type: uint32_t
+    initial_value: '0'
+  - id: global_sony_frame_count
+    type: int
+    initial_value: '0'
+  - id: global_is_holding
+    type: bool
+    initial_value: 'false'
+    
+  # SEQUENTIAL ENGINE STATE VARIABLES
+  - id: global_token_clear_armed
+    type: bool
+    initial_value: 'false'
+  - id: debounce_safety_lock
+    type: bool
+    initial_value: 'false'
+  - id: global_intercept_active
+    type: bool
+    initial_value: 'false'
+  - id: last_ir_press #time data for debouncing.
+    type: uint32_t
+    initial_value: '0'
+    
+  - id: commandName # used to pass name of command back from IRmap
+    type: std::string
+    restore_value: no
+    initial_value: ''
+    
+    
+  # Remote profile learning globals. 
+  - id: ir_window_active
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: learned_best_command
+    type: uint32_t
+    restore_value: no
+    initial_value: '0'
+        
+  - id: learn_sniff_start_time
+    type: uint32_t
+    initial_value: '0'
+    restore_value: no
+
+
+
+    
+  - id: learn_active_protocol
+    type: std::string
+    initial_value: '""'
+    restore_value: no
+  - id: learn_active_address
+    type: uint32_t
+    initial_value: '0'
+    restore_value: no
+
+ 
+  - id: learn_detected_protocol
+    type: std::string
+    initial_value: '""'
+    restore_value: no
+  - id: learn_cache_protocol
+    type: std::array<std::string, 5>
+    initial_value: '{""}'
+    restore_value: no
+  - id: learn_cache_address
+    type: std::vector<uint32_t>
+    initial_value: '{0, 0, 0, 0, 0}'
+    restore_value: no    
+  - id: learn_cache_command
+    type: std::vector<uint32_t>
+    initial_value: '{0, 0, 0, 0, 0}'
+    restore_value: no
+  - id: learn_cache_idx   
+    type: int
+    initial_value: '-1'
+    restore_value: no   
+
+  - id: session_captured_codes #command codes are stored here during learning
+    type: std::array<uint32_t, 27>
+    initial_value: '{0}'
+    restore_value: no
+  - id: learn_current_button_idx
+    type: int
+    initial_value: '0'
+    restore_value: no
+
+
+
+
+#====================================================================
+script:
+  
+  
+
+  # ====================================================================
+  # Load and link profiles from NVRAM. Doing after delay helps avoids core panic
+  
+  - id: standalone_system_hydration
+    mode: single
+    then:
+      - delay: 1s  # Safe window allowing Bluetooth to cleanly finish opening NVS
+      - lambda: |-
+          ESP_LOGI("ir_hub", "Safe flash window open. Hydrating profiles via framework preference registry...");
+          
+          // 1. Call the function ALREADY in your ir_profile.h header file
+          load_saved_flash_profiles();
+          
+          // 2. Safely map text targets to true ESPHome component button pointer addresses
+          link_hardware_buttons();
+          
+          // 3. Fire background layout and profile execution engines
+          id(setup_ir_receiver_for_current_profile).execute();
+          id(ir_receiver_mode) = 1; // Set to action mode
+          
+          id(display_token_remote_profile).execute();
+          
+          ESP_LOGI("ir_hub", "Local memory profiles fully active and standalone-ready.");
+
+  
+  # ====================================================================
+  # Erase learned profiles from NVS Memory Slots
+
+  - id: wipe_all_nvs_profiles
+    then:
+      - lambda: |-
+          ESP_LOGW("NVS Flash", "Factory wipe initiated. Clearing all 5 profile tracks...");
+          
+          static FlashStoredProfile blank_profile;
+          
+          for (uint16_t slot = 0; slot < 5; slot++) {
+            uint64_t slot_nvs_key = 1948204712ULL + slot;
+            auto pref_obj = esphome::global_preferences->make_preference<FlashStoredProfile>(slot_nvs_key);
+            
+            std::memset(&blank_profile, 0, sizeof(blank_profile));
+            pref_obj.save(&blank_profile);
+          }
+          
+          esphome::global_preferences->sync();
+
+          if (remote_profiles.size() > 13) {
+            remote_profiles.resize(13);
+          }
+          
+          id(active_remote_layout) = id(default_profile); // Reset profile to default Projector
+          id(setup_ir_receiver_for_current_profile).execute();
+          id(ir_receiver_mode) = 1; // Set to action mode
+
+          
+          ESP_LOGI("NVS Flash", "All segmented profile registers cleared. Vector restored to factory factory rules.");
+          
+          id(display_show)->execute(true,
+                                   "Flash NVS Wiped",
+                                   "All Chs Cleared",
+                                   "Epson Default");
+
+      - script.execute: sync_json_backup_sensor
+
+
+  # ====================================================================
+  # IR code learning mode scrpts
+  # ====================================================================
+
+
+  - id: start_learning_mode
+    then:
+      - lambda: |-
+          id(ir_receiver_mode) = 3; 
+          id(learn_current_button_idx) = -1; // -1 means we are sniffing for the best protocol
+          id(learn_sniff_start_time) = 0;
+          id(ir_receiver_allowed_protocol) = "ALL"; 
+          
+          id(display_show)->execute(false, "Learning IR", "Press Btn", "power_on");
+          ESP_LOGI("IR Learn", "Learning active. Click power_on to establish protocol footprint.");
+          
+          id(learn_cache_clear).execute();
+          
+          // Start the 30-second timeout countdown
+          id(learn_mode_timeout_watcher).execute();
+
+
+  - id: learn_mode_timeout_watcher
+    mode: restart
+    then:
+      - delay: 30s
+      - lambda: |-
+          // If 30 seconds pass without a key refreshing this timer, abort learning mode
+          if (id(ir_receiver_mode) == 3) {
+            ESP_LOGW("IR Learn", "Learning mode timed out due to inactivity. Reverting to action mode.");
+            
+            // Clean up state tracking variables
+            id(learn_current_button_idx) = 0;
+            id(learn_sniff_start_time) = 0;
+            
+            // Restore normal receiver properties
+            id(setup_ir_receiver_for_current_profile).execute(); // Reload previous profile parameters
+            id(ir_receiver_mode) = 1; // Return back to action mode
+
+            id(display_show)->execute(false,
+                                     "Learning Aborted",
+                                     "Inactivity Timeout",
+                                     "Action Mode");
+          }
+
+  - id: learn_cache_clear
+    then:
+      - lambda: |-
+          for (uint16_t idx = 0; idx < 5; idx++) {
+             id(learn_cache_protocol)[idx] = "";
+             id(learn_cache_address)[idx] = 0;
+             id(learn_cache_command)[idx] = 0;
+          }
+          id(learn_cache_idx) = -1;
+
+  # ============= Button learning phase 0 and phase A settling timer
+  # Does deferred assessement and handling of inbound IR during learing
+  # Multiple IR signals are received with a single button push. Many are invalid.
+  # Caching and evaluating them after all arrive allows section of valid one.
+  # We separately analyze raw IR packets to determine underlying protocol.
+
+  - id: ir_settling_timer
+    mode: single
+    then: 
+      - delay: 120ms
+      - lambda: |-
+          id(ir_window_active) = false;
+          int b_idx = id(learn_current_button_idx);
+
+          static const std::vector<std::string> learn_button_names = {
+            "power_on", "power_off", "cursor_left", "cursor_right", "cursor_up", "cursor_down",
+            "cursor_enter", "settings_menu", "back", "home", "game_menu", "input", "picture",
+            "focus_manual", "focus_auto", "shortcut_1", "shortcut_2", "shortcut_3", "shortcut_4",
+            "volume_up", "volume_down", "mute", "token_sniff", "token_clear", "token_recall",
+            "BT_start_pair", "BT_clear_pair"
+          };
+
+          if (b_idx < 27) {
+            if (b_idx == -1) {
+              if (id(learn_detected_protocol) == "UNKNOWN") {
+                id(learn_cache_clear).execute();
+                id(learn_active_protocol) = "";
+                id(learn_active_address) = 0x0;             
+                id(learned_best_command) = 0;             
+                return; 
+              }
+            
+              auto& primary_array = id(learn_cache_protocol);
+              std::string target = id(learn_detected_protocol);
+              auto it = std::find(primary_array.begin(), primary_array.end(), target);
+            
+              if (it == primary_array.end()) {
+                id(learn_cache_clear).execute();
+                id(learn_active_protocol) = "";
+                id(learn_active_address) = 0x0;             
+                id(learned_best_command) = 0;             
+                return; 
+              } else {
+                int index = std::distance(primary_array.begin(), it);
+                id(learn_active_address)  = id(learn_cache_address)[index];
+                id(learn_active_protocol) = id(learn_detected_protocol);    
+                id(ir_receiver_allowed_protocol) = id(learn_active_protocol);
+                
+                // Intentional fall-through to let first button be registered after evaluation
+                // Set index to 0 and let it fall through
+                b_idx = 0;
+                id(learn_current_button_idx) = 0;
+              }   
+            }
+                
+            // process IR captures into current button    
+            auto& secondary_array = id(learn_cache_protocol);
+            std::string active_target = id(learn_active_protocol);
+            auto it = std::find(secondary_array.begin(), secondary_array.end(), active_target);
+          
+            if (it != secondary_array.end()) {
+              int index = std::distance(secondary_array.begin(), it);
+              
+              id(learned_best_command) = id(learn_cache_command)[index]; 
+              id(session_captured_codes).at(b_idx) = id(learned_best_command);
+              
+              b_idx++; 
+              id(learn_current_button_idx) = b_idx;
+              
+              id(learn_cache_clear).execute();
+              id(learn_mode_timeout_watcher).execute(); // Reset 30s timer
+              
+              // SAFE HALT GATE: Evaluate state ONLY after increment step completes
+              if (b_idx < 27) {
+                ESP_LOGI("IR Learn", "Press IR button for %s", learn_button_names.at(b_idx).c_str());
+                id(display_show)->execute(false, "IR Learn:", "Press Btn", learn_button_names.at(b_idx));
+              } else {
+                ESP_LOGI("IR Learn", "All buttons captured! Device locked at Index 27. Awaiting save selection...");
+                id(display_show)->execute(true, "Mem Slot", "0=OK 1=Up 2=Rt=", "3=Dn 4=Lf");
+              }
+                  
+            } else {
+              id(learn_cache_clear).execute();
+              id(learn_active_protocol) = "";
+              id(learn_active_address) = 0x0;
+              id(learned_best_command) = 0;             
+              return; 
+            }
+          }
+
+
+  # ====================================================================
+  # handle ir button presses for all protocols after IR data converted to 
+  # common format protocolStr, address, command, command_repeats
+  # ====================================================================
+  - id: general_IR_received_handler
+    parameters:
+      ir_protocolStr: std::string
+      ir_address: uint32_t
+      ir_command: uint32_t
+      ir_command_repeats: uint16_t
+    then:
+      - lambda: |-
+          uint32_t now = millis();
+
+          // each lambda must make local active_profile reference and abort if not valid
+          int current_idx = id(active_remote_layout);
+          if (!(0 <= current_idx && current_idx < remote_profiles.size())) {
+            return; // abort if illegal current_idx 
+          }
+          const auto& active_profile = remote_profiles[current_idx]; // Get the active_profile struct
+          
+          //ESP_LOGD("IR HUB", "IR Receiver after current_idx. Current Mode: %lu", id(ir_receiver_mode));
+
+
+          switch(id(ir_receiver_mode)) {
+            case 0: {// deactivated --------------
+              ESP_LOGD("IR HUB", "IR Receiver deactivated. No active profile.");
+
+              break;
+            }
+            
+            
+            case 3: { // learn mode --------------
+
+              static const std::vector<std::string> learn_button_names = {
+                "power_on", "power_off", "cursor_left", "cursor_right", "cursor_up", "cursor_down",
+                "cursor_enter", "settings_menu", "back", "home", "game_menu", "input", "picture",
+                "focus_manual", "focus_auto", "shortcut_1", "shortcut_2", "shortcut_3", "shortcut_4",
+                "volume_up", "volume_down", "mute", "token_sniff", "token_clear", "token_recall",
+                "BT_start_pair", "BT_clear_pair"
+              };
+
+              int b_idx = id(learn_current_button_idx);
+
+             
+              // We received an ir signal, possibly one of several from an event. We do not yet know which is correct protocol.
+              // Cache all inbound IR data. On_raw is simultaneously determining which protocol matche inbound signals.
+              // at end of aggregation window, we will determine which of the received IR signals to use.
+              
+              int cache_idx = id(learn_cache_idx); // last slot that has been filled
+              cache_idx++;
+                 if (cache_idx < 5) {
+                   id(learn_cache_protocol).at(cache_idx) = ir_protocolStr; // store inbound IR signal info
+                   id(learn_cache_address)[cache_idx]  = ir_address;
+                   id(learn_cache_command)[cache_idx]  = ir_command;
+                   id(learn_cache_idx) = cache_idx;
+                 }
+
+
+              ESP_LOGD("IR Learn", "cache index  %d... command: 0x%X (Addr: 0x%X protocol %s)", 
+                         cache_idx, (unsigned int)ir_command, (unsigned int)ir_address, ir_protocolStr.c_str());
+                         
+                                       
+              if (!id(ir_window_active)) {
+                // Open the 120ms aggregation gate.
+                id(ir_window_active) = true;
+                
+                ESP_LOGD("IR Learn", "Opening 120ms aggregation window for button index %d... Staged: 0x%X (Addr: 0x%X via %s)", 
+                         b_idx, (unsigned int)ir_command, (unsigned int)ir_address, ir_protocolStr.c_str());
+                id(ir_settling_timer).execute();
+              }                 
+              
+
+              // ====================================================================
+              // PHASE B: SELECT STORAGE SLOT AND SAVE (Index 27)
+              // ====================================================================
+              if (b_idx == 27) {
+                // SEPARATED CHECK: Evaluate the pressed command directly for saving targets
+                int selected_slot = -1;
+
+                // Match allocation slot using directional controls from the newly learned sequence
+                if (ir_command == id(session_captured_codes).at(6))       selected_slot = 0; // cursor_enter (OK = slot 0)
+                else if (ir_command == id(session_captured_codes).at(4))  selected_slot = 1; // cursor_up    (Up = slot 1)
+                else if (ir_command == id(session_captured_codes).at(3))  selected_slot = 2; // cursor_right (Right = slot 2)
+                else if (ir_command == id(session_captured_codes).at(5))  selected_slot = 3; // cursor_down  (Down = slot 3)
+                else if (ir_command == id(session_captured_codes).at(2))  selected_slot = 4; // cursor_left  (Left = slot 4)
+                
+                if (selected_slot != -1) {
+                  id(learn_mode_timeout_watcher).stop(); // Stop inactivity clock
+
+                  IRProfile learned_profile;
+                  learned_profile.profile_name = "Memory " + std::to_string(selected_slot);
+                  learned_profile.protocol = id(learn_active_protocol);
+                  learned_profile.device_address = id(learn_active_address);
+                  
+                  // Map security tokens matching standard indexing positions
+                  learned_profile.cmd_clear_token_arm = id(session_captured_codes).at(23);  // token_clear
+                  learned_profile.cmd_clear_token_fire = id(session_captured_codes).at(6);  // cursor_enter
+
+                  // Dynamic pointer resolution link loop
+                  for (size_t i = 0; i < learn_button_names.size(); i++) {
+                    std::string b_id = learn_button_names.at(i);
+                    learned_profile.cmd_codes[id(session_captured_codes).at(i)] = { b_id, resolve_button(b_id) };
+                  }
+
+                  // Fit profile into target vector index array placement (Slots 13 to 17)
+                  size_t target_vector_index = 13 + selected_slot;
+                  while (remote_profiles.size() <= target_vector_index) {
+                    remote_profiles.push_back({ "Placeholder", "NEC", 0, 0, 0, {} });
+                  }
+                  
+                  remote_profiles[target_vector_index] = learned_profile;
+                  ESP_LOGI("IR Learn", "Saved profile to vector slot %d (Memory Slot %d)", (int)target_vector_index, selected_slot);
+
+                  // Flush configuration to NVS using header file preference wrapper. Also update Home Assistant.
+                  commit_database_to_flash();
+                  id(sync_json_backup_sensor).execute(); // Updates the Home Assistant text register
+
+                  id(display_show)->execute(true, "Stored Profile", learned_profile.profile_name, "Operational");
+                  
+                  // Auto-switch engine settings to execute this layout immediately
+                  id(active_remote_layout) = static_cast<int>(target_vector_index);
+
+                  id(setup_ir_receiver_for_current_profile).execute();
+                  id(ir_receiver_mode) = 1; // Return to Action mode
+ 
+                  return; // Hard return path to prevent falling past case logic
+                  
+                } else {
+                  ESP_LOGW("IR Learn", "Invalid saving key pressed. Use your newly learned Arrow Keys or OK.");
+                  return; // Keep waiting for a valid save mapping key press
+                }
+              }
+
+              break;
+
+            }  
+            case 2: { // set profile ----------
+              // Direct implementation approach: Test incoming packets.
+              // If we find an absolute match, switch profiles and exit to Mode 1.
+              // If no match, log it and do NOTHING, leaving the 30-second timer to close out.
+              
+              ESP_LOGD("IR HUB", "checking incoming packet against profile registry directly...");
+
+              bool match_found = false;
+
+              // Loop through all active profiles loaded in your global system vector in reverse order
+              // Reverse order gives user learned profiles precedence over factory profiles
+              for (size_t i = remote_profiles.size(); i > 0; ) {
+                i--; // Decrement first to safely convert the 1-based count to a 0-based index
+                const auto& profile = remote_profiles[i];
+              
+                // Gate 1: Check protocol matching constraints
+                if (profile.protocol != ir_protocolStr) continue;
+              
+                // Gate 2: Check address validation loops
+                if (profile.device_address != ir_address) continue;
+              
+                // Gate 3: Check if command hex code matches any target profile key
+                if (profile.cmd_codes.find(ir_command) != profile.cmd_codes.end()) {
+              
+                  // SUCCESS PATH: Stop the 15-second countdown immediately!
+                  id(set_profile_timeout_watcher).stop();
+              
+                  id(active_remote_layout) = static_cast<int>(i);
+                  id(setup_ir_receiver_for_current_profile).execute();
+                  id(ir_receiver_mode) = 1; // Return back to action mode
+                  
+                  id(display_show)->execute(true,
+                                            "Setting Profile",
+                                            profile.profile_name,
+                                            "Wait 5 seconds");
+                                            
+                  match_found = true;
+                  break; // Break completely out of the for-loop
+                }
+              }
+
+              // --- DEFERRED FAILURE HANDLING ---
+              // If the loop finished and no match flag was raised, let phantom protocols pass silently.
+              if (!match_found) {
+                ESP_LOGD("IR HUB", "Packet (%s, Addr: 0x%X, Cmd: 0x%X) did not match. Waiting for next decode stream...", 
+                         ir_protocolStr.c_str(), (unsigned int)ir_address, (unsigned int)ir_command);
+              }
+
+              break; // Standard exit out of switch case 2
+            }
+
+
+
+
+
+
+            case 1: { // action -----------------------------------------------
+              if (now - id(last_ir_press) < 30) return;
+              id(last_ir_press) = now;
+
+
+              ESP_LOGD("IR HUB", "IR Receiver normal IR button action processing.");
+
+              //Reminder of IRProfile structure
+              //struct IRProfile {
+              //  std::string profile_name;
+              //  std::string protocol;
+              //  uint32_t device_address;
+              //  uint32_t cmd_clear_token_arm;  
+              //  uint32_t cmd_clear_token_fire; 
+              //  std::map<uint32_t, IRCommand> cmd_codes;
+  
+              // active_profile.device_address
+
+
+              // Handle special actions clear arming, and trigger first
+              if (ir_address == active_profile.device_address) {
+                if (ir_command == active_profile.cmd_clear_token_arm) {
+                  id(global_token_clear_armed) = true;
+                  id(token_clear_safety_timeout).execute();
+                  
+                  id(display_show)->execute(false,
+                                           "Token Clear Requested",
+                                           "To Confirm",
+                                           "Press Select");
+                  return; // STOP FLOW Armed to await fire code
+                }
+                
+                if (ir_command == active_profile.cmd_clear_token_fire && id(global_token_clear_armed)) {
+                  id(global_token_clear_armed) = false;
+                  id(token_clear_safety_timeout).stop();
+                  id(token_clear)->press(); // clears token and reports on myDisplay
+                  return; // STOP FLOW fire code received. Token cleared.
+                }
+                
+                if (ir_command != active_profile.cmd_clear_token_fire && ir_command != active_profile.cmd_clear_token_arm && id(global_token_clear_armed)) {
+                  id(global_token_clear_armed) = false;
+                  id(token_clear_safety_timeout).stop();
+        
+                  id(display_show)->execute(false,
+                                           "Not Confirmed",
+                                           "Wrong Key",
+                                           "Canceled");
+                  return; // STOP FLOW Unexpected non-fire code arrived. Cancel arming
+                }
+              }  
+    
+              // --- Normal IR action Path ---
+      
+              char cmd_buf[32] = {0};
+              char addr_buf[32] = {0};
+              snprintf(cmd_buf, sizeof(cmd_buf), "0x%04X", (unsigned int)ir_command);
+              snprintf(addr_buf, sizeof(addr_buf), "0x%04X", (unsigned int)ir_address);
+                      
+              std::string commandStr(cmd_buf);
+              std::string addressStr(addr_buf);
+                      
+              if (ir_address != active_profile.device_address) {
+                // does not match target device adddress
+                id(display_show)->execute(false,
+                               ir_protocolStr + " protocol",
+                               addressStr,
+                               commandStr);
+                
+                id(global_cached_command) = 0;
+                id(global_is_holding) = false;
+                return; // STOP FLOW
+      
+              } else { 
+                // matches device address. Change addressStr to human readable name
+                addressStr = active_profile.profile_name; 
+      
+                // MODIFIED KEYPRESS STRATEGY BELOW:
+                if (id(global_cached_command) != ir_command || id(global_initial_press_time) == 0) {
+                  // A brand-new initial button click event
+                  id(global_cached_command) = ir_command;
+                  id(global_initial_press_time) = now; 
+                  id(global_last_processed_time) = now;
+                  id(global_last_raw_packet_time) = now; // Synchronize heartbeat
+                  id(global_is_holding) = false;      
+                  
+                  // Execute first-press click immediately
+                  id(ir_map_processor).execute(ir_command, false); 
+                  
+                } else {
+                  // Ongoing stream of identical repeat packets (Epson holding pattern)
+                  // Feed the heartbeat timer. DO NOT fire the map processor here.
+                  // This lets the external interval loop evaluate the 500ms delay window.
+                  id(global_last_raw_packet_time) = now;
+                }
+              }
+              
+              // Usually display of commandName, addressStr, and commandStr
+              // However, if during processing the command, special info became displayed, showing_special_info indicates
+              // we should not immediately overwrite special info. However, start a timer to clear showing_special_info state.
+    
+              if (id(showing_special_info) == true) {
+                ESP_LOGD("Info Show", "Showing special info. Timer started.");
+                id(showing_special_expiration_timer).execute();
+              
+              } else {
+                // Show usual button press info. commandName is global in which processing against profile IRmap left human readable name of successfully mapped command.
+                id(display_show)->execute(false,
+                                             id(commandName),
+                                             addressStr,
+                                             commandStr);
+              }       
+             
+              break;
+            }
+              
+            default:
+              // if we fall to here, something is awry with ir_receiver_mode
+              ESP_LOGD("IR HUB", "Unknown ir_receiver_mode.");
+
+              break;
+          }
+ 
+
+  # ====================================================================
+  # Execute the actual actions commanded by inbound IR 
+ 
+  - id: ir_map_processor
+    parameters:
+      ir_command: uint32_t
+      is_hold: bool
+
+    then:
+      - lambda: |-
+          int current_idx = id(active_remote_layout);
+          if (!(0 <= current_idx && current_idx < remote_profiles.size())) {
+            return; 
+          }
+          const auto& active_profile = remote_profiles[current_idx]; 
+
+          auto it = active_profile.cmd_codes.find(ir_command);
+
+          if (it != active_profile.cmd_codes.end()) {
+            if (!id(global_token_clear_armed)) {
+              if (is_hold) {
+                id(commandName) = it->second.name + " (Hold)";
+                ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
+              } else {
+                id(commandName) = it->second.name;
+                ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
+              }
+            }
+            
+            // DIRECT ROUTING: Run the true global system automations directly by identity string
+            if (it->second.name == "token_sniff") {
+              id(showing_special_info) = true;
+              
+              // Direct script execution call to completely bypass component pointer link limits
+              id(sniffing_sequence).execute(); 
+            } 
+            else if (it->second.name == "token_recall") {
+              id(showing_special_info) = true;
+              
+              id(execute_token_recall_routine).execute();
+            } 
+            else if (it->second.name == "token_clear") {
+              id(run_token_clear_worker).execute();
+            }
+            // Execute standard physical hardware button objects safely if assigned
+            else if (it->second.button_obj != nullptr) {
+              it->second.button_obj->press();
+            }
+            
+          } else {
+            id(commandName) = "Unassigned"; 
+          }
+ 
+ 
+ 
+  # ====================================================================
+  # Set up IR receiver to accept commands from current profile
+
+  - id: setup_ir_receiver_for_current_profile
+    then:
+      - lambda: |-
+          int current_idx = id(active_remote_layout);
+          
+          // BOUNDARY CHECK: If index falls outside our valid memory matrix,
+          // change to hardcoded factory default.
+          if (current_idx < 0 || current_idx >= (int)remote_profiles.size()) {
+            ESP_LOGW("Profile Control", "Stuck out-of-bounds index vector layout [Index %d] detected! Overriding to safe default layout...", current_idx);
+            
+            id(active_remote_layout) = id(default_profile); // Reset profile to default Projector
+            current_idx = id(default_profile);
+          }
+
+          // Proceed with normal engine startup sequences using a verified layout index
+          if (0 <= current_idx && current_idx < (int)remote_profiles.size()) {
+            const auto& active_profile = remote_profiles[current_idx];
+             
+            id(ir_receiver_mode) = 1; // Securely change state back to Action Mode!
+            id(ir_receiver_allowed_protocol) = active_profile.protocol;
+            
+            ESP_LOGI("Profile Control", "Profile layout '%s' fully engaged.", active_profile.profile_name.c_str());
+            
+          } else {
+            id(ir_receiver_mode) = 0; // Safe-mode fallback guard
+            id(ir_receiver_allowed_protocol) = "NEC";
+            
+            ESP_LOGE("Profile Control", "Critical Failure: Vector array sizing limits collapsed.");
+          }
+          
+          
+  #----------------------------------------
+  
+
+  #----------------------------------------
+  # High Speed Timeout Watcher Register Cleanup
+  - id: ir_timeout_watcher
+    mode: restart
+    then:
+      - while:
+          condition:
+            lambda: |-
+               return (millis() - id(global_last_raw_packet_time) < 200);
+          then:
+            - delay: 15ms
+      - lambda: |-
+          id(global_cached_command) = 0;
+          id(global_initial_press_time) = 0;  
+          id(global_sony_stream_time) = 0;
+          id(global_is_holding) = false;
+          id(global_sony_frame_count) = 0;
+
+  # Automatic hardware lock release timer step
+  - id: release_debounce_lock
+    then:
+      - delay: 110ms
+      - globals.set:
+          id: debounce_safety_lock
+          value: 'false'
+
+  # Automated 5-Second Expiration Timer
+  - id: token_clear_safety_timeout
+    mode: restart
+    then:
+      - delay: 5s
+      - if:
+          condition:
+            lambda: 'return id(global_token_clear_armed);'
+          then:
+            - globals.set:
+                id: global_token_clear_armed
+                value: 'false'
+            - lambda: |-
+                ESP_LOGI("IR Safety", "Sequence timed out. Gate locked.");
+                id(myDisplay_line1) = "Timed Out";
+                id(myDisplay_line2) = "Clear Token";
+                id(myDisplay_line3) = "Canceled";
+
+
+  # Showing special info expiration timer
+  - id: showing_special_expiration_timer
+    mode: restart
+    then:
+      - delay: 2s # how long without another IR button press before special display times out.
+      - lambda: |-
+                ESP_LOGD("Info Show", "Showing special info timed out.");
+                id(showing_special_info) = false;
+
+
+  - id: set_profile_timeout_watcher
+    mode: restart # Automatically restarts the 15s clock if double-clicked repeatedly
+    then:
+      - delay: 15s
+      - lambda: |-
+          // If 15 seconds passed and the user is still stuck in setup profile mode, abort safely
+          if (id(ir_receiver_mode) == 2) {
+            id(ir_receiver_mode) = 1; // Return to action mode
+            ESP_LOGW("IR Hub", "Set Profile Mode timed out after 30 seconds. Reverting to action mode.");
+            
+            // Restore active layout profile metadata on your display panel
+            int current_idx = id(active_remote_layout);
+            std::string current_name = "Default";
+            if (0 <= current_idx && current_idx < remote_profiles.size()) {
+              current_name = remote_profiles[current_idx].profile_name;
+            }
+
+            id(display_show)->execute(false,
+                                     "Setup Timed Out",
+                                     current_name,
+                                     "Action Mode");
+          }
+          
+          
+interval:
+  # ====================================================================
+  # TIMER 1: Process IR hold repeat loops
+  - interval: 80ms
+    then:
+      - lambda: |-
+          uint32_t now = millis();
+          if (id(global_cached_command) != 0) {
+            if (now - id(global_last_raw_packet_time) >= 100) return; 
+            if (id(global_is_holding)) {
+              id(ir_map_processor).execute(id(global_cached_command), true);
+            } else {
+              if (now - id(global_initial_press_time) >= 300) { 
+                id(global_is_holding) = true;
+                id(ir_map_processor).execute(id(global_cached_command), true);
+              }
+            }
+          }
+          
+  # ====================================================================
+  # TIMER 2: True One-Shot Post-Boot Storage Recovery & Mapping
+  - interval: 200ms 
+    id: boot_initialization_timer 
+    then:
+      - lambda: |-
+          // STEP 1: Guard against early boots where factory remotes aren't built yet
+          if (remote_profiles.empty()) {
+            return; 
+          }
+
+          // STEP 2: Asynchronously process the 15.2KB NVS load request once
+          if (!flash_hydration_complete) {
+            load_saved_flash_profiles();
+            return; // Force wait one cycle to allow heap matrix allocations to relax
+          }
+
+          // SUCCESS PATH: Both memory layers are now fully populated and safe
+          ESP_LOGI("ir_hub", "System stabilized. 15.2KB Array space safe. Total layouts: %d", remote_profiles.size());
+
+          // Bridge your active memory slots to the physical button pointer registries
+          link_hardware_buttons();
+          
+          ESP_LOGI("ir_hub", "Flash mapping completed. Transferring control to runtime scripts...");
+
+      # ====================================================================
+      - script.execute: setup_ir_receiver_for_current_profile
+      - lambda: |-      
+          id(ir_receiver_mode) = 1; // Set to action mode
+
+      - script.execute: display_token_remote_profile
+      - script.execute: sync_json_backup_sensor 
+      
+      # ====================================================================
+      # THE KILL SWITCH: Permanently unregisters and deletes Timer 2 from the loop
+      - component.suspend: boot_initialization_timer
