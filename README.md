@@ -428,7 +428,7 @@ packages:
 
 # ========== END Configuration Options KUO ==============================================================================
 ```  
-### 5a Build firmware for TIVO on ESP32-C6
+### 5a Build and Flash the Firmware
 Once our make file has been created and customized, you are ready to compile and flash firmware to ESP32 board.
 Connect your ESP32 board with USB. <br>
 
