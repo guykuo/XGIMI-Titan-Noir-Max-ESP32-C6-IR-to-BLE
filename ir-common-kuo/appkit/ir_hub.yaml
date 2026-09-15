@@ -1,626 +1,6 @@
 # ir-common-kuo/ir-hub.yaml
 esphome:
 
-  on_boot:
-    - priority: -100
-      then:
-        - lambda: |-
-            if (!remote_profiles.empty()) return; // Protect against duplicate runs on connection resets
-    
-            // ====================================================================
-            // INDEX 0: Mapping 1 (AWOL Valerion Projector)
-            // ====================================================================
-            remote_profiles.push_back({
-              "AWOL Projector", "NEC", 0x7300, 0x17, 0x14, // HDMI 1, OK
-              {
-                { 0xA7,       { "power_on",      id(power_on) } },          // power on
-                { 0x67,       { "power_off",     id(power_off_immediately) } }, // power off
-                { 0x24,       { "cursor_left",   id(cursor_left) } },    // left arrow
-                { 0xA4,       { "cursor_right",  id(cursor_right) } },   // right arrow
-                { 0x64,       { "cursor_up",     id(cursor_up) } },      // up arrow
-                { 0xE4,       { "cursor_down",   id(cursor_down) } },    // down arrow
-                { 0x14,       { "cursor_enter",  id(cursor_enter) } },   // ok
-                { 0x5A,       { "settings_menu", id(settings_menu) } },  // menu
-                { 0x3A,       { "back",          id(back) } },           // back
-                { 0xDA,       { "home",          id(home) } },           // home
-                { 0x1B,       { "game_menu",     id(game_menu) } },      // profile
-                { 0x48,       { "input",         id(input) } },          // input
-                { 0xCA,       { "picture",       id(picture) } },        // picture mode
-                { 0x9B,       { "focus_manual",  id(focus_manual) } },   // focus
-                { 0x47,       { "focus_auto",    id(focus_auto) } },     // live guide
-                { 0xBB,       { "shortcut_1",    id(shortcut_1) } },     // Prime Video
-                { 0x3B,       { "shortcut_2",    id(shortcut_2) } },     // Netflix
-                { 0x7B,       { "shortcut_3",    id(shortcut_3) } },     // Disney
-                { 0xDB,       { "shortcut_4",    id(shortcut_4) } },     // YouTube
-                { 0x50,       { "volume_up",     id(volume_up) } },      // volume up
-                { 0xD0,       { "volume_down",   id(volume_down) } },    // volume down
-                { 0xD8,       { "mute",          id(mute) } },           // mute
-                { 0xE7,       { "token_sniff",   id(token_sniff) } },    // HDMI 1
-                { 0x17,       { "token_clear",   id(token_clear) } },    // HDMI 2
-                { 0x97,       { "token_recall",  id(token_recall) } },   // HDMI 3
-                { 0x07,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // Back + Down
-                { 0xC7,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // Back + Home
-              }
-            });
-    
-            // ====================================================================
-            // INDEX 1: Mapping 2 (BenQ W5800 Projector)
-            // ====================================================================
-            remote_profiles.push_back({
-              "BenQ Projector", "NEC", 0x3000, 0x629D, 0xEA15, // Play, OK
-              {
-                { 0xB04F,       { "power_on",      id(power_on) } },              // power on
-                { 0xB14E,       { "power_off",     id(power_off_immediately) } }, // power off
-                { 0xF40B,       { "cursor_up",     id(cursor_up) } },      // up arrow
-                { 0xF30C,       { "cursor_down",   id(cursor_down) } },    // down arrow
-                { 0xF20D,       { "cursor_left",   id(cursor_left) } },    // left arrow
-                { 0xF10E,       { "cursor_right",  id(cursor_right) } },   // right arrow
-                { 0xEA15,       { "cursor_enter",  id(cursor_enter) } },   // ok
-                { 0xF00F,       { "settings_menu", id(settings_menu) } },  // menu
-                { 0x7A85,       { "back",          id(back) } },           // back
-                { 0x8778,       { "home",          id(home) } },           // default
-                { 0x41BE,       { "game_menu",     id(game_menu) } },      // cinema master
-                { 0xFB04,       { "input",         id(input) } },          // source
-                { 0xEF10,       { "picture",       id(picture) } },        // picure mode
-                { 0xEC13,       { "focus_manual",  id(focus_manual) } },   // aspect
-                { 0xF708,       { "focus_auto",    id(focus_auto) } },     // auto
-                { 0xE916,       { "shortcut_1",    id(shortcut_1) } },     // brightness
-                { 0xEE11,       { "shortcut_2",    id(shortcut_2) } },     // contrast
-                { 0x837C,       { "shortcut_3",    id(shortcut_3) } },     // dynamic iris
-                { 0xCF30,       { "shortcut_4",    id(shortcut_4) } },     // light mode
-                { 0xA15E,       { "volume_up",     id(volume_up) } },      // gamma
-                { 0x817E,       { "volume_down",   id(volume_down) } },    // sharp
-                { 0xF807,       { "mute",          id(mute) } },           // eco blank
-                { 0xC33C,       { "token_sniff",   id(token_sniff) } },    // HDR
-                { 0x629D,       { "token_clear",   id(token_clear) } },    // invert
-                { 0x639C,       { "token_recall",  id(token_recall) } },   // 3D
-                { 0xA05F,       { "BT_start_pair", id(bluetooth_pairing_start) } },  // color temp
-                { 0xA45B,       { "BT_clear_pair", id(bluetooth_pairing_clear) } },  // color manage
-                
-                { 0x6B94,       { "test pattern",  id(home) } }            // test pattern            
-              }
-            });
-    
-            // ====================================================================
-            // INDEX 2: Mapping 3 (Epson Pro Cinema LS12000)
-            // ====================================================================
-            remote_profiles.push_back({
-              "Epson Projector", "NEC", 0x5583, 0xC23D, 0x7A85, // RGBCMY, enter
-              {
-                { 0x6F90,       { "power_on",         id(power_on) } },              // Power On
-                { 0x6E91,       { "power_off",        id(power_off_immediately) } }, // Power Off
-                { 0x4FB0,       { "cursor_up",        id(cursor_up) } },      // up arrow
-                { 0x4DB2,       { "cursor_down",      id(cursor_down) } },    // down arrow
-                { 0x4CB3,       { "cursor_left",      id(cursor_left) } },    // left arrow
-                { 0x4EB1,       { "cursor_right",     id(cursor_right) } },   // right arrow
-                { 0x7A85,       { "cursor_enter",     id(cursor_enter) } },   // enter
-                { 0x659A,       { "settings_menu",    id(settings_menu) } },  // menu
-                { 0x7B84,       { "back",             id(back) } },           // ESC
-                { 0xC639,       { "home",             id(home) } },           // default
-                { 0x708F,       { "game_menu",        id(game_menu) } },      // color mode
-                { 0xA956,       { "input",            id(input) } },          // HDMI link
-                { 0x55AA,       { "picture",          id(picture) } },        // image enhance
-                { 0xA25D,       { "focus_manual",     id(focus_manual) } },   // skip back
-                { 0x728D,       { "focus_manual_alt", id(focus_manual) } },   // lens (not in MyHarmony)
-                { 0xA45B,       { "focus_auto",       id(focus_auto) } },     // pause
-                { 0xA55A,       { "shortcut_1",       id(shortcut_1) } },     // reverse
-                { 0xA15E,       { "shortcut_2",       id(shortcut_2) } },     // play
-                { 0xA35C,       { "shortcut_3",       id(shortcut_3) } },     // FF
-                { 0xA05F,       { "shortcut_4",       id(shortcut_4) } },     // skip forward 
-                { 0x8C73,       { "shortcut_1_alt",   id(shortcut_1) } },     // HDMI 1
-                { 0x8877,       { "shortcut_2_alt",   id(shortcut_2) } },     // HDMI 2
-                { 0x7D82,       { "shortcut_3_alt",   id(shortcut_3) } },     // P-in-P (not in myHarmony)
-                { 0x629D,       { "shortcut_4_alt",   id(shortcut_4) } },     // PC (not in myHarmony)
-                { 0x6798,       { "volume_up",        id(volume_up) } },      // volume up
-                { 0x6699,       { "volume_down",      id(volume_down) } },    // volume down
-                { 0x52AD,       { "mute",             id(mute) } },           // mute
-                { 0x7C83,       { "token_sniff",      id(token_sniff) } },    // frame interp
-                { 0xC23D,       { "token_clear",      id(token_clear) } },    // RGBCMY
-                { 0x6996,       { "token_recall",     id(token_recall) } },   // pattern
-                { 0xC43B,       { "BT_start_pair",    id(bluetooth_pairing_start) } }, // 3D format
-                { 0x758A,       { "BT_clear_pair",    id(bluetooth_pairing_clear) } }, // Aspect
-      
-                { 0x6A95,       { "Home",          id(home) } }, // home
-                { 0x8B74,       { "input LAN",     id(home) } }, // input LAN
-                { 0x609F,       { "user",          id(home) } }, // user
-                { 0xA45B,       { "pause",         id(home) } }, // pause
-                { 0x9F60,       { "Link Menu",     id(home) } }, // link menu
-                { 0x6C93,       { "blank",         id(home) } },  // blank  (not in MyHarmony)
-                { 0x748B,       { "memory",        id(home) } },  // memory (not in MyHarmony)
-                { 0x51AE,       { "lens1",         id(home) } },  // lens1  (not in MyHarmony)
-                { 0x50AF,       { "lens2",         id(home) } }   // lens2  (not in MyHarmony)
-              }
-            });
-    
-            // ====================================================================
-            // INDEX 3: Mapping 4 (Hisense 50u6g TV)
-            // ====================================================================
-            remote_profiles.push_back({
-              "Hisense", "NEC", 0xFB04, 0xEA15, 0xA55A, // 5, select
-              {
-                { 0xF708,       { "power_on",      id(power_on) } },              // discrete power on
-                { 0x8E71,       { "power_on_alt",  id(power_on) } },              // discrete power on (variant)
-                { 0xEF10,       { "power_off",     id(power_off_immediately) } }, // discrete power off
-                { 0x8D72,       { "power_off_alt", id(power_off_immediately) } }, // 0
-                { 0xA956,       { "cursor_up",     id(cursor_up) } },      // arrow up
-                { 0xA857,       { "cursor_down",   id(cursor_down) } },    // arrow down
-                { 0xA758,       { "cursor_left",   id(cursor_left) } },    // arrow left
-                { 0xA659,       { "cursor_right",  id(cursor_right) } },   // arrow right
-                { 0xA55A,       { "cursor_enter",  id(cursor_enter) } },   // select
-                { 0xFB04,       { "back",          id(back) } },           // back
-                { 0xBC43,       { "home",          id(home) } },           // home
-                { 0xF40B,       { "input",         id(input) } },          // input
-                { 0xB54A,       { "settings_menu", id(settings_menu) } },  // menu
-                { 0x718E,       { "settings_menu_alt", id(settings_menu) } }, // menu (variant)
-                { 0x35CA,       { "game_menu",     id(game_menu) } },      // apps
-                { 0xFF00,       { "picture",       id(picture) } },        // channel up
-                { 0xE817,       { "focus_manual",  id(focus_manual) } },   // 7
-                { 0xE718,       { "focus_auto",    id(focus_auto) } },     // 8
-                { 0xAB54,       { "shortcut_1",    id(shortcut_1) } },     // yellow
-                { 0xAA55,       { "shortcut_2",    id(shortcut_2) } },     // blue
-                { 0xAD52,       { "shortcut_3",    id(shortcut_3) } },     // red
-                { 0xAC53,       { "shortcut_4",    id(shortcut_4) } },     // green
-                { 0xFD02,       { "volume_up",     id(volume_up) } },      // volume up
-                { 0xFC03,       { "volume_down",   id(volume_down) } },    // volume down
-                { 0xF609,       { "mute",          id(mute) } },           // mute
-                { 0xEB14,       { "token_sniff",   id(token_sniff) } },    // 4
-                { 0xEA15,       { "token_clear",   id(token_clear) } },    // 5
-                { 0xE916,       { "token_recall",  id(token_recall) } },   // 6
-                { 0xB847,       { "BT_start_pair", id(bluetooth_pairing_start) } },  // prime video
-                { 0xB649,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }   // youtube
-              }
-            });
-    
-            // ====================================================================
-            // INDEX 4: Mapping 5 (JVC HR-S9600u VCR)
-            // ====================================================================
-            remote_profiles.push_back({
-              "JVC HR-S9600u VCR", "JVC", 0x03C2, 0xC2A4, 0xC23C, // 5, OK
-              {
-                { 0xC2D0,       { "power_on",      id(power_on) } },      // power (as discrete)
-                { 0xC2B8,       { "power_on_alt",  id(power_on) } },      // power (alternate)
-                { 0xC258,       { "power_off",     id(power_off_immediately) } }, // discrete off
-                { 0xC2E8,       { "power_off_alt1", id(power_off_immediately) } }, // audio monitor
-                { 0xC2CC,       { "power_off_alt2", id(power_off_immediately) } }, // 0
-                { 0xC2C3,       { "back",          id(back) } },          // review
-                { 0xC241,       { "cursor_up",     id(cursor_up) } },     // cursor up
-                { 0xC298,       { "cursor_up_alt", id(cursor_up) } },     // cursor up (harmony)
-                { 0xC218,       { "cursor_down",   id(cursor_down) } },   // cursor down
-                { 0xC261,       { "cursor_down_alt", id(cursor_down) } }, // cursor down (harmony)
-                { 0xC2A8,       { "cursor_left",   id(cursor_left) } },   // cursor left
-                { 0xC228,       { "cursor_right",  id(cursor_right) } },  // cursor right (harmony)
-                { 0xC23C,       { "cursor_enter",  id(cursor_enter) } },  // OK
-                { 0xC2EC,       { "settings_menu", id(settings_menu) } }, // menu
-                { 0xC207,       { "settings_menu_alt", id(settings_menu) } }, // memu (alternate) 
-                { 0xC26C,       { "home",        id(home) } },          // cancel
-                { 0xC230,       { "game_menu",     id(game_menu) } },     // game menu
-                { 0xC2C8,       { "input",         id(input) } },         // tv/vcr
-                { 0xC260,       { "picture",       id(picture) } },       // fast forward
-                { 0xC214,       { "focus_manual",  id(focus_manual) } },  // 8
-                { 0xC2E4,       { "focus_auto",    id(focus_auto) } },    // 7
-                { 0xC283,       { "shortcut_1",    id(shortcut_1) } },    // prog
-                { 0xC2BC,       { "shortcut_2",    id(shortcut_2) } },    // prog check
-                { 0xC28C,       { "shortcut_3",    id(shortcut_3) } },    // SP/EP
-                { 0xC269,       { "shortcut_4",    id(shortcut_4) } },    // skip search
-                { 0xC213,       { "volume_up",     id(volume_up) } },     // start down
-                { 0xC293,       { "volume_down",   id(volume_down) } },   // start up
-                { 0xC2B0,       { "mute",          id(mute) } },          // pause
-                { 0xC224,       { "token_sniff",   id(token_sniff) } },   // 4
-                { 0xC2A4,       { "token_clear",   id(token_clear) } },   // 5
-                { 0xC264,       { "token_recall",  id(token_recall) } },  // 6
-                { 0xC284,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // 1
-                { 0xC244,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // 2
-              }
-            });
-    
-            // ====================================================================
-            // INDEX 5: Mapping 6 (JVC projectors code set A)
-            // ====================================================================
-            remote_profiles.push_back({
-              "JVC Projector A", "JVC", 0xCE, 0x56, 0xF4, // natural, OK
-              {
-                { 0xA0,       { "power_on",      id(power_on) } },          // power on
-                { 0x60,       { "power_off", id(power_off_immediately) } }, // power off
-                { 0x80,       { "cursor_up",     id(cursor_up) } },       // up arrow
-                { 0x40,       { "cursor_down",   id(cursor_down) } },     // down arrow
-                { 0x6C,       { "cursor_left",   id(cursor_left) } },     // left arrow
-                { 0x2C,       { "cursor_right",  id(cursor_right) } },    // right arrow
-                { 0xF4,       { "cursor_enter",  id(cursor_enter) } },    // enter/ok
-                { 0x74,       { "settings_menu", id(settings_menu) } },   // menu
-                { 0xC0,       { "back",          id(back) } },            // exit
-                { 0xB8,       { "home",          id(home) } },            // hide
-                
-                { 0xD6,       { "game_menu",     id(game_menu) } },       // dynamic
-                { 0xCE,       { "game_menu_alt", id(game_menu) } },       // advanced menu_
-    
-    
-                { 0x0E,       { "input",         id(input) } },           // input HDMI 1
-                
-                { 0x8E,       { "picture",       id(picture) } },         // input HDMI 2
-                { 0x2F,       { "picture_alt",   id(picture) } },         // picture mode_
-    
-                { 0xCC,       { "focus_manual",  id(focus_manual) } },    // focus -
-                { 0x8C,       { "focus_auto",    id(focus_auto) } },      // focus +
-                { 0x11,       { "focus_manual_alt", id(focus_manual) } },   // color profile_
-                { 0xAF,       { "focus_auto_alt",   id(focus_auto) } },     // gamma settings_
-                
-                { 0x36,       { "shortcut_1",       id(shortcut_1) } },    // user 1
-                { 0xB6,       { "shortcut_2",       id(shortcut_2) } },    // user 2
-                { 0x76,       { "shortcut_3",       id(shortcut_3) } },    // user 3
-                { 0xEE,       { "shortcut_4",       id(shortcut_4) } },    // aspect
-                
-                { 0x1B,       { "shortcut_1_alt",   id(shortcut_1) } },    // mode 1_
-                { 0x9B,       { "shortcut_2_alt",   id(shortcut_2) } },    // mode 2_
-                { 0x5B,       { "shortcut_3_alt",   id(shortcut_3) } },    // mode 3_
-                { 0x2E,       { "shortcut_4_alt",   id(shortcut_4) } },    // info
-               
-                { 0x5E,       { "volume_up",       id(volume_up) } },        // brightness up
-                { 0xDE,       { "volume_down",     id(volume_down) } },      // brightness down
-                { 0x6E,       { "mute",            id(mute) } },             // color temp
-    
-                { 0x04,       { "volume_up_alt",   id(volume_up) } },        // lens AP_
-                { 0x0C,       { "volume_down_alt", id(volume_down) } },      // lens control_
-                { 0xA3,       { "mute_alt",        id(mute) } },             // anamorphic_
-    
-                { 0x16,       { "token_sniff",      id(token_sniff) } },   // cinema_
-                { 0x96,       { "token_sniff_alt",  id(token_sniff) } },   // cinema
-                { 0x56,       { "token_clear",      id(token_clear) } },   // natural
-                { 0xAE,       { "token_recall",     id(token_recall) } },  // gamma
-                { 0xB7,       { "token_recall_alt", id(token_recall) } },  // HDR_
-    
-                { 0xFE,       { "BT_start_pair",      id(bluetooth_pairing_start) } },  // sharp down
-                { 0x9A,       { "BT_clear_pair",      id(bluetooth_pairing_clear) } },  // sharp up
-                { 0x51,       { "BT_start_pair_alt",  id(bluetooth_pairing_start) } },  // CMD_
-                { 0x0F,       { "BT_clear_pair_alt",  id(bluetooth_pairing_clear) } },  // mpc_
-               
-                { 0x3E,       { "color up",      id(home) } },    // color up
-                { 0xBE,       { "color down",    id(home) } },    // color down
-                { 0x1E,       { "contast up",    id(home) } },    // contrast up
-                { 0x9E,       { "contrast down", id(home) } },    // contrast down
-                { 0x36,       { "test",          id(home) } },    // test
-                { 0xAC,       { "zoom T",        id(home) } },    // zoom T
-                { 0xEC,       { "zoom W",        id(home) } },    // zoom W
-                { 0x6B,       { "3D format_",      id(home) } },      // 3D format_
-                { 0x4E,       { "pic adjust_",     id(home) } }       // pic adjust_
-              }
-            });
-    
-            // ====================================================================
-            // INDEX 6: Mapping 7 (JVC projectors code set B)
-            // ====================================================================
-            remote_profiles.push_back({
-              "JVC Projector B", "JVC", 0x36, 0x56, 0xF4, // natural, OK
-              {
-                { 0xA0,       { "power_on",      id(power_on) } },          // power on
-                { 0x60,       { "power_off", id(power_off_immediately) } }, // power off
-                { 0x80,       { "cursor_up",     id(cursor_up) } },       // up arrow
-                { 0x40,       { "cursor_down",   id(cursor_down) } },     // down arrow
-                { 0x6C,       { "cursor_left",   id(cursor_left) } },     // left arrow
-                { 0x2C,       { "cursor_right",  id(cursor_right) } },    // right arrow
-                { 0xF4,       { "cursor_enter",  id(cursor_enter) } },    // enter/ok
-                { 0x74,       { "settings_menu", id(settings_menu) } },   // menu
-                { 0xC0,       { "back",          id(back) } },            // exit
-                { 0xB8,       { "home",          id(home) } },            // hide
-                
-                { 0xD6,       { "game_menu",     id(game_menu) } },       // dynamic
-                { 0xCE,       { "game_menu_alt", id(game_menu) } },       // advanced menu_
-    
-    
-                { 0x0E,       { "input",         id(input) } },           // input HDMI 1
-                
-                { 0x8E,       { "picture",       id(picture) } },         // input HDMI 2
-                { 0x2F,       { "picture_alt",   id(picture) } },         // picture mode_
-    
-                { 0xCC,       { "focus_manual",  id(focus_manual) } },    // focus -
-                { 0x8C,       { "focus_auto",    id(focus_auto) } },      // focus +
-                { 0x11,       { "focus_manual_alt", id(focus_manual) } },   // color profile_
-                { 0xAF,       { "focus_auto_alt",   id(focus_auto) } },     // gamma settings_
-                
-                { 0x36,       { "shortcut_1",       id(shortcut_1) } },    // user 1
-                { 0xB6,       { "shortcut_2",       id(shortcut_2) } },    // user 2
-                { 0x76,       { "shortcut_3",       id(shortcut_3) } },    // user 3
-                { 0xEE,       { "shortcut_4",       id(shortcut_4) } },    // aspect
-                
-                { 0x1B,       { "shortcut_1_alt",   id(shortcut_1) } },    // mode 1_
-                { 0x9B,       { "shortcut_2_alt",   id(shortcut_2) } },    // mode 2_
-                { 0x5B,       { "shortcut_3_alt",   id(shortcut_3) } },    // mode 3_
-                { 0x2E,       { "shortcut_4_alt",   id(shortcut_4) } },    // info
-               
-                { 0x5E,       { "volume_up",       id(volume_up) } },        // brightness up
-                { 0xDE,       { "volume_down",     id(volume_down) } },      // brightness down
-                { 0x6E,       { "mute",            id(mute) } },             // color temp
-    
-                { 0x04,       { "volume_up_alt",   id(volume_up) } },        // lens AP_
-                { 0x0C,       { "volume_down_alt", id(volume_down) } },      // lens control_
-                { 0xA3,       { "mute_alt",        id(mute) } },             // anamorphic_
-    
-                { 0x16,       { "token_sniff",      id(token_sniff) } },   // cinema_
-                { 0x96,       { "token_sniff_alt",  id(token_sniff) } },   // cinema
-                { 0x56,       { "token_clear",      id(token_clear) } },   // natural
-                { 0xAE,       { "token_recall",     id(token_recall) } },  // gamma
-                { 0xB7,       { "token_recall_alt", id(token_recall) } },  // HDR_
-    
-                { 0xFE,       { "BT_start_pair",      id(bluetooth_pairing_start) } },  // sharp down
-                { 0x9A,       { "BT_clear_pair",      id(bluetooth_pairing_clear) } },  // sharp up
-                { 0x51,       { "BT_start_pair_alt",  id(bluetooth_pairing_start) } },  // CMD_
-                { 0x0F,       { "BT_clear_pair_alt",  id(bluetooth_pairing_clear) } },  // mpc_
-               
-                { 0x3E,       { "color up",      id(home) } },    // color up
-                { 0xBE,       { "color down",    id(home) } },    // color down
-                { 0x1E,       { "contast up",    id(home) } },    // contrast up
-                { 0x9E,       { "contrast down", id(home) } },    // contrast down
-                { 0x36,       { "test",          id(home) } },    // test
-                { 0xAC,       { "zoom T",        id(home) } },    // zoom T
-                { 0xEC,       { "zoom W",        id(home) } },    // zoom W
-                { 0x6B,       { "3D format_",      id(home) } },      // 3D format_
-                { 0x4E,       { "pic adjust_",     id(home) } }       // pic adjust_
-              }
-            });
-    
-    
-    
-            // ====================================================================
-            // INDEX 7: Mapping 8 (LG Cinebeam HU810p)
-            // ====================================================================
-            remote_profiles.push_back({
-              "LG Projector", "NEC", 0xFB04, 0xEA15, 0xBB44, // 5, OK
-              {
-                { 0xF708,       { "power_on",      id(power_on) } },          // power toggle
-                { 0x23DC,       { "power_on-alt",  id(power_on) } },          // Discrete Power On
-                { 0x2CC3,       { "power_off", id(power_off_immediately) } }, // Discrete Power Off
-                { 0xEF10,       { "power_off_alt", id(power_off_immediately) } }, // 0
-                { 0xD728,       { "back",          id(back) } },          // Back / Return
-                { 0xF807,       { "cursor_left",   id(cursor_left) } },   // cursor left
-                { 0xF906,       { "cursor_right",  id(cursor_right) } },  // cursor right
-                { 0xBF40,       { "cursor_up",     id(cursor_up) } },     // cursor up
-                { 0xBE41,       { "cursor_down",   id(cursor_down) } },   // cursor down
-                { 0xBB44,       { "cursor_enter",  id(cursor_enter) } },  // OK / Select
-                { 0xBC43,       { "settings_menu", id(settings_menu) } }, // menu
-                { 0x837C,       { "home",          id(home) } },          // home
-                { 0xF40B,       { "input",         id(input) } },         // Input Toggle
-                { 0xFE01,       { "game_menu",     id(game_menu) } },     // channel down
-                { 0xB24D,       { "picture",       id(picture) } },       // Picture Mode
-                { 0x8679,       { "focus_manual",  id(focus_manual) } },  // aspect ratio
-                { 0x4FB0,       { "focus_auto",    id(focus_auto) } },    // play
-                { 0x8d72,       { "shortcut_1",    id(shortcut_1) } },    // red
-                { 0x8e71,       { "shortcut_2",    id(shortcut_2) } },    // green
-                { 0x9C63,       { "shortcut_3",    id(shortcut_3) } },    // yellow
-                { 0x9E61,       { "shortcut_4",    id(shortcut_4) } },    // blue
-                { 0xFD02,       { "volume_up",     id(volume_up) } },     // volume up
-                { 0xFC03,       { "volume_down",   id(volume_down) } },   // volume down
-                { 0xF609,       { "mute",          id(mute) } },          // mute
-                { 0xEB14,       { "token_sniff",   id(token_sniff) } },   // 4
-                { 0xEA15,       { "token_clear",   id(token_clear) } },   // 5
-                { 0xE916,       { "token_recall",  id(token_recall) } },  // 6
-                { 0xA956,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // netflix
-                { 0xA35C,       { "BT_clear_pair", id(bluetooth_pairing_clear) } },  // prime video
-                
-                { 0xEE11,       { "1",             id(home) } },   // 1
-                { 0xED12,       { "2",             id(home) } },   // 2
-                { 0xEC13,       { "3",             id(home) } },   // 3
-                { 0xE817,       { "7",             id(home) } },   // 7
-                { 0xE718,       { "8",             id(home) } },   // 8
-                { 0xE619,       { "9",             id(home) } },   // 9
-                { 0x54AB,       { "ch_list_guide", id(home) } },   // ch list guide
-                { 0xB34C,       { "-",             id(home) } },   // -
-                { 0xE51A,       { "pre-ch",        id(home) } },   // pre-ch
-                { 0xF10E,       { "sleep",         id(home) } },   // sleep
-                { 0xF30C,       { "portal",        id(home) } },   // portal
-                { 0xC639,       { "cc",            id(home) } }    // cc
-              }
-            });
-    
-            // ====================================================================
-            // INDEX 8: Mapping 9 (Optoma UHD50X projector)
-            // ====================================================================
-            remote_profiles.push_back({
-              "Optoma Projector", "NEC", 0xCD32, 0x9A65, 0xF00F, // User 1, OK
-              {
-                { 0xFD02,       { "power_on",      id(power_on) } },              // power on
-                { 0xD12E,       { "power_off",     id(power_off_immediately) } }, // power off
-                { 0xEF10,       { "cursor_left",   id(cursor_left) } },    // left arrow
-                { 0xED12,       { "cursor_right",  id(cursor_right) } },   // right arrow
-                { 0xEE11,       { "cursor_up",     id(cursor_up) } },      // up arrow
-                { 0xEB14,       { "cursor_down",   id(cursor_down) } },    // down arrow
-                { 0xF00F,       { "cursor_enter",  id(cursor_enter) } },   // ok
-                { 0xF10E,       { "settings_menu", id(settings_menu) } },  // menu
-                { 0x9C63,       { "back",          id(back) } },           // sleep
-                { 0xE916,       { "input",         id(input) } },          // input HDMI 1
-                { 0xCF30,       { "game_menu",     id(game_menu) } },      // input HDMI 2
-                { 0xFA05,       { "picture",       id(picture) } },        // mode
-                { 0x9B64,       { "focus_manual",  id(focus_manual) } },   // aspect
-                { 0xBB44,       { "focus_auto",    id(focus_auto) } },     // DB
-                { 0xE41B,       { "shortcut_1",    id(shortcut_1) } },     // input VGA 1
-                { 0xE11E,       { "shortcut_2",    id(shortcut_2) } },     // input VGA 2
-                { 0xE31C,       { "shortcut_3",    id(shortcut_3) } },     // input video
-                { 0xE817,       { "shortcut_4",    id(shortcut_4) } },     // input YPbPr
-                { 0x7689,       { "volume_up",     id(volume_up) } },      // 3D
-                { 0xF807,       { "volume_down",   id(volume_down) } },    // keystone
-                { 0xAD52,       { "mute",          id(mute) } },           // mute
-                { 0xC936,       { "token_sniff",   id(token_sniff) } },    // user 1
-                { 0x9A65,       { "token_clear",   id(token_clear) } },    // user 2
-                { 0x9966,       { "token_recall",  id(token_recall) } },    // user 3
-                { 0xBE41,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // brightness
-                { 0xBD42,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // contrast
-              }
-            });
-    
-            // ====================================================================
-            // INDEX 9: Mapping 10 (Sony VPL-XW600ES projector)
-            // ====================================================================
-            remote_profiles.push_back({
-              "Sony Projector", "SONY", 0x0000, 0x0008AB54, 0x00002D2A, // BRT TV, OK
-              {
-                { 0x00003A2A,       { "power_on",      id(power_on) } },             // Power On (discrete)
-                { 0x00007A2A,       { "power_off",     id(power_off_immediately)}},  // Power Off (discrete)
-                { 0x0000542A,       { "power_on_alt",  id(power_on) } },             // Power Toggle as on discrete
-                { 0x0000562A,       { "cursor_up",     id(cursor_up) } },      // up arrow
-                { 0x0000362A,       { "cursor_down",   id(cursor_down) } },    // down arrow
-                { 0x0000162A,       { "cursor_left",   id(cursor_left) } },    // left arrow
-                { 0x0000662A,       { "cursor_right",  id(cursor_right) } },   // right arrow
-                { 0x00002D2A,       { "cursor_enter",  id(cursor_enter) } },   // OK / Enter
-                { 0x00004A2A,       { "settings_menu", id(settings_menu) } },  // Menu
-                { 0x00006F2A,       { "home",          id(home) } },           // Reset
-                { 0x00018BE4,       { "back",          id(back) } },           // Position
-                { 0x0006AB54,       { "game_menu",     id(game_menu) } },      // Game
-                { 0x000EAB54,       { "picture",       id(picture) } },        // Photo
-                { 0x0000752A,       { "input",         id(input) } },          // Input
-                { 0x00026B54,       { "focus_manual",  id(focus_manual) } },   // Focus
-                { 0x00046B54,       { "focus_auto",    id(focus_auto) } },     // Zoom
-                { 0x00076B54,       { "shortcut_1",    id(shortcut_1) } },     // Aspect Ratio
-                { 0x0000502A,       { "shortcut_2",    id(shortcut_2) } },     // Motion Flow
-                { 0x000DCB54,       { "shortcut_3",    id(shortcut_3) } },     // 3D
-                { 0x000D2B54,       { "shortcut_4",    id(shortcut_4) } },     // Color Space
-                { 0x00000C2A,       { "volume_up",     id(volume_up) } },      // CONTRAST 
-                { 0x00004C2A,       { "volume_down",   id(volume_down) } },    // CONTRAST DOWN
-                { 0x000FAB54,       { "mute",          id(mute) } },           // Advanced Iris
-                { 0x0009AB54,       { "token_sniff",   id(token_sniff) } },    // BRT Cinema
-                { 0x0008AB54,       { "token_clear",   id(token_clear) } },    // BRT TV
-                { 0x0002AB54,       { "token_recall",  id(token_recall) } },   // User
-                { 0x00007C2A,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // BRIGHTNESS DOWN
-                { 0x00003C2A,       { "BT_clear_pair", id(bluetooth_pairing_clear) } },  // BRIGHTNESS UP
-    
-                { 0x0003AB54,       { "Color Temp",        id(home) } },  // Color Temp
-                { 0x0000702A,       { "Contrast Enhancer", id(home) } },  // Contrast Enhancer
-                { 0x000CAB54,       { "FILM 1",            id(home) } },  // FILM 1
-                { 0x0001AB54,       { "FILM 2",            id(home) } },  // FILM 2
-                { 0x0007AB54,       { "Gamma Correction",  id(home) } },  // Gamma Correction
-                { 0x00006A2A,       { "Input HDMI 1",      id(home) } },  // Input HDMI 1
-                { 0x00001A2A,       { "Input HDMI 2",      id(home) } },  // Input HDMI 2
-                { 0x00004BE4,       { "Position 1.85",     id(home) } },  // Position 1.85
-                { 0x00084BE4,       { "Position 2.35",     id(home) } },  // Position 2.35
-                { 0x000C4BE4,       { "Position Custom 2", id(home) } },  // Position Custom 2
-                { 0x00024BE4,       { "Position Custom 3", id(home) } },  // Position Custom 3
-                { 0x00032B54,       { "Reality creation",  id(home) } },  // Reality creation
-                { 0x000AAB54,       { "REF",               id(home) } },  // REF
-                { 0x0000622A,       { "sharpness down",    id(home) } },  // sharpness down
-                { 0x0000222A,       { "sharpness up",      id(home) } },  // sharpness up
-                { 0x000C6B54,       { "shift",             id(home) } },  // shift
-                { 0x0004AB54,       { "TV",                id(home) } },  // TV
-                { 0x00042BE4,       { "wide mode full",    id(home) } },  // wide mode full
-                { 0x000FCBE4,       { "wide mode full1",   id(home) } },  // wide mode full1
-                { 0x00002BE4,       { "wide mode full2",   id(home) } },  // wide mode full2
-                { 0x00082BE4,       { "wide mode normal",  id(home) } },  // wide mode normal
-                { 0x0007CBE4,       { "wide mode WZoom",   id(home) } },  // wide mode WZoom
-                { 0x000C2BE4,       { "wide mode zoom",    id(home) } },  // wide mode zoom
-                { 0x00022BE4,       { "wide mode anamorphic", id(home) } }  // wide mode anamorphic zoom
-              }
-            });
-    
-            // ====================================================================
-            // INDEX 10: Mapping 11 (Sony XBR-77A9G TV)
-            // ====================================================================
-            remote_profiles.push_back({
-              "Sony XBR", "SONY", 0x0000, 0x000210, 0x000A70, // 5, Arrow Select
-              {
-                { 0x000750,       { "power_on",      id(power_on) } },             // power on discrete
-                { 0x000A90,       { "power_on_alt",  id(power_on) } },             // power (toggle)
-                { 0x000F50,       { "power_off",     id(power_off_immediately)} }, // power off discrete
-                { 0x000910,       { "power_off_alt", id(power_off_immediately)} }, // 0
-                { 0x0002D0,       { "cursor_left",   id(cursor_left) } },    // Arrow Left
-                { 0x000CD0,       { "cursor_right",  id(cursor_right) } },   // Arrow Right
-                { 0x0002F0,       { "cursor_up",     id(cursor_up) } },      // Arrow Up
-                { 0x000AF0,       { "cursor_down",   id(cursor_down) } },    // Arrow Down
-                { 0x000A70,       { "cursor_enter",  id(cursor_enter) } },   // Arrow Select
-                { 0x006923,       { "settings_menu", id(settings_menu) } },  // Action Menu
-                { 0x0062E9,       { "back",          id(back) } },           // Back
-                { 0x000070,       { "home",          id(home) } },           // Home
-                { 0x003123,       { "game_menu",     id(game_menu) } },      // Google Play
-                { 0x000A50,       { "input",         id(input) } },          // Input
-                { 0x000250,       { "picture",       id(picture) } },        // TV
-                { 0x000AE9,       { "focus_auto",    id(focus_auto) } },     // subtitle
-                { 0x000E90,       { "focus_manual",  id(focus_manual) } },   // audio
-                { 0x0072E9,       { "shortcut_1",    id(shortcut_1) } },     // yellow
-                { 0x0012E9,       { "shortcut_2",    id(shortcut_2) } },     // blue
-                { 0x0052E9,       { "shortcut_3",    id(shortcut_3) } },     // red
-                { 0x0032E9,       { "shortcut_4",    id(shortcut_4) } },     // green
-                { 0x000490,       { "volume_up",     id(volume_up) } },      // volume up
-                { 0x000C90,       { "volume_down",   id(volume_down) } },    // volume down
-                { 0x000290,       { "mute",          id(mute) } },           // mute
-                { 0x000C10,       { "token_sniff",   id(token_sniff) } },    // 4
-                { 0x000210,       { "token_clear",   id(token_clear) } },    // 5
-                { 0x000A10,       { "token_recall",  id(token_recall) } },   // 6
-                { 0x002CE9,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // play
-                { 0x001CE9,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // fast forward
-              }
-            });
-    
-            // ====================================================================
-            // INDEX 11: Mapping 12 (TiVo Roamio TCD846500)
-            // ====================================================================
-            remote_profiles.push_back({
-              "TiVo Roamio", "NEC", 0x3085, 0xD02C, 0xE019, // 5, Arrow Select
-              {
-                { 0xE010,       { "power_on",      id(power_on) } },              // tv power (as discrete on)
-                { 0xE011,       { "power_off",     id(power_off_immediately) } }, // live TV (as discrete off)
-                { 0xC031,       { "power_off_alt", id(power_off) } },             // 0 
-                { 0xE014,       { "cursor_up",     id(cursor_up) } },       // arrow up
-                { 0xE016,       { "cursor_down",   id(cursor_down) } },     // arrow down
-                { 0xE017,       { "cursor_left",   id(cursor_left) } },     // arrow left
-                { 0xE015,       { "cursor_right",  id(cursor_right) } },    // arrow right
-                { 0xE019,       { "cursor_enter",  id(cursor_enter) } },    // select
-                { 0xF00C,       { "settings_menu", id(settings_menu) } },   // tivo
-                { 0xF00D,       { "settings_menu", id(settings_menu) } },   // tivo (myHarmony version)
-                { 0xB044,       { "back",          id(back) } },            // zoom
-                { 0xE01E,       { "home",          id(home) } },            // channel up
-                { 0xC036,       { "game_menu",     id(game_menu) } },       // guide
-                { 0xC034,       { "input",         id(input) } },           // input
-                { 0xE013,       { "picture",       id(picture) } },         // into
-                { 0xD02E,       { "focus_auto",    id(focus_auto) } },      // 7
-                { 0xD02F,       { "focus_manual",  id(focus_manual) } },    // 8
-                { 0x9060,       { "shortcut_1",    id(shortcut_1) } },      // A yellow
-                { 0x9061,       { "shortcut_2",    id(shortcut_2) } },      // B blue
-                { 0x9062,       { "shortcut_3",    id(shortcut_3) } },      // C red
-                { 0x9063,       { "shortcut_4",    id(shortcut_4) } },      // D green
-                { 0xE01C,       { "volume_up",     id(volume_up) } },       // volume up
-                { 0xE01D,       { "volume_down",   id(volume_down) } },     // volume down
-                { 0xE01B,       { "mute",          id(mute) } },            // mute
-                { 0xD02B,       { "token_sniff",   id(token_sniff) } },     // 4
-                { 0xD02C,       { "token_clear",   id(token_clear) } },     // 5
-                { 0xD02D,       { "token_recall",  id(token_recall) } },    // 6
-                { 0xC033,       { "BT_start_pair", id(bluetooth_pairing_start) } },    //enter
-                { 0xC032,       { "BT_clear_pair", id(bluetooth_pairing_clear) } },    //clear
-              }
-            });
-    
-            // ====================================================================
-            // INDEX 12: Mapping 13 (Xgimi Titan, Original)
-            // ====================================================================
-            remote_profiles.push_back({
-              "Xgimi Titan", "NEC", 0x21DE, 0x25, 0x0D, // HDMI 2, enter
-              {
-                { 0x4D,       { "power_on",      id(power_on) } },            // power (as on)
-                { 0x1E,       { "power_off",     id(power_off_immediately)}}, // menu rotation (as off)
-                { 0x0B,       { "cursor_up",     id(cursor_up) } },       // arrow up
-                { 0x0E,       { "cursor_down",   id(cursor_down) } },     // arrow down
-                { 0x10,       { "cursor_left",   id(cursor_left) } },     // arrow left
-                { 0x11,       { "cursor_right",  id(cursor_right) } },    // arrow right
-                { 0x0D,       { "cursor_enter",  id(cursor_enter) } },    // OK
-                { 0x42,       { "back",          id(back) } },            // back
-                { 0x45,       { "settings_menu", id(settings_menu) } },   // menu
-                { 0x19,       { "game_menu",     id(game_menu) } },       // OSD
-                { 0x1A,       { "home",          id(home) } },            // channel up
-                { 0x4F,       { "input",         id(input) } },           // source
-                { 0x20,       { "picture",       id(picture) } },         // lens shift and zoom
-                { 0x1C,       { "focus_manual",  id(focus_manual) } },    // focus +
-                { 0x1D,       { "focus_auto",    id(focus_auto) } },      // focus -
-                { 0x41,       { "shortcut_1",    id(shortcut_1) } },      // picture mode Standard
-                { 0x44,       { "shortcut_2",    id(shortcut_2) } },      // picture mode Movie
-                { 0x4A,       { "shortcut_3",    id(shortcut_3) } },      // picture mode Vivid
-                { 0x4B,       { "shortcut_4",    id(shortcut_4) } },      // picture mode TV
-                { 0x18,       { "volume_up",     id(volume_up) } },       // volume up
-                { 0x17,       { "volume_down",   id(volume_down) } },     // volume down
-                { 0x24,       { "token_sniff",   id(token_sniff) } },     // switch to HDMI 1
-                { 0x25,       { "token_clear",   id(token_clear) } },     // switch to HDMI 2
-                { 0x26,       { "token_recall",  id(token_recall) } },    // switch to USB
-              }
-            });
-  
-            ESP_LOGI("ir_hub", "Factory profiles and custom NVS slots loaded.");
-
-
-  
-
 #====================================================================
 #=========================== IR Receiver ============================  
 remote_receiver:
@@ -851,7 +231,7 @@ globals:
     
     type: uint32_t
     restore_value: no
-    initial_value: "1"
+    initial_value: "0" #start disabled to avoid crash from errant ir noise at boot.
 
   - id: global_cached_command
     type: uint32_t
@@ -911,8 +291,11 @@ globals:
     restore_value: no
 
 
-
-    
+  - id: learn_last_save_time # used to avoid repeated button during IR learning.
+    type: uint32_t
+    initial_value: '0'
+    restore_value: no
+        
   - id: learn_active_protocol
     type: std::string
     initial_value: '""'
@@ -1036,6 +419,7 @@ script:
           id(ir_receiver_mode) = 3; 
           id(learn_current_button_idx) = -1; // -1 means we are sniffing for the best protocol
           id(learn_sniff_start_time) = 0;
+          id(learn_last_save_time) = 0; // reset button repeat lockout timer
           id(ir_receiver_allowed_protocol) = "ALL"; 
           
           id(display_show)->execute(false, "Learning IR", "Press Btn", "power_on");
@@ -1086,13 +470,26 @@ script:
   # Caching and evaluating them after all arrive allows section of valid one.
   # We separately analyze raw IR packets to determine underlying protocol.
 
+  # ====================================================================
+  # Button learning phase 0 and phase A settling timer
+  # Does deferred assessment and handling of inbound IR during learning
+  # ====================================================================
   - id: ir_settling_timer
     mode: single
     then: 
       - delay: 120ms
       - lambda: |-
+          // 1. Declare the clock variable at the ABSOLUTE TOP of the block
+          uint32_t now = millis();
+          
           id(ir_window_active) = false;
           int b_idx = id(learn_current_button_idx);
+
+          // 2. Safely apply the Sony repeat lockout condition check
+          if (now - id(learn_last_save_time) < 500) {
+            id(learn_cache_clear).execute();
+            return;
+          }
 
           static const std::vector<std::string> learn_button_names = {
             "power_on", "power_off", "cursor_left", "cursor_right", "cursor_up", "cursor_down",
@@ -1128,8 +525,6 @@ script:
                 id(learn_active_protocol) = id(learn_detected_protocol);    
                 id(ir_receiver_allowed_protocol) = id(learn_active_protocol);
                 
-                // Intentional fall-through to let first button be registered after evaluation
-                // Set index to 0 and let it fall through
                 b_idx = 0;
                 id(learn_current_button_idx) = 0;
               }   
@@ -1145,6 +540,9 @@ script:
               
               id(learned_best_command) = id(learn_cache_command)[index]; 
               id(session_captured_codes).at(b_idx) = id(learned_best_command);
+              
+              // Lock the timestamp track so trailing repeats get ignored
+              id(learn_last_save_time) = now; 
               
               b_idx++; 
               id(learn_current_button_idx) = b_idx;
@@ -1285,8 +683,12 @@ script:
                   remote_profiles[target_vector_index] = learned_profile;
                   ESP_LOGI("IR Learn", "Saved profile to vector slot %d (Memory Slot %d)", (int)target_vector_index, selected_slot);
 
-                  // Flush configuration to NVS using header file preference wrapper. Also update Home Assistant.
+                  // 1. Queue configuration to preference engine structures
                   commit_database_to_flash();
+                  
+                  ESP_LOGW("IR Learn", "Forcing instant NVS flash partition sync. Do not disconnect power...");
+                  esphome::global_preferences->sync(); // <=== FORCES HARD INSTANT WRITE TO SILICON
+                                
                   id(sync_json_backup_sensor).execute(); // Updates the Home Assistant text register
 
                   id(display_show)->execute(true, "Stored Profile", learned_profile.profile_name, "Operational");
@@ -1656,7 +1058,626 @@ script:
                                      current_name,
                                      "Action Mode");
           }
-          
+
+
+# ==================================================          
+  - id: populate_factory_profiles
+    then:
+      lambda: |-
+      
+        if (!remote_profiles.empty()) return; // Prevent duplicate generation runs
+
+        // ====================================================================
+        // INDEX 0: Mapping 1 (AWOL Valerion Projector)
+        // ====================================================================
+        remote_profiles.push_back({
+          "AWOL Projector", "NEC", 0x7300, 0x17, 0x14, // HDMI 1, OK
+          {
+            { 0xA7,       { "power_on",      id(power_on) } },          // power on
+            { 0x67,       { "power_off",     id(power_off_immediately) } }, // power off
+            { 0x24,       { "cursor_left",   id(cursor_left) } },    // left arrow
+            { 0xA4,       { "cursor_right",  id(cursor_right) } },   // right arrow
+            { 0x64,       { "cursor_up",     id(cursor_up) } },      // up arrow
+            { 0xE4,       { "cursor_down",   id(cursor_down) } },    // down arrow
+            { 0x14,       { "cursor_enter",  id(cursor_enter) } },   // ok
+            { 0x5A,       { "settings_menu", id(settings_menu) } },  // menu
+            { 0x3A,       { "back",          id(back) } },           // back
+            { 0xDA,       { "home",          id(home) } },           // home
+            { 0x1B,       { "game_menu",     id(game_menu) } },      // profile
+            { 0x48,       { "input",         id(input) } },          // input
+            { 0xCA,       { "picture",       id(picture) } },        // picture mode
+            { 0x9B,       { "focus_manual",  id(focus_manual) } },   // focus
+            { 0x47,       { "focus_auto",    id(focus_auto) } },     // live guide
+            { 0xBB,       { "shortcut_1",    id(shortcut_1) } },     // Prime Video
+            { 0x3B,       { "shortcut_2",    id(shortcut_2) } },     // Netflix
+            { 0x7B,       { "shortcut_3",    id(shortcut_3) } },     // Disney
+            { 0xDB,       { "shortcut_4",    id(shortcut_4) } },     // YouTube
+            { 0x50,       { "volume_up",     id(volume_up) } },      // volume up
+            { 0xD0,       { "volume_down",   id(volume_down) } },    // volume down
+            { 0xD8,       { "mute",          id(mute) } },           // mute
+            { 0xE7,       { "token_sniff",   id(token_sniff) } },    // HDMI 1
+            { 0x17,       { "token_clear",   id(token_clear) } },    // HDMI 2
+            { 0x97,       { "token_recall",  id(token_recall) } },   // HDMI 3
+            { 0x07,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // Back + Down
+            { 0xC7,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // Back + Home
+          }
+        });
+    
+        // ====================================================================
+        // INDEX 1: Mapping 2 (BenQ W5800 Projector)
+        // ====================================================================
+        remote_profiles.push_back({
+          "BenQ Projector", "NEC", 0x3000, 0x629D, 0xEA15, // Play, OK
+          {
+            { 0xB04F,       { "power_on",      id(power_on) } },              // power on
+            { 0xB14E,       { "power_off",     id(power_off_immediately) } }, // power off
+            { 0xF40B,       { "cursor_up",     id(cursor_up) } },      // up arrow
+            { 0xF30C,       { "cursor_down",   id(cursor_down) } },    // down arrow
+            { 0xF20D,       { "cursor_left",   id(cursor_left) } },    // left arrow
+            { 0xF10E,       { "cursor_right",  id(cursor_right) } },   // right arrow
+            { 0xEA15,       { "cursor_enter",  id(cursor_enter) } },   // ok
+            { 0xF00F,       { "settings_menu", id(settings_menu) } },  // menu
+            { 0x7A85,       { "back",          id(back) } },           // back
+            { 0x8778,       { "home",          id(home) } },           // default
+            { 0x41BE,       { "game_menu",     id(game_menu) } },      // cinema master
+            { 0xFB04,       { "input",         id(input) } },          // source
+            { 0xEF10,       { "picture",       id(picture) } },        // picure mode
+            { 0xEC13,       { "focus_manual",  id(focus_manual) } },   // aspect
+            { 0xF708,       { "focus_auto",    id(focus_auto) } },     // auto
+            { 0xE916,       { "shortcut_1",    id(shortcut_1) } },     // brightness
+            { 0xEE11,       { "shortcut_2",    id(shortcut_2) } },     // contrast
+            { 0x837C,       { "shortcut_3",    id(shortcut_3) } },     // dynamic iris
+            { 0xCF30,       { "shortcut_4",    id(shortcut_4) } },     // light mode
+            { 0xA15E,       { "volume_up",     id(volume_up) } },      // gamma
+            { 0x817E,       { "volume_down",   id(volume_down) } },    // sharp
+            { 0xF807,       { "mute",          id(mute) } },           // eco blank
+            { 0xC33C,       { "token_sniff",   id(token_sniff) } },    // HDR
+            { 0x629D,       { "token_clear",   id(token_clear) } },    // invert
+            { 0x639C,       { "token_recall",  id(token_recall) } },   // 3D
+            { 0xA05F,       { "BT_start_pair", id(bluetooth_pairing_start) } },  // color temp
+            { 0xA45B,       { "BT_clear_pair", id(bluetooth_pairing_clear) } },  // color manage
+            
+            { 0x6B94,       { "test pattern",  id(home) } }            // test pattern            
+          }
+        });
+    
+        // ====================================================================
+        // INDEX 2: Mapping 3 (Epson Pro Cinema LS12000)
+        // ====================================================================
+        remote_profiles.push_back({
+          "Epson Projector", "NEC", 0x5583, 0xC23D, 0x7A85, // RGBCMY, enter
+          {
+            { 0x6F90,       { "power_on",         id(power_on) } },              // Power On
+            { 0x6E91,       { "power_off",        id(power_off_immediately) } }, // Power Off
+            { 0x4FB0,       { "cursor_up",        id(cursor_up) } },      // up arrow
+            { 0x4DB2,       { "cursor_down",      id(cursor_down) } },    // down arrow
+            { 0x4CB3,       { "cursor_left",      id(cursor_left) } },    // left arrow
+            { 0x4EB1,       { "cursor_right",     id(cursor_right) } },   // right arrow
+            { 0x7A85,       { "cursor_enter",     id(cursor_enter) } },   // enter
+            { 0x659A,       { "settings_menu",    id(settings_menu) } },  // menu
+            { 0x7B84,       { "back",             id(back) } },           // ESC
+            { 0xC639,       { "home",             id(home) } },           // default
+            { 0x708F,       { "game_menu",        id(game_menu) } },      // color mode
+            { 0xA956,       { "input",            id(input) } },          // HDMI link
+            { 0x55AA,       { "picture",          id(picture) } },        // image enhance
+            { 0xA25D,       { "focus_manual",     id(focus_manual) } },   // skip back
+            { 0x728D,       { "focus_manual_alt", id(focus_manual) } },   // lens (not in MyHarmony)
+            { 0xA45B,       { "focus_auto",       id(focus_auto) } },     // pause
+            { 0xA55A,       { "shortcut_1",       id(shortcut_1) } },     // reverse
+            { 0xA15E,       { "shortcut_2",       id(shortcut_2) } },     // play
+            { 0xA35C,       { "shortcut_3",       id(shortcut_3) } },     // FF
+            { 0xA05F,       { "shortcut_4",       id(shortcut_4) } },     // skip forward 
+            { 0x8C73,       { "shortcut_1_alt",   id(shortcut_1) } },     // HDMI 1
+            { 0x8877,       { "shortcut_2_alt",   id(shortcut_2) } },     // HDMI 2
+            { 0x7D82,       { "shortcut_3_alt",   id(shortcut_3) } },     // P-in-P (not in myHarmony)
+            { 0x629D,       { "shortcut_4_alt",   id(shortcut_4) } },     // PC (not in myHarmony)
+            { 0x6798,       { "volume_up",        id(volume_up) } },      // volume up
+            { 0x6699,       { "volume_down",      id(volume_down) } },    // volume down
+            { 0x52AD,       { "mute",             id(mute) } },           // mute
+            { 0x7C83,       { "token_sniff",      id(token_sniff) } },    // frame interp
+            { 0xC23D,       { "token_clear",      id(token_clear) } },    // RGBCMY
+            { 0x6996,       { "token_recall",     id(token_recall) } },   // pattern
+            { 0xC43B,       { "BT_start_pair",    id(bluetooth_pairing_start) } }, // 3D format
+            { 0x758A,       { "BT_clear_pair",    id(bluetooth_pairing_clear) } }, // Aspect
+    
+            { 0x6A95,       { "Home",          id(home) } }, // home
+            { 0x8B74,       { "input LAN",     id(home) } }, // input LAN
+            { 0x609F,       { "user",          id(home) } }, // user
+            { 0xA45B,       { "pause",         id(home) } }, // pause
+            { 0x9F60,       { "Link Menu",     id(home) } }, // link menu
+            { 0x6C93,       { "blank",         id(home) } },  // blank  (not in MyHarmony)
+            { 0x748B,       { "memory",        id(home) } },  // memory (not in MyHarmony)
+            { 0x51AE,       { "lens1",         id(home) } },  // lens1  (not in MyHarmony)
+            { 0x50AF,       { "lens2",         id(home) } }   // lens2  (not in MyHarmony)
+          }
+        });
+    
+        // ====================================================================
+        // INDEX 3: Mapping 4 (Hisense 50u6g TV)
+        // ====================================================================
+        remote_profiles.push_back({
+          "Hisense", "NEC", 0xFB04, 0xEA15, 0xA55A, // 5, select
+          {
+            { 0xF708,       { "power_on",      id(power_on) } },              // discrete power on
+            { 0x8E71,       { "power_on_alt",  id(power_on) } },              // discrete power on (variant)
+            { 0xEF10,       { "power_off",     id(power_off_immediately) } }, // discrete power off
+            { 0x8D72,       { "power_off_alt", id(power_off_immediately) } }, // 0
+            { 0xA956,       { "cursor_up",     id(cursor_up) } },      // arrow up
+            { 0xA857,       { "cursor_down",   id(cursor_down) } },    // arrow down
+            { 0xA758,       { "cursor_left",   id(cursor_left) } },    // arrow left
+            { 0xA659,       { "cursor_right",  id(cursor_right) } },   // arrow right
+            { 0xA55A,       { "cursor_enter",  id(cursor_enter) } },   // select
+            { 0xFB04,       { "back",          id(back) } },           // back
+            { 0xBC43,       { "home",          id(home) } },           // home
+            { 0xF40B,       { "input",         id(input) } },          // input
+            { 0xB54A,       { "settings_menu", id(settings_menu) } },  // menu
+            { 0x718E,       { "settings_menu_alt", id(settings_menu) } }, // menu (variant)
+            { 0x35CA,       { "game_menu",     id(game_menu) } },      // apps
+            { 0xFF00,       { "picture",       id(picture) } },        // channel up
+            { 0xE817,       { "focus_manual",  id(focus_manual) } },   // 7
+            { 0xE718,       { "focus_auto",    id(focus_auto) } },     // 8
+            { 0xAB54,       { "shortcut_1",    id(shortcut_1) } },     // yellow
+            { 0xAA55,       { "shortcut_2",    id(shortcut_2) } },     // blue
+            { 0xAD52,       { "shortcut_3",    id(shortcut_3) } },     // red
+            { 0xAC53,       { "shortcut_4",    id(shortcut_4) } },     // green
+            { 0xFD02,       { "volume_up",     id(volume_up) } },      // volume up
+            { 0xFC03,       { "volume_down",   id(volume_down) } },    // volume down
+            { 0xF609,       { "mute",          id(mute) } },           // mute
+            { 0xEB14,       { "token_sniff",   id(token_sniff) } },    // 4
+            { 0xEA15,       { "token_clear",   id(token_clear) } },    // 5
+            { 0xE916,       { "token_recall",  id(token_recall) } },   // 6
+            { 0xB847,       { "BT_start_pair", id(bluetooth_pairing_start) } },  // prime video
+            { 0xB649,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }   // youtube
+          }
+        });
+    
+        // ====================================================================
+        // INDEX 4: Mapping 5 (JVC HR-S9600u VCR)
+        // ====================================================================
+        remote_profiles.push_back({
+          "JVC HR-S9600u VCR", "JVC", 0x03C2, 0xC2A4, 0xC23C, // 5, OK
+          {
+            { 0xC2D0,       { "power_on",      id(power_on) } },      // power (as discrete)
+            { 0xC2B8,       { "power_on_alt",  id(power_on) } },      // power (alternate)
+            { 0xC258,       { "power_off",     id(power_off_immediately) } }, // discrete off
+            { 0xC2E8,       { "power_off_alt1", id(power_off_immediately) } }, // audio monitor
+            { 0xC2CC,       { "power_off_alt2", id(power_off_immediately) } }, // 0
+            { 0xC2C3,       { "back",          id(back) } },          // review
+            { 0xC241,       { "cursor_up",     id(cursor_up) } },     // cursor up
+            { 0xC298,       { "cursor_up_alt", id(cursor_up) } },     // cursor up (harmony)
+            { 0xC218,       { "cursor_down",   id(cursor_down) } },   // cursor down
+            { 0xC261,       { "cursor_down_alt", id(cursor_down) } }, // cursor down (harmony)
+            { 0xC2A8,       { "cursor_left",   id(cursor_left) } },   // cursor left
+            { 0xC228,       { "cursor_right",  id(cursor_right) } },  // cursor right (harmony)
+            { 0xC23C,       { "cursor_enter",  id(cursor_enter) } },  // OK
+            { 0xC2EC,       { "settings_menu", id(settings_menu) } }, // menu
+            { 0xC207,       { "settings_menu_alt", id(settings_menu) } }, // memu (alternate) 
+            { 0xC26C,       { "home",        id(home) } },          // cancel
+            { 0xC230,       { "game_menu",     id(game_menu) } },     // game menu
+            { 0xC2C8,       { "input",         id(input) } },         // tv/vcr
+            { 0xC260,       { "picture",       id(picture) } },       // fast forward
+            { 0xC214,       { "focus_manual",  id(focus_manual) } },  // 8
+            { 0xC2E4,       { "focus_auto",    id(focus_auto) } },    // 7
+            { 0xC283,       { "shortcut_1",    id(shortcut_1) } },    // prog
+            { 0xC2BC,       { "shortcut_2",    id(shortcut_2) } },    // prog check
+            { 0xC28C,       { "shortcut_3",    id(shortcut_3) } },    // SP/EP
+            { 0xC269,       { "shortcut_4",    id(shortcut_4) } },    // skip search
+            { 0xC213,       { "volume_up",     id(volume_up) } },     // start down
+            { 0xC293,       { "volume_down",   id(volume_down) } },   // start up
+            { 0xC2B0,       { "mute",          id(mute) } },          // pause
+            { 0xC224,       { "token_sniff",   id(token_sniff) } },   // 4
+            { 0xC2A4,       { "token_clear",   id(token_clear) } },   // 5
+            { 0xC264,       { "token_recall",  id(token_recall) } },  // 6
+            { 0xC284,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // 1
+            { 0xC244,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // 2
+          }
+        });
+    
+        // ====================================================================
+        // INDEX 5: Mapping 6 (JVC projectors code set A)
+        // ====================================================================
+        remote_profiles.push_back({
+          "JVC Projector A", "JVC", 0xCE, 0x56, 0xF4, // natural, OK
+          {
+            { 0xA0,       { "power_on",      id(power_on) } },          // power on
+            { 0x60,       { "power_off", id(power_off_immediately) } }, // power off
+            { 0x80,       { "cursor_up",     id(cursor_up) } },       // up arrow
+            { 0x40,       { "cursor_down",   id(cursor_down) } },     // down arrow
+            { 0x6C,       { "cursor_left",   id(cursor_left) } },     // left arrow
+            { 0x2C,       { "cursor_right",  id(cursor_right) } },    // right arrow
+            { 0xF4,       { "cursor_enter",  id(cursor_enter) } },    // enter/ok
+            { 0x74,       { "settings_menu", id(settings_menu) } },   // menu
+            { 0xC0,       { "back",          id(back) } },            // exit
+            { 0xB8,       { "home",          id(home) } },            // hide
+            
+            { 0xD6,       { "game_menu",     id(game_menu) } },       // dynamic
+            { 0xCE,       { "game_menu_alt", id(game_menu) } },       // advanced menu_
+    
+    
+            { 0x0E,       { "input",         id(input) } },           // input HDMI 1
+            
+            { 0x8E,       { "picture",       id(picture) } },         // input HDMI 2
+            { 0x2F,       { "picture_alt",   id(picture) } },         // picture mode_
+    
+            { 0xCC,       { "focus_manual",  id(focus_manual) } },    // focus -
+            { 0x8C,       { "focus_auto",    id(focus_auto) } },      // focus +
+            { 0x11,       { "focus_manual_alt", id(focus_manual) } },   // color profile_
+            { 0xAF,       { "focus_auto_alt",   id(focus_auto) } },     // gamma settings_
+            
+            { 0x36,       { "shortcut_1",       id(shortcut_1) } },    // user 1
+            { 0xB6,       { "shortcut_2",       id(shortcut_2) } },    // user 2
+            { 0x76,       { "shortcut_3",       id(shortcut_3) } },    // user 3
+            { 0xEE,       { "shortcut_4",       id(shortcut_4) } },    // aspect
+            
+            { 0x1B,       { "shortcut_1_alt",   id(shortcut_1) } },    // mode 1_
+            { 0x9B,       { "shortcut_2_alt",   id(shortcut_2) } },    // mode 2_
+            { 0x5B,       { "shortcut_3_alt",   id(shortcut_3) } },    // mode 3_
+            { 0x2E,       { "shortcut_4_alt",   id(shortcut_4) } },    // info
+           
+            { 0x5E,       { "volume_up",       id(volume_up) } },        // brightness up
+            { 0xDE,       { "volume_down",     id(volume_down) } },      // brightness down
+            { 0x6E,       { "mute",            id(mute) } },             // color temp
+    
+            { 0x04,       { "volume_up_alt",   id(volume_up) } },        // lens AP_
+            { 0x0C,       { "volume_down_alt", id(volume_down) } },      // lens control_
+            { 0xA3,       { "mute_alt",        id(mute) } },             // anamorphic_
+    
+            { 0x16,       { "token_sniff",      id(token_sniff) } },   // cinema_
+            { 0x96,       { "token_sniff_alt",  id(token_sniff) } },   // cinema
+            { 0x56,       { "token_clear",      id(token_clear) } },   // natural
+            { 0xAE,       { "token_recall",     id(token_recall) } },  // gamma
+            { 0xB7,       { "token_recall_alt", id(token_recall) } },  // HDR_
+    
+            { 0xFE,       { "BT_start_pair",      id(bluetooth_pairing_start) } },  // sharp down
+            { 0x9A,       { "BT_clear_pair",      id(bluetooth_pairing_clear) } },  // sharp up
+            { 0x51,       { "BT_start_pair_alt",  id(bluetooth_pairing_start) } },  // CMD_
+            { 0x0F,       { "BT_clear_pair_alt",  id(bluetooth_pairing_clear) } },  // mpc_
+           
+            { 0x3E,       { "color up",      id(home) } },    // color up
+            { 0xBE,       { "color down",    id(home) } },    // color down
+            { 0x1E,       { "contast up",    id(home) } },    // contrast up
+            { 0x9E,       { "contrast down", id(home) } },    // contrast down
+            { 0x36,       { "test",          id(home) } },    // test
+            { 0xAC,       { "zoom T",        id(home) } },    // zoom T
+            { 0xEC,       { "zoom W",        id(home) } },    // zoom W
+            { 0x6B,       { "3D format_",      id(home) } },      // 3D format_
+            { 0x4E,       { "pic adjust_",     id(home) } }       // pic adjust_
+          }
+        });
+    
+        // ====================================================================
+        // INDEX 6: Mapping 7 (JVC projectors code set B)
+        // ====================================================================
+        remote_profiles.push_back({
+          "JVC Projector B", "JVC", 0x36, 0x56, 0xF4, // natural, OK
+          {
+            { 0xA0,       { "power_on",      id(power_on) } },          // power on
+            { 0x60,       { "power_off", id(power_off_immediately) } }, // power off
+            { 0x80,       { "cursor_up",     id(cursor_up) } },       // up arrow
+            { 0x40,       { "cursor_down",   id(cursor_down) } },     // down arrow
+            { 0x6C,       { "cursor_left",   id(cursor_left) } },     // left arrow
+            { 0x2C,       { "cursor_right",  id(cursor_right) } },    // right arrow
+            { 0xF4,       { "cursor_enter",  id(cursor_enter) } },    // enter/ok
+            { 0x74,       { "settings_menu", id(settings_menu) } },   // menu
+            { 0xC0,       { "back",          id(back) } },            // exit
+            { 0xB8,       { "home",          id(home) } },            // hide
+            
+            { 0xD6,       { "game_menu",     id(game_menu) } },       // dynamic
+            { 0xCE,       { "game_menu_alt", id(game_menu) } },       // advanced menu_
+    
+    
+            { 0x0E,       { "input",         id(input) } },           // input HDMI 1
+            
+            { 0x8E,       { "picture",       id(picture) } },         // input HDMI 2
+            { 0x2F,       { "picture_alt",   id(picture) } },         // picture mode_
+    
+            { 0xCC,       { "focus_manual",  id(focus_manual) } },    // focus -
+            { 0x8C,       { "focus_auto",    id(focus_auto) } },      // focus +
+            { 0x11,       { "focus_manual_alt", id(focus_manual) } },   // color profile_
+            { 0xAF,       { "focus_auto_alt",   id(focus_auto) } },     // gamma settings_
+            
+            { 0x36,       { "shortcut_1",       id(shortcut_1) } },    // user 1
+            { 0xB6,       { "shortcut_2",       id(shortcut_2) } },    // user 2
+            { 0x76,       { "shortcut_3",       id(shortcut_3) } },    // user 3
+            { 0xEE,       { "shortcut_4",       id(shortcut_4) } },    // aspect
+            
+            { 0x1B,       { "shortcut_1_alt",   id(shortcut_1) } },    // mode 1_
+            { 0x9B,       { "shortcut_2_alt",   id(shortcut_2) } },    // mode 2_
+            { 0x5B,       { "shortcut_3_alt",   id(shortcut_3) } },    // mode 3_
+            { 0x2E,       { "shortcut_4_alt",   id(shortcut_4) } },    // info
+           
+            { 0x5E,       { "volume_up",       id(volume_up) } },        // brightness up
+            { 0xDE,       { "volume_down",     id(volume_down) } },      // brightness down
+            { 0x6E,       { "mute",            id(mute) } },             // color temp
+    
+            { 0x04,       { "volume_up_alt",   id(volume_up) } },        // lens AP_
+            { 0x0C,       { "volume_down_alt", id(volume_down) } },      // lens control_
+            { 0xA3,       { "mute_alt",        id(mute) } },             // anamorphic_
+    
+            { 0x16,       { "token_sniff",      id(token_sniff) } },   // cinema_
+            { 0x96,       { "token_sniff_alt",  id(token_sniff) } },   // cinema
+            { 0x56,       { "token_clear",      id(token_clear) } },   // natural
+            { 0xAE,       { "token_recall",     id(token_recall) } },  // gamma
+            { 0xB7,       { "token_recall_alt", id(token_recall) } },  // HDR_
+    
+            { 0xFE,       { "BT_start_pair",      id(bluetooth_pairing_start) } },  // sharp down
+            { 0x9A,       { "BT_clear_pair",      id(bluetooth_pairing_clear) } },  // sharp up
+            { 0x51,       { "BT_start_pair_alt",  id(bluetooth_pairing_start) } },  // CMD_
+            { 0x0F,       { "BT_clear_pair_alt",  id(bluetooth_pairing_clear) } },  // mpc_
+           
+            { 0x3E,       { "color up",      id(home) } },    // color up
+            { 0xBE,       { "color down",    id(home) } },    // color down
+            { 0x1E,       { "contast up",    id(home) } },    // contrast up
+            { 0x9E,       { "contrast down", id(home) } },    // contrast down
+            { 0x36,       { "test",          id(home) } },    // test
+            { 0xAC,       { "zoom T",        id(home) } },    // zoom T
+            { 0xEC,       { "zoom W",        id(home) } },    // zoom W
+            { 0x6B,       { "3D format_",      id(home) } },      // 3D format_
+            { 0x4E,       { "pic adjust_",     id(home) } }       // pic adjust_
+          }
+        });
+
+    
+    
+        // ====================================================================
+        // INDEX 7: Mapping 8 (LG Cinebeam HU810p)
+        // ====================================================================
+        remote_profiles.push_back({
+          "LG Projector", "NEC", 0xFB04, 0xEA15, 0xBB44, // 5, OK
+          {
+            { 0xF708,       { "power_on",      id(power_on) } },          // power toggle
+            { 0x23DC,       { "power_on-alt",  id(power_on) } },          // Discrete Power On
+            { 0x2CC3,       { "power_off", id(power_off_immediately) } }, // Discrete Power Off
+            { 0xEF10,       { "power_off_alt", id(power_off_immediately) } }, // 0
+            { 0xD728,       { "back",          id(back) } },          // Back / Return
+            { 0xF807,       { "cursor_left",   id(cursor_left) } },   // cursor left
+            { 0xF906,       { "cursor_right",  id(cursor_right) } },  // cursor right
+            { 0xBF40,       { "cursor_up",     id(cursor_up) } },     // cursor up
+            { 0xBE41,       { "cursor_down",   id(cursor_down) } },   // cursor down
+            { 0xBB44,       { "cursor_enter",  id(cursor_enter) } },  // OK / Select
+            { 0xBC43,       { "settings_menu", id(settings_menu) } }, // menu
+            { 0x837C,       { "home",          id(home) } },          // home
+            { 0xF40B,       { "input",         id(input) } },         // Input Toggle
+            { 0xFE01,       { "game_menu",     id(game_menu) } },     // channel down
+            { 0xB24D,       { "picture",       id(picture) } },       // Picture Mode
+            { 0x8679,       { "focus_manual",  id(focus_manual) } },  // aspect ratio
+            { 0x4FB0,       { "focus_auto",    id(focus_auto) } },    // play
+            { 0x8d72,       { "shortcut_1",    id(shortcut_1) } },    // red
+            { 0x8e71,       { "shortcut_2",    id(shortcut_2) } },    // green
+            { 0x9C63,       { "shortcut_3",    id(shortcut_3) } },    // yellow
+            { 0x9E61,       { "shortcut_4",    id(shortcut_4) } },    // blue
+            { 0xFD02,       { "volume_up",     id(volume_up) } },     // volume up
+            { 0xFC03,       { "volume_down",   id(volume_down) } },   // volume down
+            { 0xF609,       { "mute",          id(mute) } },          // mute
+            { 0xEB14,       { "token_sniff",   id(token_sniff) } },   // 4
+            { 0xEA15,       { "token_clear",   id(token_clear) } },   // 5
+            { 0xE916,       { "token_recall",  id(token_recall) } },  // 6
+            { 0xA956,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // netflix
+            { 0xA35C,       { "BT_clear_pair", id(bluetooth_pairing_clear) } },  // prime video
+            
+            { 0xEE11,       { "1",             id(home) } },   // 1
+            { 0xED12,       { "2",             id(home) } },   // 2
+            { 0xEC13,       { "3",             id(home) } },   // 3
+            { 0xE817,       { "7",             id(home) } },   // 7
+            { 0xE718,       { "8",             id(home) } },   // 8
+            { 0xE619,       { "9",             id(home) } },   // 9
+            { 0x54AB,       { "ch_list_guide", id(home) } },   // ch list guide
+            { 0xB34C,       { "-",             id(home) } },   // -
+            { 0xE51A,       { "pre-ch",        id(home) } },   // pre-ch
+            { 0xF10E,       { "sleep",         id(home) } },   // sleep
+            { 0xF30C,       { "portal",        id(home) } },   // portal
+            { 0xC639,       { "cc",            id(home) } }    // cc
+          }
+        });
+    
+        // ====================================================================
+        // INDEX 8: Mapping 9 (Optoma UHD50X projector)
+        // ====================================================================
+        remote_profiles.push_back({
+          "Optoma Projector", "NEC", 0xCD32, 0x9A65, 0xF00F, // User 1, OK
+          {
+            { 0xFD02,       { "power_on",      id(power_on) } },              // power on
+            { 0xD12E,       { "power_off",     id(power_off_immediately) } }, // power off
+            { 0xEF10,       { "cursor_left",   id(cursor_left) } },    // left arrow
+            { 0xED12,       { "cursor_right",  id(cursor_right) } },   // right arrow
+            { 0xEE11,       { "cursor_up",     id(cursor_up) } },      // up arrow
+            { 0xEB14,       { "cursor_down",   id(cursor_down) } },    // down arrow
+            { 0xF00F,       { "cursor_enter",  id(cursor_enter) } },   // ok
+            { 0xF10E,       { "settings_menu", id(settings_menu) } },  // menu
+            { 0x9C63,       { "back",          id(back) } },           // sleep
+            { 0xE916,       { "input",         id(input) } },          // input HDMI 1
+            { 0xCF30,       { "game_menu",     id(game_menu) } },      // input HDMI 2
+            { 0xFA05,       { "picture",       id(picture) } },        // mode
+            { 0x9B64,       { "focus_manual",  id(focus_manual) } },   // aspect
+            { 0xBB44,       { "focus_auto",    id(focus_auto) } },     // DB
+            { 0xE41B,       { "shortcut_1",    id(shortcut_1) } },     // input VGA 1
+            { 0xE11E,       { "shortcut_2",    id(shortcut_2) } },     // input VGA 2
+            { 0xE31C,       { "shortcut_3",    id(shortcut_3) } },     // input video
+            { 0xE817,       { "shortcut_4",    id(shortcut_4) } },     // input YPbPr
+            { 0x7689,       { "volume_up",     id(volume_up) } },      // 3D
+            { 0xF807,       { "volume_down",   id(volume_down) } },    // keystone
+            { 0xAD52,       { "mute",          id(mute) } },           // mute
+            { 0xC936,       { "token_sniff",   id(token_sniff) } },    // user 1
+            { 0x9A65,       { "token_clear",   id(token_clear) } },    // user 2
+            { 0x9966,       { "token_recall",  id(token_recall) } },    // user 3
+            { 0xBE41,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // brightness
+            { 0xBD42,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // contrast
+          }
+        });
+    
+        // ====================================================================
+        // INDEX 9: Mapping 10 (Sony VPL-XW600ES projector)
+        // ====================================================================
+        remote_profiles.push_back({
+          "Sony Projector", "SONY", 0x0000, 0x0008AB54, 0x00002D2A, // BRT TV, OK
+          {
+            { 0x00003A2A,       { "power_on",      id(power_on) } },             // Power On (discrete)
+            { 0x00007A2A,       { "power_off",     id(power_off_immediately)}},  // Power Off (discrete)
+            { 0x0000542A,       { "power_on_alt",  id(power_on) } },             // Power Toggle as on discrete
+            { 0x0000562A,       { "cursor_up",     id(cursor_up) } },      // up arrow
+            { 0x0000362A,       { "cursor_down",   id(cursor_down) } },    // down arrow
+            { 0x0000162A,       { "cursor_left",   id(cursor_left) } },    // left arrow
+            { 0x0000662A,       { "cursor_right",  id(cursor_right) } },   // right arrow
+            { 0x00002D2A,       { "cursor_enter",  id(cursor_enter) } },   // OK / Enter
+            { 0x00004A2A,       { "settings_menu", id(settings_menu) } },  // Menu
+            { 0x00006F2A,       { "home",          id(home) } },           // Reset
+            { 0x00018BE4,       { "back",          id(back) } },           // Position
+            { 0x0006AB54,       { "game_menu",     id(game_menu) } },      // Game
+            { 0x000EAB54,       { "picture",       id(picture) } },        // Photo
+            { 0x0000752A,       { "input",         id(input) } },          // Input
+            { 0x00026B54,       { "focus_manual",  id(focus_manual) } },   // Focus
+            { 0x00046B54,       { "focus_auto",    id(focus_auto) } },     // Zoom
+            { 0x00076B54,       { "shortcut_1",    id(shortcut_1) } },     // Aspect Ratio
+            { 0x0000502A,       { "shortcut_2",    id(shortcut_2) } },     // Motion Flow
+            { 0x000DCB54,       { "shortcut_3",    id(shortcut_3) } },     // 3D
+            { 0x000D2B54,       { "shortcut_4",    id(shortcut_4) } },     // Color Space
+            { 0x00000C2A,       { "volume_up",     id(volume_up) } },      // CONTRAST 
+            { 0x00004C2A,       { "volume_down",   id(volume_down) } },    // CONTRAST DOWN
+            { 0x000FAB54,       { "mute",          id(mute) } },           // Advanced Iris
+            { 0x0009AB54,       { "token_sniff",   id(token_sniff) } },    // BRT Cinema
+            { 0x0008AB54,       { "token_clear",   id(token_clear) } },    // BRT TV
+            { 0x0002AB54,       { "token_recall",  id(token_recall) } },   // User
+            { 0x00007C2A,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // BRIGHTNESS DOWN
+            { 0x00003C2A,       { "BT_clear_pair", id(bluetooth_pairing_clear) } },  // BRIGHTNESS UP
+    
+            { 0x0003AB54,       { "Color Temp",        id(home) } },  // Color Temp
+            { 0x0000702A,       { "Contrast Enhancer", id(home) } },  // Contrast Enhancer
+            { 0x000CAB54,       { "FILM 1",            id(home) } },  // FILM 1
+            { 0x0001AB54,       { "FILM 2",            id(home) } },  // FILM 2
+            { 0x0007AB54,       { "Gamma Correction",  id(home) } },  // Gamma Correction
+            { 0x00006A2A,       { "Input HDMI 1",      id(home) } },  // Input HDMI 1
+            { 0x00001A2A,       { "Input HDMI 2",      id(home) } },  // Input HDMI 2
+            { 0x00004BE4,       { "Position 1.85",     id(home) } },  // Position 1.85
+            { 0x00084BE4,       { "Position 2.35",     id(home) } },  // Position 2.35
+            { 0x000C4BE4,       { "Position Custom 2", id(home) } },  // Position Custom 2
+            { 0x00024BE4,       { "Position Custom 3", id(home) } },  // Position Custom 3
+            { 0x00032B54,       { "Reality creation",  id(home) } },  // Reality creation
+            { 0x000AAB54,       { "REF",               id(home) } },  // REF
+            { 0x0000622A,       { "sharpness down",    id(home) } },  // sharpness down
+            { 0x0000222A,       { "sharpness up",      id(home) } },  // sharpness up
+            { 0x000C6B54,       { "shift",             id(home) } },  // shift
+            { 0x0004AB54,       { "TV",                id(home) } },  // TV
+            { 0x00042BE4,       { "wide mode full",    id(home) } },  // wide mode full
+            { 0x000FCBE4,       { "wide mode full1",   id(home) } },  // wide mode full1
+            { 0x00002BE4,       { "wide mode full2",   id(home) } },  // wide mode full2
+            { 0x00082BE4,       { "wide mode normal",  id(home) } },  // wide mode normal
+            { 0x0007CBE4,       { "wide mode WZoom",   id(home) } },  // wide mode WZoom
+            { 0x000C2BE4,       { "wide mode zoom",    id(home) } },  // wide mode zoom
+            { 0x00022BE4,       { "wide mode anamorphic", id(home) } }  // wide mode anamorphic zoom
+          }
+        });
+    
+        // ====================================================================
+        // INDEX 10: Mapping 11 (Sony XBR-77A9G TV)
+        // ====================================================================
+        remote_profiles.push_back({
+          "Sony XBR", "SONY", 0x0000, 0x000210, 0x000A70, // 5, Arrow Select
+          {
+            { 0x000750,       { "power_on",      id(power_on) } },             // power on discrete
+            { 0x000A90,       { "power_on_alt",  id(power_on) } },             // power (toggle)
+            { 0x000F50,       { "power_off",     id(power_off_immediately)} }, // power off discrete
+            { 0x000910,       { "power_off_alt", id(power_off_immediately)} }, // 0
+            { 0x0002D0,       { "cursor_left",   id(cursor_left) } },    // Arrow Left
+            { 0x000CD0,       { "cursor_right",  id(cursor_right) } },   // Arrow Right
+            { 0x0002F0,       { "cursor_up",     id(cursor_up) } },      // Arrow Up
+            { 0x000AF0,       { "cursor_down",   id(cursor_down) } },    // Arrow Down
+            { 0x000A70,       { "cursor_enter",  id(cursor_enter) } },   // Arrow Select
+            { 0x006923,       { "settings_menu", id(settings_menu) } },  // Action Menu
+            { 0x0062E9,       { "back",          id(back) } },           // Back
+            { 0x000070,       { "home",          id(home) } },           // Home
+            { 0x003123,       { "game_menu",     id(game_menu) } },      // Google Play
+            { 0x000A50,       { "input",         id(input) } },          // Input
+            { 0x000250,       { "picture",       id(picture) } },        // TV
+            { 0x000AE9,       { "focus_auto",    id(focus_auto) } },     // subtitle
+            { 0x000E90,       { "focus_manual",  id(focus_manual) } },   // audio
+            { 0x0072E9,       { "shortcut_1",    id(shortcut_1) } },     // yellow
+            { 0x0012E9,       { "shortcut_2",    id(shortcut_2) } },     // blue
+            { 0x0052E9,       { "shortcut_3",    id(shortcut_3) } },     // red
+            { 0x0032E9,       { "shortcut_4",    id(shortcut_4) } },     // green
+            { 0x000490,       { "volume_up",     id(volume_up) } },      // volume up
+            { 0x000C90,       { "volume_down",   id(volume_down) } },    // volume down
+            { 0x000290,       { "mute",          id(mute) } },           // mute
+            { 0x000C10,       { "token_sniff",   id(token_sniff) } },    // 4
+            { 0x000210,       { "token_clear",   id(token_clear) } },    // 5
+            { 0x000A10,       { "token_recall",  id(token_recall) } },   // 6
+            { 0x002CE9,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // play
+            { 0x001CE9,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // fast forward
+          }
+        });
+    
+        // ====================================================================
+        // INDEX 11: Mapping 12 (TiVo Roamio TCD846500)
+        // ====================================================================
+        remote_profiles.push_back({
+          "TiVo Roamio", "NEC", 0x3085, 0xD02C, 0xE019, // 5, Arrow Select
+          {
+            { 0xE010,       { "power_on",      id(power_on) } },              // tv power (as discrete on)
+            { 0xE011,       { "power_off",     id(power_off_immediately) } }, // live TV (as discrete off)
+            { 0xC031,       { "power_off_alt", id(power_off) } },             // 0 
+            { 0xE014,       { "cursor_up",     id(cursor_up) } },       // arrow up
+            { 0xE016,       { "cursor_down",   id(cursor_down) } },     // arrow down
+            { 0xE017,       { "cursor_left",   id(cursor_left) } },     // arrow left
+            { 0xE015,       { "cursor_right",  id(cursor_right) } },    // arrow right
+            { 0xE019,       { "cursor_enter",  id(cursor_enter) } },    // select
+            { 0xF00C,       { "settings_menu", id(settings_menu) } },   // tivo
+            { 0xF00D,       { "settings_menu", id(settings_menu) } },   // tivo (myHarmony version)
+            { 0xB044,       { "back",          id(back) } },            // zoom
+            { 0xE01E,       { "home",          id(home) } },            // channel up
+            { 0xC036,       { "game_menu",     id(game_menu) } },       // guide
+            { 0xC034,       { "input",         id(input) } },           // input
+            { 0xE013,       { "picture",       id(picture) } },         // into
+            { 0xD02E,       { "focus_auto",    id(focus_auto) } },      // 7
+            { 0xD02F,       { "focus_manual",  id(focus_manual) } },    // 8
+            { 0x9060,       { "shortcut_1",    id(shortcut_1) } },      // A yellow
+            { 0x9061,       { "shortcut_2",    id(shortcut_2) } },      // B blue
+            { 0x9062,       { "shortcut_3",    id(shortcut_3) } },      // C red
+            { 0x9063,       { "shortcut_4",    id(shortcut_4) } },      // D green
+            { 0xE01C,       { "volume_up",     id(volume_up) } },       // volume up
+            { 0xE01D,       { "volume_down",   id(volume_down) } },     // volume down
+            { 0xE01B,       { "mute",          id(mute) } },            // mute
+            { 0xD02B,       { "token_sniff",   id(token_sniff) } },     // 4
+            { 0xD02C,       { "token_clear",   id(token_clear) } },     // 5
+            { 0xD02D,       { "token_recall",  id(token_recall) } },    // 6
+            { 0xC033,       { "BT_start_pair", id(bluetooth_pairing_start) } },    //enter
+            { 0xC032,       { "BT_clear_pair", id(bluetooth_pairing_clear) } },    //clear
+          }
+        });
+    
+        // ====================================================================
+        // INDEX 12: Mapping 13 (Xgimi Titan, Original)
+        // ====================================================================
+        remote_profiles.push_back({
+          "Xgimi Titan", "NEC", 0x21DE, 0x25, 0x0D, // HDMI 2, enter
+          {
+            { 0x4D,       { "power_on",      id(power_on) } },            // power (as on)
+            { 0x1E,       { "power_off",     id(power_off_immediately)}}, // menu rotation (as off)
+            { 0x0B,       { "cursor_up",     id(cursor_up) } },       // arrow up
+            { 0x0E,       { "cursor_down",   id(cursor_down) } },     // arrow down
+            { 0x10,       { "cursor_left",   id(cursor_left) } },     // arrow left
+            { 0x11,       { "cursor_right",  id(cursor_right) } },    // arrow right
+            { 0x0D,       { "cursor_enter",  id(cursor_enter) } },    // OK
+            { 0x42,       { "back",          id(back) } },            // back
+            { 0x45,       { "settings_menu", id(settings_menu) } },   // menu
+            { 0x19,       { "game_menu",     id(game_menu) } },       // OSD
+            { 0x1A,       { "home",          id(home) } },            // channel up
+            { 0x4F,       { "input",         id(input) } },           // source
+            { 0x20,       { "picture",       id(picture) } },         // lens shift and zoom
+            { 0x1C,       { "focus_manual",  id(focus_manual) } },    // focus +
+            { 0x1D,       { "focus_auto",    id(focus_auto) } },      // focus -
+            { 0x41,       { "shortcut_1",    id(shortcut_1) } },      // picture mode Standard
+            { 0x44,       { "shortcut_2",    id(shortcut_2) } },      // picture mode Movie
+            { 0x4A,       { "shortcut_3",    id(shortcut_3) } },      // picture mode Vivid
+            { 0x4B,       { "shortcut_4",    id(shortcut_4) } },      // picture mode TV
+            { 0x18,       { "volume_up",     id(volume_up) } },       // volume up
+            { 0x17,       { "volume_down",   id(volume_down) } },     // volume down
+            { 0x24,       { "token_sniff",   id(token_sniff) } },     // switch to HDMI 1
+            { 0x25,       { "token_clear",   id(token_clear) } },     // switch to HDMI 2
+            { 0x26,       { "token_recall",  id(token_recall) } },    // switch to USB
+          }
+        });
+        
+        ESP_LOGI("ir_hub", "Factory profiles loaded.");
+
           
 interval:
   # ====================================================================
@@ -1676,40 +1697,40 @@ interval:
               }
             }
           }
+     
           
   # ====================================================================
   # TIMER 2: True One-Shot Post-Boot Storage Recovery & Mapping
-  - interval: 200ms 
+  - interval: 2.0sec 
     id: boot_initialization_timer 
     then:
+      # PASS 1: Native verification gate forces factory maps into index positions 0-12
+      - if:
+          condition:
+            lambda: 'return remote_profiles.empty();'
+          then:
+            - script.execute: populate_factory_profiles
+            - logger.log: "System baseline check: Factory profiles built cleanly. Awaiting next pass..."
+            - delay: 100ms # Gives vector structures a tiny window to settle in memory safely
+
+      # PASS 2: Safely read our persistent custom layout tracks out of the physical NVS blocks
       - lambda: |-
-          // STEP 1: Guard against early boots where factory remotes aren't built yet
-          if (remote_profiles.empty()) {
-            return; 
-          }
-
-          // STEP 2: Asynchronously process the 15.2KB NVS load request once
-          if (!flash_hydration_complete) {
-            load_saved_flash_profiles();
-            return; // Force wait one cycle to allow heap matrix allocations to relax
-          }
-
-          // SUCCESS PATH: Both memory layers are now fully populated and safe
-          ESP_LOGI("ir_hub", "System stabilized. 15.2KB Array space safe. Total layouts: %d", remote_profiles.size());
-
-          // Bridge your active memory slots to the physical button pointer registries
+          ESP_LOGI("ir_hub", "Executing physical flash database rehydration pass...");
+          
+          // 1. Unpack our custom slots safely into memory indices 13-17
+          load_saved_flash_profiles();
+          
+          // 2. Link text identities to physical component pointer address hooks
           link_hardware_buttons();
           
-          ESP_LOGI("ir_hub", "Flash mapping completed. Transferring control to runtime scripts...");
-
-      # ====================================================================
+          ESP_LOGI("ir_hub", "Hardware pointer mapping complete. System armed.");
+          
       - script.execute: setup_ir_receiver_for_current_profile
       - lambda: |-      
-          id(ir_receiver_mode) = 1; // Set to action mode
+          id(ir_receiver_mode) = 1; // Securely move device into active listening mode
 
       - script.execute: display_token_remote_profile
       - script.execute: sync_json_backup_sensor 
       
-      # ====================================================================
-      # THE KILL SWITCH: Permanently unregisters and deletes Timer 2 from the loop
+      # The Kill Switch: Permanently shuts down this initialization timer loop
       - component.suspend: boot_initialization_timer

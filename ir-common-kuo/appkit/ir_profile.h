@@ -79,7 +79,6 @@ inline esphome::button::Button* resolve_button(const std::string& name) {
 
 
 
-// Converts the dynamic vector into a flat matrix and commits it to NVS flash storage
 // Converts the dynamic vector into isolated chunks and commits them sequentially
 inline void commit_database_to_flash() {
   uint16_t saved_count = 0;
@@ -122,17 +121,20 @@ inline void commit_database_to_flash() {
 }
 
 
-
 // Rehydrates dynamic custom slots out of individual Flash NVS blocks safely
 inline void load_saved_flash_profiles() {
-  // Clear any existing custom profiles to prevent duplicates
-  if (remote_profiles.size() > 13) {
-    remote_profiles.resize(13);
+  // Step 1: Enforce fixed array padding rules BEFORE parsing NVS memory streams
+  // This guarantees that if this runs, slots 0 through 12 exist as a baseline matrix
+  if (remote_profiles.size() < 13) {
+    ESP_LOGW("ir_hub", "Database structure safety check: Padding missing factory slots...");
+    while (remote_profiles.size() < 13) {
+      remote_profiles.push_back({ "Placeholder Layout", "NEC", 0, 0, 0, {} });
+    }
   }
 
-  // Sequentially load all 5 profile blocks using distinct ULL hash addresses
+  // Step 2: Sequentially read learned layout profiles out of NVS storage slots
+  int loaded_custom_count = 0;
   for (uint16_t slot = 0; slot < 5; slot++) {
-    // Generate a unique 64-bit storage key for each individual slot profile
     uint64_t slot_nvs_key = 1948204712ULL + slot;
     auto pref_obj = esphome::global_preferences->make_preference<FlashStoredProfile>(slot_nvs_key);
     
@@ -140,7 +142,6 @@ inline void load_saved_flash_profiles() {
     std::memset(&flash_p, 0, sizeof(flash_p));
 
     if (pref_obj.load(&flash_p)) {
-      // If the slot is empty or uninitialized, skip it
       if (flash_p.total_keys == 0 || std::strlen(flash_p.profile_name) == 0) {
         continue; 
       }
@@ -157,38 +158,55 @@ inline void load_saved_flash_profiles() {
         restored_profile.cmd_codes[flash_p.keys[k].hex_code] = { b_id, nullptr };
       }
 
-      remote_profiles.push_back(restored_profile);
-      ESP_LOGI("ir_hub", "NVS Slot [%d] loaded successfully: %s", slot, restored_profile.profile_name.c_str());
+      // Securely lock custom configurations into indices 13 through 17
+      size_t target_vector_index = 13 + slot;
+      while (remote_profiles.size() <= target_vector_index) {
+        remote_profiles.push_back({ "Placeholder", "NEC", 0, 0, 0, {} });
+      }
+
+      remote_profiles[target_vector_index] = restored_profile;
+      loaded_custom_count++;
+      ESP_LOGI("ir_hub", "NVS Slot [%d] successfully mapped to Database Index [%d]: %s", 
+               slot, (int)target_vector_index, restored_profile.profile_name.c_str());
     }
   }
   
+  ESP_LOGI("ir_hub", "Database hydration pass complete. Total profiles loaded: %zu (%d active custom configs)", 
+           remote_profiles.size(), loaded_custom_count);
+           
   flash_hydration_complete = true;
 }
 
 
 
 inline void link_hardware_buttons() {
-    int current_idx = id(active_remote_layout);
-    
-    if (current_idx < 0 || current_idx >= (int)remote_profiles.size()) {
-        ESP_LOGE("Linker", "Cannot link buttons: Invalid profile index!");
-        return;
-    }
+    ESP_LOGI("Linker", "Beginning global layout pointer synchronization across all %d profiles...", (int)remote_profiles.size());
 
-    // Refresh every registered button string name to its physical object hook
-    for (auto& pair : remote_profiles[current_idx].cmd_codes) {
-        pair.second.button_obj = resolve_button(pair.second.name);
+    // Iterate through EVERY profile layout currently residing in RAM
+    for (size_t idx = 0; idx < remote_profiles.size(); idx++) {
+        int bound_count = 0;
         
-        if (pair.second.button_obj != nullptr) {
-            // FIX: Added (unsigned int) cast to clear the compiler warning safely
-            ESP_LOGD("Linker", "Bound hex [0x%08X] to button ID: %s", (unsigned int)pair.first, pair.second.name.c_str());
+        for (auto& pair : remote_profiles[idx].cmd_codes) {
+            pair.second.button_obj = resolve_button(pair.second.name);
+            
+            if (pair.second.button_obj != nullptr) {
+                bound_count++;
+            }
         }
+        
+        ESP_LOGD("Linker", "Profile [%zu] '%s': Successfully bound %d buttons.", 
+                 idx, remote_profiles[idx].profile_name.c_str(), bound_count);
     }
 
-    ESP_LOGI("Linker", "All button layout pointers synced for profile: %s", 
-             remote_profiles[current_idx].profile_name.c_str());
+    // Direct safety validation check for the currently selected active profile
+    int current_idx = id(active_remote_layout);
+    if (current_idx >= 0 && current_idx < (int)remote_profiles.size()) {
+        ESP_LOGI("Linker", "Global pointer mapping complete. Active Profile active: %s", 
+                 remote_profiles[current_idx].profile_name.c_str());
+    } else {
+        ESP_LOGE("Linker", "Global pointer mapping warning: Current active profile index [%d] is out of bounds!", current_idx);
+    }
 }
-
 
 
 
