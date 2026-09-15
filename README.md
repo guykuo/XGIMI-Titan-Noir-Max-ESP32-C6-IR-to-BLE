@@ -273,6 +273,10 @@ Mrmachine already captured and mapped an original Titan Noir Max remote. We do n
 
 # Installing This Software on ESP32
 
+[![Watch the video](https://img.youtube.com/vi/Q5G-mbGrfUs/0.jpg)](https://www.youtube.com/watch?v=Q5G-mbGrfUs)
+
+
+
 ## 1\. Clone or copy this directory to your computer.
 Cloning and downloading controls are within Github green "<> Code" button.
 
@@ -456,6 +460,9 @@ If no port appears, install the USB serial driver required by the ESP32 USB inte
 
 
 ## 6\. Learning Wake Token from Xgimi Remote.
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/Twvc1mUYd0o/0.jpg)](https://www.youtube.com/watch?v=Twvc1mUYd0o)
+
+
 
 Unless your secrets.yaml already has a valid wake token, your ESP32 translator needs to learn a wake token from your original Xgimi remote.
 Sniffing for the wake token should be done with projector power disconnected because you will be pressing the remote's power button repeatedly.
