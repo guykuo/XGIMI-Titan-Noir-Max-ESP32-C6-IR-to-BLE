@@ -51,68 +51,7 @@ Project Git is arranged as below. You will find make, hardware, and IRmap files 
 
 
 
-# The Software
-## Make Files
-"Make" files are where you specify desired combination of board type, IR mapping, and name your new IR translator. A templete make files is provided.
-Duplicate the template file and edit it to specify a ESP32 board type and desired IR mapping
 
-* make-esp32-TEMPLATE.yaml
-
-1 Duplicate make-esp32-TEMPLATE.yaml to create your custom make file<br>
-2 Name your custom make file<br>
-3 Edit your custom make file
-
-At the top of your custom make file are places to specify remote name, esp32 board, and desired IR mapping.
-Uncomment one and only one option for board and also for IRmap.
-
-Your custom make file should be left in the same directory as the template make files.
-Never move or rename files in ir-common-kuo/ subdirectory
-
-Here is the file section of a make file that you edit while making a custom make file.
-In this example, hardware-c3.yaml and irmap-epson-pro-cinema-LS12000.yaml have been specified by uncommenting
-
-```YAML
-# ============= BEGIN Configuration Options KUO ======================================================================
-
-# Only three things to configure here
-#   ble_remote_name
-#   Default IR profile
-#   hardware_package
-
-substitutions:
-  ble_remote_name: "IR to Xgimi Kuo"  # <===== Name your IR remote. (20 char max. No special characters)
-
-
-  # --- Default IR profile. Uncomment one (and only one)
-  #def_profile: "0"  # AWOL-projector (untested, Hisense IR codes)
-  #def_profile: "1"  # benq-w5800
-  def_profile: "2"  # epson-pro-cinema-LS12000
-  #def_profile: "3"  # hisense-50u6g
-  #def_profile: "4"  # jvc-hr-S9600u
-  #def_profile: "5"  # jvc-rs2-codeset-A 
-  #def_profile: "6"  # jvc-rs2-codeset-B 
-  #def_profile: "7"  # LG-cinebeam-hu810p 
-  #def_profile: "8"  # optoma-UHD50X
-  #def_profile: "9"  # sony-VPL-XW600ES 
-  #def_profile: "10" # sony-XBR-77A9G 
-  #def_profile: "11" # tivo-roamio-TCD846500 
-  #def_profile: "13" # xgimi-titan (untested, published Original Titan IR codes)
-
-
-packages: 
-  # --- ESP32 board, Uncomment one (and only one) for your board
-  hardware_package: !include ir-common-kuo/hardware-c3.yaml                  # supports built-in 0.42 inch OLED display
-  #hardware_package: !include ir-common-kuo/hardware-c6.yaml                 # supports external 0.9 inch i2c OLED display
-  #hardware_package: !include ir-common-kuo/hardware-m5stack-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
-  #hardware_package: !include ir-common-kuo/hardware-s3-hosyond-lcd-3.5-touch.yaml
-  #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-esp32-s3-touch-lcd-2.8.yaml
-
-  #hardware_package: !include ir-common-kuo/HARDWARE.YAML # Or uncomment this line and replace HARDWARE.YAML with your file.
-
-
-
-# ========== END Configuration Options KUO ==============================================================================
-```
 Available hardware boards are in ir-common-kuo/ subdirectory.
 
 
@@ -425,65 +364,100 @@ The helper script refuses to overwrite an existing `secrets.yaml`.
 CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary to GitHub. Both contain device credentials, and the binary also embeds the wake token.
 
 ## 5. Build and Flash Firmware for Your Choice of IR Remote
+### Make Files
+"Make" files are where you specify desired combination of board type, IR profile, and name your new IR translator. 
+A template make files is provided. ***make-esp32-TEMPLATE.yaml***
 
-Find and duplicate the supplied _make-esp32-TEMPLATE.yaml_ file.
+1 Duplicate make-esp32-TEMPLATE.yaml to create your custom make file<br>
+2 Name your custom make file<br>
+3 Edit your custom make file
 
-Give your copy a unique name. We'll rename it ***makemine.yaml***
+We will name our make file ***makemine.yaml***
 
-Open ***makemine.yaml*** in a text editor. At the top of the file you will see three
-  
-### 5a. Example Build firmware for TIVO on ESP32-C6
+Your custom make file should be left in the same directory as the original ***make-esp32-TEMPLATE.yaml*** file.
+Also, never move or rename files in ir-common-kuo/ subdirectory<br>
+<br><br>
+Open ***makemine.yaml*** in a text editor to customize three things within Configuration Options section<br>
+You can specify remote name, esp32 board, and default IR profile.<br>
+<br><br>
+Name of remote is specified by changing name within quotes of line. Here it is *IR to Xgimi Kuo*<br>
+* ble_remote_name: "IR to Xgimi Kuo"<br>
+<br><br>
+Default IR Profile is set by uncommenting one and only one line. Here it is *epson-pro-cinema-LS12000*<br>
+You can later override this via profile setting on the ESP32 board.<br>
+<br><br>
+ESP32 board is set by uncommenting one and only one line. Here it is *hardware-c3.yaml*<br>
+<br><br>
+```YAML
+# ============= BEGIN Configuration Options KUO ======================================================================
 
-Connect the new ESP32-C6 by USB, validate, compile and flash:
+# Only three things to configure here
+#   ble_remote_name
+#   Default IR profile
+#   hardware_package
+
+substitutions:
+  ble_remote_name: "IR to Xgimi Kuo"  # <===== Name your IR remote. (20 char max. No special characters)
+
+
+  # --- Default IR profile. Uncomment one (and only one)
+  #def_profile: "0"  # AWOL-projector (untested, Hisense IR codes)
+  #def_profile: "1"  # benq-w5800
+  def_profile: "2"  # epson-pro-cinema-LS12000
+  #def_profile: "3"  # hisense-50u6g
+  #def_profile: "4"  # jvc-hr-S9600u
+  #def_profile: "5"  # jvc-rs2-codeset-A 
+  #def_profile: "6"  # jvc-rs2-codeset-B 
+  #def_profile: "7"  # LG-cinebeam-hu810p 
+  #def_profile: "8"  # optoma-UHD50X
+  #def_profile: "9"  # sony-VPL-XW600ES 
+  #def_profile: "10" # sony-XBR-77A9G 
+  #def_profile: "11" # tivo-roamio-TCD846500 
+  #def_profile: "13" # xgimi-titan (untested, published Original Titan IR codes)
+
+
+packages: 
+  # --- ESP32 board, Uncomment one (and only one) for your board
+  hardware_package: !include ir-common-kuo/hardware-c3.yaml                  # supports built-in 0.42 inch OLED display
+  #hardware_package: !include ir-common-kuo/hardware-c6.yaml                 # supports external 0.9 inch i2c OLED display
+  #hardware_package: !include ir-common-kuo/hardware-m5stack-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
+  #hardware_package: !include ir-common-kuo/hardware-s3-hosyond-lcd-3.5-touch.yaml
+  #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-esp32-s3-touch-lcd-2.8.yaml
+
+  #hardware_package: !include ir-common-kuo/HARDWARE.YAML # Or uncomment this line and replace HARDWARE.YAML with your file.
+
+
+
+# ========== END Configuration Options KUO ==============================================================================
+```  
+### 5a Build firmware for TIVO on ESP32-C6
+Once our make file has been created and customized, you are ready to compile and flash firmware to ESP32 board.
+Connect your ESP32 board with USB. <br>
+
+Validate, compile and flash:
 
 MacOS or Linux
 
 ```sh
-.venv/bin/esphome run make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
+.venv/bin/esphome run makemine.yaml
 ```
 
 Windows Powershell
 
 ```powershell
-.venv\\Scripts\\esphome.exe run make-esp32-c6-wroom-1-GPIO10-IR-TiVo.yaml
+.venv\\Scripts\\esphome.exe run makemine.yaml
 
 ```
 
-### 5b. Example Build Firmware for HISENSE on ESP32-C3 with OLED display)
+Once firmware is compiled, you should be presented with a choice of how to flash your ESP32 board.
+Select the serial upload function. Over the air upload or update will NOT work with this project.
+Even though the build environment may offer a wireless upload option, always use USB serial upload.
 
-Connect the new ESP32-C3 by USB, validate, compile and flash:
-
-MacOS or Linux
-
-```sh
-.venv/bin/esphome run make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
-
-```
-
-Windows Powershell
-
-```powershell
-.venv\\Scripts\\esphome.exe make-esp32-c3-OLED-GPIO1-IR-Hisense.yaml
-
-```
-
-Once firmware is built, you should be presented with a choice of how to flash your ESP32 board.
-
-Select the ESP32's USB serial port when prompted `COM…` on Windows or
-
-`/dev/…` on macOS/Linux). If no port appears, install the USB serial driver required by the ESP32 USB interface and try again.
-
-## 6\. Power on the projector and Add Your ESP32 Remote as another Bluetooth remote.
-
-The provided make files name your new ESP32 as readily recognizable when adding as another Bluetooth remote.
-
-Keep the original remote paired as well.
-<br>
-<br>
-<br>
+Select the ESP32's USB serial port when prompted `COM…` on Windows or `/dev/…` on macOS/Linux). 
+If no port appears, install the USB serial driver required by the ESP32 USB interface and try again.
 
 
-## 7\. Learning Wake Token from Xgimi Remote.
+## 6. Learning Wake Token from Xgimi Remote.
 
 Unless your secrets.yaml already has a valid wake token, your ESP32 translator needs to learn a wake token from your original Xgimi remote.
 Sniffing for the wake token should be done with projector power disconnected because you will be pressing the remote's power button repeatedly.
@@ -491,7 +465,9 @@ Sniffing for the wake token should be done with projector power disconnected bec
 - Remove AC power from Xgimi Titan Noir Projector
 - ESP32 should be plugged into 5 volt USB-C power
 
-- There are two ways to start Sniffing for wake tokens. Easiest is to _briefly_ press BOOT button on your ESP32 board. The other way is to press the correct button on your IR remote that starts token sniffing. Which IR button depends on your IRmap (see table below). A light will come on to indicate sniffing mode. Sniffing remains active for 20 seconds. 
+- There are two ways to start Sniffing for wake tokens. Easiest is to single click the BOOT button of your ESP32 board. If your translator is already on the profile for your IR remote, the other option is to press the correct button on your IR remote that starts token sniffing. 
+
+A light will come on to indicate sniffing mode. Sniffing remains active for 20 seconds. 
     
 - Repeatedly press power button on Xgimi remote with it near your ESP32 board.
       Usually, just 4 to 6 presses are needed to sniff a valid token. 
@@ -506,13 +482,13 @@ Sniffing for the wake token should be done with projector power disconnected bec
      capture and place one in your secrets.yaml. Easiest is to sniff with the ESP board.
 
 
-# What the Token Buttons on Your IR Remote do
+### What the Token Buttons on Your IR Remote Do
   - Token Sniff - ESP32 sniffs for an Xgimi a wake token for 20 seconds. If one is captured, It is stored into NV storage.
   - Token Clear - Must be pressed and confirmed with OK button. Stored token is removed from NV storage. Active wake token becomes the one supplied in secrets.yaml
   - Token Recall - Makes currently stored token the active token. Shows on display, if one is present). This is useful to verify token was sniffed correctly.
 
-Three buttons on your remote are assigned to control wake token. The actual buttons depend on which IRmap you are using.
-|IRmap Set | Token Action | Button |
+Three buttons on your remote are assigned to control wake token. The actual buttons depend on which IR profile you are using.
+|IR Profile | Token Action | Button |
 | ---- | ---- | ---- |
 | BenQ W5800 | Sniff | info |
 | BenQ W5800 | Clear | invert |
@@ -550,30 +526,35 @@ Three buttons on your remote are assigned to control wake token. The actual butt
 | TiVo Roamio | Clear | 5 |
 | TiVo Roamio | Recall | 6 |
 
-# Selecting and Learning Profiles
-## Selecting Profile
-* Double-click boot button to put translator into profile setting mode.
-*Press a button on your desired remote and the translator should switch to that remote's profile.
-The translator listens for an IR signal. Identifies the projector by matching that signal against signals it knows. User learned remotes have higher precedence over "factory" profiles.
+## 7. Selecting and Learning Profiles
+### Selecting Profile
+* Double-click boot button to put translator into profile setting mode. <br><br>
 
-## Learning a new Profile from IR Remote
-Learning requires a display on your ESP32 board or having the ESP32 board connected to a serial logging session.
-Technically, it will work without a display or log, but that would mean blindly pressing a sequence of IR buttons perfectly.
+* Press a button on your desired IR remote and the translator should switch to that remote's profile.<br>
+<br><br>
+The translator listens for an IR signal. Identifies the projector by matching that signal against signals it knows. User learned remotes have higher precedence over "factory" profiles. Once a profile is set, the ESP32 will listen only for that profile and translate them to Xgmi Titan Noir bluetooth commands.<br>
+
+### Learning a new Profile from IR Remote
+In case none of the "factory" profiles are suitable for you system, you can also teach the translator a new IR profile. Learning mode requires a display on your ESP32 board or having the ESP32 board connected to a serial logging session. (Technically, learning will work without a display or log, but that would entail blindly pressing a sequence of 27 IR buttons perfectly.
 
 * Triple-click boot button to enter learning mode.
 * As each button namem appears on screen, press the corresponding button on your IR remote
 * Once done with all buttons, you select which memory slot to store your new profile via the remote.
-
-  OK = memory 0
-  Up = memory 1
-  Rt = memory 2
-  Down = memory 3
-  Left = memory 4
-
-
+<br><br>
+  OK = memory 0<br>
+  Up = memory 1<br>
+  Rt = memory 2<br>
+  Down = memory 3<br>
+  Left = memory 4<br>
 
 
 
+## 8. Add Your ESP32 Remote as to Projector as Additional Bluetooth Device
+Turn on your projector with its original remote control. Within settings add your new IR translator as another Bluetooth remote.
+<br><br>
+Keep the original remote paired as well.
+<br>
+<br>
 
 
 # Xgimi Command and IR Remote Button Tables
