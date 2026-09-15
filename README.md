@@ -274,16 +274,16 @@ Mrmachine already captured and mapped an original Titan Noir Max remote. We do n
 # Installing This Software on ESP32
 
 ## 1\. Clone or copy this directory to your computer.
-Cloning and downloading controls are within Gitbub green "<> Code" button.
+Cloning and downloading controls are within Github green "<> Code" button.
 
 <img width="400" alt="gihub directory clone" src="https://github.com/user-attachments/assets/f7c4ce8f-e0fb-49c3-a893-f6e6023dad4e" />
 
-
+Expand the downloaded archive.
 
 <br>
 
-### Create a virtual environment, and install the pinned tools
-## Change working director of Powershell or Terminal to be the folder containing this Git
+## 2\. Create a virtual environment, and install needed tools
+### Change working directory of Powershell or Terminal to be the folder containing this Git
 
 Launch PowerShell or Terminal (which depends on your OS).
 
@@ -295,8 +295,7 @@ Type a return
 
 That should set your shell window working directory to be the one containing this Git.
 
-
-## 2\. Install Python environment
+### Install Python environment
 Type in two commands to create python compile and required elements in the Git folder. This readies things for compiling with Python
 
 On MacOS or Linux
@@ -334,17 +333,15 @@ On Windows Powershell
 
 Keep the remote close to the computer and press its Power button several times during the scan. A trustworthy capture has a stable 15-byte tail and at least two distinct first-byte rolling-counter values.
 
-## 4. Create `secrets.yaml` with optional captured token. 
+## 4\. Create `secrets.yaml` with optional captured token. 
 
-You must do this step to create a secrets.yaml file. The optional bit is that you are not required to replace the placeholder token
+You must create a secrets.yaml file using the below script .<b>
 
-if you skipped prior manual capture of Remote's token, you do not need to replace the below token hex numbers. 
-Just leave them alone token AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88
-
+If you skipped prior manual capture of Remote's token, you do not need to replace the below token hex numbers. 
+Just leave them alone as AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88<b>
+If you did manually capture your remote's token, the below script's token with the 15-byte token obtained by manual capture.
 
 This script generates the API key and strong OTA/fallback-access-point passwords using Python's secure random generator:
-
-(Optional) Replace the below script's token with the 15-byte token obtained by manual capture.
 
 MacOS or Linux
 
@@ -358,12 +355,13 @@ Windows Powershell
 .venv\Scripts\python.exe scripts\create_secrets.py --token "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88"
 ```
 
-Now you should have a secrets.yaml file that (optionally) contains your specific token.
+Now you should have a secrets.yaml file that (optionally) contains your wake token. 
+Do not worry if you skipped manually capturing a wake token, you can quickly sniff the token usihg the ESP32 board. Sniffing is much easier than manual capture and editing of hex numbers.
 
 The helper script refuses to overwrite an existing `secrets.yaml`.
-CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary to GitHub. Both contain device credentials, and the binary also embeds the wake token.
+CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary to GitHub. Both contain device credentials, and the binary also embeds your wake token.
 
-## 5. Build and Flash Firmware for Your Choice of IR Remote
+## 5\. Build and Flash Firmware for Your Choice of IR Remote
 ### Make Files
 "Make" files are where you specify desired combination of board type, IR profile, and name your new IR translator. 
 A template make files is provided. ***make-esp32-TEMPLATE.yaml***
@@ -457,7 +455,7 @@ Select the ESP32's USB serial port when prompted `COMâ€¦` on Windows or `/dev/â€
 If no port appears, install the USB serial driver required by the ESP32 USB interface and try again.
 
 
-## 6. Learning Wake Token from Xgimi Remote.
+## 6\. Learning Wake Token from Xgimi Remote.
 
 Unless your secrets.yaml already has a valid wake token, your ESP32 translator needs to learn a wake token from your original Xgimi remote.
 Sniffing for the wake token should be done with projector power disconnected because you will be pressing the remote's power button repeatedly.
@@ -526,7 +524,7 @@ Three buttons on your remote are assigned to control wake token. The actual butt
 | TiVo Roamio | Clear | 5 |
 | TiVo Roamio | Recall | 6 |
 
-## 7. Selecting and Learning Profiles
+## 7\. Selecting and Learning Profiles
 ### Selecting Profile
 * Double-click boot button to put translator into profile setting mode. <br><br>
 
@@ -549,7 +547,7 @@ In case none of the "factory" profiles are suitable for you system, you can also
 
 
 
-## 8. Add Your ESP32 Remote as to Projector as Additional Bluetooth Device
+## 8\. Add Your ESP32 Remote as to Projector as Additional Bluetooth Device
 Turn on your projector with its original remote control. Within settings add your new IR translator as another Bluetooth remote.
 <br><br>
 Keep the original remote paired as well.
