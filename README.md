@@ -332,11 +332,12 @@ py -3 -m venv .venv
 <details>
 <summary>💡 <b>Manual wake token capture</b> (Click to expand)</summary>
 
-You do not have to do this step, unless you want your translator to have a "default" backup copy of your Xgimi wake token. Generally, this can be skipped because it is so easy to have the translator sniff the token later.
+You do not have to do this step. The only reason to do so is to have a "default" backup copy of your Xgimi wake token built into the firmware in case you delete the learned token. Generally, including a wake token in secrete.yaml can be skipped because it is so easy to sniff the token with the board running my firmware.
 
-Physically unplug the projector so it cannot reconnect to the original remote. Turn Bluetooth on and grant the terminal Bluetooth access if the operating system asks.
+Physically unplug the projector so it cannot reconnect to the original remote. 
+Turn Bluetooth on and grant the terminal Bluetooth access if the operating system asks.
 
-Run one of:
+Run the bluetooth capture script:
 
 On MacOS or Linux
 
@@ -353,14 +354,14 @@ On Windows Powershell
 Keep the remote close to the computer and press its Power button several times during the scan. A trustworthy capture has a stable 15-byte tail and at least two distinct first-byte rolling-counter values.
 </details>
 
-## 4\. Create `secrets.yaml` with optional captured token. 
+## 4\. Create `secrets.yaml` 
 
 You must create a secrets.yaml file using the below script .<b>
 
-If you skipped prior manual capture of Remote's token, you do not need to replace the below token hex numbers. 
-Just leave them alone as AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88<b>
-If you did manually capture your remote's token, the below script's token with the 15-byte token obtained by manual capture.
-
+If you did the optional step of manually capturing a wake token, substitute the AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88 in the script with your manually captured token.
+Otherwise, just leave AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88 as a placeholder.<br>
+<br>
+<br>
 This script generates the API key and strong OTA/fallback-access-point passwords using Python's secure random generator:
 
 MacOS or Linux
@@ -376,9 +377,9 @@ Windows Powershell
 ```
 
 Now you should have a secrets.yaml file that (optionally) contains your wake token. 
-Do not worry if you skipped manually capturing a wake token, you can quickly sniff the token usihg the ESP32 board. Sniffing is much easier than manual capture and editing of hex numbers.
+If you skipped manually capturing a wake token, you will later sniff the token usihg the ESP32 board. Sniffing is easier than manual capture and editing of hex numbers.
 
-The helper script refuses to overwrite an existing `secrets.yaml`.
+The above script refuses to overwrite an existing `secrets.yaml`.
 CAUTION: Do not commit your `secrets.yaml` or a personalised firmware binary to GitHub. Both contain device credentials, and the binary also embeds your wake token.
 
 ## 5\. Build and Flash Firmware for Your Choice of IR Remote
