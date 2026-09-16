@@ -67,22 +67,27 @@ simultaneously used under masquerading strategy.
 
 These "factory" IR profiles have known working IR code sets ...
 
-* benq-w5800.yaml_______________(BenQ W5800 projector)
-* epson-pro-cinema-LS1200-projector.yaml______(Epson Projectors)
-* hisense-50u6g.yaml____________(Hisense 50U6G TV)
-* jvc-hr-S9600u.yaml____________(JVC HR-S9600U VCR)
-* jvc-rs2-codeset-A.yaml________(JVC Projectors code set A - default) 
-* jvc-rs2-codeset-B.yaml________(JVC Projectors code set B - alt code set) 
-* LG-cinebeam-hu810p.yaml_______(LG Cinebeam HU810P projector)
-* optoma-UHD50X.yaml____________(Optoma UHD50X projector)
-* sony-VPL-XW600ES.yaml_________(Sony VPL-XW600ES projector)
-* sony-XBR-77A9G.yaml___________(Sony XBR-77A9G TV)
-* tivo-roamio-TCD846500.yaml____(TiVo Roamio)
+
+| | |
+| :--- | :--- |
+| **Mbenq-w5800.yaml** | BenQ W5800 projector |
+| **epson-pro-cinema-LS1200-projector.yaml** | Epson Projectors |
+| **hisense-50u6g.yaml** | Hisense 50U6G TV |
+| **jvc-hr-S9600u.yaml** | JVC HR-S9600U VCR |
+| **jvc-rs2-codeset-A.yaml** | JVC Projectors code set A - default | 
+| **jvc-rs2-codeset-B.yaml** | JVC Projectors code set B - alt code set | 
+| **LG-cinebeam-hu810p.yaml** | LG Cinebeam HU810P projector |
+| **optoma-UHD50X.yaml** | Optoma UHD50X projector |
+| **sony-VPL-XW600ES.yaml** | Sony VPL-XW600ES projector |
+| **sony-XBR-77A9G.yaml** | Sony XBR-77A9G TV |
+| **tivo-roamio-TCD846500.yaml** | TiVo Roamio |
 
 These two "factory" IR maps are WIP and may have incomplete or incorrect IR mapping...
 
-* AWOL-projector.yaml_______ Valerion
-* xgimi-titan.yaml__________ NOTE: this is ORIGINAL Titan, not NOIR
+| | |
+| :--- | :--- |
+| **AWOL-projector.yaml** | Valerion |
+| **xgimi-titan.yaml** | ORIGINAL Titan, not NOIR |
 
 
 ## Hardware Definition Packages
