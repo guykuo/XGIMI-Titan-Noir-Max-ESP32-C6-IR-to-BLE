@@ -555,7 +555,7 @@ script:
                 ESP_LOGI("IR Learn", "Press IR button for %s", learn_button_names.at(b_idx).c_str());
                 id(display_show)->execute(false, "IR Learn:", "Press Btn", learn_button_names.at(b_idx));
               } else {
-                ESP_LOGI("IR Learn", "All buttons captured! Device locked at Index 27. Awaiting save selection...");
+                ESP_LOGI("IR Learn", "All buttons captured! Awaiting save selection...0=OK  1=Up  2=Rt  3=Dn  4=Lf");
                 id(display_show)->execute(true, "Mem Slot", "0=OK 1=Up 2=Rt=", "3=Dn 4=Lf");
               }
                   
