@@ -109,12 +109,12 @@ I recommend using an ESP32-C3 with on-board OLED display. Although it is possibl
 
 ## Boards Tested and Known to Work..
 
-### ESP32-C3 with built in 0.42 OLD display. Many clones are available.
+### ESP32-C3 with built in 0.42 OLED display. Many clones are available.
 <img width="300" alt="esp32 c3 OLED" src="https://github.com/user-attachments/assets/f5da1f5f-e7a5-4947-a166-1334c34a57c2" />
 
 [Here is a good quality set of 3 including breakout boards](https://www.amazon.com/dp/B0G6YT4ZQ3)
 
-[A cheaper, usable clone with thinner PCB and often less well aligned OLD display ](https://www.amazon.com/dp/B0F59L9RMR)
+[A cheaper, usable clone with thinner PCB and often less well aligned OLED display ](https://www.amazon.com/dp/B0F59L9RMR)
 
 <br>
 <br>
@@ -125,7 +125,7 @@ The [ESP32-C6-WROOM-1](https://www.amazon.com/dp/B0H1GGL9L1?ref=ppx_yo2ov_dt_b_f
 <img width="500" alt="ESP32-C6-WROOM-1" src="https://github.com/user-attachments/assets/c580d0eb-c7f6-480c-9d7d-152ecd95c489" />
 
 
-You can optionally connect a [SSD1306 128x32 0.91-inch OLED display module](https://www.amazon.com/dp/B0GX9245FD) to this board. One might even connect the OLED display only during setup and troubleshooting. Support for adding a display is already in my hardware-c6.yaml file.
+You can optionally connect a [SSD1306 128x32 0.91-inch OLED display module](https://www.amazon.com/dp/B0GX9245FD) to this board. One might even connect the OLED display only during setup and troubleshooting. Support for adding a display is already in the hardware-c6.yaml file. See that file to learn which pins need to be connected for the display.
 
 <img width="636" height="222" alt="0 91-inch OLED display module" src="https://github.com/user-attachments/assets/49b91c07-67c8-4109-bf33-dbb260e0f5d2" />
 
@@ -136,7 +136,7 @@ You can optionally connect a [SSD1306 128x32 0.91-inch OLED display module](http
 
 ## Other ESP32 Boards
 
-If you want to use an ESP32 board other than the kinds herein, be certain it has at least bluetooth version 4.2 and BLE (Bluetooth Low Energy) capability. Otherwise, power-on broadcast to Xgimi projector will not work.
+If you want to use an ESP32 board other than the ones herein, be certain it has at least bluetooth version 4.2 and BLE (Bluetooth Low Energy) capability. Otherwise, power-on broadcast to Xgimi projector will not work.
 
 Board series that should work:
 
@@ -150,12 +150,12 @@ Boards that will NOT work
 
 *   Original ESP32 (WROOM-32 /DevKitC)
 *   ESP32-S2 series
-*   Waveshare-esp32-s3-touch-lcd-2.8 (incompatible with selectable profile system)
+*   Waveshare-esp32-s3-touch-lcd-2.8 (Unable to boot with most recent firmware)
     
 <br>
 Each variation of ESP board has its own pinout and specific GPIO pins suitable for for IR signal input. It is particularly important to obtain pinout information and know which GPIO pins are actually free for use (not strapping pins or already assigned to other board functions). Because that process can be overwhelming, four board configuration "hardware" files have been supplied. These pre-define board type and pinouts. Most likely, you can simply specify one of the supplied hardware files within your make file.
 
-Example "make" files provided have already been configured for those specific boards. Easiest way to proceed is to use one of the exact same boards as I have for this project. If you follow the same board selection and pin wiring that I made, you can directly use one of the supplied make files to create an IR to Bluetooth translator.
+Hardware files provided have already been configured for those specific boards. Easiest way to proceed is to use one of the exact same boards as I have for this project. If you follow the same board selection and pin wiring that I made, you can directly use one of the supplied hardwared files when creating an IR to Bluetooth translator.
 
 ### Using Other ESP Boards
 
@@ -169,11 +169,9 @@ Adjust values in your hardware yaml for your particular board.
 # ============= BEGIN Configuration Options KUO ==========
 
 substitutions:
-  
   pin_ir_receiver: GPIO1   # IR sensor. 
   pin_indicator_LED: GPIO8 # LED indicator (both ESP32-C3 and C6)
-  pin_sniff_btn: GPIO9     # use boot button for snifff. Both ESP32-c3 and ESP32-C6 use pin 9 for boot button. 
-  
+  pin_action_btn: GPIO9     # use boot button for actions. Both ESP32-c3 and ESP32-C6 use pin 9 for boot button. 
   
 # Core Architecture Declaration
 esp32:
@@ -225,7 +223,7 @@ Here are two ESP32-C6-WROOM-1 boards wired with two different style IR sensors.
 Here are ESP32-C3 OLED boards. My firmware displays inbound IR codes and equivalent Xgimi projector translation.
 <img width="1300" height="620" alt="oled esp32-c3" src="https://github.com/user-attachments/assets/04c25845-2c3f-4be7-bd48-4127073c7f61" />
 
-Such tiny boards to the job and provide good feedback via OLED display. Flexible sensor wire leads allow turning LED and OLED away from viewer while keeping IR sensor pointed in direction of IR signal. UV cured resin encapsulates IR sensor wire joints in this example.
+Such tiny boards do the job and provide good feedback via OLED display. Flexible sensor wire leads allow turning LED and OLED away from viewer while keeping IR sensor pointed in direction of IR signal. UV cured resin encapsulates IR sensor wire joints in this example.
 
 <img width="1000" height="743" alt="ESP32 C3 with IR sensor" src="https://github.com/user-attachments/assets/9f39a4ef-bfd0-496b-b69d-b79c36f6db5b" />
 
@@ -234,7 +232,7 @@ Such tiny boards to the job and provide good feedback via OLED display. Flexible
 
 ESP32 boards require very modest power for operation. Any stable USB-C power supply should suffice.
 
-[These work well](https://www.amazon.com/dp/B0DZ6J62C3) and include a varied length assortment of DATA capable cables.
+[These work well](https://www.amazon.com/dp/B0DZ6J62C3) and include a varied length assortment of **data capable** cables.
 
 <img width="400" alt="usbc power supply" src="https://github.com/user-attachments/assets/fe43824f-542d-45b6-890a-67b16024e743" />
 
@@ -282,7 +280,7 @@ Mrmachine already captured and mapped an original Titan Noir Max remote. We do n
 
 
 
-## 1\. Clone or copy this directory to your computer.
+## 1\. Download this Git to your computer.
 Cloning and downloading controls are within Github green "<> Code" button.
 
 <img width="400" alt="gihub directory clone" src="https://github.com/user-attachments/assets/f7c4ce8f-e0fb-49c3-a893-f6e6023dad4e" />
