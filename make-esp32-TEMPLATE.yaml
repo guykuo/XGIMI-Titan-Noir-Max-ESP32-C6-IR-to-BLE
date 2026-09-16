@@ -58,10 +58,10 @@ esp32:
   partitions: ir-common-kuo/appkit/partitions.csv  #larger app partition needed 
 
 debug:
-  update_interval: 10s
+  update_interval: 30s
   
 logger:
-  level: DEBUG 
+#  level: DEBUG 
   
 wifi:
   reboot_timeout: 0s
