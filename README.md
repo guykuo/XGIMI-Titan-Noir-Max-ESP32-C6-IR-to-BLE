@@ -276,11 +276,10 @@ When the projector is fully asleep, Power On broadcasts all 256 rolling-counter 
 
 The firmware contains the tested Titan Noir Max HID descriptor and button map.
 
-Your specific token lives in the `secrets.yaml`, not in the shareable source.
+In the translator project, your wake token is usually sniffed and stored directly on your ESP32 board. It can optionally be in the `secrets.yaml`, but is not required to be in `secrets.yaml`.
 
 Mrmachine already captured and mapped an original Titan Noir Max remote. We do not need to learn its buttons, HID descriptor, names or Home Assistant entities. That has already been done for us by mrmachine.
 
-**_The only per-remote value we must acquire is the original remote's 15-byte BLE wake token._**
 
 
 # Installing This Software on ESP32
@@ -328,7 +327,11 @@ py -3 -m venv .venv
 .venv\\Scripts\\python.exe -m pip install -r requirements.txt
 ```
 
+
 ## 3\. OPTIONAL STEP - Manually Capture Your Remote's Token
+<details>
+<summary>💡 <b>Manual wake token capture</b> (Click to expand)</summary>
+
 You do not have to do this step, unless you want your translator to have a "default" backup copy of your Xgimi wake token. Generally, this can be skipped because it is so easy to have the translator sniff the token later.
 
 Physically unplug the projector so it cannot reconnect to the original remote. Turn Bluetooth on and grant the terminal Bluetooth access if the operating system asks.
@@ -348,6 +351,7 @@ On Windows Powershell
 ```
 
 Keep the remote close to the computer and press its Power button several times during the scan. A trustworthy capture has a stable 15-byte tail and at least two distinct first-byte rolling-counter values.
+</details>
 
 ## 4\. Create `secrets.yaml` with optional captured token. 
 
