@@ -186,6 +186,20 @@ i2c:
 
 ```
 
+You also must edit the make file to include your new hardware file.
+```
+packages: 
+  # --- ESP32 board, Uncomment one (and only one) for your board
+  #hardware_package: !include ir-common-kuo/hardware-c3.yaml                  # supports built-in 0.42 inch OLED display
+  #hardware_package: !include ir-common-kuo/hardware-c6.yaml                 # supports external 0.9 inch i2c OLED display
+  #hardware_package: !include ir-common-kuo/hardware-m5stack-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
+  #hardware_package: !include ir-common-kuo/hardware-s3-hosyond-lcd-3.5-touch.yaml
+  #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-esp32-s3-touch-lcd-2.8.yaml
+  #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-lcd-1.47B.yaml
+
+  hardware_package: !include ir-common-kuo/my-hardware-file.YAML #<--- Your hardware file name must be here. Line uncommented.
+```
+
 Most users are better off obtaining one of the already tested and known working ESP32 boards.
 
 
