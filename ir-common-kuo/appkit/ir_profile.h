@@ -4,14 +4,14 @@
 #include <vector>
 #include <string>
 #include <cstring>
-#include <ArduinoJson.h>
+#include <sstream>
+#include <cJSON.h>
 
 // --- CORE STRUCT DEFINITIONS ---
 struct IRCommand {
   std::string name;
-  esphome::button::Button* button_obj; // Changed from TemplateButton* to base Button*
+  esphome::button::Button* button_obj; 
 };
-
 
 struct IRProfile {
   std::string profile_name;
@@ -19,21 +19,19 @@ struct IRProfile {
   uint32_t device_address;
   uint32_t cmd_clear_token_arm;  
   uint32_t cmd_clear_token_fire; 
-  std::map<uint32_t, IRCommand> cmd_codes; // Optimized 32-bit container maps for Sony stability
+  std::map<uint32_t, IRCommand> cmd_codes; 
 };
 
-// --- GLOBALS (Using 'inline' for safe multi-lambda cross-compilation) ---
+// --- GLOBALS ---
 inline std::vector<IRProfile> remote_profiles;
-inline bool flash_hydration_complete = false; // <=== ADD THIS LINE HERE
+inline bool flash_hydration_complete = false; 
 
-
-// --- FIXED FLASH-SAVABLE STRUCT LAYOUTS (Max 5 profiles, 30 keys each) ---
+// --- FIXED FLASH-SAVABLE STRUCT LAYOUTS (Max 5 profiles, 85 keys each) ---
 struct FlashStoredKey {
   uint32_t hex_code; 
   char target_button_id[32]; 
 };
 
-// This fits perfectly within individual preference limits!
 struct FlashStoredProfile {
   char profile_name[32];
   char protocol[16];
@@ -44,47 +42,30 @@ struct FlashStoredProfile {
   FlashStoredKey keys[85]; 
 };
 
-struct FlashDatabase {
-  uint16_t total_uploaded_profiles;
-  FlashStoredProfile profiles[5]; 
-};
-
-// --- HELPER & SYSTEM FUNCTIONS ---
-#include <span> // Ensure span header is available
+#include <span> 
 
 // Resolves an ESPHome button component reference from its clean text identifier string
 inline esphome::button::Button* resolve_button(const std::string& name) {
-  // Loop through all compiled button components registered on the device
   for (auto* btn : esphome::App.get_buttons()) {
-    
-    // Allocate the exact 128-byte footprint required by your ESPHome compiler base
     char buffer[128] = {0}; 
     std::span<char, 128> buf_span(buffer);
-    
-    // Capture the return value of get_object_id_to securely
     esphome::StringRef id_ref = btn->get_object_id_to(buf_span);
-    
-    // FIX: Use .c_str() and .size() to correctly initialize the standard string
     std::string internal_id(id_ref.c_str(), id_ref.size());
     
-    // Strict comparison prevents alphabetical or prefix overflows between your token keys
     if (internal_id == name) {
       ESP_LOGD("Linker", "Live IR Match! Bound string ID '%s' securely to component pointer.", name.c_str());
       return btn;
     }
   }
-  
   return nullptr; 
 }
 
-// --- ADD A GLOBAL TRACKING VARIABLE FOR BOUNDS ---
-inline size_t factory_count = 13; // Dynamic default fallback value
+inline size_t factory_count = 13; 
 
 // Converts the dynamic vector into isolated chunks and commits them sequentially
 inline void commit_database_to_flash() {
   uint16_t saved_count = 0;
 
-  // DYNAMIC FIX: Start saving custom tracks immediately following factory maps
   for (size_t i = factory_count; i < remote_profiles.size(); i++) {
     if (saved_count >= 5) break; 
 
@@ -118,13 +99,9 @@ inline void commit_database_to_flash() {
   ESP_LOGI("ir_hub", "Successfully synchronized %d custom profiles to isolated NVS tracks.", saved_count);
 }
 
-
-
 // Rehydrates dynamic custom slots out of individual Flash NVS blocks safely
 inline void load_saved_flash_profiles() {
-  // DYNAMIC FIX: Enforce padding layout matrix using our fluid runtime bounds variable
   if (remote_profiles.size() < factory_count) {
-    ESP_LOGW("ir_hub", "Database structure safety check: Padding missing factory slots up to %d...", factory_count);
     while (remote_profiles.size() < factory_count) {
       remote_profiles.push_back({ "Placeholder Layout", "NEC", 0, 0, 0, {} });
     }
@@ -155,7 +132,6 @@ inline void load_saved_flash_profiles() {
         restored_profile.cmd_codes[flash_p.keys[k].hex_code] = { b_id, nullptr };
       }
 
-      // DYNAMIC FIX: Append custom layouts sequentially strictly right after current factory counts
       size_t target_vector_index = factory_count + slot;
       while (remote_profiles.size() <= target_vector_index) {
         remote_profiles.push_back({ "Placeholder", "NEC", 0, 0, 0, {} });
@@ -163,119 +139,73 @@ inline void load_saved_flash_profiles() {
 
       remote_profiles[target_vector_index] = restored_profile;
       loaded_custom_count++;
-      ESP_LOGI("ir_hub", "NVS Slot [%d] successfully mapped to Dynamic Index [%d]: %s", 
-               slot, (int)target_vector_index, restored_profile.profile_name.c_str());
     }
   }
   
-  ESP_LOGI("ir_hub", "Database hydration pass complete. Total profiles loaded: %zu", remote_profiles.size());
   flash_hydration_complete = true;
 }
 
-
-
 inline void link_hardware_buttons() {
-    ESP_LOGI("Linker", "Beginning global layout pointer synchronization across all %d profiles...", (int)remote_profiles.size());
-
-    // Iterate through EVERY profile layout currently residing in RAM
     for (size_t idx = 0; idx < remote_profiles.size(); idx++) {
-        int bound_count = 0;
-        
         for (auto& pair : remote_profiles[idx].cmd_codes) {
             pair.second.button_obj = resolve_button(pair.second.name);
-            
-            if (pair.second.button_obj != nullptr) {
-                bound_count++;
-            }
         }
-        
-        ESP_LOGD("Linker", "Profile [%zu] '%s': Successfully bound %d buttons.", 
-                 idx, remote_profiles[idx].profile_name.c_str(), bound_count);
-    }
-
-    // Direct safety validation check for the currently selected active profile
-    int current_idx = id(active_remote_layout);
-    if (current_idx >= 0 && current_idx < (int)remote_profiles.size()) {
-        ESP_LOGI("Linker", "Global pointer mapping complete. Active Profile active: %s", 
-                 remote_profiles[current_idx].profile_name.c_str());
-    } else {
-        ESP_LOGE("Linker", "Global pointer mapping warning: Current active profile index [%d] is out of bounds!", current_idx);
     }
 }
 
+// Parses an incoming JSON file string using cJSON
+inline bool import_profiles_from_json(const std::string& json_str) {
+  cJSON *root_array = cJSON_Parse(json_str.c_str());
+  if (root_array == nullptr) return false;
 
-
-// Serializes dynamic profile slots into JSON (V7 API)
-inline std::string export_profiles_to_json() {
-  JsonDocument doc; 
-  JsonArray profiles_arr = doc.to<JsonArray>();
-  char buf[32];
-
-  // DYNAMIC FIX: Fluid scaling for text/backup registers
-  for (size_t i = factory_count; i < remote_profiles.size(); i++) {
-    const auto& p = remote_profiles[i];
-    JsonObject p_obj = profiles_arr.add<JsonObject>(); 
-    p_obj["name"] = p.profile_name;
-    p_obj["protocol"] = p.protocol;
-    
-    snprintf(buf, sizeof(buf), "0x%04X", (unsigned int)p.device_address);
-    p_obj["address"] = std::string(buf);
-    snprintf(buf, sizeof(buf), "0x%04X", (unsigned int)p.cmd_clear_token_arm);
-    p_obj["clear_arm"] = std::string(buf);
-    snprintf(buf, sizeof(buf), "0x%04X", (unsigned int)p.cmd_clear_token_fire);
-    p_obj["clear_fire"] = std::string(buf);
-
-    JsonArray keys_arr = p_obj["keys"].to<JsonArray>();
-    for (const auto& pair : p.cmd_codes) {
-      JsonObject k_obj = keys_arr.add<JsonObject>(); 
-      snprintf(buf, sizeof(buf), "0x%04X", (unsigned int)pair.first);
-      k_obj["code"] = std::string(buf);
-      k_obj["button"] = pair.second.name;
-    }
+  if (!cJSON_IsArray(root_array)) {
+    cJSON_Delete(root_array);
+    return false;
   }
 
-  std::string output;
-  serializeJson(doc, output);
-  return output;
-}
-
-
-// Parses an incoming JSON file string and rehydrates dynamic slots (V7 API)
-inline bool import_profiles_from_json(const std::string& json_str) {
-  JsonDocument doc; 
-  DeserializationError error = deserializeJson(doc, json_str);
-  if (error) return false;
-
-  JsonArray profiles_arr = doc.as<JsonArray>();
-  
-  // DYNAMIC FIX: Crop list directly to runtime factory bounds limit line
   if (remote_profiles.size() > factory_count) {
     remote_profiles.resize(factory_count);
   }
 
-  for (JsonObject p_obj : profiles_arr) {
-    IRProfile restored_p;
-    restored_p.profile_name = p_obj["name"].as<std::string>();
-    restored_p.protocol = p_obj["protocol"].as<std::string>();
-    
-    std::string addr_str = p_obj["address"].as<std::string>();
-    restored_p.device_address = std::stoul(addr_str, nullptr, 16);
-    std::string clear_arm_str = p_obj["clear_arm"].as<std::string>();
-    restored_p.cmd_clear_token_arm = std::stoul(clear_arm_str, nullptr, 16);
-    std::string clear_fire_str = p_obj["clear_fire"].as<std::string>();
-    restored_p.cmd_clear_token_fire = std::stoul(clear_fire_str, nullptr, 16);
+  cJSON *p_obj = nullptr;
+  cJSON_ArrayForEach(p_obj, root_array) {
+    cJSON *name = cJSON_GetObjectItemCaseSensitive(p_obj, "name");
+    cJSON *protocol = cJSON_GetObjectItemCaseSensitive(p_obj, "protocol");
+    cJSON *address = cJSON_GetObjectItemCaseSensitive(p_obj, "address");
+    cJSON *clear_arm = cJSON_GetObjectItemCaseSensitive(p_obj, "clear_arm");
+    cJSON *clear_fire = cJSON_GetObjectItemCaseSensitive(p_obj, "clear_fire");
+    cJSON *keys = cJSON_GetObjectItemCaseSensitive(p_obj, "keys");
 
-    JsonArray keys_arr = p_obj["keys"].as<JsonArray>();
-    for (JsonObject k_obj : keys_arr) {
-      std::string code_str = k_obj["code"].as<std::string>();
-      uint32_t code = std::stoul(code_str, nullptr, 16);
-      std::string b_id = k_obj["button"].as<std::string>();
-      restored_p.cmd_codes[code] = { b_id, resolve_button(b_id) };
+    if (!cJSON_IsString(name) || !cJSON_IsString(protocol) || !cJSON_IsString(address)) {
+      continue;
+    }
+
+    IRProfile restored_p;
+    restored_p.profile_name = name->valuestring;
+    restored_p.protocol = protocol->valuestring;
+    restored_p.device_address = std::stoul(address->valuestring, nullptr, 16);
+    
+    restored_p.cmd_clear_token_arm = (cJSON_IsString(clear_arm)) ? std::stoul(clear_arm->valuestring, nullptr, 16) : 0;
+    restored_p.cmd_clear_token_fire = (cJSON_IsString(clear_fire)) ? std::stoul(clear_fire->valuestring, nullptr, 16) : 0;
+
+    if (cJSON_IsArray(keys)) {
+      cJSON *k_obj = nullptr;
+      cJSON_ArrayForEach(k_obj, keys) {
+        cJSON *code_obj = cJSON_GetObjectItemCaseSensitive(k_obj, "code");
+        cJSON *btn_obj = cJSON_GetObjectItemCaseSensitive(k_obj, "button");
+
+        if (cJSON_IsString(code_obj) && cJSON_IsString(btn_obj)) {
+          uint32_t code = std::stoul(code_obj->valuestring, nullptr, 16);
+          std::string b_id = btn_obj->valuestring;
+          restored_p.cmd_codes[code] = { b_id, resolve_button(b_id) };
+        }
+      }
     }
 
     remote_profiles.push_back(restored_p);
   }
 
+  cJSON_Delete(root_array);
   commit_database_to_flash();
   return true;
 }

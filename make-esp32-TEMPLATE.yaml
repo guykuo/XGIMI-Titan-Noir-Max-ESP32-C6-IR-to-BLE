@@ -57,8 +57,11 @@ external_components:
 esp32:
   partitions: ir-common-kuo/appkit/partitions.csv  #larger app partition needed 
 
+debug:
+  update_interval: 10s
+  
 logger:
-#  level: DEBUG 
+  level: DEBUG 
   
 wifi:
   reboot_timeout: 0s
@@ -66,6 +69,16 @@ wifi:
     ssid: "${ble_remote_name}"
     password: !secret fallback_ap_password
     ap_timeout: 60s
+
+
+# Enable v3 Web Server component
+web_server:
+  port: 80
+  version: 3
+  local: true # Hosts the interface completely offline
+  auth:
+    username: "admin"
+    password: !secret fallback_ap_password
 
 captive_portal:
     
@@ -97,10 +110,7 @@ api:
               id(ir_receiver_mode) = 1; // Set to action mode
               
               id(display_token_remote_profile).execute();
-              
-              // Force update our text component so Home Assistant instantly synchronizes to the fresh dataset
-              id(sync_json_backup_sensor).execute();
-              
+                            
               id(display_show)->execute(true, "JSON Imported!", "Profiles Recovered", "Database Active");
             } else {
               ESP_LOGE("JSON Import", "Failed parsing configuration payload string! Incompatible or corrupted JSON layout format.");
@@ -120,8 +130,9 @@ esphome:
     - <vector>
     - ir-common-kuo/appkit/secrets_bridge.h
     - ir-common-kuo/appkit/ir_profile.h
-  libraries:
-    - ArduinoJson  
+
+  build_flags: "-Wl,--require-defined=cJSON_Parse"
+  
   project:
     name: xgimi.titan-noir-esp32-ir-kuo
     version: 26.09.10.001
@@ -269,6 +280,29 @@ globals:
     type: bool
     restore_value: no
     initial_value: 'false'
+
+
+# ============================================================
+sensor:
+  - platform: debug
+    free:
+      name: "Heap Free RAM"
+    fragmentation:
+      name: "Heap Fragmentation"
+    block:
+      name: "Max Free Heap Block"
+    loop_time:
+      name: "Main Loop Time"
+    # # Optional: If your hardware has PSRAM (like some ESP32 variants)
+    # psram:
+    #   name: "Free PSRAM"
+
+text_sensor:
+  - platform: debug
+    device:
+      name: "Device Hardware Info" # Shows flash chip size, speed, mode, and ESP version
+    reset_reason:
+      name: "Last Reset Reason"
 
 # ============================================================
 binary_sensor:
@@ -603,7 +637,6 @@ script:
                                               snprintf(ha_buf, sizeof(ha_buf), "%02X", adv[j]);
                                               ha_payload += ha_buf;
                                           }
-                                          id(captured_xgimi_token).publish_state(ha_payload);
 
                                           // Protection Check: Duplicate verification
                                           if (memcmp(tail_ptr, id(active_wake_token), 15) == 0) {
@@ -830,29 +863,10 @@ script:
 
           }
 
-  #--------
-  # Helper script to refresh our download text sensor state
-  - id: sync_json_backup_sensor
-    then:
-      - text_sensor.template.publish:
-          id: ir_hub_backup_database_json
-          state: !lambda 'return export_profiles_to_json();'
-
 
 #===========================
-text_sensor:
-  - platform: template
-    name: "IR Hub Backup Database JSON"
-    id: ir_hub_backup_database_json
-    icon: "mdi:code-json"
-    update_interval: never # Manual sync updates only to preserve RAM memory limits
-    
-  - platform: template
-    name: "Captured Xgimi Wake Token"
-    id: captured_xgimi_token
-    icon: mdi:key-wireless
-    entity_category: diagnostic
-    
+
+
 switch:
   - platform: template
     name: "Xgimi Token Sniffer"

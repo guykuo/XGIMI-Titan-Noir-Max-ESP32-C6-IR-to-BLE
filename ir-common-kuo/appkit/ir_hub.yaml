@@ -1,5 +1,8 @@
 # ir-common-kuo/ir-hub.yaml
 esphome:
+  name: ir-hub
+
+
 
 #====================================================================
 #=========================== IR Receiver ============================  
@@ -404,8 +407,6 @@ script:
                                    "All Chs Cleared",
                                    "Epson Default");
 
-      - script.execute: sync_json_backup_sensor
-
 
   # ====================================================================
   # IR code learning mode scrpts
@@ -694,8 +695,6 @@ script:
                   ESP_LOGW("IR Learn", "Forcing instant NVS flash partition sync. Do not disconnect power...");
                   esphome::global_preferences->sync(); // <=== FORCES HARD INSTANT WRITE TO SILICON
                                 
-                  id(sync_json_backup_sensor).execute(); // Updates the Home Assistant text register
-
                   id(display_show)->execute(true, "Stored Profile", learned_profile.profile_name, "Operational");
                   
                   // change into negative index for learned profiles
@@ -1686,9 +1685,11 @@ script:
         ESP_LOGI("ir_hub", "Factory profiles loaded.");
 
           
+     
 interval:
   # ====================================================================
   # TIMER 1: Process IR hold repeat loops
+  # ====================================================================
   - interval: 80ms
     then:
       - lambda: |-
@@ -1705,9 +1706,9 @@ interval:
             }
           }
      
-          
   # ====================================================================
   # TIMER 2: True One-Shot Post-Boot Storage Recovery & Mapping
+  # ====================================================================
   - interval: 2.0sec 
     id: boot_initialization_timer 
     then:
@@ -1718,18 +1719,13 @@ interval:
           then:
             - script.execute: populate_factory_profiles
             - logger.log: "System baseline check: Factory profiles built cleanly. Awaiting next pass..."
-            - delay: 100ms # Gives vector structures a tiny window to settle in memory safely
+            - delay: 100ms 
 
       # PASS 2: Safely read our persistent custom layout tracks out of the physical NVS blocks
       - lambda: |-
           ESP_LOGI("ir_hub", "Executing physical flash database rehydration pass...");
-          
-          // 1. Unpack our custom slots safely into memory indices 13-17
           load_saved_flash_profiles();
-          
-          // 2. Link text identities to physical component pointer address hooks
           link_hardware_buttons();
-          
           ESP_LOGI("ir_hub", "Hardware pointer mapping complete. System armed.");
           
       - script.execute: setup_ir_receiver_for_current_profile
@@ -1737,7 +1733,6 @@ interval:
           id(ir_receiver_mode) = 1; // Securely move device into active listening mode
 
       - script.execute: display_token_remote_profile
-      - script.execute: sync_json_backup_sensor 
       
       # The Kill Switch: Permanently shuts down this initialization timer loop
       - component.suspend: boot_initialization_timer
