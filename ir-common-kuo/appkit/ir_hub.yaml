@@ -269,11 +269,10 @@ globals:
     type: uint32_t
     initial_value: '0'
     
-  - id: commandName # used to pass name of command back from IRmap
+  - id: commandName 
     type: std::string
     restore_value: no
-    initial_value: ''
-    
+    initial_value: '"                                "'     
     
   # Remote profile learning globals. 
   - id: ir_window_active
@@ -389,8 +388,8 @@ script:
           
           esphome::global_preferences->sync();
 
-          if (remote_profiles.size() > 13) {
-            remote_profiles.resize(13);
+          if (remote_profiles.size() > factory_count) {
+            remote_profiles.resize(factory_count);
           }
           
           id(active_remote_layout) = id(default_profile); // Reset profile to default Projector
@@ -583,12 +582,18 @@ script:
       - lambda: |-
           uint32_t now = millis();
 
-          // each lambda must make local active_profile reference and abort if not valid
+          // Fetch the current active remote layout index
           int current_idx = id(active_remote_layout);
-          if (!(0 <= current_idx && current_idx < remote_profiles.size())) {
-            return; // abort if illegal current_idx 
+          
+          // Calculate true index. Wrapped FACTORY_COUNT to ensure scope access if defined globally.
+          size_t true_hardware_index = (current_idx < 0) ? (factory_count + (current_idx * -1) - 1) : current_idx;
+
+          // Abort if the index is out of bounds for your profile list
+          if (true_hardware_index >= remote_profiles.size()) {
+            return; 
           }
-          const auto& active_profile = remote_profiles[current_idx]; // Get the active_profile struct
+          
+          const auto& active_profile = remote_profiles[true_hardware_index];
           
           //ESP_LOGD("IR HUB", "IR Receiver after current_idx. Current Mode: %lu", id(ir_receiver_mode));
 
@@ -675,7 +680,7 @@ script:
                   }
 
                   // Fit profile into target vector index array placement (Slots 13 to 17)
-                  size_t target_vector_index = 13 + selected_slot;
+                  size_t target_vector_index = factory_count + selected_slot;
                   while (remote_profiles.size() <= target_vector_index) {
                     remote_profiles.push_back({ "Placeholder", "NEC", 0, 0, 0, {} });
                   }
@@ -693,8 +698,8 @@ script:
 
                   id(display_show)->execute(true, "Stored Profile", learned_profile.profile_name, "Operational");
                   
-                  // Auto-switch engine settings to execute this layout immediately
-                  id(active_remote_layout) = static_cast<int>(target_vector_index);
+                  // change into negative index for learned profiles
+                  id(active_remote_layout) = ((selected_slot + 1) * -1); 
 
                   id(setup_ir_receiver_for_current_profile).execute();
                   id(ir_receiver_mode) = 1; // Return to Action mode
@@ -910,36 +915,35 @@ script:
           if (it != active_profile.cmd_codes.end()) {
             if (!id(global_token_clear_armed)) {
               if (is_hold) {
-                id(commandName) = it->second.name + " (Hold)";
+                // Safeguard allocations via assign
+                id(commandName).assign(it->second.name + " (Hold)");
                 ESP_LOGD("IR Hold Loop", "Repeating Button Stream Press: %s", it->second.name.c_str());
               } else {
-                id(commandName) = it->second.name;
+                id(commandName).assign(it->second.name);
                 ESP_LOGD("IR Translated", "IR First Press ---> : %s", it->second.name.c_str());
               }
             }
             
-            // DIRECT ROUTING: Run the true global system automations directly by identity string
+            // DIRECT ROUTING
             if (it->second.name == "token_sniff") {
               id(showing_special_info) = true;
-              
-              // Direct script execution call to completely bypass component pointer link limits
               id(sniffing_sequence).execute(); 
             } 
             else if (it->second.name == "token_recall") {
               id(showing_special_info) = true;
-              
               id(execute_token_recall_routine).execute();
             } 
             else if (it->second.name == "token_clear") {
               id(run_token_clear_worker).execute();
             }
-            // Execute standard physical hardware button objects safely if assigned
             else if (it->second.button_obj != nullptr) {
               it->second.button_obj->press();
             }
             
           } else {
-            id(commandName) = "Unassigned"; 
+            // SAFE RETRIEVAL GUARD RAIL:
+            id(commandName).assign("Unassigned"); 
+            ESP_LOGW("IR Guard", "Safely skipped an unmapped hex code sequence: 0x%X", (unsigned int)ir_command);
           }
  
  
@@ -951,31 +955,31 @@ script:
     then:
       - lambda: |-
           int current_idx = id(active_remote_layout);
+          size_t true_hardware_index = 0;
+
+          // DYNAMIC TRANSLATION RAILS
+          if (current_idx < 0) {
+            // Its a custom learned profile! (e.g., -1 means Custom Slot 0)
+            int custom_slot = (current_idx * -1) - 1; 
+            true_hardware_index = factory_count + custom_slot;
+          } else {
+            // It is a standard factory profile
+            true_hardware_index = current_idx;
+          }
           
-          // BOUNDARY CHECK: If index falls outside our valid memory matrix,
-          // change to hardcoded factory default.
-          if (current_idx < 0 || current_idx >= (int)remote_profiles.size()) {
-            ESP_LOGW("Profile Control", "Stuck out-of-bounds index vector layout [Index %d] detected! Overriding to safe default layout...", current_idx);
-            
-            id(active_remote_layout) = id(default_profile); // Reset profile to default Projector
-            current_idx = id(default_profile);
+          // BOUNDARY CHECK USING TRANSLATED INDEX
+          if (true_hardware_index >= remote_profiles.size()) {
+            ESP_LOGW("Profile Control", "Target index out of bounds! Overriding to safe default layout...");
+            id(active_remote_layout) = id(default_profile); 
+            true_hardware_index = id(default_profile);
           }
 
-          // Proceed with normal engine startup sequences using a verified layout index
-          if (0 <= current_idx && current_idx < (int)remote_profiles.size()) {
-            const auto& active_profile = remote_profiles[current_idx];
-             
-            id(ir_receiver_mode) = 1; // Securely change state back to Action Mode!
-            id(ir_receiver_allowed_protocol) = active_profile.protocol;
-            
-            ESP_LOGI("Profile Control", "Profile layout '%s' fully engaged.", active_profile.profile_name.c_str());
-            
-          } else {
-            id(ir_receiver_mode) = 0; // Safe-mode fallback guard
-            id(ir_receiver_allowed_protocol) = "NEC";
-            
-            ESP_LOGE("Profile Control", "Critical Failure: Vector array sizing limits collapsed.");
-          }
+          const auto& active_profile = remote_profiles[true_hardware_index];
+          id(ir_receiver_mode) = 1; 
+          id(ir_receiver_allowed_protocol) = active_profile.protocol;
+          
+          ESP_LOGI("Profile Control", "Profile layout '%s' engaged via index %d.", 
+                   active_profile.profile_name.c_str(), current_idx);
           
           
   #----------------------------------------
@@ -1509,61 +1513,61 @@ script:
         // INDEX 9: Mapping 10 (Sony VPL-XW600ES projector)
         // ====================================================================
         remote_profiles.push_back({
-          "Sony Projector", "SONY", 0x0000, 0x0008AB54, 0x00002D2A, // BRT TV, OK
+          "Sony Projector", "SONY", 0x0000, 0x8AB54, 0x02D2A, // BRT TV, OK
           {
-            { 0x00003A2A,       { "power_on",      id(power_on) } },             // Power On (discrete)
-            { 0x00007A2A,       { "power_off",     id(power_off_immediately)}},  // Power Off (discrete)
-            { 0x0000542A,       { "power_on_alt",  id(power_on) } },             // Power Toggle as on discrete
-            { 0x0000562A,       { "cursor_up",     id(cursor_up) } },      // up arrow
-            { 0x0000362A,       { "cursor_down",   id(cursor_down) } },    // down arrow
-            { 0x0000162A,       { "cursor_left",   id(cursor_left) } },    // left arrow
-            { 0x0000662A,       { "cursor_right",  id(cursor_right) } },   // right arrow
-            { 0x00002D2A,       { "cursor_enter",  id(cursor_enter) } },   // OK / Enter
-            { 0x00004A2A,       { "settings_menu", id(settings_menu) } },  // Menu
-            { 0x00006F2A,       { "home",          id(home) } },           // Reset
-            { 0x00018BE4,       { "back",          id(back) } },           // Position
-            { 0x0006AB54,       { "game_menu",     id(game_menu) } },      // Game
-            { 0x000EAB54,       { "picture",       id(picture) } },        // Photo
-            { 0x0000752A,       { "input",         id(input) } },          // Input
-            { 0x00026B54,       { "focus_manual",  id(focus_manual) } },   // Focus
-            { 0x00046B54,       { "focus_auto",    id(focus_auto) } },     // Zoom
-            { 0x00076B54,       { "shortcut_1",    id(shortcut_1) } },     // Aspect Ratio
-            { 0x0000502A,       { "shortcut_2",    id(shortcut_2) } },     // Motion Flow
-            { 0x000DCB54,       { "shortcut_3",    id(shortcut_3) } },     // 3D
-            { 0x000D2B54,       { "shortcut_4",    id(shortcut_4) } },     // Color Space
-            { 0x00000C2A,       { "volume_up",     id(volume_up) } },      // CONTRAST 
-            { 0x00004C2A,       { "volume_down",   id(volume_down) } },    // CONTRAST DOWN
-            { 0x000FAB54,       { "mute",          id(mute) } },           // Advanced Iris
-            { 0x0009AB54,       { "token_sniff",   id(token_sniff) } },    // BRT Cinema
-            { 0x0008AB54,       { "token_clear",   id(token_clear) } },    // BRT TV
-            { 0x0002AB54,       { "token_recall",  id(token_recall) } },   // User
-            { 0x00007C2A,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // BRIGHTNESS DOWN
-            { 0x00003C2A,       { "BT_clear_pair", id(bluetooth_pairing_clear) } },  // BRIGHTNESS UP
+            { 0x03A2A,       { "power_on",      id(power_on) } },             // Power On (discrete)
+            { 0x07A2A,       { "power_off",     id(power_off_immediately)}},  // Power Off (discrete)
+            { 0x0542A,       { "power_on_alt",  id(power_on) } },             // Power Toggle as on discrete
+            { 0x0562A,       { "cursor_up",     id(cursor_up) } },      // up arrow
+            { 0x0362A,       { "cursor_down",   id(cursor_down) } },    // down arrow
+            { 0x0162A,       { "cursor_left",   id(cursor_left) } },    // left arrow
+            { 0x0662A,       { "cursor_right",  id(cursor_right) } },   // right arrow
+            { 0x02D2A,       { "cursor_enter",  id(cursor_enter) } },   // OK / Enter
+            { 0x04A2A,       { "settings_menu", id(settings_menu) } },  // Menu
+            { 0x06F2A,       { "home",          id(home) } },           // Reset
+            { 0x18BE4,       { "back",          id(back) } },           // Position
+            { 0x6AB54,       { "game_menu",     id(game_menu) } },      // Game
+            { 0xEAB54,       { "picture",       id(picture) } },        // Photo
+            { 0x0752A,       { "input",         id(input) } },          // Input
+            { 0x26B54,       { "focus_manual",  id(focus_manual) } },   // Focus
+            { 0x46B54,       { "focus_auto",    id(focus_auto) } },     // Zoom
+            { 0x76B54,       { "shortcut_1",    id(shortcut_1) } },     // Aspect Ratio
+            { 0x0502A,       { "shortcut_2",    id(shortcut_2) } },     // Motion Flow
+            { 0xDCB54,       { "shortcut_3",    id(shortcut_3) } },     // 3D
+            { 0xD2B54,       { "shortcut_4",    id(shortcut_4) } },     // Color Space
+            { 0x00C2A,       { "volume_up",     id(volume_up) } },      // CONTRAST 
+            { 0x04C2A,       { "volume_down",   id(volume_down) } },    // CONTRAST DOWN
+            { 0xFAB54,       { "mute",          id(mute) } },           // Advanced Iris
+            { 0x9AB54,       { "token_sniff",   id(token_sniff) } },    // BRT Cinema
+            { 0x8AB54,       { "token_clear",   id(token_clear) } },    // BRT TV
+            { 0x2AB54,       { "token_recall",  id(token_recall) } },   // User
+            { 0x07C2A,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // BRIGHTNESS DOWN
+            { 0x03C2A,       { "BT_clear_pair", id(bluetooth_pairing_clear) } },  // BRIGHTNESS UP
     
-            { 0x0003AB54,       { "Color Temp",        id(home) } },  // Color Temp
-            { 0x0000702A,       { "Contrast Enhancer", id(home) } },  // Contrast Enhancer
-            { 0x000CAB54,       { "FILM 1",            id(home) } },  // FILM 1
-            { 0x0001AB54,       { "FILM 2",            id(home) } },  // FILM 2
-            { 0x0007AB54,       { "Gamma Correction",  id(home) } },  // Gamma Correction
-            { 0x00006A2A,       { "Input HDMI 1",      id(home) } },  // Input HDMI 1
-            { 0x00001A2A,       { "Input HDMI 2",      id(home) } },  // Input HDMI 2
-            { 0x00004BE4,       { "Position 1.85",     id(home) } },  // Position 1.85
-            { 0x00084BE4,       { "Position 2.35",     id(home) } },  // Position 2.35
-            { 0x000C4BE4,       { "Position Custom 2", id(home) } },  // Position Custom 2
-            { 0x00024BE4,       { "Position Custom 3", id(home) } },  // Position Custom 3
-            { 0x00032B54,       { "Reality creation",  id(home) } },  // Reality creation
-            { 0x000AAB54,       { "REF",               id(home) } },  // REF
-            { 0x0000622A,       { "sharpness down",    id(home) } },  // sharpness down
-            { 0x0000222A,       { "sharpness up",      id(home) } },  // sharpness up
-            { 0x000C6B54,       { "shift",             id(home) } },  // shift
-            { 0x0004AB54,       { "TV",                id(home) } },  // TV
-            { 0x00042BE4,       { "wide mode full",    id(home) } },  // wide mode full
-            { 0x000FCBE4,       { "wide mode full1",   id(home) } },  // wide mode full1
-            { 0x00002BE4,       { "wide mode full2",   id(home) } },  // wide mode full2
-            { 0x00082BE4,       { "wide mode normal",  id(home) } },  // wide mode normal
-            { 0x0007CBE4,       { "wide mode WZoom",   id(home) } },  // wide mode WZoom
-            { 0x000C2BE4,       { "wide mode zoom",    id(home) } },  // wide mode zoom
-            { 0x00022BE4,       { "wide mode anamorphic", id(home) } }  // wide mode anamorphic zoom
+            { 0x3AB54,       { "Color Temp",        id(home) } },  // Color Temp
+            { 0x0702A,       { "Contrast Enhancer", id(home) } },  // Contrast Enhancer
+            { 0xCAB54,       { "FILM 1",            id(home) } },  // FILM 1
+            { 0x1AB54,       { "FILM 2",            id(home) } },  // FILM 2
+            { 0x7AB54,       { "Gamma Correction",  id(home) } },  // Gamma Correction
+            { 0x06A2A,       { "Input HDMI 1",      id(home) } },  // Input HDMI 1
+            { 0x01A2A,       { "Input HDMI 2",      id(home) } },  // Input HDMI 2
+            { 0x04BE4,       { "Position 1.85",     id(home) } },  // Position 1.85
+            { 0x84BE4,       { "Position 2.35",     id(home) } },  // Position 2.35
+            { 0xC4BE4,       { "Position Custom 2", id(home) } },  // Position Custom 2
+            { 0x24BE4,       { "Position Custom 3", id(home) } },  // Position Custom 3
+            { 0x32B54,       { "Reality creation",  id(home) } },  // Reality creation
+            { 0xAAB54,       { "REF",               id(home) } },  // REF
+            { 0x0622A,       { "sharpness down",    id(home) } },  // sharpness down
+            { 0x0222A,       { "sharpness up",      id(home) } },  // sharpness up
+            { 0xC6B54,       { "shift",             id(home) } },  // shift
+            { 0x4AB54,       { "TV",                id(home) } },  // TV
+            { 0x42BE4,       { "wide mode full",    id(home) } },  // wide mode full
+            { 0xFCBE4,       { "wide mode full1",   id(home) } },  // wide mode full1
+            { 0x02BE4,       { "wide mode full2",   id(home) } },  // wide mode full2
+            { 0x82BE4,       { "wide mode normal",  id(home) } },  // wide mode normal
+            { 0x7CBE4,       { "wide mode WZoom",   id(home) } },  // wide mode WZoom
+            { 0xC2BE4,       { "wide mode zoom",    id(home) } },  // wide mode zoom
+            { 0x22BE4,       { "wide mode anamorphic", id(home) } }  // wide mode anamorphic zoom
           }
         });
     
@@ -1571,37 +1575,37 @@ script:
         // INDEX 10: Mapping 11 (Sony XBR-77A9G TV)
         // ====================================================================
         remote_profiles.push_back({
-          "Sony XBR", "SONY", 0x0000, 0x000210, 0x000A70, // 5, Arrow Select
+          "Sony XBR", "SONY", 0x0000, 0x0210, 0x0A70, // 5, Arrow Select
           {
-            { 0x000750,       { "power_on",      id(power_on) } },             // power on discrete
-            { 0x000A90,       { "power_on_alt",  id(power_on) } },             // power (toggle)
-            { 0x000F50,       { "power_off",     id(power_off_immediately)} }, // power off discrete
-            { 0x000910,       { "power_off_alt", id(power_off_immediately)} }, // 0
-            { 0x0002D0,       { "cursor_left",   id(cursor_left) } },    // Arrow Left
-            { 0x000CD0,       { "cursor_right",  id(cursor_right) } },   // Arrow Right
-            { 0x0002F0,       { "cursor_up",     id(cursor_up) } },      // Arrow Up
-            { 0x000AF0,       { "cursor_down",   id(cursor_down) } },    // Arrow Down
-            { 0x000A70,       { "cursor_enter",  id(cursor_enter) } },   // Arrow Select
-            { 0x006923,       { "settings_menu", id(settings_menu) } },  // Action Menu
-            { 0x0062E9,       { "back",          id(back) } },           // Back
-            { 0x000070,       { "home",          id(home) } },           // Home
-            { 0x003123,       { "game_menu",     id(game_menu) } },      // Google Play
-            { 0x000A50,       { "input",         id(input) } },          // Input
-            { 0x000250,       { "picture",       id(picture) } },        // TV
-            { 0x000AE9,       { "focus_auto",    id(focus_auto) } },     // subtitle
-            { 0x000E90,       { "focus_manual",  id(focus_manual) } },   // audio
-            { 0x0072E9,       { "shortcut_1",    id(shortcut_1) } },     // yellow
-            { 0x0012E9,       { "shortcut_2",    id(shortcut_2) } },     // blue
-            { 0x0052E9,       { "shortcut_3",    id(shortcut_3) } },     // red
-            { 0x0032E9,       { "shortcut_4",    id(shortcut_4) } },     // green
-            { 0x000490,       { "volume_up",     id(volume_up) } },      // volume up
-            { 0x000C90,       { "volume_down",   id(volume_down) } },    // volume down
-            { 0x000290,       { "mute",          id(mute) } },           // mute
-            { 0x000C10,       { "token_sniff",   id(token_sniff) } },    // 4
-            { 0x000210,       { "token_clear",   id(token_clear) } },    // 5
-            { 0x000A10,       { "token_recall",  id(token_recall) } },   // 6
-            { 0x002CE9,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // play
-            { 0x001CE9,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // fast forward
+            { 0x0750,       { "power_on",      id(power_on) } },             // power on discrete
+            { 0x0A90,       { "power_on_alt",  id(power_on) } },             // power (toggle)
+            { 0x0F50,       { "power_off",     id(power_off_immediately)} }, // power off discrete
+            { 0x0910,       { "power_off_alt", id(power_off_immediately)} }, // 0
+            { 0x02D0,       { "cursor_left",   id(cursor_left) } },    // Arrow Left
+            { 0x0CD0,       { "cursor_right",  id(cursor_right) } },   // Arrow Right
+            { 0x02F0,       { "cursor_up",     id(cursor_up) } },      // Arrow Up
+            { 0x0AF0,       { "cursor_down",   id(cursor_down) } },    // Arrow Down
+            { 0x0A70,       { "cursor_enter",  id(cursor_enter) } },   // Arrow Select
+            { 0x6923,       { "settings_menu", id(settings_menu) } },  // Action Menu
+            { 0x62E9,       { "back",          id(back) } },           // Back
+            { 0x0070,       { "home",          id(home) } },           // Home
+            { 0x3123,       { "game_menu",     id(game_menu) } },      // Google Play
+            { 0x0A50,       { "input",         id(input) } },          // Input
+            { 0x0250,       { "picture",       id(picture) } },        // TV
+            { 0x0AE9,       { "focus_auto",    id(focus_auto) } },     // subtitle
+            { 0x0E90,       { "focus_manual",  id(focus_manual) } },   // audio
+            { 0x72E9,       { "shortcut_1",    id(shortcut_1) } },     // yellow
+            { 0x12E9,       { "shortcut_2",    id(shortcut_2) } },     // blue
+            { 0x52E9,       { "shortcut_3",    id(shortcut_3) } },     // red
+            { 0x32E9,       { "shortcut_4",    id(shortcut_4) } },     // green
+            { 0x0490,       { "volume_up",     id(volume_up) } },      // volume up
+            { 0x0C90,       { "volume_down",   id(volume_down) } },    // volume down
+            { 0x0290,       { "mute",          id(mute) } },           // mute
+            { 0x0C10,       { "token_sniff",   id(token_sniff) } },    // 4
+            { 0x0210,       { "token_clear",   id(token_clear) } },    // 5
+            { 0x0A10,       { "token_recall",  id(token_recall) } },   // 6
+            { 0x2CE9,       { "BT_start_pair", id(bluetooth_pairing_start) } }, // play
+            { 0x1CE9,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }  // fast forward
           }
         });
     
@@ -1675,6 +1679,9 @@ script:
             { 0x26,       { "token_recall",  id(token_recall) } },    // switch to USB
           }
         });
+        
+        // Tell the system exactly how many factory items exist in RAM right now
+        factory_count = remote_profiles.size();
         
         ESP_LOGI("ir_hub", "Factory profiles loaded.");
 

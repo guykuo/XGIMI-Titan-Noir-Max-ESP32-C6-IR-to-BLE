@@ -77,18 +77,18 @@ inline esphome::button::Button* resolve_button(const std::string& name) {
   return nullptr; 
 }
 
-
+// --- ADD A GLOBAL TRACKING VARIABLE FOR BOUNDS ---
+inline size_t factory_count = 13; // Dynamic default fallback value
 
 // Converts the dynamic vector into isolated chunks and commits them sequentially
 inline void commit_database_to_flash() {
   uint16_t saved_count = 0;
 
-  for (size_t i = 13; i < remote_profiles.size(); i++) {
+  // DYNAMIC FIX: Start saving custom tracks immediately following factory maps
+  for (size_t i = factory_count; i < remote_profiles.size(); i++) {
     if (saved_count >= 5) break; 
 
     const auto& runtime_p = remote_profiles[i];
-    
-    // Generate the exact matching storage key for this specific slot index position
     uint64_t slot_nvs_key = 1948204712ULL + saved_count;
     auto pref_obj = esphome::global_preferences->make_preference<FlashStoredProfile>(slot_nvs_key);
 
@@ -110,29 +110,26 @@ inline void commit_database_to_flash() {
     }
     flash_p.total_keys = k_idx;
     
-    // Save this clean, bite-sized profile object directly into its own NVS slot
     pref_obj.save(&flash_p);
     saved_count++;
   }
   
-  // Explicitly request an immediate storage controller cache sync
   esphome::global_preferences->sync();
   ESP_LOGI("ir_hub", "Successfully synchronized %d custom profiles to isolated NVS tracks.", saved_count);
 }
 
 
+
 // Rehydrates dynamic custom slots out of individual Flash NVS blocks safely
 inline void load_saved_flash_profiles() {
-  // Step 1: Enforce fixed array padding rules BEFORE parsing NVS memory streams
-  // This guarantees that if this runs, slots 0 through 12 exist as a baseline matrix
-  if (remote_profiles.size() < 13) {
-    ESP_LOGW("ir_hub", "Database structure safety check: Padding missing factory slots...");
-    while (remote_profiles.size() < 13) {
+  // DYNAMIC FIX: Enforce padding layout matrix using our fluid runtime bounds variable
+  if (remote_profiles.size() < factory_count) {
+    ESP_LOGW("ir_hub", "Database structure safety check: Padding missing factory slots up to %d...", factory_count);
+    while (remote_profiles.size() < factory_count) {
       remote_profiles.push_back({ "Placeholder Layout", "NEC", 0, 0, 0, {} });
     }
   }
 
-  // Step 2: Sequentially read learned layout profiles out of NVS storage slots
   int loaded_custom_count = 0;
   for (uint16_t slot = 0; slot < 5; slot++) {
     uint64_t slot_nvs_key = 1948204712ULL + slot;
@@ -158,22 +155,20 @@ inline void load_saved_flash_profiles() {
         restored_profile.cmd_codes[flash_p.keys[k].hex_code] = { b_id, nullptr };
       }
 
-      // Securely lock custom configurations into indices 13 through 17
-      size_t target_vector_index = 13 + slot;
+      // DYNAMIC FIX: Append custom layouts sequentially strictly right after current factory counts
+      size_t target_vector_index = factory_count + slot;
       while (remote_profiles.size() <= target_vector_index) {
         remote_profiles.push_back({ "Placeholder", "NEC", 0, 0, 0, {} });
       }
 
       remote_profiles[target_vector_index] = restored_profile;
       loaded_custom_count++;
-      ESP_LOGI("ir_hub", "NVS Slot [%d] successfully mapped to Database Index [%d]: %s", 
+      ESP_LOGI("ir_hub", "NVS Slot [%d] successfully mapped to Dynamic Index [%d]: %s", 
                slot, (int)target_vector_index, restored_profile.profile_name.c_str());
     }
   }
   
-  ESP_LOGI("ir_hub", "Database hydration pass complete. Total profiles loaded: %zu (%d active custom configs)", 
-           remote_profiles.size(), loaded_custom_count);
-           
+  ESP_LOGI("ir_hub", "Database hydration pass complete. Total profiles loaded: %zu", remote_profiles.size());
   flash_hydration_complete = true;
 }
 
@@ -210,38 +205,31 @@ inline void link_hardware_buttons() {
 
 
 
-// Serializes dynamic profile slots (Index 13+) into a single JSON string format with Hexadecimal notation (V7 API)
+// Serializes dynamic profile slots into JSON (V7 API)
 inline std::string export_profiles_to_json() {
   JsonDocument doc; 
   JsonArray profiles_arr = doc.to<JsonArray>();
+  char buf[32];
 
-  char buf[32]; // Temporary scratchpad buffer for formatting numbers to hex text strings
-
-  for (size_t i = 13; i < remote_profiles.size(); i++) {
+  // DYNAMIC FIX: Fluid scaling for text/backup registers
+  for (size_t i = factory_count; i < remote_profiles.size(); i++) {
     const auto& p = remote_profiles[i];
     JsonObject p_obj = profiles_arr.add<JsonObject>(); 
     p_obj["name"] = p.profile_name;
     p_obj["protocol"] = p.protocol;
     
-    // Convert Device Address to Hexadecimal string
     snprintf(buf, sizeof(buf), "0x%04X", (unsigned int)p.device_address);
     p_obj["address"] = std::string(buf);
-    
-    // Convert Token configuration keys to Hexadecimal strings
     snprintf(buf, sizeof(buf), "0x%04X", (unsigned int)p.cmd_clear_token_arm);
     p_obj["clear_arm"] = std::string(buf);
-    
     snprintf(buf, sizeof(buf), "0x%04X", (unsigned int)p.cmd_clear_token_fire);
     p_obj["clear_fire"] = std::string(buf);
 
     JsonArray keys_arr = p_obj["keys"].to<JsonArray>();
     for (const auto& pair : p.cmd_codes) {
       JsonObject k_obj = keys_arr.add<JsonObject>(); 
-      
-      // Convert individual remote key Hex commands to Hexadecimal strings
       snprintf(buf, sizeof(buf), "0x%04X", (unsigned int)pair.first);
       k_obj["code"] = std::string(buf);
-      
       k_obj["button"] = pair.second.name;
     }
   }
@@ -252,7 +240,7 @@ inline std::string export_profiles_to_json() {
 }
 
 
-// Parses an incoming JSON file string and rehydrates your dynamic slots from Hexadecimal strings (V7 API)
+// Parses an incoming JSON file string and rehydrates dynamic slots (V7 API)
 inline bool import_profiles_from_json(const std::string& json_str) {
   JsonDocument doc; 
   DeserializationError error = deserializeJson(doc, json_str);
@@ -260,8 +248,9 @@ inline bool import_profiles_from_json(const std::string& json_str) {
 
   JsonArray profiles_arr = doc.as<JsonArray>();
   
-  if (remote_profiles.size() > 13) {
-    remote_profiles.resize(13);
+  // DYNAMIC FIX: Crop list directly to runtime factory bounds limit line
+  if (remote_profiles.size() > factory_count) {
+    remote_profiles.resize(factory_count);
   }
 
   for (JsonObject p_obj : profiles_arr) {
@@ -269,23 +258,17 @@ inline bool import_profiles_from_json(const std::string& json_str) {
     restored_p.profile_name = p_obj["name"].as<std::string>();
     restored_p.protocol = p_obj["protocol"].as<std::string>();
     
-    // HEX STRING CONVERSION: Extract address as text string and convert base-16 to uint32_t
     std::string addr_str = p_obj["address"].as<std::string>();
     restored_p.device_address = std::stoul(addr_str, nullptr, 16);
-    
-    // HEX STRING CONVERSION: Extract token mappings as text strings and convert base-16 to uint32_t
     std::string clear_arm_str = p_obj["clear_arm"].as<std::string>();
     restored_p.cmd_clear_token_arm = std::stoul(clear_arm_str, nullptr, 16);
-    
     std::string clear_fire_str = p_obj["clear_fire"].as<std::string>();
     restored_p.cmd_clear_token_fire = std::stoul(clear_fire_str, nullptr, 16);
 
     JsonArray keys_arr = p_obj["keys"].as<JsonArray>();
     for (JsonObject k_obj : keys_arr) {
-      // HEX STRING CONVERSION: Extract unique code hex and parse string token matrix
       std::string code_str = k_obj["code"].as<std::string>();
       uint32_t code = std::stoul(code_str, nullptr, 16);
-      
       std::string b_id = k_obj["button"].as<std::string>();
       restored_p.cmd_codes[code] = { b_id, resolve_button(b_id) };
     }
@@ -296,4 +279,3 @@ inline bool import_profiles_from_json(const std::string& json_str) {
   commit_database_to_flash();
   return true;
 }
-
