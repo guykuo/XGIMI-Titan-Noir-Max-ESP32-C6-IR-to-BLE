@@ -492,7 +492,7 @@ Sniffing for the wake token should be done with projector power disconnected bec
 A light will come on to indicate sniffing mode. Sniffing remains active for 20 seconds. 
     
 - Repeatedly press power button on Xgimi remote with it near your ESP32 board.
-      Usually, just 4 to 6 presses are needed to sniff a valid token. 
+      Usually, just 1 to 2 presses are needed to sniff a valid token. 
       If you have an ESP32-C3 with built-in OLED display, sniff mode and capture will be shown.
       On boards lacking a display, light will flash 8 times indicating capture of new token.
       If light flashes 3 times, captured token was identical to one already stored.
