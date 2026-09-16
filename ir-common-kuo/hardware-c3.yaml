@@ -52,7 +52,7 @@ script:
       red: float         # Ignored on C3, kept for API matching
       green: float       # Ignored on C3, kept for API matching
       blue: float        # Ignored on C3, kept for API matching
-    mode: restart
+    mode: queued
     then:
       - repeat:
           count: !lambda "return count;"

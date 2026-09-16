@@ -540,7 +540,9 @@ script:
               
               id(learned_best_command) = id(learn_cache_command)[index]; 
               id(session_captured_codes).at(b_idx) = id(learned_best_command);
-              
+
+              id(flash_led_custom).execute(1, 0.2, 0.5, 0.2); // flash once indicating button accepted
+
               // Lock the timestamp track so trailing repeats get ignored
               id(learn_last_save_time) = now; 
               
@@ -552,10 +554,10 @@ script:
               
               // SAFE HALT GATE: Evaluate state ONLY after increment step completes
               if (b_idx < 27) {
-                ESP_LOGI("IR Learn", "Press IR button for %s", learn_button_names.at(b_idx).c_str());
+                ESP_LOGI("IR Learn", "Press ====== IR BUTTON ====== %s ======", learn_button_names.at(b_idx).c_str());
                 id(display_show)->execute(false, "IR Learn:", "Press Btn", learn_button_names.at(b_idx));
               } else {
-                ESP_LOGI("IR Learn", "All buttons captured! Awaiting save selection...0=OK  1=Up  2=Rt  3=Dn  4=Lf");
+                ESP_LOGI("IR Learn", "All buttons captured! ====== Awaiting save selection...0=OK  1=Up  2=Rt  3=Dn  4=Lf");
                 id(display_show)->execute(true, "Mem Slot", "0=OK 1=Up 2=Rt=", "3=Dn 4=Lf");
               }
                   
@@ -694,7 +696,11 @@ script:
                   
                   ESP_LOGW("IR Learn", "Forcing instant NVS flash partition sync. Do not disconnect power...");
                   esphome::global_preferences->sync(); // <=== FORCES HARD INSTANT WRITE TO SILICON
-                                
+
+                  id(flash_led_custom).execute(2, 0.0, 0.0, 1.0); // flash blue
+                  id(flash_led_custom).execute(2, 0.0, 1.0, 0.0); // flash red
+                  id(flash_led_custom).execute(2, 1.0, 0.0, 0.0); // flash green indicating new profile stored
+
                   id(display_show)->execute(true, "Stored Profile", learned_profile.profile_name, "Operational");
                   
                   // change into negative index for learned profiles
@@ -745,6 +751,10 @@ script:
                   id(setup_ir_receiver_for_current_profile).execute();
                   id(ir_receiver_mode) = 1; // Return back to action mode
                   
+                  id(flash_led_custom).execute(1, 1.0, 0.0, 0.0); // flash red
+                  id(flash_led_custom).execute(1, 0.0, 1.0, 0.0); // flash green
+                  id(flash_led_custom).execute(1, 0.0, 0.0, 1.0); // flash blue indicating profile changed
+
                   id(display_show)->execute(true,
                                             "Setting Profile",
                                             profile.profile_name,

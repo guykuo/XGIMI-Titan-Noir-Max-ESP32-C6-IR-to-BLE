@@ -57,11 +57,14 @@ external_components:
 esp32:
   partitions: ir-common-kuo/appkit/partitions.csv  #larger app partition needed 
 
-debug:
-  update_interval: 30s
   
 logger:
+  level: INFO 
 #  level: DEBUG 
+
+
+captive_portal:
+
   
 wifi:
   reboot_timeout: 0s
@@ -80,7 +83,6 @@ web_server:
     username: "admin"
     password: !secret fallback_ap_password
 
-captive_portal:
     
 ota:
   - platform: esphome
@@ -283,6 +285,9 @@ globals:
 
 
 # ============================================================
+debug:
+  update_interval: 30s
+
 sensor:
   - platform: debug
     free:
@@ -296,6 +301,8 @@ sensor:
     # # Optional: If your hardware has PSRAM (like some ESP32 variants)
     # psram:
     #   name: "Free PSRAM"
+
+# ============================================================
 
 text_sensor:
   - platform: debug
@@ -332,6 +339,9 @@ binary_sensor:
           - ON for at most 0.5s
           - OFF for at least 0.2s
         then:
+          - lambda: |-
+              id(flash_led_custom).execute(3, 0.0, 1.0, 0.0); // flash 3 times indicate triple click.
+
           - script.execute: start_learning_mode
           - logger.log: "Triple click detected. IR hub entering sequential learning mode."
 
@@ -352,6 +362,8 @@ binary_sensor:
               id(ir_receiver_allowed_protocol) = "ALL";
               id(ir_receiver_mode) = 2; // set profile mode active
               id(set_profile_timeout_watcher).execute();
+              id(flash_led_custom).execute(2, 0.0, 1.0, 0.0); // flash 2 times indicate double click.
+
           - logger.log: "Double click detected. IR hub in set profile mode."
 
       # 3. SINGLE CLICK starts token sniffing

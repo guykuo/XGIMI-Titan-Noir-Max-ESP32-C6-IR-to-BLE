@@ -75,7 +75,7 @@ script:
       red: float         # Red value (0.0 to 1.0)
       green: float       # Green value (0.0 to 1.0)
       blue: float        # Blue value (0.0 to 1.0)
-    mode: restart
+    mode: queued
     then:
       - repeat:
           count: !lambda "return count;"
