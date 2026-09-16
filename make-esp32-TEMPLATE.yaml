@@ -333,9 +333,9 @@ binary_sensor:
       # 1. TRIPLE CLICK starts learning mode
       - timing:
           - ON for at most 0.5s
-          - OFF for at most 0.3s
+          - OFF for at most 0.35s
           - ON for at most 0.5s
-          - OFF for at most 0.3s
+          - OFF for at most 0.35s
           - ON for at most 0.5s
           - OFF for at least 0.2s
         then:
@@ -348,7 +348,7 @@ binary_sensor:
       # 2. DOUBLE CLICK starts setting of IRmap (Profile Selection Mode)
       - timing:
           - ON for at most 0.5s
-          - OFF for at most 0.3s
+          - OFF for at most 0.35s
           - ON for at most 0.5s
           - OFF for at least 0.35s
         then:
