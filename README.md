@@ -187,7 +187,7 @@ i2c:
 ```
 
 You also must edit the make file to include your new hardware file.
-```
+```yaml
 packages: 
   # --- ESP32 board, Uncomment one (and only one) for your board
   #hardware_package: !include ir-common-kuo/hardware-c3.yaml                  # supports built-in 0.42 inch OLED display
