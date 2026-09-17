@@ -576,7 +576,8 @@ Triple Click boot button. LED flashes 3 times indicating IR learn mode
 
 Table showing button sequence and LED flashes. You can interpet the flashes as happening before a button (indicating which button to press next) or you can interpret as the flash confirming the button you just pressed. First column shows flash before button press. 3rd column shows flash after button press.
 
-Before|Button|After|
+|Before|Button|After|
+| :--- | :--- |:--- |
 |...|power_on|.|
 |.|power_off|.|
 |.|cursor_left|.|
