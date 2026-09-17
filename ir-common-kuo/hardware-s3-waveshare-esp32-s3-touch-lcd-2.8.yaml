@@ -50,7 +50,7 @@ output:
           
 light:
   - platform: esp32_rmt_led_strip # neopixel
-    id: sniffer_led
+    id: indicator_led
     pin: ${pin_indicator_LED}
     chipset: WS2812
     num_leds: 1
@@ -70,6 +70,7 @@ script:
   - id: flash_led_custom
     parameters:
       count: int         # Number of flashes
+      dwell: int         # duration of flash in msec
       red: float         # Red value (0.0 to 1.0)
       green: float       # Green value (0.0 to 1.0)
       blue: float        # Blue value (0.0 to 1.0)
@@ -80,20 +81,20 @@ script:
           then:
             # --- TURN RGB LED ON WITH DYNAMIC COLOR ---
             - light.turn_on:
-                id: sniffer_led
+                id: indicator_led
                 red: !lambda "return red;"
                 green: !lambda "return green;"
                 blue: !lambda "return blue;"
                 brightness: 0.2
                 transition_length: 0s
-            - delay: 200ms
-
+            - delay: !lambda "return dwell;"
             # --- TURN RGB LED OFF ---
             - light.turn_off:
-                id: sniffer_led
+                id: indicator_led
                 transition_length: 0s
-            - delay: 200ms
+            - delay: !lambda "return dwell;"
             
+                        
   - id: turn_led_on_custom
     parameters:
       red: float         # Red channel (0.0 to 1.0)
@@ -103,7 +104,7 @@ script:
     mode: restart
     then:
       - light.turn_on:
-          id: sniffer_led
+          id: indicator_led
           red: !lambda "return red;"
           green: !lambda "return green;"
           blue: !lambda "return blue;"
@@ -114,7 +115,7 @@ script:
     mode: restart
     then:
       - light.turn_off:
-          id: sniffer_led
+          id: indicator_led
           transition_length: 0s  
 
 

@@ -43,12 +43,13 @@ switch:
     pin:
       number: ${pin_indicator_LED}
       inverted: true
-    id: sniffer_led
+    id: indicator_led
   
 script:
   - id: flash_led_custom
     parameters:
       count: int         # Number of flashes
+      dwell: int         # duration of flash in msec
       red: float         # Ignored on C3, kept for API matching
       green: float       # Ignored on C3, kept for API matching
       blue: float        # Ignored on C3, kept for API matching
@@ -58,12 +59,12 @@ script:
           count: !lambda "return count;"
           then:
             # --- TURN BINARY LED ON ---
-            - switch.turn_on: sniffer_led
-            - delay: 200ms
+            - switch.turn_on: indicator_led
+            - delay: !lambda "return dwell;"
   
             # --- TURN BINARY LED OFF ---
-            - switch.turn_off: sniffer_led
-            - delay: 200ms
+            - switch.turn_off: indicator_led
+            - delay: !lambda "return dwell;"
                
   - id: turn_led_on_custom
     parameters:
@@ -73,12 +74,12 @@ script:
       brightness: float  # Ignored on C3, kept for API matching
     mode: restart
     then:
-      - switch.turn_on: sniffer_led
+      - switch.turn_on: indicator_led
 
   - id: turn_led_off_custom
     mode: restart
     then:
-      - switch.turn_off: sniffer_led
+      - switch.turn_off: indicator_led
 
 # ========  Display Specific Implementation ========
 

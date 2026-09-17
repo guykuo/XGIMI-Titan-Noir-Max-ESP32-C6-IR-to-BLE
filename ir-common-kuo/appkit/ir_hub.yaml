@@ -541,7 +541,7 @@ script:
               id(learned_best_command) = id(learn_cache_command)[index]; 
               id(session_captured_codes).at(b_idx) = id(learned_best_command);
 
-              id(flash_led_custom).execute(1, 0.2, 0.5, 0.2); // flash once indicating button accepted
+              id(flash_led_custom).execute(1, 100, 0.2, 0.4, 0.2); // flash once indicating button accepted
 
               // Lock the timestamp track so trailing repeats get ignored
               id(learn_last_save_time) = now; 
@@ -697,9 +697,9 @@ script:
                   ESP_LOGW("IR Learn", "Forcing instant NVS flash partition sync. Do not disconnect power...");
                   esphome::global_preferences->sync(); // <=== FORCES HARD INSTANT WRITE TO SILICON
 
-                  id(flash_led_custom).execute(2, 0.0, 0.0, 1.0); // flash blue
-                  id(flash_led_custom).execute(2, 0.0, 1.0, 0.0); // flash red
-                  id(flash_led_custom).execute(2, 1.0, 0.0, 0.0); // flash green indicating new profile stored
+                  id(flash_led_custom).execute(2, 100, 0.0, 0.0, 1.0); // flash blue
+                  id(flash_led_custom).execute(2, 100, 1.0, 0.0, 0.0); // flash red
+                  id(flash_led_custom).execute(2, 200, 0.0, 1.0, 0.0); // flash green indicating new profile stored
 
                   id(display_show)->execute(true, "Stored Profile", learned_profile.profile_name, "Operational");
                   
@@ -751,9 +751,9 @@ script:
                   id(setup_ir_receiver_for_current_profile).execute();
                   id(ir_receiver_mode) = 1; // Return back to action mode
                   
-                  id(flash_led_custom).execute(1, 1.0, 0.0, 0.0); // flash red
-                  id(flash_led_custom).execute(1, 0.0, 1.0, 0.0); // flash green
-                  id(flash_led_custom).execute(1, 0.0, 0.0, 1.0); // flash blue indicating profile changed
+                  id(flash_led_custom).execute(4, 50, 1.0, 0.0, 0.0); // flash red
+                  id(flash_led_custom).execute(2, 100, 0.0, 1.0, 0.0); // flash green
+                  id(flash_led_custom).execute(1, 200, 0.6, 0.8, 0.6); // flash bright green indicating profile changed
 
                   id(display_show)->execute(true,
                                             "Setting Profile",
