@@ -574,38 +574,9 @@ It is possible, but more prone to error, to press the 27 button sequence of lear
 
 Triple Click boot button. LED flashes 3 times indicating IR learn mode
 
-Table showing button sequence and LED flashes. You can interpet the flashes as happening before a button (indicating which button to press next) or you can interpret as the flash confirming the button you just pressed. First column shows flash before button press. 3rd column shows flash after button press.
+Diagram of button sequence and LED flashes. You can interpet the flashes as happening before a button (indicating which button to press next) or you can interpret as the flash confirming the button you just pressed. First column shows flash before button press. 3rd column shows flash after button press.
+<img width="700" height="925" alt="IR learn profile LED flash sequence" src="https://github.com/user-attachments/assets/f1b95d5b-0937-49a0-b9fc-011d91130de1" />
 
-|Before|Button|After|
-| :--- | :--- |:--- |
-|•••|power_on|•|
-|•|power_off|•|
-|•|cursor_left|•|
-|•|cursor_right|•|
-|•|cursor_up|–––|
-|–––|cursor_down|•|
-|•|cursor_enter|•|
-|•|settings_menu|•|
-|•|back|•|
-|•|home|–––|
-|–––|game_menu|•|
-|•|input|•|
-|•|picture|•|
-|•|focus_manual|•|
-|•|focus_auto|–––|
-|–––|shortcut_1|•|
-|•|shortcut_2|•|
-|•|shortcut_3|•|
-|•|shortcut_4|•|
-|•|volume_up|–––| 
-|–––|volume_down|•|
-|•|mute|•|
-|•|token_sniff|•|
-|•|token_clear|•|
-|•|token_recall|–––|
-|–––|BT_start_pair|•|
-|•|BT_clear_pair|••••|
-|••••|sel slot|••••|
 
 
 ## 8\. Add Your ESP32 Remote as to Projector as Additional Bluetooth Device
