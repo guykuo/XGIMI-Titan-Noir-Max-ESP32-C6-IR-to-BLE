@@ -578,34 +578,35 @@ Table showing button sequence and LED flashes. You can interpet the flashes as h
 
 |Before|Button|After|
 | :--- | :--- |:--- |
-|...|power_on|.|
-|.|power_off|.|
-|.|cursor_left|.|
-|.|cursor_right|.|
-|.|cursor_up|-|
-|-|cursor_down|.|
-|.|cursor_enter|.|
-|.|settings_menu|.|
-|.|back|.|
-|.|home|-|
-|-|game_menu|.|
-|.|input|.|
-|.|picture|.|
-|.|focus_manual|.|
-|.|focus_auto|-|
-|-|shortcut_1|.|
-|.|shortcut_2|.|
-|.|shortcut_3|.|
-|.|shortcut_4|.|
-|.|volume_up|-| 
-|-|volume_down|.|
-|.|mute|.|
-|.|token_sniff|.|
-|.|token_clear|.|
-|.|token_recall|-|
-|-|BT_start_pair|.|
-|.|BT_clear_pair|....|
-|....|sel slot|....|
+|•••|power_on|•|
+|•|power_off|•|
+|•|cursor_left|•|
+|•|cursor_right|•|
+|•|cursor_up|–––|
+|–––|cursor_down|•|
+|•|cursor_enter|•|
+|•|settings_menu|•|
+|•|back|•|
+|•|home|–––|
+|–––|game_menu|•|
+|•|input|•|
+|•|picture|•|
+|•|focus_manual|•|
+|•|focus_auto|–––|
+|–––|shortcut_1|•|
+|•|shortcut_2|•|
+|•|shortcut_3|•|
+|•|shortcut_4|•|
+|•|volume_up|–––| 
+|–––|volume_down|•|
+|•|mute|•|
+|•|token_sniff|•|
+|•|token_clear|•|
+|•|token_recall|–––|
+|–––|BT_start_pair|•|
+|•|BT_clear_pair|••••|
+|••••|sel slot|••••|
+
 
 ## 8\. Add Your ESP32 Remote as to Projector as Additional Bluetooth Device
 Turn on your projector with its original remote control. Within settings add your new IR translator as another Bluetooth remote.
