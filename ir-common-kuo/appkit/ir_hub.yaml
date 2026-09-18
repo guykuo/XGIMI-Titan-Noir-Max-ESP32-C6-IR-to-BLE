@@ -401,11 +401,25 @@ script:
 
           
           ESP_LOGI("NVS Flash", "All segmented profile registers cleared. Vector restored to factory factory rules.");
-          
-          id(display_show)->execute(true,
-                                   "Flash NVS Wiped",
-                                   "All Chs Cleared",
-                                   "Epson Default");
+
+          // get current profile name
+          int current_idx = id(active_remote_layout);
+          if (!(0 <= current_idx && current_idx < remote_profiles.size())) {
+            id(display_show)->execute(true,
+                                     "Memory Profiles",
+                                     "All Cleared",
+                                     "No Default");
+  
+          } else {
+            const auto& active_profile = remote_profiles[current_idx]; // Get the active_profile struct
+              
+            id(display_show)->execute(true,
+                                     "Memory Profiles",
+                                     "All Cleared",
+                                     "Using " + active_profile.profile_name);
+          }
+
+
 
 
   # ====================================================================
@@ -541,13 +555,25 @@ script:
               id(learned_best_command) = id(learn_cache_command)[index]; 
               id(session_captured_codes).at(b_idx) = id(learned_best_command);
 
-              id(flash_led_custom).execute(1, 100, 0.2, 0.4, 0.2); // flash once indicating button accepted
-
               // Lock the timestamp track so trailing repeats get ignored
               id(learn_last_save_time) = now; 
               
               b_idx++; 
               id(learn_current_button_idx) = b_idx;
+              
+              // flash sequence changes to help user keep track of place when no display
+              if (b_idx == 27) {
+                // last button has been learned. Special flash to indicate done with buttons
+                id(flash_led_custom).execute(5, 20, 0.3, 0.4, 0.0);
+                id(flash_led_custom).execute(5, 50, 0.2, 0.4, 0.2);
+              } else {
+                if (b_idx % 5 == 0) {
+                  id(flash_led_custom).execute(1, 300, 0.2, 0.4, 0.2); // every 5th, long flash once indicating button accepted
+                } else {
+                  id(flash_led_custom).execute(1, 80, 0.2, 0.4, 0.2); // short flash once indicating button accepted
+                }              
+              }
+              
               
               id(learn_cache_clear).execute();
               id(learn_mode_timeout_watcher).execute(); // Reset 30s timer
@@ -697,14 +723,17 @@ script:
                   ESP_LOGW("IR Learn", "Forcing instant NVS flash partition sync. Do not disconnect power...");
                   esphome::global_preferences->sync(); // <=== FORCES HARD INSTANT WRITE TO SILICON
 
-                  id(flash_led_custom).execute(2, 100, 0.0, 0.0, 1.0); // flash blue
-                  id(flash_led_custom).execute(2, 100, 1.0, 0.0, 0.0); // flash red
+                  id(flash_led_custom).execute(4, 100, 0.0, 0.0, 1.0); // flash blue
                   id(flash_led_custom).execute(2, 200, 0.0, 1.0, 0.0); // flash green indicating new profile stored
 
                   id(display_show)->execute(true, "Stored Profile", learned_profile.profile_name, "Operational");
                   
-                  // change into negative index for learned profiles
-                  id(active_remote_layout) = ((selected_slot + 1) * -1); 
+                  // 1. Link hardware button objects to the newly populated vector slots immediately
+                  link_hardware_buttons();
+                  
+                  // 2. Set active layout directly to the absolute positive hardware index position 
+                  // to bypass the handler's boundary gate block.
+                  id(active_remote_layout) = (int)target_vector_index; 
 
                   id(setup_ir_receiver_for_current_profile).execute();
                   id(ir_receiver_mode) = 1; // Return to Action mode
