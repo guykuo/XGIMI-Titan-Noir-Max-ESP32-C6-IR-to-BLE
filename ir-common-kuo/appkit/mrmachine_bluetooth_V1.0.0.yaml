@@ -163,7 +163,8 @@ button:
     id: power_off
     icon: mdi:power
     on_press:
-      - lambda: id(xgimi_remote_controller).request_power_off();
+      - lambda: id(xgimi_remote_controller).hold_keyboard(0x7F);
+    # - lambda: id(xgimi_remote_controller).request_power_off();
 
 
   - platform: template

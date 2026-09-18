@@ -732,7 +732,7 @@ script:
                   link_hardware_buttons();
                   
                   // 2. Set active layout directly to the absolute positive hardware index position 
-                  // to bypass the handler's boundary gate block.
+                  // to bypass the handler boundary gate block.
                   id(active_remote_layout) = (int)target_vector_index; 
 
                   id(setup_ir_receiver_for_current_profile).execute();
@@ -1017,7 +1017,7 @@ script:
           id(ir_receiver_allowed_protocol) = active_profile.protocol;
           
           ESP_LOGI("Profile Control", "Profile layout '%s' engaged via index %d.", 
-                   active_profile.profile_name.c_str(), current_idx);
+                   active_profile.profile_name.c_str(), current_idx); 
           
           
   #----------------------------------------
@@ -1655,7 +1655,7 @@ script:
           {
             { 0xE010,       { "power_on",      id(power_on) } },              // tv power (as discrete on)
             { 0xE011,       { "power_off",     id(power_off_immediately) } }, // live TV (as discrete off)
-            { 0xC031,       { "power_off_alt", id(power_off) } },             // 0 
+            { 0xC031,       { "power_off_alt", id(power_off_immediately) } },             // 0 
             { 0xE014,       { "cursor_up",     id(cursor_up) } },       // arrow up
             { 0xE016,       { "cursor_down",   id(cursor_down) } },     // arrow down
             { 0xE017,       { "cursor_left",   id(cursor_left) } },     // arrow left

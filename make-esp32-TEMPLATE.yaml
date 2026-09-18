@@ -137,7 +137,7 @@ esphome:
   
   project:
     name: xgimi.titan-noir-esp32-ir-kuo
-    version: 26.09.10.001
+    version: 26.09.18.001
 
   on_boot:
     - priority: -50
