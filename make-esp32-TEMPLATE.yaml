@@ -32,8 +32,10 @@ packages:
   #hardware_package: !include ir-common-kuo/hardware-m5stack-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
   #hardware_package: !include ir-common-kuo/hardware-s3-hosyond-lcd-3.5-touch.yaml
   #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-esp32-s3-touch-lcd-2.8.yaml
-  #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-lcd-1.47B.yaml # DO NOT USE THIS BOARD. Crashes upon boot.
-
+  
+  #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-lcd-1.47B.yaml # This board MUST use IR Sensor WITHOUT LED
+                                                                             # Like the Vishay TSOP series.  Otherwise 3Vcc load causes crash durng boot.
+                                                                                
   #hardware_package: !include ir-common-kuo/HARDWARE.YAML # Or uncomment this line and replace HARDWARE.YAML with your file.
 
 
@@ -60,8 +62,9 @@ esp32:
   
 logger:
   level: INFO 
-#  level: DEBUG 
-
+  # level: DEBUG 
+  hardware_uart: USB_CDC      # Directs logs to the native internal S3 USB port
+  baud_rate: 115200
 
 captive_portal:
 
@@ -140,6 +143,7 @@ esphome:
     version: 26.09.18.001
 
   on_boot:
+
     - priority: -50
       then:
         - binary_sensor.template.publish:
@@ -568,6 +572,7 @@ script:
           
       
   # --- Sniff for Wake Tokens using Native Bluedroid Stack ---
+  # --- Sniff for Wake Tokens using Native Bluedroid Stack ---
   - id: sniffing_sequence
     mode: restart
     then:
@@ -592,133 +597,117 @@ script:
           // 1. Register raw callback into the Bluedroid stack
           esp_ble_gap_register_callback([](esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param) {
               if (event == ESP_GAP_BLE_SCAN_RESULT_EVT) {
+                  // FIX: Access the scan result structure natively from the param union pointer
                   auto &scan_result = param->scan_rst; 
                   
                   if (scan_result.adv_data_len > 0) {
                       uint8_t *adv = scan_result.ble_adv;
                       uint8_t len = scan_result.adv_data_len;
                       
-                      bool is_xgimi_packet = false;
-                      int i = 0;
-                      
-                      // Natively parse the BLE advertisement structures step-by-step
-                      while (i < len - 1) {
-                          uint8_t block_len = adv[i];
-                          if (block_len == 0) break; // End of advertising structures reached
-                          
-                          // Bound verification to safeguard against corrupted packet data
-                          if (i + 1 + block_len > len) break;
-                          
-                          uint8_t ad_type = adv[i + 1];
-                          
-                          // Filter for true Manufacturer Specific Data block type (0xFF)
-                          if (ad_type == 0xFF && block_len >= 3) {
-                              // Verify Company Identifier belongs strictly to XGIMI (0x46 0x00)
-                              if (adv[i + 2] == 0x46 && adv[i + 3] == 0x00) {
-                                  is_xgimi_packet = true;
-                                  break; // Found our target block, exit loop parsing safely
+                      // Traverse the BLE advertisement structural blocks looking for XGIMI
+                      for (int i = 0; i < len - 3; i++) {
+                          // Filter for Manufacturer Data type (0xFF) and XGIMI ID (0x46 0x00)
+                          if (adv[i] == 0xFF && adv[i+1] == 0x46 && adv[i+2] == 0x00) {
+                              
+                              // Found a candidate packet! Reconstruct the payload string
+                              std::string token_hex = "";
+                              char buffer[8]; 
+                              for (int j = 0; j < len; j++) {
+                                  snprintf(buffer, sizeof(buffer), "%02X", adv[j]);
+                                  token_hex += buffer;
                               }
-                          }
-                          
-                          // Advance cursor to the start index position of the next standard block structure
-                          i += 1 + block_len;
-                      }
-                      
-                      // Drop the payload instantly if it failed structural verification
-                      if (!is_xgimi_packet) return;
-                      
-                      // Found a genuine XGIMI candidate packet! Reconstruct the payload string
-                      std::string token_hex = "";
-                      char buffer[8]; 
-                      for (int j = 0; j < len; j++) {
-                          snprintf(buffer, sizeof(buffer), "%02X", adv[j]);
-                          token_hex += buffer;
-                      }
-                      
-                      if (token_hex.length() < 30) return;
-                      
-                      // --- ARCHITECTURAL MATCH LOGIC ---
-                      std::string current_masked = token_hex;
-                      std::string candidate_masked = id(sniffer_candidate_token);
-                      
-                      if (current_masked.length() >= 4) {
-                          size_t mask_pos = current_masked.length() - 4;
-                          current_masked.replace(mask_pos, 2, "XX");
-                          if (candidate_masked != "None" && candidate_masked.length() == current_masked.length()) {
-                              candidate_masked.replace(mask_pos, 2, "XX");
-                          }
-                      }
-                      
-                      if (id(sniffer_candidate_token) != "None" && current_masked == candidate_masked) {
-                          id(sniffer_hit_counter)++;
-                          ESP_LOGI("xgimi_bluedroid", "Match count: %d for Token: %s", id(sniffer_hit_counter), token_hex.c_str());
-                          
-                          if (id(sniffer_hit_counter) >= 4) {
-                              // Extract the last 15 bytes manually from the raw payload
-                              if (len >= 15) {
-                                  uint8_t *tail_ptr = adv + (len - 15);
-                                  
-                                  std::string sniffed_token_last15_hex = ""; 
-                                  char slice_buf[8]; 
-                                  for (int k = 0; k < 15; k++) {
-                                      snprintf(slice_buf, sizeof(slice_buf), "%02X ", tail_ptr[k]);
-                                      sniffed_token_last15_hex += slice_buf;
-                                  }
-                                  
-                                  // Sync string to HA Sensor Entity
-                                  std::string ha_payload = "";
-                                  char ha_buf[8];
-                                  for (int j = 0; j < len; j++) {
-                                      snprintf(ha_buf, sizeof(ha_buf), "%02X", adv[j]);
-                                      ha_payload += ha_buf;
-                                  }
 
-                                  // Protection Check: Duplicate verification
-                                  if (memcmp(tail_ptr, id(active_wake_token), 15) == 0) {
-                                      ESP_LOGD("xgimi_bluedroid", "Token matches active_wake_token. Skipping write.");
-                                      
-                                      // Teardown Bluedroid Scan completely
-                                      esp_ble_gap_stop_scanning();
-                                      esp_ble_gap_register_callback(nullptr);
-                                      
-                                      id(flash_led_custom).execute(4, 200, 0.0, 1.0, 0.0);
-                                      id(indicator_led)->turn_off();
-                                      id(display_show).stop();
-                                      id(display_show).execute(false, "Token Recognized", "Matches", "Existing");
-                                      
-                                      id(sniffer_status)->publish_state(false);
-                                      id(xgimi_sniffer_switch).publish_state(false);
-                                      id(sniffing_sequence).stop(); // Halts the remaining 20s script window
-                                      return;
+                              // Reject automated background pairing token
+                              if (token_hex == "0201060319800103FF460003031218") {
+                                  continue; // Skip processing this packet structural loop entirely
+                              }
+
+                              if (token_hex.length() < 30) continue;
+                              
+                              // --- ARCHITECTURAL MATCH LOGIC ---
+                              std::string current_masked = token_hex;
+                              std::string candidate_masked = id(sniffer_candidate_token);
+                              
+                              if (current_masked.length() >= 4) {
+                                  size_t mask_pos = current_masked.length() - 4;
+                                  current_masked.replace(mask_pos, 2, "XX");
+                                  if (candidate_masked != "None" && candidate_masked.length() == current_masked.length()) {
+                                      candidate_masked.replace(mask_pos, 2, "XX");
                                   }
+                              }
+                              
+                              if (id(sniffer_candidate_token) != "None" && current_masked == candidate_masked) {
+                                  id(sniffer_hit_counter)++;
+                                  ESP_LOGI("xgimi_bluedroid", "Match count: %d for Token: %s", id(sniffer_hit_counter), token_hex.c_str());
                                   
-                                  // Update Runtime and Persistent Storage Arrays
-                                  memcpy(id(active_wake_token), tail_ptr, 15);
-                                  memcpy(id(learned_wake_token), tail_ptr, 15);
-                                  global_preferences->sync(); 
-                                  
-                                  std::vector<uint8_t> active_token_vector(id(active_wake_token), id(active_wake_token) + 15);
-                                  id(xgimi_remote_controller)->set_wake_token(active_token_vector);
-                                  
-                                  // Teardown Bluedroid Scan completely
-                                  esp_ble_gap_stop_scanning();
-                                  esp_ble_gap_register_callback(nullptr);
-                                  
-                                  id(flash_led_custom).execute(8, 200, 0.0, 1.0, 0.0);
-                                  id(indicator_led)->turn_off();
-                                  id(display_show).stop();
-                                  id(display_show).execute(false, sniffed_token_last15_hex, "Storing Token", "Wait 5 sec");
-                                  
-                                  id(sniffer_status)->publish_state(false);
-                                  id(xgimi_sniffer_switch).publish_state(false);
-                                  id(sniffing_sequence).stop(); 
-                                  return;
+                                  if (id(sniffer_hit_counter) >= 4) {
+                                      // Extract the last 15 bytes manually from the raw payload
+                                      if (len >= 15) {
+                                          uint8_t *tail_ptr = adv + (len - 15);
+                                          
+                                          std::string sniffed_token_last15_hex = ""; 
+                                          char slice_buf[8]; 
+                                          for (int k = 0; k < 15; k++) {
+                                              snprintf(slice_buf, sizeof(slice_buf), "%02X ", tail_ptr[k]);
+                                              sniffed_token_last15_hex += slice_buf;
+                                          }
+                                          
+                                          // Sync string to HA Sensor Entity
+                                          std::string ha_payload = "";
+                                          char ha_buf[8];
+                                          for (int j = 0; j < len; j++) {
+                                              snprintf(ha_buf, sizeof(ha_buf), "%02X", adv[j]);
+                                              ha_payload += ha_buf;
+                                          }
+
+                                          // Protection Check: Duplicate verification
+                                          if (memcmp(tail_ptr, id(active_wake_token), 15) == 0) {
+                                              ESP_LOGD("xgimi_bluedroid", "Token matches active_wake_token. Skipping write.");
+                                              
+                                              // Teardown Bluedroid Scan completely
+                                              esp_ble_gap_stop_scanning();
+                                              esp_ble_gap_register_callback(nullptr);
+                                              
+                                              id(flash_led_custom).execute(4, 200, 0.0, 1.0, 0.0);
+                                              id(indicator_led)->turn_off();
+                                              id(display_show).stop();
+                                              id(display_show).execute(false, "Token Recognized", "Matches", "Existing");
+                                              
+                                              id(sniffer_status)->publish_state(false);
+                                              id(xgimi_sniffer_switch).publish_state(false);
+                                              id(sniffing_sequence).stop(); // Halts the remaining 20s script window
+                                              return;
+                                          }
+                                          
+                                          // Update Runtime and Persistent Storage Arrays
+                                          memcpy(id(active_wake_token), tail_ptr, 15);
+                                          memcpy(id(learned_wake_token), tail_ptr, 15);
+                                          global_preferences->sync(); 
+                                          
+                                          std::vector<uint8_t> active_token_vector(id(active_wake_token), id(active_wake_token) + 15);
+                                          id(xgimi_remote_controller)->set_wake_token(active_token_vector);
+                                          
+                                          // Teardown Bluedroid Scan completely
+                                          esp_ble_gap_stop_scanning();
+                                          esp_ble_gap_register_callback(nullptr);
+                                          
+                                          id(flash_led_custom).execute(8, 200, 0.0, 1.0, 0.0);
+                                          id(indicator_led)->turn_off();
+                                          id(display_show).stop();
+                                          id(display_show).execute(false, sniffed_token_last15_hex, "Storing Token", "Wait 5 sec");
+                                          
+                                          id(sniffer_status)->publish_state(false);
+                                          id(xgimi_sniffer_switch).publish_state(false);
+                                          id(sniffing_sequence).stop(); 
+                                          return;
+                                      }
+                                  }
+                              } else {
+                                  id(sniffer_candidate_token) = token_hex;
+                                  id(sniffer_hit_counter) = 1;
+                                  ESP_LOGI("xgimi_bluedroid", "New unique signature target: %s", token_hex.c_str());
                               }
                           }
-                      } else {
-                          id(sniffer_candidate_token) = token_hex;
-                          id(sniffer_hit_counter) = 1;
-                          ESP_LOGI("xgimi_bluedroid", "New unique signature target: %s", token_hex.c_str());
                       }
                   }
               }
@@ -774,6 +763,8 @@ script:
           line1: 'Wake Token'
           line2: 'Sniffing'
           line3: 'TIMEOUT/ENDED'
+
+
 
 
 # --- myDisplay timeout auto dims display ---

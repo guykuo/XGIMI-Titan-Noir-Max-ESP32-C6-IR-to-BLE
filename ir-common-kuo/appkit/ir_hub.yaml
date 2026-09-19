@@ -13,7 +13,7 @@ remote_receiver:
     inverted: true
     mode:
       input: true
-      pullup: true
+      pullup: false
   filter: 50us       
   idle: 20ms         
   tolerance: 35%     
@@ -564,13 +564,13 @@ script:
               // flash sequence changes to help user keep track of place when no display
               if (b_idx == 27) {
                 // last button has been learned. Special flash to indicate done with buttons
-                id(flash_led_custom).execute(5, 20, 0.3, 0.4, 0.0);
-                id(flash_led_custom).execute(5, 50, 0.2, 0.4, 0.2);
+                id(flash_led_custom).execute(5, 20, 0.6, 1.0, 0.0);
+                id(flash_led_custom).execute(5, 50, 0.5, 1.0, 0.5);
               } else {
                 if (b_idx % 5 == 0) {
-                  id(flash_led_custom).execute(1, 300, 0.2, 0.4, 0.2); // every 5th, long flash once indicating button accepted
+                  id(flash_led_custom).execute(1, 200, 0.6, 1.0, 0.6); // every 5th, long flash once indicating button accepted
                 } else {
-                  id(flash_led_custom).execute(1, 80, 0.2, 0.4, 0.2); // short flash once indicating button accepted
+                  id(flash_led_custom).execute(1, 60, 0.6, 1.0, 0.6); // short flash once indicating button accepted
                 }              
               }
               
@@ -905,12 +905,15 @@ script:
                 }
               }
               
+              ESP_LOGI("IR HUB", "Translated to Xgimi %s", id(commandName).c_str());
+
+              
               // Usually display of commandName, addressStr, and commandStr
               // However, if during processing the command, special info became displayed, showing_special_info indicates
               // we should not immediately overwrite special info. However, start a timer to clear showing_special_info state.
     
               if (id(showing_special_info) == true) {
-                ESP_LOGD("Info Show", "Showing special info. Timer started.");
+                ESP_LOGD("IR HUB", "Showing special info. Timer started.");
                 id(showing_special_expiration_timer).execute();
               
               } else {

@@ -16,13 +16,20 @@ esp32:
 # ============= END Configuration Options KUO ==========
 
 esphome:
+  name: esp32-xgimi
   on_boot:
-    priority: 200.0            # Dim display backlight after hardware components setup
-    then:
-      - light.turn_on:
-          id: display_backlight
-          brightness: 0.7%
+    # 800.0f runs BEFORE the display (400.0f) initializes, giving us structural control
+    - priority: 800.0
+      then:
+        - delay: 3s                      # Give physical power lines time to stabilize
 
+    - priority: -100 # 4. Wait until the very end of the boot sequence when it is safe
+      then:
+        - light.turn_on:
+            id: display_backlight
+            brightness: 0.5
+            
+            
 globals:
     # ======= myDisplay display globals
   - id: myDisplay_line1
@@ -42,13 +49,15 @@ globals:
               
 output:
   - platform: ledc
+    pin: 
+      number: GPIO46
+      mode: OUTPUT        # Restores standard pushing power for the backlight circuit
     id: backlight_pwm
-    pin: GPIO46    
-    frequency: 12000 Hz       # Keeps frequency high to narrow the transistor's gate threshold
-    channel: 0                
-    min_power: 0.001          # MOVED HERE: Scales the hardware floor mapping
-    max_power: 0.40           # MOVED HERE: Caps the hardware ceiling mapping
-          
+    frequency: 1000Hz     # Explicitly sets frequency for ESP-IDF stability
+    min_power: 0.0
+    max_power: 1.0
+    
+      
 light:
   - platform: esp32_rmt_led_strip # neopixel
     id: indicator_led
@@ -64,7 +73,7 @@ light:
     output: backlight_pwm
     default_transition_length: 0s
     gamma_correct: 0          # Keeps response linear 
-    restore_mode: ALWAYS_ON     
+    restore_mode: ALWAYS_OFF    
 
 
 script:
@@ -140,17 +149,28 @@ spi:
 
 # Master Display Component Configuration
 display:
-  - platform: st7789v
+  - platform: mipi_spi
     id: myDisplay
-    model: WAVESHARE_1.47IN_172X320  
+    model: st7789v
+    dimensions:
+      width: 172
+      height: 320
+      offset_width: 34
+      offset_height: 0
+      pad_width: 34
+      pad_height: 0
+    rotation: 270
+    invert_colors: true
     cs_pin: GPIO42
     dc_pin: GPIO41
-    reset_pin: GPIO39
-    backlight_pin: no                
-    rotation: 270                    
+    # Use the hardware trace as an enable trigger to force a startup delay:
+    enable_pin: 
+      number: GPIO39
     update_interval: 0.1s
-    setup_priority: -100
- 
+
+    data_rate: 40MHz # Add this to push pixels faster    
+
+   
     on_page_change:
       - then:
           - if:
