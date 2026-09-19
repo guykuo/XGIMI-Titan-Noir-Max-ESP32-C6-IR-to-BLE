@@ -259,7 +259,7 @@ Your IR sensor module needs three connections to your ESP32 board.
 Here are pinouts of two styles of IR sensors and the correct connection points on a ESP32-C3 with built in OLED display.
 <img width="1000" height="827" alt="pinouts c3" src="https://github.com/user-attachments/assets/ed81b73e-706c-42e6-9b2c-3ecd1d09404e" />
 
-The IR sensor style that has the small pc board includes a red LED which lights with IR presence. That feedback LED may be useful during troubleshooting, but is not required. Either style of IR sensor will work.
+The IR sensor style that has the small pc board includes a red LED which lights with IR presence. That feedback LED may be useful during troubleshooting, but is not required and can cause issues with some ESP32 boards. Either style of IR sensor will work with ESP32 boards that have no or a small OLED display. If board has larger (> 1 inch) LCD display, IR sensors WITHOUT an indicator LED are recommended. _Some_ boards with large, built-in displays cannot tolerate load of a IR sensor with indicator LED on 3Vcc. Brownout of 3Vcc can cause bootup failure. A plain Vishay TSOP series IR sensor draws less current and is less likely to cause 3Vcc brownouts.
 
 Here is an alternative board I have also tested, ESP32-C6-WROOM-1. This one does not have a built-in display, but this project will run on it and uses its single light to give feedback.
 
