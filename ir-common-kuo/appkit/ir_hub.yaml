@@ -13,15 +13,15 @@ remote_receiver:
   filter: 50us       
   idle: 20ms         
   tolerance: 35%     
-  dump:
-    - raw
-    - nec
-    - jvc
-    - sony
-    - lg
-    - panasonic
-    - rc5
-    - rc6
+  # dump:
+  #   - raw
+  #   - nec
+  #   - jvc
+  #   - sony
+  #   - lg
+  #   - panasonic
+  #   - rc5
+  #   - rc6
     
   # 1. Updates timestamp every single time ANY raw IR pulse or repeat packet burst hits the pin
   on_raw:
@@ -628,8 +628,6 @@ script:
           
           const auto& active_profile = remote_profiles[true_hardware_index];
           
-          //ESP_LOGD("IR HUB", "IR Receiver after current_idx. Current Mode: %lu", id(ir_receiver_mode));
-
 
           switch(id(ir_receiver_mode)) {
             case 0: {// deactivated --------------
@@ -818,8 +816,7 @@ script:
               if (now - id(last_ir_press) < 30) return;
               id(last_ir_press) = now;
 
-
-              ESP_LOGD("IR HUB", "IR Receiver normal IR button action processing.");
+              ESP_LOGI("IR_HUB", "IR processing Protocol %s      Address 0x%X,      Command 0x%X", ir_protocolStr.c_str(), (unsigned int)ir_address, (unsigned int)ir_command);
 
               //Reminder of IRProfile structure
               //struct IRProfile {
