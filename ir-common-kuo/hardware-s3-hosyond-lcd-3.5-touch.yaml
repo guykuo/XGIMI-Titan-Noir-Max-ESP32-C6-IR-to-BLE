@@ -18,8 +18,6 @@ esp32:
 # ============= END Configuration Options KUO ==========
 
 esphome:
-  name: esp32s3-hello-world
-  friendly_name: ESP32-S3 Hello World
 
   on_boot:
     - priority: 100.0

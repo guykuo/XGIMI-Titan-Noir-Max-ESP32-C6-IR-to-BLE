@@ -22,11 +22,15 @@ struct IRProfile {
   std::map<uint32_t, IRCommand> cmd_codes; 
 };
 
+// CENTRAL CONFIGURATION FOR LEARNED PROFILES
+inline constexpr uint16_t MAX_LEARNED_PROFILES = 5; // <== Change this number to easily alter slot counts!
+
 // --- GLOBALS ---
 inline std::vector<IRProfile> remote_profiles;
 inline bool flash_hydration_complete = false; 
+inline size_t factory_count = 0; // actual value is set by populate_factory_profiles
 
-// --- FIXED FLASH-SAVABLE STRUCT LAYOUTS (Max 5 profiles, 85 keys each) ---
+// --- FIXED FLASH-SAVABLE STRUCT LAYOUTS (Max MAX_LEARNED_PROFILES profiles, 85 keys each) ---
 struct FlashStoredKey {
   uint32_t hex_code; 
   char target_button_id[32]; 
@@ -60,14 +64,12 @@ inline esphome::button::Button* resolve_button(const std::string& name) {
   return nullptr; 
 }
 
-inline size_t factory_count = 13; 
-
 // Converts the dynamic vector into isolated chunks and commits them sequentially
 inline void commit_database_to_flash() {
   uint16_t saved_count = 0;
 
   for (size_t i = factory_count; i < remote_profiles.size(); i++) {
-    if (saved_count >= 5) break; 
+    if (saved_count >= MAX_LEARNED_PROFILES) break; 
 
     const auto& runtime_p = remote_profiles[i];
     uint64_t slot_nvs_key = 1948204712ULL + saved_count;
@@ -108,7 +110,7 @@ inline void load_saved_flash_profiles() {
   }
 
   int loaded_custom_count = 0;
-  for (uint16_t slot = 0; slot < 5; slot++) {
+  for (uint16_t slot = 0; slot < MAX_LEARNED_PROFILES; slot++) {
     uint64_t slot_nvs_key = 1948204712ULL + slot;
     auto pref_obj = esphome::global_preferences->make_preference<FlashStoredProfile>(slot_nvs_key);
     

@@ -1,8 +1,6 @@
 # ir-common-kuo/ir-hub.yaml
 esphome:
-  name: ir-hub
-
-
+  # name: ${device_name}
 
 #====================================================================
 #=========================== IR Receiver ============================  
@@ -312,18 +310,22 @@ globals:
     type: std::string
     initial_value: '""'
     restore_value: no
+    
   - id: learn_cache_protocol
-    type: std::array<std::string, 5>
-    initial_value: '{""}'
+    type: std::array<std::string, 50> # Over-allocated container bounds barrier
+    initial_value: '{"", ""}'          # Clear literal definition to establish type footprint
     restore_value: no
+
   - id: learn_cache_address
-    type: std::vector<uint32_t>
-    initial_value: '{0, 0, 0, 0, 0}'
+    type: std::array<uint32_t, 50>
+    initial_value: '{0, 0}'
     restore_value: no    
+
   - id: learn_cache_command
-    type: std::vector<uint32_t>
-    initial_value: '{0, 0, 0, 0, 0}'
+    type: std::array<uint32_t, 50>
+    initial_value: '{0, 0}'
     restore_value: no
+        
   - id: learn_cache_idx   
     type: int
     initial_value: '-1'
@@ -377,11 +379,11 @@ script:
   - id: wipe_all_nvs_profiles
     then:
       - lambda: |-
-          ESP_LOGW("NVS Flash", "Factory wipe initiated. Clearing all 5 profile tracks...");
+          ESP_LOGW("NVS Flash", "Factory wipe initiated. Clearing all profile tracks...");
           
           static FlashStoredProfile blank_profile;
           
-          for (uint16_t slot = 0; slot < 5; slot++) {
+          for (uint16_t slot = 0; slot < MAX_LEARNED_PROFILES; slot++) {
             uint64_t slot_nvs_key = 1948204712ULL + slot;
             auto pref_obj = esphome::global_preferences->make_preference<FlashStoredProfile>(slot_nvs_key);
             
@@ -468,15 +470,17 @@ script:
                                      "Action Mode");
           }
 
+
   - id: learn_cache_clear
     then:
       - lambda: |-
-          for (uint16_t idx = 0; idx < 5; idx++) {
+          for (uint16_t idx = 0; idx < MAX_LEARNED_PROFILES; idx++) {
              id(learn_cache_protocol)[idx] = "";
              id(learn_cache_address)[idx] = 0;
              id(learn_cache_command)[idx] = 0;
           }
           id(learn_cache_idx) = -1;
+
 
   # ============= Button learning phase 0 and phase A settling timer
   # Does deferred assessement and handling of inbound IR during learing
@@ -523,11 +527,13 @@ script:
                 return; 
               }
             
-              auto& primary_array = id(learn_cache_protocol);
+              auto& primary_array = id(learn_cache_protocol); // Direct instantiation hook
               std::string target = id(learn_detected_protocol);
-              auto it = std::find(primary_array.begin(), primary_array.end(), target);
+              
+              // Search strictly within the range defined by MAX_LEARNED_PROFILES
+              auto it = std::find(primary_array.begin(), primary_array.begin() + MAX_LEARNED_PROFILES, target);
             
-              if (it == primary_array.end()) {
+              if (it == (primary_array.begin() + MAX_LEARNED_PROFILES)) {
                 id(learn_cache_clear).execute();
                 id(learn_active_protocol) = "";
                 id(learn_active_address) = 0x0;             
@@ -651,15 +657,16 @@ script:
               // We received an ir signal, possibly one of several from an event. We do not yet know which is correct protocol.
               // Cache all inbound IR data. On_raw is simultaneously determining which protocol matche inbound signals.
               // at end of aggregation window, we will determine which of the received IR signals to use.
-              
+
+
               int cache_idx = id(learn_cache_idx); // last slot that has been filled
               cache_idx++;
-                 if (cache_idx < 5) {
-                   id(learn_cache_protocol).at(cache_idx) = ir_protocolStr; // store inbound IR signal info
-                   id(learn_cache_address)[cache_idx]  = ir_address;
-                   id(learn_cache_command)[cache_idx]  = ir_command;
-                   id(learn_cache_idx) = cache_idx;
-                 }
+              if (cache_idx < MAX_LEARNED_PROFILES) {
+                id(learn_cache_protocol)[cache_idx] = ir_protocolStr; // store inbound IR signal info
+                id(learn_cache_address)[cache_idx]  = ir_address;
+                id(learn_cache_command)[cache_idx]  = ir_command;
+                id(learn_cache_idx) = cache_idx;
+              }
 
 
               ESP_LOGD("IR Learn", "cache index  %d... command: 0x%X (Addr: 0x%X protocol %s)", 
