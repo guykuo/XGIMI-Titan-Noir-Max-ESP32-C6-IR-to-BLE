@@ -13,7 +13,7 @@ remote_receiver:
     inverted: true
     mode:
       input: true
-      pullup: false
+      pullup: true
   filter: 50us       
   idle: 20ms         
   tolerance: 35%     

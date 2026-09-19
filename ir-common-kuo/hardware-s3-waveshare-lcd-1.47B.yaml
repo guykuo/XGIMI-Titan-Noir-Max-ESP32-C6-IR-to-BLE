@@ -21,7 +21,7 @@ esphome:
     # 800.0f runs BEFORE the display (400.0f) initializes, giving us structural control
     - priority: 800.0
       then:
-        - delay: 3s                      # Give physical power lines time to stabilize
+        - delay: 1s                      # Give physical power lines time to stabilize
 
     - priority: -100 # 4. Wait until the very end of the boot sequence when it is safe
       then:
