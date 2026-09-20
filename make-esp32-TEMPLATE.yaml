@@ -68,7 +68,8 @@ logger:
 captive_portal:
 
 wifi:
-  reboot_timeout: 0s
+  reboot_timeout: 5min
+  output_power: 10.0dBm
   ap:
     ssid: "${ble_remote_name}"
     password: !secret fallback_ap_password
