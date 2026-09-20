@@ -99,7 +99,7 @@ api:
 
   actions:
     # ---------- 1) Import ----------
-    - action: import_json_profiles
+    - action: import_json_profiles # Avalones ---------------
       variables:
         json_data: string
       then:
@@ -119,7 +119,7 @@ api:
             }
 
     # ---------- 2) Count ----------
-    - action: get_profile_count
+    - action: get_profile_count # Avalones ---------------
       supports_response: only
       then:
         - api.respond:
@@ -128,7 +128,7 @@ api:
               root["factory_count"] = (int) factory_count;
 
     # ---------- 3) Export one profile ----------
-    - action: export_json_profile
+    - action: export_json_profile # Avalones ---------------
       variables:
         index: int
       supports_response: only
@@ -175,7 +175,7 @@ api:
 
 #------------------------------
 select:
-  - platform: template
+  - platform: template # Avalones ---------------
     name: "IR Profile to Export"
     id: ir_profile_slot_selector
     icon: "mdi:format-list-numbered"
@@ -369,12 +369,12 @@ globals:
     type: int
     initial_value: ${def_profile}
 
-  - id: selected_profile_slot
+  - id: selected_profile_slot # Avalones ---------------
     type: int
     restore_value: yes          # test
     initial_value: '0'          # 0 = first internal profile (LG-cinebeam-hu810p)
 
-  - id: last_active_idx_seen
+  - id: last_active_idx_seen # Avalones ---------------
     type: int
     restore_value: no
     initial_value: '-999'
@@ -439,13 +439,13 @@ text_sensor:
     reset_reason:
       name: "Last Reset Reason"
 
-  - platform: template
+  - platform: template # Avalones ---------------
     name: "IR Profile Selected JSON"
     id: ir_profile_selected_json
     icon: "mdi:code-json"
     update_interval: never
 
-  - platform: template
+  - platform: template # Avalones ---------------
     name: "IR Active Profile"
     id: ir_active_profile_ts
     icon: "mdi:remote"
@@ -1040,9 +1040,9 @@ script:
 
           }
 
+# ====================================
 
-
-  - id: publish_selected_profile_json
+  - id: publish_selected_profile_json # Avalones ---------------
     mode: restart
     then:
       - delay: 100ms
@@ -1159,7 +1159,7 @@ switch:
             
 #======================
 interval:
-  - interval: 1s
+  - interval: 1s # Avalones ---------------
     id: publish_when_profiles_ready
     then:
       - if:
@@ -1170,7 +1170,7 @@ interval:
             - script.execute: publish_selected_profile_json
             - component.suspend: publish_when_profiles_ready
 
-  - interval: 2s
+  - interval: 2s # Avalones ---------------
     then:
       - lambda: |-
           if (remote_profiles.empty()) return;
