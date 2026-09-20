@@ -1772,6 +1772,59 @@ interval:
           link_hardware_buttons();
           ESP_LOGI("ir_hub", "Hardware pointer mapping complete. System armed.");
           
+          // ----------- 1. Fetch and Mutate Options Vector Safely
+          auto select_obj = id(ir_profile_slot_selector);
+          
+          // Use const_cast to unlock write permissions on the core FixedVector reference
+          auto &mutable_options = const_cast<esphome::FixedVector<const char *> &>(select_obj->traits.get_options());
+          
+          // Safely purge compile-time placeholder entries
+          mutable_options.clear();
+          
+          // Allocate persistent heap memory for the formatted strings
+          static std::vector<std::string> persistent_options;
+          persistent_options.clear();
+          
+          char format_buf[128]; 
+
+          // 2. Hydrate all pre-compile factory profiles into persistent memory strings
+          for (size_t i = 0; i < factory_count; i++) {
+            snprintf(format_buf, sizeof(format_buf), "%d  internal  (%s)", 
+                     (int)i, remote_profiles[i].profile_name.c_str());
+            persistent_options.push_back(std::string(format_buf));
+          }
+
+          // 3. Hydrate all custom dynamically tracked profile slots
+          for (uint16_t slot = 0; slot < MAX_LEARNED_PROFILES; slot++) {
+            size_t display_index = factory_count + slot;
+            snprintf(format_buf, sizeof(format_buf), "%d  custom    (slot %d)", 
+                     (int)display_index, slot);
+            persistent_options.push_back(std::string(format_buf));
+          }
+
+          // 4. Push string reference data pointers natively into the unlocked FixedVector array
+          for (size_t i = 0; i < persistent_options.size(); i++) {
+            mutable_options.push_back(persistent_options[i].c_str());
+          }
+
+          // 5. Check if the active selection needs to fall back to the shift-proof default profile
+          std::string current_state = select_obj->current_option().c_str(); 
+          if (current_state == "Initializing..." || current_state.empty()) {
+            std::string default_option_string = persistent_options[0]; 
+
+            for (size_t i = 0; i < persistent_options.size(); ++i) {
+              if (persistent_options[i].find("LG Projector") != std::string::npos || 
+                  persistent_options[i].find("LG-cinebeam") != std::string::npos) {
+                default_option_string = persistent_options[i];
+                break;
+              }
+            }
+            
+            // Assign selection safely using a direct state change
+            select_obj->publish_state(default_option_string);
+          }
+          // ------------
+
       - script.execute: setup_ir_receiver_for_current_profile
       - lambda: |-      
           id(ir_receiver_mode) = 1; // Securely move device into active listening mode
@@ -1780,3 +1833,4 @@ interval:
       
       # The Kill Switch: Permanently shuts down this initialization timer loop
       - component.suspend: boot_initialization_timer
+

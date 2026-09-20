@@ -182,25 +182,8 @@ select:
     optimistic: true
     restore_value: yes
     options:
-      - "0  internal  (AWOL-projector)"
-      - "1  internal  (benq-w5800)"
-      - "2  internal  (epson-pro-cinema-LS12000)"
-      - "3  internal  (hisense-50u6g)"
-      - "4  internal  (jvc-hr-S9600u)"
-      - "5  internal  (jvc-rs2-codeset-A)"
-      - "6  internal  (jvc-rs2-codeset-B)"
-      - "7  internal  (LG-cinebeam-hu810p)"
-      - "8  internal  (optoma-UHD50X)"
-      - "9  internal  (sony-VPL-XW600ES)"
-      - "10 internal  (sony-XBR-77A9G)"
-      - "11 internal  (tivo-roamio-TCD846500)"
-      - "12 internal  (xgimi-titan)"
-      - "13 custom    (slot 0)"
-      - "14 custom    (slot 1)"
-      - "15 custom    (slot 2)"
-      - "16 custom    (slot 3)"
-      - "17 custom    (slot 4)"
-    initial_option: "7  internal  (LG-cinebeam-hu810p)"
+      - "Initializing..." # Satisfies the compiler; will be overwritten instantly on boot
+
     on_value:
       then:
         - lambda: |-
