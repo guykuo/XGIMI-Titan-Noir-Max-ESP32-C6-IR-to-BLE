@@ -214,6 +214,7 @@ remote_receiver:
 
 
 globals:
+
   - id: active_remote_layout
     type: int
     initial_value: ${def_profile}
@@ -1698,56 +1699,24 @@ interval:
           link_hardware_buttons();
           ESP_LOGI("ir_hub", "Hardware pointer mapping complete. System armed.");
           
-          // ----------- 1. Fetch and Mutate Options Vector Safely
+          // ----------- 1. Fetch Select Control Target Pointer Address
           auto select_obj = id(ir_profile_slot_selector);
-          
-          // Use const_cast to unlock write permissions on the core FixedVector reference
-          auto &mutable_options = const_cast<esphome::FixedVector<const char *> &>(select_obj->traits.get_options());
-          
-          // Clear previous state options pointers natively
-          mutable_options.clear();
-          
-          // Fixed Memory Footprint: Static string pool completely bypasses runtime heap allocations
-          constexpr size_t MAX_OPTIONS = 64;
-          constexpr size_t STRING_SIZE = 64;
-          static char static_string_pool[MAX_OPTIONS][STRING_SIZE];
-          size_t option_count = 0;
 
-          // 2. Hydrate all pre-compile factory profiles safely into the isolated static buffer
-          for (size_t i = 0; i < factory_count && option_count < MAX_OPTIONS; i++) {
-            snprintf(static_string_pool[option_count], STRING_SIZE, "%d  internal  (%s)", 
-                     (int)i, remote_profiles[i].profile_name.c_str());
-            mutable_options.push_back(static_string_pool[option_count]);
-            option_count++;
+          // ----------- 2. ALIGN SELECTION ON BOOT
+          int boot_idx = id(active_remote_layout); 
+          if (boot_idx < 0) {
+            int custom_slot = (boot_idx * -1) - 1;
+            boot_idx = (int)factory_count + custom_slot;
           }
 
-          // 3. Hydrate all custom dynamically tracked profile slots into the isolated static buffer
-          for (uint16_t slot = 0; slot < MAX_LEARNED_PROFILES && option_count < MAX_OPTIONS; slot++) {
-            size_t display_index = factory_count + slot;
-            snprintf(static_string_pool[option_count], STRING_SIZE, "%d  custom    (slot %d)", 
-                     (int)display_index, slot);
-            mutable_options.push_back(static_string_pool[option_count]);
-            option_count++;
+          id(selected_profile_slot) = boot_idx;
+
+          // ----------- 3. EMIT ACTIVE STATE TO FRONTEND NATIVELY
+          // Pulls the matching string directly from the static options list without throwing an error
+          if (boot_idx >= 0 && boot_idx < (int)select_obj->traits.get_options().size()) {
+            select_obj->publish_state(select_obj->traits.get_options()[boot_idx]);
           }
 
-          // 4. Check if the active selection needs to fall back to a default option
-          std::string current_state = select_obj->current_option().c_str(); 
-          if (current_state == "Initializing..." || current_state.empty()) {
-            // FIXED: Set safe index assignment to index 0 to prevent type-decay compilation error
-            const char* default_option_string = static_string_pool[0]; 
-
-            for (size_t i = 0; i < option_count; ++i) {
-              // OPTIMIZATION: Swapped out std::string for std::strstr to secure 100% zero-heap matching
-              if (std::strstr(static_string_pool[i], "AWOL Projector") != nullptr || 
-                  std::strstr(static_string_pool[i], "LG Projector") != nullptr) {
-                default_option_string = static_string_pool[i];
-                break;
-              }
-            }
-            
-            // Assign selection safely using a direct state change
-            select_obj->publish_state(default_option_string);
-          }
 
       - script.execute: setup_ir_receiver_for_current_profile
       - lambda: |-      

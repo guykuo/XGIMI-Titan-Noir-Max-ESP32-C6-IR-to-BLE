@@ -153,8 +153,9 @@ api:
               root["count"]         = (int) remote_profiles.size();
               root["factory_count"] = (int) factory_count;
 
+
     # ---------- 3) Export one profile ----------
-    - action: export_json_profile # Avalones ---------------
+    - action: export_json_profile # modified from Avalones
       variables:
         index: int
       supports_response: only
@@ -177,7 +178,7 @@ api:
                 return;
               }
 
-              char buf[16];
+              char buf[32]; // Fixed array buffer tracking definition bounds
               root["index"]    = idx;
               root["name"]     = p.profile_name;
               root["protocol"] = p.protocol;
@@ -192,13 +193,52 @@ api:
               root["clear_fire"] = buf;
 
               JsonArray keys_arr = root["keys"].to<JsonArray>();
-              for (const auto &pair : p.cmd_codes) {          // <-- cmd_codes, NOT commands
-                JsonObject k = keys_arr.add<JsonObject>();
-                snprintf(buf, sizeof(buf), "0x%08X", (unsigned int) pair.first);
-                k["code"]   = buf;
-                k["button"] = pair.second.name;               // IRCommand::name
+
+              static const char* const export_sequence[] = {
+                "power_on", "power_off", "cursor_left", "cursor_right", "cursor_up", "cursor_down",
+                "cursor_enter", "settings_menu", "back", "home", "game_menu", "input", "picture",
+                "focus_manual", "focus_auto", "shortcut_1", "shortcut_2", "shortcut_3", "shortcut_4",
+                "volume_up", "volume_down", "mute", "token_sniff", "token_clear", "token_recall",
+                "BT_start_pair", "BT_clear_pair"
+              };
+              // FIXED: Corrected array element size tracking math
+              constexpr size_t TOTAL_SEQUENTIAL_KEYS = sizeof(export_sequence) / sizeof(export_sequence[0]);
+
+              std::vector<uint32_t> exported_codes;
+              exported_codes.reserve(p.cmd_codes.size());
+
+              // PASS 1: Sequence matching using case-insensitive substring logic
+              for (size_t seq_i = 0; seq_i < TOTAL_SEQUENTIAL_KEYS; seq_i++) {
+                std::string target = export_sequence[seq_i];
+                
+                for (const auto &pair : p.cmd_codes) {          
+                  std::string current_name = pair.second.name;
+                  
+                  std::string current_name_lower = current_name;
+                  std::transform(current_name_lower.begin(), current_name_lower.end(), current_name_lower.begin(), ::tolower);
+
+                  if (current_name_lower == target || current_name_lower.rfind(target, 0) == 0) {
+                    if (std::find(exported_codes.begin(), exported_codes.end(), pair.first) == exported_codes.end()) {
+                      exported_codes.push_back(pair.first);
+                    }
+                  }
+                }
               }
 
+              // FIXED / PASS 2: Appends ALL leftover custom parameters (like Epson specific "input LAN", "blank", "lens1", etc.)
+              for (const auto &pair : p.cmd_codes) {
+                if (std::find(exported_codes.begin(), exported_codes.end(), pair.first) == exported_codes.end()) {
+                  exported_codes.push_back(pair.first);
+                }
+              }
+
+              // Build the native JSON objects sequentially for the API response packet
+              for (uint32_t code : exported_codes) {
+                JsonObject k = keys_arr.add<JsonObject>();
+                snprintf(buf, sizeof(buf), "0x%04X", (unsigned int) code); // Formatted to 4 hex characters for cleaner mapping arrays
+                k["code"]   = buf;
+                k["button"] = p.cmd_codes.at(code).name;
+              }
 
 # ============================================================
 
@@ -1082,15 +1122,24 @@ script:
           }
 
 # ====================================
+# --- HYBRID SEQUENTIAL JSON EXPORT --- modified Avalones
   - id: publish_selected_profile_json
     mode: restart
     then:
       - delay: 100ms
       - lambda: |-
-          // Fixed, safe stack buffer space
-          char json_buf[4096] = {0};
+          // Allocate buffer space on the HEAP to prevent stack overflow crashes
+          size_t buf_sz = 8192; // Increased to 8KB to comfortably hold Epson 39+ custom keys
+          char *json_buf = new (std::nothrow) char[buf_sz];
+          
+          if (json_buf == nullptr) {
+            ESP_LOGE("json_export", "Heap allocation failed! Out of memory.");
+            return;
+          }
+          
+          // Zero out our newly allocated heap block memory footprint
+          std::memset(json_buf, 0, buf_sz);
           size_t offset = 0;
-          size_t buf_sz = sizeof(json_buf);
 
           const int idx = id(selected_profile_slot);
 
@@ -1098,7 +1147,7 @@ script:
             offset += snprintf(json_buf + offset, buf_sz - offset, "{\n  \"sta\":\"warming\"\n}");
           } else {
             int factory = (int) factory_count;
-            const int custom  = MAX_LEARNED_PROFILES;
+            const int custom  = 50; // Aligned with MAX_LEARNED_PROFILES boundary footprint
             const int max_idx = factory + custom;
             
             if (idx < 0 || idx >= max_idx) {
@@ -1119,36 +1168,77 @@ script:
                   offset += snprintf(json_buf + offset, buf_sz - offset, ",\n  \"typ\":\"internal\"\n}");
                 }
               } else {
-                // Format the main metadata header block
+                // Header block
                 offset += snprintf(json_buf + offset, buf_sz - offset, 
                                    "{\n  \"idx\":%d,\n  \"int\":%d,\n  \"nam\":\"%s\",\n  \"pro\":\"%s\",\n  \"adr\":\"%04X\",\n  \"car\":\"%04X\",\n  \"cfr\":\"%04X\",\n  \"key\":[\n",
                                    idx, (idx < factory) ? 1 : 0, p.profile_name.c_str(), p.protocol.c_str(),
                                    (unsigned int) p.device_address, (unsigned int) p.cmd_clear_token_arm, (unsigned int) p.cmd_clear_token_fire);
 
-                // Stream loop keys inline with shorter "x" and "b" labels
-                size_t k_count = 0;
-                for (const auto &pair : p.cmd_codes) {
-                  if (offset >= buf_sz - 128) break; // Defensive guard rail
+                static const char* const export_sequence[] = {
+                  "power_on", "power_off", "cursor_left", "cursor_right", "cursor_up", "cursor_down",
+                  "cursor_enter", "settings_menu", "back", "home", "game_menu", "input", "picture",
+                  "focus_manual", "focus_auto", "shortcut_1", "shortcut_2", "shortcut_3", "shortcut_4",
+                  "volume_up", "volume_down", "mute", "token_sniff", "token_clear", "token_recall",
+                  "BT_start_pair", "BT_clear_pair" 
+                };
+                constexpr size_t TOTAL_SEQUENTIAL_KEYS = sizeof(export_sequence) / sizeof(export_sequence[0]);
+
+                std::vector<uint32_t> exported_codes;
+                exported_codes.reserve(p.cmd_codes.size());
+
+                // PASS 1: Sequential Base and Substring Grouping (Case-Insensitive)
+                for (size_t seq_i = 0; seq_i < TOTAL_SEQUENTIAL_KEYS; seq_i++) {
+                  std::string target = export_sequence[seq_i];
                   
-                  // Changed "cod" to "x" and "btn" to "b"
+                  for (const auto &pair : p.cmd_codes) {
+                    std::string current_name = pair.second.name;
+                    
+                    std::string current_name_lower = current_name;
+                    std::transform(current_name_lower.begin(), current_name_lower.end(), current_name_lower.begin(), ::tolower);
+
+                    if (current_name_lower == target || current_name_lower.rfind(target, 0) == 0) {
+                      if (std::find(exported_codes.begin(), exported_codes.end(), pair.first) == exported_codes.end()) {
+                        exported_codes.push_back(pair.first);
+                      }
+                    }
+                  }
+                }
+
+                // FIXED / PASS 2: True catch-all ensures ALL elements left out of export_sequence 
+                // (like Epson specific "input LAN", "blank", "lens1", etc.) are cleanly caught and appended.
+                for (const auto &pair : p.cmd_codes) {
+                  if (std::find(exported_codes.begin(), exported_codes.end(), pair.first) == exported_codes.end()) {
+                    exported_codes.push_back(pair.first);
+                  }
+                }
+
+                // Render JSON structure safely into expanded buffer footprint
+                for (size_t i = 0; i < exported_codes.size(); i++) {
+                  if (offset >= buf_sz - 128) break; // Keep defensive guard rails intact
+                  
+                  uint32_t code = exported_codes[i];
+                  std::string b_name = p.cmd_codes.at(code).name;
+                  bool is_last = (i == exported_codes.size() - 1);
+
                   offset += snprintf(json_buf + offset, buf_sz - offset, 
-                                     "    {\"x\":\"%04X\",\"b\":\"%s\"}%s\n",
-                                     (unsigned int) pair.first, pair.second.name.c_str(),
-                                     (k_count < p.cmd_codes.size() - 1) ? "," : "");
-                  k_count++;
+                                     "    {\"x\":\"%X\",\"b\":\"%s\"}%s\n",
+                                     (unsigned int)code, b_name.c_str(),
+                                     is_last ? "" : ",");
                 }
                 
-                // Securely close the formatting blocks
                 offset += snprintf(json_buf + offset, buf_sz - offset, "  ]\n}");
               }
             }
           }
 
-          // Publish the clean character array string down to the ESPHome state machine
           std::string result(json_buf);
           id(ir_profile_selected_json).publish_state(result);
+          
+          // CLEANUP: Free the heap block to guarantee zero memory leaks
+          delete[] json_buf;
 
-#------------------------------
+
+#=================================================================
 select:
   - platform: template # Avalones ---------------
     name: "IR Profile to Export"
@@ -1161,12 +1251,29 @@ select:
     optimistic: true
     restore_value: yes
     options:
-      - "Initializing..." # Satisfies the compiler; will be overwritten instantly on boot
-
+      - "0  internal  (AWOL-projector)"
+      - "1  internal  (benq-w5800)"
+      - "2  internal  (epson-pro-cinema-LS12000)"
+      - "3  internal  (hisense-50u6g)"
+      - "4  internal  (jvc-hr-S9600u)"
+      - "5  internal  (jvc-rs2-codeset-A)"
+      - "6  internal  (jvc-rs2-codeset-B)"
+      - "7  internal  (LG-cinebeam-hu810p)"
+      - "8  internal  (optoma-UHD50X)"
+      - "9  internal  (sony-VPL-XW600ES)"
+      - "10 internal  (sony-XBR-77A9G)"
+      - "11 internal  (tivo-roamio-TCD846500)"
+      - "12 internal  (xgimi-titan)"
+      - "13 custom    (slot 0)"
+      - "14 custom    (slot 1)"
+      - "15 custom    (slot 2)"
+      - "16 custom    (slot 3)"
+      - "17 custom    (slot 4)"
+    initial_option: "7  internal  (LG-cinebeam-hu810p)"
+    
     on_value:
       then:
         - lambda: |-
-            // --- 1. Parse index from option label ---
             int idx = 0;
             size_t pos = 0;
             while (pos < x.size() && x[pos] >= '0' && x[pos] <= '9') {
@@ -1174,10 +1281,8 @@ select:
               pos++;
             }
 
-            // --- 2. Always update the export slot ---
             id(selected_profile_slot) = idx;
 
-            // --- 3. Switch the live IR layout only if that profile is loaded ---
             if (!remote_profiles.empty() && idx < (int) remote_profiles.size()) {
               int cur = id(active_remote_layout);
               if (cur < 0) {
@@ -1188,13 +1293,9 @@ select:
                 id(active_remote_layout) = idx;
                 id(setup_ir_receiver_for_current_profile).execute();
                 ESP_LOGI("webui", "Active IR profile changed to idx=%d via selector", idx);
-                // Refresh the read-only text sensor immediately
                 id(last_active_idx_seen) = idx;
                 id(ir_active_profile_ts).update();
               }
-            } else {
-              ESP_LOGW("webui", "Selector idx=%d not loaded yet (size=%d); export only",
-                       idx, (int) remote_profiles.size());
             }
         - script.execute: publish_selected_profile_json
 
