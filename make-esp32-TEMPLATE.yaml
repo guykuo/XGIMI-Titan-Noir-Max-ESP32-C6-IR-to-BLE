@@ -6,6 +6,7 @@
 #   hardware_package
 
 substitutions:
+
   ble_remote_name: "IR to Xgimi Kuo"  # <===== Name your IR remote. (20 char max. No special characters)
 
 
@@ -58,22 +59,27 @@ external_components:
 esp32:
   partitions: ir-common-kuo/appkit/partitions.csv  #larger app partition needed 
 
-  
 logger:
-  level: INFO 
-  # level: DEBUG 
+#  level: DEBUG
+  level: INFO
   hardware_uart: USB_CDC      # Directs logs to the native internal S3 USB port
   baud_rate: 115200
 
 captive_portal:
 
-  
 wifi:
   reboot_timeout: 0s
   ap:
     ssid: "${ble_remote_name}"
     password: !secret fallback_ap_password
     ap_timeout: 60s
+  on_connect:
+    then:
+      lambda: |-
+        std::string current_ip = id(my_ip_address).state;
+        id(display_modify_a_line).execute(true,
+                         2,
+                         current_ip);
 
 ota:
   - platform: esphome
@@ -83,14 +89,32 @@ ota:
 # Enable v3 Web Server component
 web_server:
   port: 80
-  # version: 3
+  version: 3
   local: true
   auth:
+    type: digest
     username: "admin"
     password: !secret fallback_ap_password
-
-
-
+  sorting_groups:
+    - id: powerGroup
+      name: "Power"
+      sorting_weight: 1
+    - id: navigationGroup
+      name: "Navigation"
+      sorting_weight: 2
+    - id: settingsGroup
+      name: "Settings"
+      sorting_weight: 3
+    - id: dxGroup
+      name: "Info"
+      sorting_weight: 4
+    - id: profileGroup
+      name: "Profiles"
+      sorting_weight: 5
+      
+      
+      
+      
 # ======================================
 api:
   encryption:
@@ -173,51 +197,6 @@ api:
                 k["button"] = pair.second.name;               // IRCommand::name
               }
 
-#------------------------------
-select:
-  - platform: template # Avalones ---------------
-    name: "IR Profile to Export"
-    id: ir_profile_slot_selector
-    icon: "mdi:format-list-numbered"
-    optimistic: true
-    restore_value: yes
-    options:
-      - "Initializing..." # Satisfies the compiler; will be overwritten instantly on boot
-
-    on_value:
-      then:
-        - lambda: |-
-            // --- 1. Parse index from option label ---
-            int idx = 0;
-            size_t pos = 0;
-            while (pos < x.size() && x[pos] >= '0' && x[pos] <= '9') {
-              idx = idx * 10 + (x[pos] - '0');
-              pos++;
-            }
-
-            // --- 2. Always update the export slot ---
-            id(selected_profile_slot) = idx;
-
-            // --- 3. Switch the live IR layout only if that profile is loaded ---
-            if (!remote_profiles.empty() && idx < (int) remote_profiles.size()) {
-              int cur = id(active_remote_layout);
-              if (cur < 0) {
-                int cs = (cur * -1) - 1;
-                cur = (int) factory_count + cs;
-              }
-              if (cur != idx) {
-                id(active_remote_layout) = idx;
-                id(setup_ir_receiver_for_current_profile).execute();
-                ESP_LOGI("webui", "Active IR profile changed to idx=%d via selector", idx);
-                // Refresh the read-only text sensor immediately
-                id(last_active_idx_seen) = idx;
-                id(ir_active_profile_ts).update();
-              }
-            } else {
-              ESP_LOGW("webui", "Selector idx=%d not loaded yet (size=%d); export only",
-                       idx, (int) remote_profiles.size());
-            }
-        - script.execute: publish_selected_profile_json
 
 # ============================================================
 
@@ -401,17 +380,28 @@ debug:
 
 sensor:
   - platform: debug
+
     free:
       name: "Heap Free RAM"
+      web_server:
+        sorting_group_id: dxGroup
+        sorting_weight: 20
     fragmentation:
       name: "Heap Fragmentation"
+      web_server:
+        sorting_group_id: dxGroup
+        sorting_weight: 21
     block:
       name: "Max Free Heap Block"
+      web_server:
+        sorting_group_id: dxGroup
+        sorting_weight: 22
     loop_time:
       name: "Main Loop Time"
-    # # Optional: If your hardware has PSRAM (like some ESP32 variants)
-    # psram:
-    #   name: "Free PSRAM"
+      web_server:
+        sorting_group_id: dxGroup
+        sorting_weight: 23
+
 
 # ============================================================
 
@@ -419,19 +409,31 @@ text_sensor:
   - platform: debug
     device:
       name: "Device Hardware Info" # Shows flash chip size, speed, mode, and ESP version
+      web_server:
+        sorting_group_id: dxGroup
+        sorting_weight: 10
+      
     reset_reason:
       name: "Last Reset Reason"
+      web_server:
+        sorting_group_id: dxGroup
+        sorting_weight: 24
 
-  - platform: template # Avalones ---------------
-    name: "IR Profile Selected JSON"
-    id: ir_profile_selected_json
-    icon: "mdi:code-json"
-    update_interval: never
 
+  - platform: wifi_info
+    ip_address:
+      id: my_ip_address
+      
+      
+      
   - platform: template # Avalones ---------------
     name: "IR Active Profile"
     id: ir_active_profile_ts
     icon: "mdi:remote"
+    web_server:
+      sorting_group_id: profileGroup
+      sorting_weight: 20
+
     update_interval: 2s
     lambda: |-
       int idx = id(active_remote_layout);
@@ -452,12 +454,27 @@ text_sensor:
                kind);
       return std::string(buf);
 
+
+  - platform: template # Avalones ---------------
+    name: "IR Profile Selected JSON"
+    id: ir_profile_selected_json
+    icon: "mdi:code-json"
+    web_server:
+      sorting_group_id: profileGroup
+      sorting_weight: 21
+
+    update_interval: never
+
+
 # ============================================================
 binary_sensor:
   - platform: template
     name: "XGIMI Sniffer Active Status"
     id: sniffer_status
     icon: "mdi:radar"
+    web_server:
+      sorting_group_id: settingsGroup
+      sorting_weight: 7
 
   - platform: gpio # Implement physical button for sniff
     pin:
@@ -466,8 +483,13 @@ binary_sensor:
       mode:
         input: true
         pullup: true
-    name: "physical action button"
-    id: physical_action_button
+    name: "Action Button"
+    id: action_button
+    web_server:
+        sorting_group_id: settingsGroup
+        sorting_weight: 14
+
+
     filters:
       - delayed_on: 50 ms
     on_multi_click:
@@ -567,19 +589,25 @@ binary_sensor:
 # ============================================================
 button:
   
-  - platform: template # retrieve stored template, display, and use as active token
-    name: "token_recall"
-    id: token_recall
-    icon: "mdi:bluetooth"
+            
+  - platform: template # button to start sniffing for wake token. W
+    name: "token_sniff"
+    id: token_sniff
+    icon: "mdi:bluetooth-audio"
+    web_server:
+        sorting_group_id: settingsGroup
+        sorting_weight: 9
     on_press:
       then:
-        - script.execute: execute_token_recall_routine
-      
-
-
+        - script.execute: sniffing_sequence
+    
+    
   - platform: template # clear stored template. Revert to secrets wake token
     name: "token_clear"
     id: token_clear
+    web_server:
+        sorting_group_id: settingsGroup
+        sorting_weight: 10
     on_press:
       then:
         - script.execute:
@@ -592,15 +620,18 @@ button:
             // Force fire your local hardware data-erasing flash worker
             id(run_token_clear_worker).execute(); 
 
-            
-  - platform: template # button to start sniffing for wake token. W
-    name: "token_sniff"
-    id: token_sniff
-    icon: "mdi:bluetooth-audio"
+
+  - platform: template # retrieve stored template, display, and use as active token
+    name: "token_recall"
+    id: token_recall
+    icon: "mdi:bluetooth"
+    web_server:
+        sorting_group_id: settingsGroup
+        sorting_weight: 11
     on_press:
       then:
-        - script.execute: sniffing_sequence
-    
+        - script.execute: execute_token_recall_routine
+      
 
 
 
@@ -903,7 +934,7 @@ script:
 
 
 
-# --- myDisplay timeout auto dims display ---
+# --- myDisplay display 3 lines and auto dim display ---
   - id: display_show
     mode: restart 
     parameters:
@@ -917,6 +948,50 @@ script:
           id(myDisplay_line1) = line1; 
           id(myDisplay_line2) = line2;
           id(myDisplay_line3) = line3;
+      - if:
+          condition:
+            lambda: |-
+              return id(myDisplay_disabled);
+          then:
+            - display.page.show: blank_page
+          else:
+            - if:
+                condition:
+                  lambda: |-
+                    return small_text;
+                then:
+                   - display.page.show: active_page_small
+                else:
+                   - display.page.show: active_page_std
+
+      - delay: 40s #how long display remains on
+      - display.page.show: blank_page
+
+
+# --- myDisplay modify a line and auto dim display ---
+  - id: display_modify_a_line
+    mode: restart 
+    parameters:
+      small_text: bool
+      whichLine: int
+      aline: std::string
+   
+    then:
+      - lambda: |-
+          switch (whichLine) {
+            case 1:
+              id(myDisplay_line1) = aline; 
+              break;
+            case 2:
+              id(myDisplay_line2) = aline;
+              break;
+            case 3:
+              id(myDisplay_line3) = aline;
+              break;
+            default:
+              break;
+          }
+          
       - if:
           condition:
             lambda: |-
@@ -1099,14 +1174,68 @@ script:
             id(ir_profile_selected_json).publish_state(result);
           }
 
-#===========================
+#------------------------------
+select:
+  - platform: template # Avalones ---------------
+    name: "IR Profile to Export"
+    id: ir_profile_slot_selector
+    icon: "mdi:format-list-numbered"
+    web_server:
+      sorting_group_id: profileGroup
+      sorting_weight: 22
 
+    optimistic: true
+    restore_value: yes
+    options:
+      - "Initializing..." # Satisfies the compiler; will be overwritten instantly on boot
+
+    on_value:
+      then:
+        - lambda: |-
+            // --- 1. Parse index from option label ---
+            int idx = 0;
+            size_t pos = 0;
+            while (pos < x.size() && x[pos] >= '0' && x[pos] <= '9') {
+              idx = idx * 10 + (x[pos] - '0');
+              pos++;
+            }
+
+            // --- 2. Always update the export slot ---
+            id(selected_profile_slot) = idx;
+
+            // --- 3. Switch the live IR layout only if that profile is loaded ---
+            if (!remote_profiles.empty() && idx < (int) remote_profiles.size()) {
+              int cur = id(active_remote_layout);
+              if (cur < 0) {
+                int cs = (cur * -1) - 1;
+                cur = (int) factory_count + cs;
+              }
+              if (cur != idx) {
+                id(active_remote_layout) = idx;
+                id(setup_ir_receiver_for_current_profile).execute();
+                ESP_LOGI("webui", "Active IR profile changed to idx=%d via selector", idx);
+                // Refresh the read-only text sensor immediately
+                id(last_active_idx_seen) = idx;
+                id(ir_active_profile_ts).update();
+              }
+            } else {
+              ESP_LOGW("webui", "Selector idx=%d not loaded yet (size=%d); export only",
+                       idx, (int) remote_profiles.size());
+            }
+        - script.execute: publish_selected_profile_json
+
+#=================================================================
 
 switch:
   - platform: template
     name: "Xgimi Token Sniffer"
     id: xgimi_sniffer_switch
     icon: mdi:radar
+    web_server:
+      sorting_group_id: settingsGroup
+      sorting_weight: 8
+      
+      
     lambda: |-
       return id(sniffer_status).state;
     turn_on_action:

@@ -1804,6 +1804,7 @@ interval:
 
           // 4. Push string reference data pointers natively into the unlocked FixedVector array
           for (size_t i = 0; i < persistent_options.size(); i++) {
+            ESP_LOGD("PERS OPT", "Pushing %s", persistent_options[i].c_str());
             mutable_options.push_back(persistent_options[i].c_str());
           }
 
