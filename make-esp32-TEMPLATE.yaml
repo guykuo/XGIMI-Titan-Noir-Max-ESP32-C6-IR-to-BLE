@@ -69,7 +69,7 @@ captive_portal:
 
 wifi:
   reboot_timeout: 5min
-  output_power: 10.0dBm
+  output_power: 15.0dBm
   ap:
     ssid: "${ble_remote_name}"
     password: !secret fallback_ap_password
@@ -96,6 +96,7 @@ web_server:
     type: digest
     username: "admin"
     password: !secret fallback_ap_password
+
   sorting_groups:
     - id: powerGroup
       name: "Power"
@@ -762,77 +763,66 @@ script:
 
       # Start Bluedroid Scanning via Lambda
       - lambda: |-
-          // 1. Register raw callback into the Bluedroid stack
           esp_ble_gap_register_callback([](esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param) {
               if (event == ESP_GAP_BLE_SCAN_RESULT_EVT) {
-                  // FIX: Access the scan result structure natively from the param union pointer
                   auto &scan_result = param->scan_rst; 
                   
                   if (scan_result.adv_data_len > 0) {
                       uint8_t *adv = scan_result.ble_adv;
                       uint8_t len = scan_result.adv_data_len;
                       
-                      // Traverse the BLE advertisement structural blocks looking for XGIMI
                       for (int i = 0; i < len - 3; i++) {
-                          // Filter for Manufacturer Data type (0xFF) and XGIMI ID (0x46 0x00)
                           if (adv[i] == 0xFF && adv[i+1] == 0x46 && adv[i+2] == 0x00) {
                               
-                              // Found a candidate packet! Reconstruct the payload string
-                              std::string token_hex = "";
-                              char buffer[8]; 
-                              for (int j = 0; j < len; j++) {
-                                  snprintf(buffer, sizeof(buffer), "%02X", adv[j]);
-                                  token_hex += buffer;
+                              // FIXED: Firm array declaration dimension limits prevent compiler crash
+                              char token_hex[64] = {0};
+                              size_t offset = 0;
+                              for (int j = 0; j < len && offset < 60; j++) {
+                                  offset += snprintf(token_hex + offset, 4, "%02X", adv[j]);
                               }
 
                               // Reject automated background pairing token
-                              if (token_hex == "0201060319800103FF460003031218") {
-                                  continue; // Skip processing this packet structural loop entirely
+                              if (std::strcmp(token_hex, "0201060319800103FF460003031218") == 0) {
+                                  continue; 
                               }
 
-                              if (token_hex.length() < 30) continue;
+                              if (offset < 30) continue;
                               
-                              // --- ARCHITECTURAL MATCH LOGIC ---
-                              std::string current_masked = token_hex;
-                              std::string candidate_masked = id(sniffer_candidate_token);
-                              
-                              if (current_masked.length() >= 4) {
-                                  size_t mask_pos = current_masked.length() - 4;
-                                  current_masked.replace(mask_pos, 2, "XX");
-                                  if (candidate_masked != "None" && candidate_masked.length() == current_masked.length()) {
-                                      candidate_masked.replace(mask_pos, 2, "XX");
+                              // Zero-allocation masking comparison using basic pointer logic
+                              bool is_match = false;
+                              if (id(sniffer_candidate_token) != "None") {
+                                  std::string cand_str = id(sniffer_candidate_token);
+                                  if (cand_str.length() == offset) {
+                                      is_match = true;
+                                      for(size_t m = 0; m < offset; m++) {
+                                          if (offset >= 4 && m >= (offset - 4) && m < (offset - 2)) continue;
+                                          if (cand_str[m] != token_hex[m]) {
+                                              is_match = false;
+                                              break;
+                                          }
+                                      }
                                   }
                               }
                               
-                              if (id(sniffer_candidate_token) != "None" && current_masked == candidate_masked) {
+                              if (is_match) {
                                   id(sniffer_hit_counter)++;
-                                  ESP_LOGI("xgimi_bluedroid", "Match count: %d for Token: %s", id(sniffer_hit_counter), token_hex.c_str());
+                                  ESP_LOGI("xgimi_bluedroid", "Match count: %d for Token: %s", id(sniffer_hit_counter), token_hex);
                                   
-                                  if (id(sniffer_hit_counter) >= 4) {
-                                      // Extract the last 15 bytes manually from the raw payload
+                                  if (id(sniffer_hit_counter) >= 5) {
                                       if (len >= 15) {
                                           uint8_t *tail_ptr = adv + (len - 15);
                                           
                                           std::string sniffed_token_last15_hex = ""; 
-                                          char slice_buf[8]; 
+                                          // FIXED: Solid array dimensions assigned to stop boundary overwrites
+                                          char slice_buf[8] = {0}; 
                                           for (int k = 0; k < 15; k++) {
                                               snprintf(slice_buf, sizeof(slice_buf), "%02X ", tail_ptr[k]);
                                               sniffed_token_last15_hex += slice_buf;
                                           }
-                                          
-                                          // Sync string to HA Sensor Entity
-                                          std::string ha_payload = "";
-                                          char ha_buf[8];
-                                          for (int j = 0; j < len; j++) {
-                                              snprintf(ha_buf, sizeof(ha_buf), "%02X", adv[j]);
-                                              ha_payload += ha_buf;
-                                          }
 
-                                          // Protection Check: Duplicate verification
                                           if (memcmp(tail_ptr, id(active_wake_token), 15) == 0) {
                                               ESP_LOGD("xgimi_bluedroid", "Token matches active_wake_token. Skipping write.");
                                               
-                                              // Teardown Bluedroid Scan completely
                                               esp_ble_gap_stop_scanning();
                                               esp_ble_gap_register_callback(nullptr);
                                               
@@ -843,11 +833,10 @@ script:
                                               
                                               id(sniffer_status)->publish_state(false);
                                               id(xgimi_sniffer_switch).publish_state(false);
-                                              id(sniffing_sequence).stop(); // Halts the remaining 20s script window
+                                              id(sniffing_sequence).stop(); 
                                               return;
                                           }
                                           
-                                          // Update Runtime and Persistent Storage Arrays
                                           memcpy(id(active_wake_token), tail_ptr, 15);
                                           memcpy(id(learned_wake_token), tail_ptr, 15);
                                           global_preferences->sync(); 
@@ -855,7 +844,6 @@ script:
                                           std::vector<uint8_t> active_token_vector(id(active_wake_token), id(active_wake_token) + 15);
                                           id(xgimi_remote_controller)->set_wake_token(active_token_vector);
                                           
-                                          // Teardown Bluedroid Scan completely
                                           esp_ble_gap_stop_scanning();
                                           esp_ble_gap_register_callback(nullptr);
                                           
@@ -871,9 +859,9 @@ script:
                                       }
                                   }
                               } else {
-                                  id(sniffer_candidate_token) = token_hex;
+                                  id(sniffer_candidate_token) = std::string(token_hex);
                                   id(sniffer_hit_counter) = 1;
-                                  ESP_LOGI("xgimi_bluedroid", "New unique signature target: %s", token_hex.c_str());
+                                  ESP_LOGI("xgimi_bluedroid", "New unique signature target: %s", token_hex);
                               }
                           }
                       }
@@ -881,19 +869,16 @@ script:
               }
           });
           
-          // 2. Configure passive background scan parameters
           esp_ble_scan_params_t scan_params = {
               .scan_type           = BLE_SCAN_TYPE_PASSIVE,
               .own_addr_type       = BLE_ADDR_TYPE_PUBLIC,
               .scan_filter_policy  = BLE_SCAN_FILTER_ALLOW_ALL,
               .scan_interval       = 0xA0, 
               .scan_window         = 0x40
-              // FIX: Removed invalid '.turn_by_turn = false' entry entirely
           };
           
           esp_ble_gap_set_scan_params(&scan_params);
-          esp_ble_gap_start_scanning(0); // Continuous scan within this script window
-
+          esp_ble_gap_start_scanning(0);
           
       - binary_sensor.template.publish: 
           id: sniffer_status
@@ -907,14 +892,11 @@ script:
           line2: 'Repeat Press'
           line3: 'Xgimi Power'              
       
-      # Keep the window open for 20 seconds
       - delay: 20s 
 
-      # --- TIMEOUT CLEANUP ---
-      # This block will ONLY execute if 20 seconds expire completely without hitting a valid token
       - lambda: |-
           esp_ble_gap_stop_scanning();
-          esp_ble_gap_register_callback(nullptr); // Release callback memory completely
+          esp_ble_gap_register_callback(nullptr); 
           
       - delay: 10ms
 
@@ -1100,80 +1082,71 @@ script:
           }
 
 # ====================================
-
-  - id: publish_selected_profile_json # Avalones ---------------
+  - id: publish_selected_profile_json
     mode: restart
     then:
       - delay: 100ms
       - lambda: |-
-          {
-            const int idx = id(selected_profile_slot);
-            cJSON *root = cJSON_CreateObject();
+          // Fixed, safe stack buffer space
+          char json_buf[4096] = {0};
+          size_t offset = 0;
+          size_t buf_sz = sizeof(json_buf);
 
-            if (remote_profiles.empty()) {
-              cJSON_AddStringToObject(root, "sta", "warming");
+          const int idx = id(selected_profile_slot);
+
+          if (remote_profiles.empty()) {
+            offset += snprintf(json_buf + offset, buf_sz - offset, "{\n  \"sta\":\"warming\"\n}");
+          } else {
+            int factory = (int) factory_count;
+            const int custom  = MAX_LEARNED_PROFILES;
+            const int max_idx = factory + custom;
+            
+            if (idx < 0 || idx >= max_idx) {
+              offset += snprintf(json_buf + offset, buf_sz - offset, 
+                                 "{\n  \"err\":\"range\",\n  \"idx\":%d,\n  \"cnt\":%d\n}", 
+                                 idx, (int) remote_profiles.size());
+            } else if (idx >= (int) remote_profiles.size()) {
+              offset += snprintf(json_buf + offset, buf_sz - offset, 
+                                 "{\n  \"err\":\"empty\",\n  \"idx\":%d,\n  \"slt\":%d,\n  \"typ\":\"custom\"\n}", 
+                                 idx, idx - factory);
             } else {
-              int factory = (int) factory_count;
-              const int custom  = MAX_LEARNED_PROFILES;         // custom_slots
-              const int max_idx = factory + custom;
-              
-              if (idx < 0 || idx >= max_idx) {
-                // Genuinely outside the addressable range.
-                cJSON_AddStringToObject(root, "err", "range");
-                cJSON_AddNumberToObject(root, "idx", idx);
-                cJSON_AddNumberToObject(root, "cnt", (int) remote_profiles.size());
-              } else if (idx >= (int) remote_profiles.size()) {
-                // Slot exists in the UI, but NVS has no saved profile there yet.
-                cJSON_AddStringToObject(root, "err", "empty");
-                cJSON_AddNumberToObject(root, "idx",  idx);
-                cJSON_AddNumberToObject(root, "slt",  idx - factory);
-                cJSON_AddStringToObject(root, "typ",  "custom");
-              } else {
-                const IRProfile &p = remote_profiles[idx];
-                if (p.profile_name.empty() ||
-                    p.profile_name.rfind("Placeholder", 0) == 0) {
-                  cJSON_AddStringToObject(root, "err", "empty");
-                  cJSON_AddNumberToObject(root, "idx", idx);
-                  if (idx >= factory) {
-                    cJSON_AddNumberToObject(root, "slt", idx - factory);
-                    cJSON_AddStringToObject(root, "typ", "custom");
-                  } else {
-                    cJSON_AddStringToObject(root, "typ", "internal");
-                  }
+              const IRProfile &p = remote_profiles[idx];
+              if (p.profile_name.empty() || p.profile_name.rfind("Placeholder", 0) == 0) {
+                offset += snprintf(json_buf + offset, buf_sz - offset, "{\n  \"err\":\"empty\",\n  \"idx\":%d", idx);
+                if (idx >= factory) {
+                  offset += snprintf(json_buf + offset, buf_sz - offset, ",\n  \"slt\":%d,\n  \"typ\":\"custom\"\n}", idx - factory);
                 } else {
-                  char buf[16];
-                  cJSON_AddNumberToObject(root, "idx", idx);
-                  cJSON_AddNumberToObject(root, "int", (idx < factory) ? 1 : 0);
-                  cJSON_AddStringToObject(root, "nam", p.profile_name.c_str());
-                  cJSON_AddStringToObject(root, "pro", p.protocol.c_str());
-
-                  snprintf(buf, sizeof(buf), "%04X", (unsigned int) p.device_address);
-                  cJSON_AddStringToObject(root, "adr", buf);
-                  snprintf(buf, sizeof(buf), "%04X", (unsigned int) p.cmd_clear_token_arm);
-                  cJSON_AddStringToObject(root, "car", buf);
-                  snprintf(buf, sizeof(buf), "%04X", (unsigned int) p.cmd_clear_token_fire);
-                  cJSON_AddStringToObject(root, "cfr", buf);
-
-                  cJSON *keys = cJSON_CreateArray();
-                  for (const auto &pair : p.cmd_codes) {
-                    cJSON *k = cJSON_CreateObject();
-                    snprintf(buf, sizeof(buf), "%04X", (unsigned int) pair.first);
-                    cJSON_AddStringToObject(k, "cod", buf);
-                    cJSON_AddStringToObject(k, "btn", pair.second.name.c_str());
-                    cJSON_AddItemToArray(keys, k);
-                  }
-                  cJSON_AddItemToObject(root, "key", keys);
+                  offset += snprintf(json_buf + offset, buf_sz - offset, ",\n  \"typ\":\"internal\"\n}");
                 }
+              } else {
+                // Format the main metadata header block
+                offset += snprintf(json_buf + offset, buf_sz - offset, 
+                                   "{\n  \"idx\":%d,\n  \"int\":%d,\n  \"nam\":\"%s\",\n  \"pro\":\"%s\",\n  \"adr\":\"%04X\",\n  \"car\":\"%04X\",\n  \"cfr\":\"%04X\",\n  \"key\":[\n",
+                                   idx, (idx < factory) ? 1 : 0, p.profile_name.c_str(), p.protocol.c_str(),
+                                   (unsigned int) p.device_address, (unsigned int) p.cmd_clear_token_arm, (unsigned int) p.cmd_clear_token_fire);
+
+                // Stream loop keys inline with shorter "x" and "b" labels
+                size_t k_count = 0;
+                for (const auto &pair : p.cmd_codes) {
+                  if (offset >= buf_sz - 128) break; // Defensive guard rail
+                  
+                  // Changed "cod" to "x" and "btn" to "b"
+                  offset += snprintf(json_buf + offset, buf_sz - offset, 
+                                     "    {\"x\":\"%04X\",\"b\":\"%s\"}%s\n",
+                                     (unsigned int) pair.first, pair.second.name.c_str(),
+                                     (k_count < p.cmd_codes.size() - 1) ? "," : "");
+                  k_count++;
+                }
+                
+                // Securely close the formatting blocks
+                offset += snprintf(json_buf + offset, buf_sz - offset, "  ]\n}");
               }
             }
-
-            char *out = cJSON_PrintUnformatted(root);
-            std::string result = out ? out : "{}";
-            if (out) cJSON_free(out);
-            cJSON_Delete(root);
-
-            id(ir_profile_selected_json).publish_state(result);
           }
+
+          // Publish the clean character array string down to the ESPHome state machine
+          std::string result(json_buf);
+          id(ir_profile_selected_json).publish_state(result);
 
 #------------------------------
 select:

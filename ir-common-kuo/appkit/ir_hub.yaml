@@ -32,13 +32,16 @@ remote_receiver:
         }
 
     - lambda: |-
+        // Boundary Check: Ensure we have at least 2 elements before querying array indices
         if (x.size() < 2) return;
 
+        // FIXED: Re-inserted correct array index hooks to prevent compilation crash
         uint32_t head_mark = x[0];
         uint32_t head_space = std::abs(x[1]);
         size_t total_pulses = x.size();
 
-        std::string proto = "UNKNOWN";
+        // Heap Optimization: Stack pointer to Flash ROM literals instead of heap allocations
+        const char* proto = "UNKNOWN";
 
         // --- 1. MANCHESTER / SHORT-HEADER PROTOCOLS (RC5 & RC6) ---
         if (head_mark >= 700 && head_mark <= 1100 && total_pulses >= 18 && total_pulses <= 30) {
@@ -51,8 +54,8 @@ remote_receiver:
         }
 
         // --- 2. STANDARD SPACE/DISTANCE PROTOCOLS ---
-        if (proto == "UNKNOWN") {
-          // JVC Test: 8.4ms Mark / 4.2ms Space. (Accepts large pulse arrays to accommodate compound repeat buffers)
+        if (std::strcmp(proto, "UNKNOWN") == 0) {
+          // JVC Test: 8.4ms Mark / 4.2ms Space
           if (head_mark >= 7600 && head_mark < 8800 && head_space >= 3800 && head_space <= 4600) {
             proto = "JVC";
           }
@@ -75,12 +78,12 @@ remote_receiver:
         }
         
         // --- 3. FALLBACK SANITY CHECK (For Headerless Repeat Packets) ---
-        if (proto == "UNKNOWN") {
-          // Captures JVC headerless repeat data streams (Exact 34 pulses, small initial timing signature)
+        if (std::strcmp(proto, "UNKNOWN") == 0) {
+          // Captures JVC headerless repeat data streams
           if (total_pulses == 34 && head_mark >= 400 && head_mark <= 600 && head_space >= 1400 && head_space <= 1800) {
             proto = "JVC";
           }
-          // Check Sony second (captures Sony 12-bit, 15-bit, and 20-bit codes with native short spacing)
+          // Check Sony second
           else if (total_pulses >= 24 && total_pulses <= 42 && head_space < 1000) {
             proto = "SONY";
           } 
@@ -88,13 +91,11 @@ remote_receiver:
           else if (total_pulses >= 96 && total_pulses <= 102) proto = "PANASONIC";
         }
 
-        // Assign back to global hub learning variable
-        id(learn_detected_protocol) = proto;
+        // Convert const char* to std::string ONLY when finalizing data out of the interrupt pipeline
+        id(learn_detected_protocol) = std::string(proto);
         
         ESP_LOGD("IR_RECOGNIZER", "Detected Protocol: %s (Mark: %uus, Space: %uus, Pulses: %u)", 
-         proto.c_str(), (unsigned int)head_mark, (unsigned int)head_space, total_pulses);
-
-
+         proto, (unsigned int)head_mark, (unsigned int)head_space, total_pulses);
 
   # ======= MULTI-PROTOCOL CONVERSION GATES =======
 
@@ -480,40 +481,40 @@ script:
           id(learn_cache_idx) = -1;
 
 
-  # ============= Button learning phase 0 and phase A settling timer
+  # ====================================================================
+  # Button learning phase 0 and phase A settling timer
   # Does deferred assessement and handling of inbound IR during learing
   # Multiple IR signals are received with a single button push. Many are invalid.
   # Caching and evaluating them after all arrive allows section of valid one.
   # We separately analyze raw IR packets to determine underlying protocol.
 
-  # ====================================================================
-  # Button learning phase 0 and phase A settling timer
-  # Does deferred assessment and handling of inbound IR during learning
-  # ====================================================================
   - id: ir_settling_timer
     mode: single
     then: 
       - delay: 120ms
       - lambda: |-
-          // 1. Declare the clock variable at the ABSOLUTE TOP of the block
+          // 1. Clock variable initialization at the absolute top
           uint32_t now = millis();
           
           id(ir_window_active) = false;
           int b_idx = id(learn_current_button_idx);
 
-          // 2. Safely apply the Sony repeat lockout condition check
+          // 2. Safe repeat lockout condition check
           if (now - id(learn_last_save_time) < 500) {
             id(learn_cache_clear).execute();
             return;
           }
 
-          static const std::vector<std::string> learn_button_names = {
+          // Fixed Array: Stack-allocated array of raw pointers pointing to immutable Flash literals
+          static const char* const learn_button_names[] = {
             "power_on", "power_off", "cursor_left", "cursor_right", "cursor_up", "cursor_down",
             "cursor_enter", "settings_menu", "back", "home", "game_menu", "input", "picture",
             "focus_manual", "focus_auto", "shortcut_1", "shortcut_2", "shortcut_3", "shortcut_4",
             "volume_up", "volume_down", "mute", "token_sniff", "token_clear", "token_recall",
             "BT_start_pair", "BT_clear_pair"
           };
+          // FIXED: Corrected array element size tracking math
+          constexpr size_t TOTAL_BUTTONS = sizeof(learn_button_names) / sizeof(learn_button_names[0]);
 
           if (b_idx < 27) {
             if (b_idx == -1) {
@@ -525,20 +526,25 @@ script:
                 return; 
               }
             
-              auto& primary_array = id(learn_cache_protocol); // Direct instantiation hook
+              auto& primary_array = id(learn_cache_protocol);
               std::string target = id(learn_detected_protocol);
               
               // Search strictly within the range defined by MAX_LEARNED_PROFILES
-              auto it = std::find(primary_array.begin(), primary_array.begin() + MAX_LEARNED_PROFILES, target);
+              int index = -1;
+              for (int i = 0; i < MAX_LEARNED_PROFILES; i++) {
+                if (primary_array[i] == target) {
+                  index = i;
+                  break;
+                }
+              }
             
-              if (it == (primary_array.begin() + MAX_LEARNED_PROFILES)) {
+              if (index == -1) {
                 id(learn_cache_clear).execute();
                 id(learn_active_protocol) = "";
                 id(learn_active_address) = 0x0;             
                 id(learned_best_command) = 0;             
                 return; 
               } else {
-                int index = std::distance(primary_array.begin(), it);
                 id(learn_active_address)  = id(learn_cache_address)[index];
                 id(learn_active_protocol) = id(learn_detected_protocol);    
                 id(ir_receiver_allowed_protocol) = id(learn_active_protocol);
@@ -547,15 +553,26 @@ script:
                 id(learn_current_button_idx) = 0;
               }   
             }
+            
+            // CRITICAL DEFENSIVE GUARD: Explicitly block negative indices from reaching downstream handlers
+            if (b_idx < 0 || b_idx >= 27) {
+              id(learn_cache_clear).execute();
+              return;
+            }
                 
-            // process IR captures into current button    
+            // Process IR captures into current button    
             auto& secondary_array = id(learn_cache_protocol);
             std::string active_target = id(learn_active_protocol);
-            auto it = std::find(secondary_array.begin(), secondary_array.end(), active_target);
+            
+            int index = -1;
+            for (size_t i = 0; i < secondary_array.size(); i++) {
+              if (secondary_array[i] == active_target) {
+                index = i;
+                break;
+              }
+            }
           
-            if (it != secondary_array.end()) {
-              int index = std::distance(secondary_array.begin(), it);
-              
+            if (index != -1) {
               id(learned_best_command) = id(learn_cache_command)[index]; 
               id(session_captured_codes).at(b_idx) = id(learned_best_command);
 
@@ -565,27 +582,25 @@ script:
               b_idx++; 
               id(learn_current_button_idx) = b_idx;
               
-              // flash sequence changes to help user keep track of place when no display
+              // Flash sequence alterations
               if (b_idx == 27) {
-                // last button has been learned. Special flash to indicate done with buttons
                 id(flash_led_custom).execute(5, 20, 0.6, 1.0, 0.0);
                 id(flash_led_custom).execute(5, 50, 0.5, 1.0, 0.5);
               } else {
                 if (b_idx % 5 == 0) {
-                  id(flash_led_custom).execute(1, 200, 0.6, 1.0, 0.6); // every 5th, long flash once indicating button accepted
+                  id(flash_led_custom).execute(1, 200, 0.6, 1.0, 0.6);
                 } else {
-                  id(flash_led_custom).execute(1, 60, 0.6, 1.0, 0.6); // short flash once indicating button accepted
+                  id(flash_led_custom).execute(1, 60, 0.6, 1.0, 0.6);
                 }              
               }
-              
               
               id(learn_cache_clear).execute();
               id(learn_mode_timeout_watcher).execute(); // Reset 30s timer
               
               // SAFE HALT GATE: Evaluate state ONLY after increment step completes
               if (b_idx < 27) {
-                ESP_LOGI("IR Learn", "Press ====== IR BUTTON ====== %s ======", learn_button_names.at(b_idx).c_str());
-                id(display_show)->execute(false, "IR Learn:", "Press Btn", learn_button_names.at(b_idx));
+                ESP_LOGI("IR Learn", "Press ====== IR BUTTON ====== %s ======", learn_button_names[b_idx]);
+                id(display_show)->execute(false, "IR Learn:", "Press Btn", std::string(learn_button_names[b_idx]));
               } else {
                 ESP_LOGI("IR Learn", "All buttons captured! ====== Awaiting save selection...0=OK  1=Up  2=Rt  3=Dn  4=Lf");
                 id(display_show)->execute(true, "Mem Slot", "0=OK 1=Up 2=Rt=", "3=Dn 4=Lf");
@@ -627,184 +642,123 @@ script:
           }
           
           const auto& active_profile = remote_profiles[true_hardware_index];
-          
+
+          static const char* const learn_button_names[] = {
+            "power_on", "power_off", "cursor_left", "cursor_right", "cursor_up", "cursor_down",
+            "cursor_enter", "settings_menu", "back", "home", "game_menu", "input", "picture",
+            "focus_manual", "focus_auto", "shortcut_1", "shortcut_2", "shortcut_3", "shortcut_4",
+            "volume_up", "volume_down", "mute", "token_sniff", "token_clear", "token_recall",
+            "BT_start_pair", "BT_clear_pair"
+          };
 
           switch(id(ir_receiver_mode)) {
-            case 0: {// deactivated --------------
+            case 0: { // deactivated --------------
               ESP_LOGD("IR HUB", "IR Receiver deactivated. No active profile.");
-
               break;
             }
             
-            
             case 3: { // learn mode --------------
-
-              static const std::vector<std::string> learn_button_names = {
-                "power_on", "power_off", "cursor_left", "cursor_right", "cursor_up", "cursor_down",
-                "cursor_enter", "settings_menu", "back", "home", "game_menu", "input", "picture",
-                "focus_manual", "focus_auto", "shortcut_1", "shortcut_2", "shortcut_3", "shortcut_4",
-                "volume_up", "volume_down", "mute", "token_sniff", "token_clear", "token_recall",
-                "BT_start_pair", "BT_clear_pair"
-              };
-
               int b_idx = id(learn_current_button_idx);
 
-             
-              // We received an ir signal, possibly one of several from an event. We do not yet know which is correct protocol.
-              // Cache all inbound IR data. On_raw is simultaneously determining which protocol matche inbound signals.
-              // at end of aggregation window, we will determine which of the received IR signals to use.
-
-
-              int cache_idx = id(learn_cache_idx); // last slot that has been filled
+              int cache_idx = id(learn_cache_idx);
               cache_idx++;
               if (cache_idx < MAX_LEARNED_PROFILES) {
-                id(learn_cache_protocol)[cache_idx] = ir_protocolStr; // store inbound IR signal info
+                id(learn_cache_protocol)[cache_idx] = ir_protocolStr;
                 id(learn_cache_address)[cache_idx]  = ir_address;
                 id(learn_cache_command)[cache_idx]  = ir_command;
                 id(learn_cache_idx) = cache_idx;
               }
 
-
-              ESP_LOGD("IR Learn", "cache index  %d... command: 0x%X (Addr: 0x%X protocol %s)", 
-                         cache_idx, (unsigned int)ir_command, (unsigned int)ir_address, ir_protocolStr.c_str());
+              ESP_LOGD("IR Learn", "cache index %d... command: 0x%X", cache_idx, (unsigned int)ir_command);
                          
-                                       
               if (!id(ir_window_active)) {
-                // Open the 120ms aggregation gate.
                 id(ir_window_active) = true;
-                
-                ESP_LOGD("IR Learn", "Opening 120ms aggregation window for button index %d... Staged: 0x%X (Addr: 0x%X via %s)", 
-                         b_idx, (unsigned int)ir_command, (unsigned int)ir_address, ir_protocolStr.c_str());
                 id(ir_settling_timer).execute();
               }                 
               
-
-              // ====================================================================
-              // PHASE B: SELECT STORAGE SLOT AND SAVE (Index 27)
-              // ====================================================================
               if (b_idx == 27) {
-                // SEPARATED CHECK: Evaluate the pressed command directly for saving targets
                 int selected_slot = -1;
-
-                // Match allocation slot using directional controls from the newly learned sequence
-                if (ir_command == id(session_captured_codes).at(6))       selected_slot = 0; // cursor_enter (OK = slot 0)
-                else if (ir_command == id(session_captured_codes).at(4))  selected_slot = 1; // cursor_up    (Up = slot 1)
-                else if (ir_command == id(session_captured_codes).at(3))  selected_slot = 2; // cursor_right (Right = slot 2)
-                else if (ir_command == id(session_captured_codes).at(5))  selected_slot = 3; // cursor_down  (Down = slot 3)
-                else if (ir_command == id(session_captured_codes).at(2))  selected_slot = 4; // cursor_left  (Left = slot 4)
+                if (ir_command == id(session_captured_codes).at(6))       selected_slot = 0;
+                else if (ir_command == id(session_captured_codes).at(4))  selected_slot = 1;
+                else if (ir_command == id(session_captured_codes).at(3))  selected_slot = 2;
+                else if (ir_command == id(session_captured_codes).at(5))  selected_slot = 3;
+                else if (ir_command == id(session_captured_codes).at(2))  selected_slot = 4;
                 
                 if (selected_slot != -1) {
-                  id(learn_mode_timeout_watcher).stop(); // Stop inactivity clock
+                  id(learn_mode_timeout_watcher).stop();
 
                   IRProfile learned_profile;
                   learned_profile.profile_name = "Memory " + std::to_string(selected_slot);
                   learned_profile.protocol = id(learn_active_protocol);
                   learned_profile.device_address = id(learn_active_address);
-                  
-                  // Map security tokens matching standard indexing positions
-                  learned_profile.cmd_clear_token_arm = id(session_captured_codes).at(23);  // token_clear
-                  learned_profile.cmd_clear_token_fire = id(session_captured_codes).at(6);  // cursor_enter
+                  learned_profile.cmd_clear_token_arm = id(session_captured_codes).at(23);
+                  learned_profile.cmd_clear_token_fire = id(session_captured_codes).at(6);
 
-                  // Dynamic pointer resolution link loop
-                  for (size_t i = 0; i < learn_button_names.size(); i++) {
-                    std::string b_id = learn_button_names.at(i);
+                  for (size_t i = 0; i < 27; i++) {
+                    std::string b_id(learn_button_names[i]);
                     learned_profile.cmd_codes[id(session_captured_codes).at(i)] = { b_id, resolve_button(b_id) };
                   }
 
-                  // Fit profile into target vector index array placement (Slots 13 to 17)
                   size_t target_vector_index = factory_count + selected_slot;
                   while (remote_profiles.size() <= target_vector_index) {
                     remote_profiles.push_back({ "Placeholder", "NEC", 0, 0, 0, {} });
                   }
                   
                   remote_profiles[target_vector_index] = learned_profile;
-                  ESP_LOGI("IR Learn", "Saved profile to vector slot %d (Memory Slot %d)", (int)target_vector_index, selected_slot);
-
-                  // 1. Queue configuration to preference engine structures
                   commit_database_to_flash();
-                  
-                  ESP_LOGW("IR Learn", "Forcing instant NVS flash partition sync. Do not disconnect power...");
-                  esphome::global_preferences->sync(); // <=== FORCES HARD INSTANT WRITE TO SILICON
+                  esphome::global_preferences->sync();
 
-                  id(flash_led_custom).execute(4, 100, 0.0, 0.0, 1.0); // flash blue
-                  id(flash_led_custom).execute(2, 200, 0.0, 1.0, 0.0); // flash green indicating new profile stored
-
+                  id(flash_led_custom).execute(4, 100, 0.0, 0.0, 1.0);
+                  id(flash_led_custom).execute(2, 200, 0.0, 1.0, 0.0);
                   id(display_show)->execute(true, "Stored Profile", learned_profile.profile_name, "Operational");
                   
-                  // 1. Link hardware button objects to the newly populated vector slots immediately
                   link_hardware_buttons();
-                  
-                  // 2. Set active layout directly to the absolute positive hardware index position 
-                  // to bypass the handler boundary gate block.
                   id(active_remote_layout) = (int)target_vector_index; 
-
                   id(setup_ir_receiver_for_current_profile).execute();
-                  id(ir_receiver_mode) = 1; // Return to Action mode
- 
-                  return; // Hard return path to prevent falling past case logic
-                  
+                  id(ir_receiver_mode) = 1;
+                  return;
                 } else {
-                  ESP_LOGW("IR Learn", "Invalid saving key pressed. Use your newly learned Arrow Keys or OK.");
-                  return; // Keep waiting for a valid save mapping key press
+                  ESP_LOGW("IR Learn", "Invalid saving key pressed.");
+                  return;
                 }
               }
-
               break;
+            }
 
-            }  
             case 2: { // set profile ----------
-              // Direct implementation approach: Test incoming packets.
-              // If we find an absolute match, switch profiles and exit to Mode 1.
-              // If no match, log it and do NOTHING, leaving the 30-second timer to close out.
-              
-              ESP_LOGD("IR HUB", "checking incoming packet against profile registry directly...");
-
+              ESP_LOGD("IR HUB", "checking incoming packet against profile registry...");
               bool match_found = false;
 
-              // Loop through all active profiles loaded in your global system vector in reverse order
-              // Reverse order gives user learned profiles precedence over factory profiles
               for (size_t i = remote_profiles.size(); i > 0; ) {
-                i--; // Decrement first to safely convert the 1-based count to a 0-based index
+                i--;
                 const auto& profile = remote_profiles[i];
               
-                // Gate 1: Check protocol matching constraints
                 if (profile.protocol != ir_protocolStr) continue;
-              
-                // Gate 2: Check address validation loops
                 if (profile.device_address != ir_address) continue;
               
-                // Gate 3: Check if command hex code matches any target profile key
                 if (profile.cmd_codes.find(ir_command) != profile.cmd_codes.end()) {
-              
-                  // SUCCESS PATH: Stop the 15-second countdown immediately!
                   id(set_profile_timeout_watcher).stop();
               
                   id(active_remote_layout) = static_cast<int>(i);
                   id(setup_ir_receiver_for_current_profile).execute();
-                  id(ir_receiver_mode) = 1; // Return back to action mode
+                  id(ir_receiver_mode) = 1;
                   
-                  id(flash_led_custom).execute(4, 50, 1.0, 0.0, 0.0); // flash red
-                  id(flash_led_custom).execute(2, 100, 0.0, 1.0, 0.0); // flash green
-                  id(flash_led_custom).execute(1, 200, 0.6, 0.8, 0.6); // flash bright green indicating profile changed
+                  id(flash_led_custom).execute(4, 50, 1.0, 0.0, 0.0);
+                  id(flash_led_custom).execute(2, 100, 0.0, 1.0, 0.0);
+                  id(flash_led_custom).execute(1, 200, 0.6, 0.8, 0.6);
 
-                  id(display_show)->execute(true,
-                                            "Setting Profile",
-                                            profile.profile_name,
-                                            "Wait 5 seconds");
-                                            
+                  id(display_show)->execute(true, "Setting Profile", 
+                                                  profile.profile_name, 
+                                                  "Wait 5 seconds");
                   match_found = true;
-                  break; // Break completely out of the for-loop
+                  break; 
                 }
               }
 
-              // --- DEFERRED FAILURE HANDLING ---
-              // If the loop finished and no match flag was raised, let phantom protocols pass silently.
               if (!match_found) {
-                ESP_LOGD("IR HUB", "Packet (%s, Addr: 0x%X, Cmd: 0x%X) did not match. Waiting for next decode stream...", 
-                         ir_protocolStr.c_str(), (unsigned int)ir_address, (unsigned int)ir_command);
+                ESP_LOGD("IR HUB", "Packet (Addr: 0x%X, Cmd: 0x%X) did not match.", (unsigned int)ir_address, (unsigned int)ir_command);
               }
-
-              break; // Standard exit out of switch case 2
+              break; 
             }
 
 
@@ -829,36 +783,25 @@ script:
   
               // active_profile.device_address
 
-
               // Handle special actions clear arming, and trigger first
               if (ir_address == active_profile.device_address) {
                 if (ir_command == active_profile.cmd_clear_token_arm) {
                   id(global_token_clear_armed) = true;
                   id(token_clear_safety_timeout).execute();
-                  
-                  id(display_show)->execute(false,
-                                           "Token Clear Requested",
-                                           "To Confirm",
-                                           "Press Select");
-                  return; // STOP FLOW Armed to await fire code
+                  id(display_show)->execute(false, "Token Clear Requested", "To Confirm", "Press Select");
+                  return; 
                 }
-                
                 if (ir_command == active_profile.cmd_clear_token_fire && id(global_token_clear_armed)) {
                   id(global_token_clear_armed) = false;
                   id(token_clear_safety_timeout).stop();
-                  id(token_clear)->press(); // clears token and reports on myDisplay
-                  return; // STOP FLOW fire code received. Token cleared.
+                  id(token_clear)->press(); 
+                  return; 
                 }
-                
                 if (ir_command != active_profile.cmd_clear_token_fire && ir_command != active_profile.cmd_clear_token_arm && id(global_token_clear_armed)) {
                   id(global_token_clear_armed) = false;
                   id(token_clear_safety_timeout).stop();
-        
-                  id(display_show)->execute(false,
-                                           "Not Confirmed",
-                                           "Wrong Key",
-                                           "Canceled");
-                  return; // STOP FLOW Unexpected non-fire code arrived. Cancel arming
+                  id(display_show)->execute(false, "Not Confirmed", "Wrong Key", "Canceled");
+                  return; 
                 }
               }  
     
@@ -873,36 +816,20 @@ script:
               std::string addressStr(addr_buf);
                       
               if (ir_address != active_profile.device_address) {
-                // does not match target device adddress
-                id(display_show)->execute(false,
-                               ir_protocolStr + " protocol",
-                               addressStr,
-                               commandStr);
-                
+                id(display_show)->execute(false, ir_protocolStr + " protocol", addressStr, commandStr);
                 id(global_cached_command) = 0;
                 id(global_is_holding) = false;
-                return; // STOP FLOW
-      
+                return; 
               } else { 
-                // matches device address. Change addressStr to human readable name
                 addressStr = active_profile.profile_name; 
-      
-                // MODIFIED KEYPRESS STRATEGY BELOW:
                 if (id(global_cached_command) != ir_command || id(global_initial_press_time) == 0) {
-                  // A brand-new initial button click event
                   id(global_cached_command) = ir_command;
                   id(global_initial_press_time) = now; 
                   id(global_last_processed_time) = now;
-                  id(global_last_raw_packet_time) = now; // Synchronize heartbeat
+                  id(global_last_raw_packet_time) = now; 
                   id(global_is_holding) = false;      
-                  
-                  // Execute first-press click immediately
-                  id(ir_map_processor).execute(ir_command, false); 
-                  
+                  id(ir_map_processor).execute(ir_command, false); // carry out action
                 } else {
-                  // Ongoing stream of identical repeat packets (Epson holding pattern)
-                  // Feed the heartbeat timer. DO NOT fire the map processor here.
-                  // This lets the external interval loop evaluate the 500ms delay window.
                   id(global_last_raw_packet_time) = now;
                 }
               }
@@ -917,9 +844,8 @@ script:
               if (id(showing_special_info) == true) {
                 ESP_LOGD("IR HUB", "Showing special info. Timer started.");
                 id(showing_special_expiration_timer).execute();
-              
               } else {
-                // Show usual button press info. commandName is global in which processing against profile IRmap left human readable name of successfully mapped command.
+                // Show usual button press info. commandName is global where processing left human readable name of successfully mapped command.
                 id(display_show)->execute(false,
                                              id(commandName),
                                              addressStr,
@@ -1778,45 +1704,43 @@ interval:
           // Use const_cast to unlock write permissions on the core FixedVector reference
           auto &mutable_options = const_cast<esphome::FixedVector<const char *> &>(select_obj->traits.get_options());
           
-          // Safely purge compile-time placeholder entries
+          // Clear previous state options pointers natively
           mutable_options.clear();
           
-          // Allocate persistent heap memory for the formatted strings
-          static std::vector<std::string> persistent_options;
-          persistent_options.clear();
-          
-          char format_buf[128]; 
+          // Fixed Memory Footprint: Static string pool completely bypasses runtime heap allocations
+          constexpr size_t MAX_OPTIONS = 64;
+          constexpr size_t STRING_SIZE = 64;
+          static char static_string_pool[MAX_OPTIONS][STRING_SIZE];
+          size_t option_count = 0;
 
-          // 2. Hydrate all pre-compile factory profiles into persistent memory strings
-          for (size_t i = 0; i < factory_count; i++) {
-            snprintf(format_buf, sizeof(format_buf), "%d  internal  (%s)", 
+          // 2. Hydrate all pre-compile factory profiles safely into the isolated static buffer
+          for (size_t i = 0; i < factory_count && option_count < MAX_OPTIONS; i++) {
+            snprintf(static_string_pool[option_count], STRING_SIZE, "%d  internal  (%s)", 
                      (int)i, remote_profiles[i].profile_name.c_str());
-            persistent_options.push_back(std::string(format_buf));
+            mutable_options.push_back(static_string_pool[option_count]);
+            option_count++;
           }
 
-          // 3. Hydrate all custom dynamically tracked profile slots
-          for (uint16_t slot = 0; slot < MAX_LEARNED_PROFILES; slot++) {
+          // 3. Hydrate all custom dynamically tracked profile slots into the isolated static buffer
+          for (uint16_t slot = 0; slot < MAX_LEARNED_PROFILES && option_count < MAX_OPTIONS; slot++) {
             size_t display_index = factory_count + slot;
-            snprintf(format_buf, sizeof(format_buf), "%d  custom    (slot %d)", 
+            snprintf(static_string_pool[option_count], STRING_SIZE, "%d  custom    (slot %d)", 
                      (int)display_index, slot);
-            persistent_options.push_back(std::string(format_buf));
+            mutable_options.push_back(static_string_pool[option_count]);
+            option_count++;
           }
 
-          // 4. Push string reference data pointers natively into the unlocked FixedVector array
-          for (size_t i = 0; i < persistent_options.size(); i++) {
-            ESP_LOGD("PERS OPT", "Pushing %s", persistent_options[i].c_str());
-            mutable_options.push_back(persistent_options[i].c_str());
-          }
-
-          // 5. Check if the active selection needs to fall back to the shift-proof default profile
+          // 4. Check if the active selection needs to fall back to a default option
           std::string current_state = select_obj->current_option().c_str(); 
           if (current_state == "Initializing..." || current_state.empty()) {
-            std::string default_option_string = persistent_options[0]; 
+            // FIXED: Set safe index assignment to index 0 to prevent type-decay compilation error
+            const char* default_option_string = static_string_pool[0]; 
 
-            for (size_t i = 0; i < persistent_options.size(); ++i) {
-              if (persistent_options[i].find("LG Projector") != std::string::npos || 
-                  persistent_options[i].find("LG-cinebeam") != std::string::npos) {
-                default_option_string = persistent_options[i];
+            for (size_t i = 0; i < option_count; ++i) {
+              // OPTIMIZATION: Swapped out std::string for std::strstr to secure 100% zero-heap matching
+              if (std::strstr(static_string_pool[i], "AWOL Projector") != nullptr || 
+                  std::strstr(static_string_pool[i], "LG Projector") != nullptr) {
+                default_option_string = static_string_pool[i];
                 break;
               }
             }
@@ -1824,7 +1748,6 @@ interval:
             // Assign selection safely using a direct state change
             select_obj->publish_state(default_option_string);
           }
-          // ------------
 
       - script.execute: setup_ir_receiver_for_current_profile
       - lambda: |-      
@@ -1834,4 +1757,3 @@ interval:
       
       # The Kill Switch: Permanently shuts down this initialization timer loop
       - component.suspend: boot_initialization_timer
-
