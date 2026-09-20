@@ -768,7 +768,7 @@ script:
 
 
             case 1: { // action -----------------------------------------------
-              if (now - id(last_ir_press) < 30) return;
+              if (now - id(last_ir_press) < 160) return;
               id(last_ir_press) = now;
 
               ESP_LOGI("IR_HUB", "IR processing Protocol %s      Address 0x%X,      Command 0x%X", ir_protocolStr.c_str(), (unsigned int)ir_address, (unsigned int)ir_command);
@@ -1453,7 +1453,7 @@ script:
             { 0xFD02,       { "power_on",      id(power_on) } },              // power on
             { 0xD12E,       { "power_off",     id(power_off_immediately) } }, // power off
             { 0xEF10,       { "cursor_left",   id(cursor_left) } },    // left arrow
-            { 0xED12,       { "cursor_right",  id(cursor_right) } },   // right arrow
+            { 0xEC12,       { "cursor_right",  id(cursor_right) } },   // right arrow
             { 0xEE11,       { "cursor_up",     id(cursor_up) } },      // up arrow
             { 0xEB14,       { "cursor_down",   id(cursor_down) } },    // down arrow
             { 0xF00F,       { "cursor_enter",  id(cursor_enter) } },   // ok
@@ -1670,7 +1670,7 @@ interval:
             if (id(global_is_holding)) {
               id(ir_map_processor).execute(id(global_cached_command), true);
             } else {
-              if (now - id(global_initial_press_time) >= 300) { 
+              if (now - id(global_initial_press_time) >= 400) { 
                 id(global_is_holding) = true;
                 id(ir_map_processor).execute(id(global_cached_command), true);
               }
