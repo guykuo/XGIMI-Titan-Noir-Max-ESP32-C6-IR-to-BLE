@@ -265,9 +265,6 @@ esphome:
     - <cctype>
     - ir-common-kuo/appkit/secrets_bridge.h
     - ir-common-kuo/appkit/ir_profile.h
-
-
-  build_flags: "-Wl,--require-defined=cJSON_Parse"
   
   project:
     name: xgimi.titan-noir-esp32-ir-kuo
