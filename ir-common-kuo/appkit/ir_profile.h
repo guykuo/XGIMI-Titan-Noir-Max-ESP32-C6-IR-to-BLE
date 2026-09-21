@@ -1,11 +1,12 @@
 #pragma once
 #include "esphome.h"
-#include <vector>
+#include <span> 
 #include <string>
-#include <cstring>
-#include <sstream>
+#include <vector>
 #include <algorithm>
-#include <ArduinoJson.h> 
+#include <cstring>
+#include <cctype>
+#include <sstream>
 
 // --- ARDUINOJSON VERSION COMPATIBILITY BRIDGE ---
 #if ARDUINOJSON_VERSION_MAJOR >= 7
@@ -16,7 +17,7 @@
   #define ALLOCATE_JSON_DOC(doc, size) JsonDocType doc(size);
 #endif
 
-// --- FIXED-SIZE TYPE ALIASES (Bypasses Markdown Bracket Stripping Completely) ---
+// --- FIXED-SIZE TYPE ALIASES ---
 typedef char ButtonNameStr[32];
 typedef char ProfileNameStr[32];
 typedef char ProtocolNameStr[16];
@@ -24,7 +25,7 @@ typedef char ComponentBufferStr[128];
 
 // --- CORE STRUCT DEFINITIONS ---
 struct IRCommand {
-  ButtonNameStr name; // Fixed 32-byte char array via type alias
+  ButtonNameStr name; 
   esphome::button::Button* button_obj; 
 };
 
@@ -58,12 +59,10 @@ struct FlashStoredProfile {
   uint32_t cmd_clear_token_arm;  
   uint32_t cmd_clear_token_fire; 
   uint16_t total_keys;
-  FlashStoredKey keys[85]; // Hardcoded directly for safety
+  FlashStoredKey keys[85]; 
 };
 
-#include <span> 
-
-// Resolves an ESPHome button component reference from its clean text identifier string
+// Resolves an ESPHome button component reference from its text identifier string
 inline esphome::button::Button* resolve_button(const char* name) {
   for (auto* btn : esphome::App.get_buttons()) {
     ComponentBufferStr buffer = {0}; 
@@ -143,8 +142,6 @@ inline void load_saved_flash_profiles() {
       target_profile.cmd_clear_token_arm = flash_p.cmd_clear_token_arm;
       target_profile.cmd_clear_token_fire = flash_p.cmd_clear_token_fire;
 
-      // ANTI-FRAGMENTATION RESIZE: Wiping vector storage footprint directly to target size 
-      // without using clear() + reserve(), which prevents dynamic mid-loop memory shifts.
       target_profile.cmd_codes.resize(flash_p.total_keys);
 
       for (uint16_t k = 0; k < flash_p.total_keys; k++) {
@@ -169,85 +166,169 @@ inline void link_hardware_buttons() {
     }
 }
 
-// Parses an incoming JSON file string using safe, contiguous ArduinoJson structures
-inline bool import_profiles_from_json(const std::string& json_str) {
-  size_t dynamic_doc_size = json_str.length() + 1024; 
-  ALLOCATE_JSON_DOC(doc, dynamic_doc_size);
-
-  DeserializationError error = deserializeJson(doc, json_str);
-  if (error) {
-    ESP_LOGE("json_import", "JSON Deserialization failed: %s", error.c_str());
-    return false;
-  }
-
-  JsonArray root_array = doc.as<JsonArray>();
-  if (root_array.isNull()) {
-    return false;
-  }
-
-  size_t profiles_to_import = root_array.size();
-  size_t total_required_slots = factory_count + profiles_to_import;
-
-  if (total_required_slots > (factory_count + MAX_LEARNED_PROFILES)) {
-    ESP_LOGW("json_import", "Incoming payload profile count truncated to MAX_LEARNED_PROFILES.");
-    total_required_slots = factory_count + MAX_LEARNED_PROFILES;
-  }
-
-  if (remote_profiles.size() < total_required_slots) {
-    remote_profiles.resize(total_required_slots, { "Placeholder Layout", "NEC", 0, 0, 0, {} });
-  } else if (remote_profiles.size() > total_required_slots) {
-    remote_profiles.resize(total_required_slots);
-  }
-
-  size_t current_slot_idx = factory_count;
-
-  for (JsonObject p_obj : root_array) {
-    if (current_slot_idx >= total_required_slots) break;
-
-    const char* name = p_obj["name"];
-    const char* protocol = p_obj["protocol"];
-    const char* address_str = p_obj["address"];
-
-    if (!name || !protocol || !address_str) {
-      continue;
-    }
-
-    auto& target_profile = remote_profiles[current_slot_idx];
-
-    target_profile.profile_name = name;
-    target_profile.protocol = protocol;
-    target_profile.device_address = std::stoul(address_str, nullptr, 16);
+// Helper to find text strings between simple delimiters without copying them to heap
+inline bool get_json_value_bounds(const std::string& json, size_t start_pos, const char* key, size_t& val_start, size_t& val_len) {
+    size_t k_pos = json.find(key, start_pos);
+    if (k_pos == std::string::npos) return false;
     
-    const char* clear_arm = p_obj["clear_arm"];
-    const char* clear_fire = p_obj["clear_fire"];
-    target_profile.cmd_clear_token_arm = (clear_arm) ? std::stoul(clear_arm, nullptr, 16) : 0;
-    target_profile.cmd_clear_token_fire = (clear_fire) ? std::stoul(clear_fire, nullptr, 16) : 0;
+    size_t colon = json.find(':', k_pos);
+    if (colon == std::string::npos) return false;
+    
+    size_t quote_start = json.find('"', colon);
+    if (quote_start != std::string::npos && (quote_start < json.find_first_of(",}]", colon))) {
+        size_t quote_end = json.find('"', quote_start + 1);
+        if (quote_end == std::string::npos) return false;
+        val_start = quote_start + 1;
+        val_len = quote_end - val_start;
+        return true;
+    } else {
+        size_t num_start = json.find_first_not_of(" \t\n\r", colon + 1);
+        if (num_start == std::string::npos) return false;
+        size_t num_end = json.find_first_of(", \t\n\r}]", num_start);
+        if (num_end == std::string::npos) num_end = json.length();
+        val_start = num_start;
+        val_len = num_end - num_start;
+        return true;
+    }
+}
 
-    JsonArray keys_array = p_obj["keys"].as<JsonArray>();
-    if (!keys_array.isNull()) {
-      // Force resizing instantly to lock layout footprint 
-      target_profile.cmd_codes.resize(keys_array.size());
+// ==========================================
+// 1. SAFE ZERO-HEAP JSON PARSER
+// ==========================================
+inline bool import_profiles_from_json(const std::string& json_str) {
+    if (json_str.empty()) return false;
 
-      size_t k_idx = 0;
-      for (JsonObject k_obj : keys_array) {
-        const char* code_str = k_obj["code"];
-        const char* btn_str = k_obj["button"];
-
-        if (code_str && btn_str) {
-          auto& kv_pair = target_profile.cmd_codes[k_idx];
-          kv_pair.first = std::stoul(code_str, nullptr, 16);
-          
-          std::strncpy(kv_pair.second.name, btn_str, sizeof(kv_pair.second.name) - 1);
-          kv_pair.second.name[sizeof(kv_pair.second.name) - 1] = '\0';
-          kv_pair.second.button_obj = resolve_button(btn_str);
-          k_idx++;
-        }
-      }
+    if (json_str.find("\"err\"") != std::string::npos || json_str.find("\"sta\"") != std::string::npos) {
+        ESP_LOGE("json_import", "Aborting import: JSON payload contains status error codes.");
+        return false;
     }
 
-    current_slot_idx++;
-  }
+    size_t v_start = 0, v_len = 0;
+    
+    if (!get_json_value_bounds(json_str, 0, "\"idx\"", v_start, v_len)) return false;
+    int profile_idx = std::stoi(json_str.substr(v_start, v_len));
 
-  commit_database_to_flash();
-  return true;
+    size_t total_required_slots = factory_count + MAX_LEARNED_PROFILES;
+    if (profile_idx < (int)factory_count || profile_idx >= (int)total_required_slots) {
+        ESP_LOGE("json_import", "Target profile index %d violates dynamic custom memory boundaries.", profile_idx);
+        return false;
+    }
+
+    if (remote_profiles.size() < total_required_slots) {
+        remote_profiles.resize(total_required_slots, { "Placeholder Layout", "NEC", 0, 0, 0, {} });
+    }
+
+    auto& target_profile = remote_profiles[profile_idx];
+
+    if (!get_json_value_bounds(json_str, 0, "\"nam\"", v_start, v_len)) return false;
+    target_profile.profile_name = json_str.substr(v_start, v_len);
+
+    if (!get_json_value_bounds(json_str, 0, "\"pro\"", v_start, v_len)) return false;
+    target_profile.protocol = json_str.substr(v_start, v_len);
+
+    if (!get_json_value_bounds(json_str, 0, "\"adr\"", v_start, v_len)) return false;
+    target_profile.device_address = std::stoul(json_str.substr(v_start, v_len), nullptr, 16);
+
+    if (!get_json_value_bounds(json_str, 0, "\"car\"", v_start, v_len)) return false;
+    target_profile.cmd_clear_token_arm = std::stoul(json_str.substr(v_start, v_len), nullptr, 16);
+
+    if (!get_json_value_bounds(json_str, 0, "\"cfr\"", v_start, v_len)) return false;
+    target_profile.cmd_clear_token_fire = std::stoul(json_str.substr(v_start, v_len), nullptr, 16);
+
+    target_profile.cmd_codes.clear();
+    target_profile.cmd_codes.reserve(95); 
+
+    size_t array_pos = json_str.find("\"key\"");
+    if (array_pos == std::string::npos) return false;
+    array_pos = json_str.find('[', array_pos);
+    if (array_pos == std::string::npos) return false;
+
+    while (true) {
+        size_t open_brace = json_str.find('{', array_pos);
+        size_t close_bracket = json_str.find(']', array_pos);
+        
+        if (open_brace == std::string::npos || (close_bracket != std::string::npos && close_bracket < open_brace)) {
+            break; 
+        }
+
+        size_t close_brace = json_str.find('}', open_brace);
+        if (close_brace == std::string::npos) break;
+
+        size_t k_start = 0, k_len = 0;
+        size_t b_start = 0, b_len = 0;
+
+        if (get_json_value_bounds(json_str, open_brace, "\"x\"", k_start, k_len) &&
+            get_json_value_bounds(json_str, open_brace, "\"b\"", b_start, b_len)) {
+            
+            uint32_t raw_hex = std::stoul(json_str.substr(k_start, k_len), nullptr, 16);
+            std::string button_identifier = json_str.substr(b_start, b_len);
+
+            IRCommand cmd;
+            std::memset(cmd.name, 0, sizeof(cmd.name));
+            std::strncpy(cmd.name, button_identifier.c_str(), sizeof(cmd.name) - 1);
+            
+            cmd.button_obj = resolve_button(cmd.name);
+            target_profile.cmd_codes.push_back({ raw_hex, cmd });
+        }
+        array_pos = close_brace + 1;
+    }
+
+    commit_database_to_flash();
+    return true;
+}
+
+// ==========================================
+// 2. CHRONOLOGICAL ZERO-HEAP JSON GENERATOR
+// ==========================================
+inline std::string generate_minified_profile_json(int idx) {
+    if (remote_profiles.empty()) {
+        return "{\n  \"sta\":\"warming\"\n}";
+    }
+
+    int factory = (int) factory_count;
+    const int custom  = 50; 
+    const int max_idx = factory + custom;
+  
+    if (idx < 0 || idx >= max_idx || idx >= (int) remote_profiles.size()) {
+        return "{\n  \"err\":\"range\"\n}";
+    }
+
+    const IRProfile &p = remote_profiles[idx];
+    if (p.profile_name.empty() || p.profile_name.rfind("Placeholder", 0) == 0) {
+        return "{\n  \"err\":\"empty\"\n}";
+    }
+
+    // Pre-allocates a flat 5KB payload block upfront.
+    // Completely prevents mid-run reallocations and short-term heap fragmentation.
+    std::string json_out;
+    json_out.reserve(5120); 
+
+    // Reusable small scratchpad buffer on the stack (512 bytes protects deep metadata)
+    char row_buf[512];
+    std::memset(row_buf, 0, sizeof(row_buf));
+
+    // 1. Generate Header Block Safely
+    snprintf(row_buf, sizeof(row_buf), 
+             "{\n  \"idx\":%d,\n  \"int\":%d,\n  \"nam\":\"%s\",\n  \"pro\":\"%s\",\n  \"adr\":\"%04X\",\n  \"car\":\"%04X\",\n  \"cfr\":\"%04X\",\n  \"key\":[\n",
+             idx, (idx < factory) ? 1 : 0, p.profile_name.c_str(), p.protocol.c_str(),
+             (unsigned int) p.device_address, (unsigned int) p.cmd_clear_token_arm, (unsigned int) p.cmd_clear_token_fire);
+    json_out += row_buf;
+
+    // 2. Single-Pass Chronological Loop
+    // Iterates cleanly from index 0 straight to the end of the profile's std::vector
+    for (size_t i = 0; i < p.cmd_codes.size(); i++) {
+        uint32_t code = p.cmd_codes[i].first;
+        const char* b_name = p.cmd_codes[i].second.name;
+
+        bool is_last = (i == p.cmd_codes.size() - 1);
+        std::memset(row_buf, 0, sizeof(row_buf));
+        snprintf(row_buf, sizeof(row_buf), 
+                 "    {\"x\":\"%X\",\"b\":\"%s\"}%s\n",
+                 (unsigned int)code, b_name, is_last ? "" : ",");
+    
+        json_out += row_buf; 
+    }
+  
+    json_out += "  ]\n}";
+    return json_out;
 }

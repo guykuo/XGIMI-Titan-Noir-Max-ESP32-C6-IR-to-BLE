@@ -60,12 +60,11 @@ esp32:
   partitions: ir-common-kuo/appkit/partitions.csv  #larger app partition needed 
 
 logger:
-#  level: DEBUG
-  level: INFO
+  level: DEBUG
+  # level: INFO
   hardware_uart: USB_CDC      # Directs logs to the native internal S3 USB port
   baud_rate: 115200
 
-captive_portal:
 
 wifi:
   reboot_timeout: 5min
@@ -86,6 +85,7 @@ ota:
   - platform: esphome
     password: !secret ota_password
 
+captive_portal:
 
 # Enable v3 Web Server component
 web_server:
@@ -154,101 +154,27 @@ api:
               root["factory_count"] = (int) factory_count;
 
 
-    # ---------- 3) Export one profile ----------
-    - action: export_json_profile # modified from Avalones
+    # ---------- 3) Export one profile (Unified Heap-Safe Action) ----------
+    - action: export_json_profile
       variables:
         index: int
       supports_response: only
       then:
         - api.respond:
             data: !lambda |-
-              const int idx = index;
-
-              if (idx < 0 || idx >= (int) remote_profiles.size()) {
-                root["error"] = "index out of range";
-                root["count"] = (int) remote_profiles.size();
-                return;
-              }
-
-              const IRProfile &p = remote_profiles[idx];
-              if (p.profile_name.empty() ||
-                  p.profile_name.rfind("Placeholder", 0) == 0) {
-                root["error"] = "empty slot";
-                root["index"] = idx;
-                return;
-              }
-
-              char buf[32];
-              root["index"]    = idx;
-              root["name"]     = p.profile_name;
-              root["protocol"] = p.protocol;
-
-              snprintf(buf, sizeof(buf), "0x%08X", (unsigned int) p.device_address);
-              root["address"] = buf;
-
-              snprintf(buf, sizeof(buf), "0x%08X", (unsigned int) p.cmd_clear_token_arm);
-              root["clear_arm"] = buf;
-
-              snprintf(buf, sizeof(buf), "0x%08X", (unsigned int) p.cmd_clear_token_fire);
-              root["clear_fire"] = buf;
-
-              JsonArray keys_arr = root["keys"].to<JsonArray>();
-
-              static const char* const export_sequence[] = {
-                "power_on", "power_off", "cursor_left", "cursor_right", "cursor_up", "cursor_down",
-                "cursor_enter", "settings_menu", "back", "home", "game_menu", "input", "picture",
-                "focus_manual", "focus_auto", "shortcut_1", "shortcut_2", "shortcut_3", "shortcut_4",
-                "volume_up", "volume_down", "mute", "token_sniff", "token_clear", "token_recall",
-                "BT_start_pair", "BT_clear_pair"
-              };
-
-              constexpr size_t TOTAL_SEQUENTIAL_KEYS = sizeof(export_sequence) / sizeof(export_sequence[0]);
-
-              std::vector<uint32_t> exported_codes;
-              exported_codes.reserve(p.cmd_codes.size());
-
-              // PASS 1: Sequence matching using case-insensitive substring logic
-              for (size_t seq_i = 0; seq_i < TOTAL_SEQUENTIAL_KEYS; seq_i++) {
-                std::string target = export_sequence[seq_i];
+              std::string json_out = generate_minified_profile_json(index);
+              if (!json_out.empty()) {
+                // ArduinoJson v7 zero-allocation syntax reads string directly in-place
+                JsonDocument doc;
+                DeserializationError err = deserializeJson(doc, json_out);
                 
-                for (const auto &pair : p.cmd_codes) {          
-                  std::string current_name = pair.second.name;
-                  
-                  std::string current_name_lower = current_name;
-                  std::transform(current_name_lower.begin(), current_name_lower.end(), current_name_lower.begin(), ::tolower);
-
-                  if (current_name_lower == target || current_name_lower.rfind(target, 0) == 0) {
-                    if (std::find(exported_codes.begin(), exported_codes.end(), pair.first) == exported_codes.end()) {
-                      exported_codes.push_back(pair.first);
-                    }
-                  }
+                if (!err) {
+                  // v7 direct assignment from local document to response root
+                  root = doc.as<JsonObject>();
+                  return;
                 }
               }
-
-              // PASS 2: Appends ALL leftover custom parameters (like Epson specific "input LAN", "blank", "lens1", etc.)
-              for (const auto &pair : p.cmd_codes) {
-                if (std::find(exported_codes.begin(), exported_codes.end(), pair.first) == exported_codes.end()) {
-                  exported_codes.push_back(pair.first);
-                }
-              }
-
-              // Build the native JSON objects sequentially for the API response packet
-              for (uint32_t code : exported_codes) {
-                JsonObject k = keys_arr.add<JsonObject>();
-                snprintf(buf, sizeof(buf), "0x%04X", (unsigned int) code);
-                k["code"]   = buf;
-                
-                // HARDENED: Loop search lookup avoids relying on missing .at() vector mechanisms
-                const char* matched_btn_name = "unassigned";
-                for (const auto& kv_pair : p.cmd_codes) {
-                  if (kv_pair.first == code) {
-                    matched_btn_name = kv_pair.second.name;
-                    break;
-                  }
-                }
-                k["button"] = matched_btn_name;
-              }
-
+              root["error"] = "Unified JSON string generation failed";
 
 # ============================================================
 
@@ -265,6 +191,9 @@ esphome:
     - <cctype>
     - ir-common-kuo/appkit/secrets_bridge.h
     - ir-common-kuo/appkit/ir_profile.h
+
+
+  build_flags: "-Wl,--require-defined=cJSON_Parse"
   
   project:
     name: xgimi.titan-noir-esp32-ir-kuo
@@ -1137,92 +1066,10 @@ script:
     then:
       - delay: 100ms
       - lambda: |-
-          size_t buf_sz = 8192; 
-          char *json_buf = new (std::nothrow) char[buf_sz];
-          if (json_buf == nullptr) return;
-          
-          std::memset(json_buf, 0, buf_sz);
-          size_t offset = 0;
-          const int idx = id(selected_profile_slot);
-
-          if (remote_profiles.empty()) {
-            offset += snprintf(json_buf + offset, buf_sz - offset, "{\n  \"sta\":\"warming\"\n}");
-          } else {
-            int factory = (int) factory_count;
-            const int custom  = 50; 
-            const int max_idx = factory + custom;
-            
-            if (idx < 0 || idx >= max_idx) {
-              offset += snprintf(json_buf + offset, buf_sz - offset, "{\n  \"err\":\"range\"}");
-            } else if (idx >= (int) remote_profiles.size()) {
-              offset += snprintf(json_buf + offset, buf_sz - offset, "{\n  \"err\":\"empty\"}");
-            } else {
-              const IRProfile &p = remote_profiles[idx];
-              if (p.profile_name.empty() || p.profile_name.rfind("Placeholder", 0) == 0) {
-                offset += snprintf(json_buf + offset, buf_sz - offset, "{\n  \"err\":\"empty\"}");
-              } else {
-                offset += snprintf(json_buf + offset, buf_sz - offset, 
-                                   "{\n  \"idx\":%d,\n  \"int\":%d,\n  \"nam\":\"%s\",\n  \"pro\":\"%s\",\n  \"adr\":\"%04X\",\n  \"car\":\"%04X\",\n  \"cfr\":\"%04X\",\n  \"key\":[\n",
-                                   idx, (idx < factory) ? 1 : 0, p.profile_name.c_str(), p.protocol.c_str(),
-                                   (unsigned int) p.device_address, (unsigned int) p.cmd_clear_token_arm, (unsigned int) p.cmd_clear_token_fire);
-
-                static const char* const export_sequence[] = {
-                  "power_on", "power_off", "cursor_left", "cursor_right", "cursor_up", "cursor_down",
-                  "cursor_enter", "settings_menu", "back", "home", "game_menu", "input", "picture",
-                  "focus_manual", "focus_auto", "shortcut_1", "shortcut_2", "shortcut_3", "shortcut_4",
-                  "volume_up", "volume_down", "mute", "token_sniff", "token_clear", "token_recall",
-                  "BT_start_pair", "BT_clear_pair" 
-                };
-                constexpr size_t TOTAL_SEQUENTIAL_KEYS = sizeof(export_sequence) / sizeof(export_sequence[0]);
-
-                std::vector<uint32_t> exported_codes;
-                exported_codes.reserve(p.cmd_codes.size());
-
-                for (size_t seq_i = 0; seq_i < TOTAL_SEQUENTIAL_KEYS; seq_i++) {
-                  std::string target = export_sequence[seq_i];
-                  for (const auto &kv_pair : p.cmd_codes) {
-                    std::string current_name(kv_pair.second.name);
-                    std::transform(current_name.begin(), current_name.end(), current_name.begin(), ::tolower);
-
-                    if (current_name == target || current_name.rfind(target, 0) == 0) {
-                      if (std::find(exported_codes.begin(), exported_codes.end(), kv_pair.first) == exported_codes.end()) {
-                        exported_codes.push_back(kv_pair.first);
-                      }
-                    }
-                  }
-                }
-
-                for (const auto &kv_pair : p.cmd_codes) {
-                  if (std::find(exported_codes.begin(), exported_codes.end(), kv_pair.first) == exported_codes.end()) {
-                    exported_codes.push_back(kv_pair.first);
-                  }
-                }
-
-                for (size_t i = 0; i < exported_codes.size(); i++) {
-                  if (offset >= buf_sz - 128) break; 
-                  uint32_t code = exported_codes[i];
-                  
-                  // HARDENED: Extracted using string pointer targets directly, avoiding object copying noise
-                  const char* b_name = "Unknown";
-                  for (const auto& kv_pair : p.cmd_codes) {
-                    if (kv_pair.first == code) {
-                      b_name = kv_pair.second.name;
-                      break;
-                    }
-                  }
-
-                  bool is_last = (i == exported_codes.size() - 1);
-                  offset += snprintf(json_buf + offset, buf_sz - offset, 
-                                     "    {\"x\":\"%X\",\"b\":\"%s\"}%s\n",
-                                     (unsigned int)code, b_name, is_last ? "" : ",");
-                }
-                offset += snprintf(json_buf + offset, buf_sz - offset, "  ]\n}");
-              }
-            }
+          std::string json_out = generate_minified_profile_json(id(selected_profile_slot));
+          if (!json_out.empty()) {
+            id(ir_profile_selected_json).publish_state(json_out);
           }
-          std::string result(json_buf);
-          id(ir_profile_selected_json).publish_state(result);
-          delete[] json_buf;
 
 
 #=================================================================

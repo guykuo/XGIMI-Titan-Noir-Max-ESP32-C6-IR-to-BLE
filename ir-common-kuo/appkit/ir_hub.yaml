@@ -774,7 +774,7 @@ script:
             }
 
             case 1: { // action -----------------------------------------------
-              if (now - id(last_ir_press) < 130) return;
+              if (now - id(last_ir_press) < 120) return; // 110 msec is low limit before BenQ debounce failure
               id(last_ir_press) = now;
 
               ESP_LOGI("IR_HUB", "IR processing Protocol %s      Address 0x%X,      Command 0x%X", ir_protocolStr.c_str(), (unsigned int)ir_address, (unsigned int)ir_command);
