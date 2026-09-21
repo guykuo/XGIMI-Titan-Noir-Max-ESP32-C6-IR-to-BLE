@@ -1,0 +1,157 @@
+# ============= BEGIN Configuration Options KUO ==========
+
+substitutions:
+  
+  # M5stacks own IR Unit IR SKU:U002 has IR receiver and emitter compatible with Grove connector of Atom Lite
+  # If using other IR sensor, beware that Grove connector Vcc is 5 volts. Connector J4 supplies safer 3 volt Vcc.
+  
+  pin_ir_receiver: GPIO32   # IR sensor of M5stack Unit IR via a Grove HY2.0-4P interface white/RX wire
+  pin_indicator_LED: GPIO27 # LED indicator
+  pin_action_btn: GPI39      # use front button for action on m5stack atom
+  
+  
+  
+  
+# Core Architecture Declaration
+esp32:
+  board: m5stack-atom
+  framework:
+    type: esp-idf
+      
+  
+# i2c Display Pins
+i2c: 
+  sda: GPIO25 # optional OLED
+  scl: GPIO21 # optional OLED
+  frequency: 400kHz
+  scan: false # to prevent startup crashes during boot scans
+  id: bus_a
+  
+# ============= END Configuration Options KUO ==========
+
+globals:
+    # ======= myDisplay display globals
+  - id: myDisplay_line1
+    type: std::string  
+    restore_value: no
+    initial_value: ''
+
+  - id: myDisplay_line2
+    restore_value: no
+    type: std::string  
+    initial_value: ''
+    
+  - id: myDisplay_line3
+    restore_value: no
+    type: std::string  
+    initial_value: ''
+      
+light:
+  - platform: esp32_rmt_led_strip  # Neo pixel
+    id: indicator_led
+    pin: ${pin_indicator_LED}
+    chipset: WS2812
+    num_leds: 1
+    rgb_order: GRB
+    name: "Sniffer Indicator"
+    internal: true
+
+script:
+  - id: flash_led_custom
+    parameters:
+      count: int         # Number of flashes
+      dwell: int         # duration of flash in msec
+      red: float         # Red value (0.0 to 1.0)
+      green: float       # Green value (0.0 to 1.0)
+      blue: float        # Blue value (0.0 to 1.0)
+    mode: queued
+    then:
+      - repeat:
+          count: !lambda "return count;"
+          then:
+            # --- TURN RGB LED ON WITH DYNAMIC COLOR ---
+            # Pass your script parameters to the light.turn_on action via lambdas
+            - light.turn_on:
+                id: indicator_led
+                red: !lambda "return red;"
+                green: !lambda "return green;"
+                blue: !lambda "return blue;"
+                brightness: 0.2
+                transition_length: 0s
+            - delay: !lambda "return dwell;"
+
+            # --- TURN RGB LED OFF ---
+            - light.turn_off:
+                id: indicator_led
+                transition_length: 0s
+            - delay: !lambda "return dwell;"
+            
+            
+  - id: turn_led_on_custom
+    parameters:
+      red: float         # Red channel (0.0 to 1.0)
+      green: float       # Green channel (0.0 to 1.0)
+      blue: float        # Blue channel (0.0 to 1.0)
+      brightness: float  # Brightness (0.0 to 1.0)
+    mode: restart
+    then:
+      - light.turn_on:
+          id: indicator_led
+          red: !lambda "return red;"
+          green: !lambda "return green;"
+          blue: !lambda "return blue;"
+          brightness: !lambda "return brightness;"
+          transition_length: 0s  # Turns on instantly without a fade
+          
+          
+  - id: turn_led_off_custom
+    mode: restart
+    then:
+      - light.turn_off:
+          id: indicator_led
+          transition_length: 0s  # Turns off instantly without a fade
+
+
+# ========  Display Specific Implementation ========
+
+font:
+  - file: "gfonts://Roboto"
+    id: my_fontSmall
+    size: 9
+    
+  - file: "gfonts://Roboto"
+    id: my_fontMedium
+    size: 10
+
+  - file: "gfonts://Roboto"
+    id: my_fontLarge
+    size: 11
+
+    
+# External SSD1306 128x32 OLED screen
+display:
+  - platform: ssd1306_i2c
+    model: "SSD1306 128x32"
+    address: 0x3C
+    id: myDisplay
+    offset_x: 0
+    offset_y: 0
+    rotation: 0
+    update_interval: 0.1s
+
+    pages:
+      - id: active_page_std
+        lambda: |-
+          it.print(0, 0,  id(my_fontMedium), id(myDisplay_line1).c_str());
+          it.print(0, 9, id(my_fontLarge), id(myDisplay_line2).c_str());
+          it.print(0, 20, id(my_fontLarge), id(myDisplay_line3).c_str());
+
+      - id: active_page_small
+        lambda: |-
+          it.print(0, 0,  id(my_fontSmall), id(myDisplay_line1).c_str());
+          it.print(0, 10, id(my_fontSmall), id(myDisplay_line2).c_str());
+          it.print(0, 20, id(my_fontSmall), id(myDisplay_line3).c_str());
+
+      - id: blank_page
+        lambda: |-
+          // Leaving lambda completely blank turns all pixels off safely

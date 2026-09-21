@@ -178,7 +178,7 @@ api:
                 return;
               }
 
-              char buf[32]; // Fixed array buffer tracking definition bounds
+              char buf[32];
               root["index"]    = idx;
               root["name"]     = p.profile_name;
               root["protocol"] = p.protocol;
@@ -201,7 +201,7 @@ api:
                 "volume_up", "volume_down", "mute", "token_sniff", "token_clear", "token_recall",
                 "BT_start_pair", "BT_clear_pair"
               };
-              // FIXED: Corrected array element size tracking math
+
               constexpr size_t TOTAL_SEQUENTIAL_KEYS = sizeof(export_sequence) / sizeof(export_sequence[0]);
 
               std::vector<uint32_t> exported_codes;
@@ -225,7 +225,7 @@ api:
                 }
               }
 
-              // FIXED / PASS 2: Appends ALL leftover custom parameters (like Epson specific "input LAN", "blank", "lens1", etc.)
+              // PASS 2: Appends ALL leftover custom parameters (like Epson specific "input LAN", "blank", "lens1", etc.)
               for (const auto &pair : p.cmd_codes) {
                 if (std::find(exported_codes.begin(), exported_codes.end(), pair.first) == exported_codes.end()) {
                   exported_codes.push_back(pair.first);
@@ -235,10 +235,20 @@ api:
               // Build the native JSON objects sequentially for the API response packet
               for (uint32_t code : exported_codes) {
                 JsonObject k = keys_arr.add<JsonObject>();
-                snprintf(buf, sizeof(buf), "0x%04X", (unsigned int) code); // Formatted to 4 hex characters for cleaner mapping arrays
+                snprintf(buf, sizeof(buf), "0x%04X", (unsigned int) code);
                 k["code"]   = buf;
-                k["button"] = p.cmd_codes.at(code).name;
+                
+                // HARDENED: Loop search lookup avoids relying on missing .at() vector mechanisms
+                const char* matched_btn_name = "unassigned";
+                for (const auto& kv_pair : p.cmd_codes) {
+                  if (kv_pair.first == code) {
+                    matched_btn_name = kv_pair.second.name;
+                    break;
+                  }
+                }
+                k["button"] = matched_btn_name;
               }
+
 
 # ============================================================
 
@@ -251,8 +261,11 @@ esphome:
     - <iomanip>
     - <array>
     - <vector>
+    - <algorithm>
+    - <cctype>
     - ir-common-kuo/appkit/secrets_bridge.h
     - ir-common-kuo/appkit/ir_profile.h
+
 
   build_flags: "-Wl,--require-defined=cJSON_Parse"
   
@@ -647,6 +660,7 @@ button:
   - platform: template # clear stored template. Revert to secrets wake token
     name: "token_clear"
     id: token_clear
+    icon: "mdi:bluetooth-audio"
     web_server:
         sorting_group_id: settingsGroup
         sorting_weight: 10
@@ -814,7 +828,6 @@ script:
                       for (int i = 0; i < len - 3; i++) {
                           if (adv[i] == 0xFF && adv[i+1] == 0x46 && adv[i+2] == 0x00) {
                               
-                              // FIXED: Firm array declaration dimension limits prevent compiler crash
                               char token_hex[64] = {0};
                               size_t offset = 0;
                               for (int j = 0; j < len && offset < 60; j++) {
@@ -853,7 +866,7 @@ script:
                                           uint8_t *tail_ptr = adv + (len - 15);
                                           
                                           std::string sniffed_token_last15_hex = ""; 
-                                          // FIXED: Solid array dimensions assigned to stop boundary overwrites
+
                                           char slice_buf[8] = {0}; 
                                           for (int k = 0; k < 15; k++) {
                                               snprintf(slice_buf, sizeof(slice_buf), "%02X ", tail_ptr[k]);
@@ -1098,7 +1111,7 @@ script:
           for (size_t i = 0; i < 15; ++i) {
             if (i > 0) token_hex_str += " ";
             
-            char buf[8]; // Fixed buffer size to hold 2 hex digits + null terminator
+            char buf[8]; // buffer size to hold 2 hex digits + null terminator
             // Force cast to int to prevent compiler warnings with %02X
             snprintf(buf, sizeof(buf), "%02X", static_cast<int>(token_bytes[i]));
             token_hex_str += buf;
@@ -1122,53 +1135,35 @@ script:
           }
 
 # ====================================
-# --- HYBRID SEQUENTIAL JSON EXPORT --- modified Avalones
   - id: publish_selected_profile_json
     mode: restart
     then:
       - delay: 100ms
       - lambda: |-
-          // Allocate buffer space on the HEAP to prevent stack overflow crashes
-          size_t buf_sz = 8192; // Increased to 8KB to comfortably hold Epson 39+ custom keys
+          size_t buf_sz = 8192; 
           char *json_buf = new (std::nothrow) char[buf_sz];
+          if (json_buf == nullptr) return;
           
-          if (json_buf == nullptr) {
-            ESP_LOGE("json_export", "Heap allocation failed! Out of memory.");
-            return;
-          }
-          
-          // Zero out our newly allocated heap block memory footprint
           std::memset(json_buf, 0, buf_sz);
           size_t offset = 0;
-
           const int idx = id(selected_profile_slot);
 
           if (remote_profiles.empty()) {
             offset += snprintf(json_buf + offset, buf_sz - offset, "{\n  \"sta\":\"warming\"\n}");
           } else {
             int factory = (int) factory_count;
-            const int custom  = 50; // Aligned with MAX_LEARNED_PROFILES boundary footprint
+            const int custom  = 50; 
             const int max_idx = factory + custom;
             
             if (idx < 0 || idx >= max_idx) {
-              offset += snprintf(json_buf + offset, buf_sz - offset, 
-                                 "{\n  \"err\":\"range\",\n  \"idx\":%d,\n  \"cnt\":%d\n}", 
-                                 idx, (int) remote_profiles.size());
+              offset += snprintf(json_buf + offset, buf_sz - offset, "{\n  \"err\":\"range\"}");
             } else if (idx >= (int) remote_profiles.size()) {
-              offset += snprintf(json_buf + offset, buf_sz - offset, 
-                                 "{\n  \"err\":\"empty\",\n  \"idx\":%d,\n  \"slt\":%d,\n  \"typ\":\"custom\"\n}", 
-                                 idx, idx - factory);
+              offset += snprintf(json_buf + offset, buf_sz - offset, "{\n  \"err\":\"empty\"}");
             } else {
               const IRProfile &p = remote_profiles[idx];
               if (p.profile_name.empty() || p.profile_name.rfind("Placeholder", 0) == 0) {
-                offset += snprintf(json_buf + offset, buf_sz - offset, "{\n  \"err\":\"empty\",\n  \"idx\":%d", idx);
-                if (idx >= factory) {
-                  offset += snprintf(json_buf + offset, buf_sz - offset, ",\n  \"slt\":%d,\n  \"typ\":\"custom\"\n}", idx - factory);
-                } else {
-                  offset += snprintf(json_buf + offset, buf_sz - offset, ",\n  \"typ\":\"internal\"\n}");
-                }
+                offset += snprintf(json_buf + offset, buf_sz - offset, "{\n  \"err\":\"empty\"}");
               } else {
-                // Header block
                 offset += snprintf(json_buf + offset, buf_sz - offset, 
                                    "{\n  \"idx\":%d,\n  \"int\":%d,\n  \"nam\":\"%s\",\n  \"pro\":\"%s\",\n  \"adr\":\"%04X\",\n  \"car\":\"%04X\",\n  \"cfr\":\"%04X\",\n  \"key\":[\n",
                                    idx, (idx < factory) ? 1 : 0, p.profile_name.c_str(), p.protocol.c_str(),
@@ -1186,55 +1181,50 @@ script:
                 std::vector<uint32_t> exported_codes;
                 exported_codes.reserve(p.cmd_codes.size());
 
-                // PASS 1: Sequential Base and Substring Grouping (Case-Insensitive)
                 for (size_t seq_i = 0; seq_i < TOTAL_SEQUENTIAL_KEYS; seq_i++) {
                   std::string target = export_sequence[seq_i];
-                  
-                  for (const auto &pair : p.cmd_codes) {
-                    std::string current_name = pair.second.name;
-                    
-                    std::string current_name_lower = current_name;
-                    std::transform(current_name_lower.begin(), current_name_lower.end(), current_name_lower.begin(), ::tolower);
+                  for (const auto &kv_pair : p.cmd_codes) {
+                    std::string current_name(kv_pair.second.name);
+                    std::transform(current_name.begin(), current_name.end(), current_name.begin(), ::tolower);
 
-                    if (current_name_lower == target || current_name_lower.rfind(target, 0) == 0) {
-                      if (std::find(exported_codes.begin(), exported_codes.end(), pair.first) == exported_codes.end()) {
-                        exported_codes.push_back(pair.first);
+                    if (current_name == target || current_name.rfind(target, 0) == 0) {
+                      if (std::find(exported_codes.begin(), exported_codes.end(), kv_pair.first) == exported_codes.end()) {
+                        exported_codes.push_back(kv_pair.first);
                       }
                     }
                   }
                 }
 
-                // FIXED / PASS 2: True catch-all ensures ALL elements left out of export_sequence 
-                // (like Epson specific "input LAN", "blank", "lens1", etc.) are cleanly caught and appended.
-                for (const auto &pair : p.cmd_codes) {
-                  if (std::find(exported_codes.begin(), exported_codes.end(), pair.first) == exported_codes.end()) {
-                    exported_codes.push_back(pair.first);
+                for (const auto &kv_pair : p.cmd_codes) {
+                  if (std::find(exported_codes.begin(), exported_codes.end(), kv_pair.first) == exported_codes.end()) {
+                    exported_codes.push_back(kv_pair.first);
                   }
                 }
 
-                // Render JSON structure safely into expanded buffer footprint
                 for (size_t i = 0; i < exported_codes.size(); i++) {
-                  if (offset >= buf_sz - 128) break; // Keep defensive guard rails intact
-                  
+                  if (offset >= buf_sz - 128) break; 
                   uint32_t code = exported_codes[i];
-                  std::string b_name = p.cmd_codes.at(code).name;
-                  bool is_last = (i == exported_codes.size() - 1);
+                  
+                  // HARDENED: Extracted using string pointer targets directly, avoiding object copying noise
+                  const char* b_name = "Unknown";
+                  for (const auto& kv_pair : p.cmd_codes) {
+                    if (kv_pair.first == code) {
+                      b_name = kv_pair.second.name;
+                      break;
+                    }
+                  }
 
+                  bool is_last = (i == exported_codes.size() - 1);
                   offset += snprintf(json_buf + offset, buf_sz - offset, 
                                      "    {\"x\":\"%X\",\"b\":\"%s\"}%s\n",
-                                     (unsigned int)code, b_name.c_str(),
-                                     is_last ? "" : ",");
+                                     (unsigned int)code, b_name, is_last ? "" : ",");
                 }
-                
                 offset += snprintf(json_buf + offset, buf_sz - offset, "  ]\n}");
               }
             }
           }
-
           std::string result(json_buf);
           id(ir_profile_selected_json).publish_state(result);
-          
-          // CLEANUP: Free the heap block to guarantee zero memory leaks
           delete[] json_buf;
 
 
