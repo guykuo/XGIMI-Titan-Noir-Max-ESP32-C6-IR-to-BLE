@@ -1605,43 +1605,59 @@ script:
             { 0xD02C,       { "token_clear",   id(token_clear) } },     // 5
             { 0xD02D,       { "token_recall",  id(token_recall) } },    // 6
             { 0xC033,       { "BT_start_pair", id(bluetooth_pairing_start) } },    //enter
-            { 0xC032,       { "BT_clear_pair", id(bluetooth_pairing_clear) } },    //clear
+            { 0xC032,       { "BT_clear_pair", id(bluetooth_pairing_clear) } }    //clear
           }
         });
     
+
         // ====================================================================
-        // INDEX 12: Mapping 13 (Xgimi Titan, Original)
+        // INDEX 12: Mapping 13 Panasonic Projector Map
         // ====================================================================
         remote_profiles.push_back({
-          "Xgimi Titan", "NEC", 0x21DE, 0x25, 0x0D, // HDMI 2, enter
+          "Panasonic Projector", "PANASONIC", 0x4004, 0x1002829, 0x1009293, // Profile Name, Protocol, Device Address, Clear Token Arm (Key 5), Clear Token Fire (OK)
           {
-            { 0x4D,       { "power_on",      id(power_on) } },            // power (as on)
-            { 0x1E,       { "power_off",     id(power_off_immediately)}}, // menu rotation (as off)
-            { 0x0B,       { "cursor_up",     id(cursor_up) } },       // arrow up
-            { 0x0E,       { "cursor_down",   id(cursor_down) } },     // arrow down
-            { 0x10,       { "cursor_left",   id(cursor_left) } },     // arrow left
-            { 0x11,       { "cursor_right",  id(cursor_right) } },    // arrow right
-            { 0x0D,       { "cursor_enter",  id(cursor_enter) } },    // OK
-            { 0x42,       { "back",          id(back) } },            // back
-            { 0x45,       { "settings_menu", id(settings_menu) } },   // menu
-            { 0x19,       { "game_menu",     id(game_menu) } },       // OSD
-            { 0x1A,       { "home",          id(home) } },            // channel up
-            { 0x4F,       { "input",         id(input) } },           // source
-            { 0x20,       { "picture",       id(picture) } },         // lens shift and zoom
-            { 0x1C,       { "focus_manual",  id(focus_manual) } },    // focus +
-            { 0x1D,       { "focus_auto",    id(focus_auto) } },      // focus -
-            { 0x41,       { "shortcut_1",    id(shortcut_1) } },      // picture mode Standard
-            { 0x44,       { "shortcut_2",    id(shortcut_2) } },      // picture mode Movie
-            { 0x4A,       { "shortcut_3",    id(shortcut_3) } },      // picture mode Vivid
-            { 0x4B,       { "shortcut_4",    id(shortcut_4) } },      // picture mode TV
-            { 0x18,       { "volume_up",     id(volume_up) } },       // volume up
-            { 0x17,       { "volume_down",   id(volume_down) } },     // volume down
-            { 0x24,       { "token_sniff",   id(token_sniff) } },     // switch to HDMI 1
-            { 0x25,       { "token_clear",   id(token_clear) } },     // switch to HDMI 2
-            { 0x26,       { "token_recall",  id(token_recall) } },    // switch to USB
+            // --- System Power Operations (Discrete remote buttons) ---
+            { 0x1003A3B,       { "power_on",          id(power_on) } },               // "ON" Button
+            { 0x100BCBD,       { "power_off",         id(power_off_immediately) } },  // "OFF" Button
+            { 0x1007273,       { "cursor_left",       id(cursor_left) } },   // Left Arrow
+            { 0x100F2F3,       { "cursor_right",      id(cursor_right) } },  // Right Arrow
+            { 0x1005253,       { "cursor_up",         id(cursor_up) } },     // Up Arrow
+            { 0x100D2D3,       { "cursor_down",       id(cursor_down) } },   // Down Arrow
+            { 0x1009293,       { "cursor_enter",      id(cursor_enter) } },  // "OK" Button
+            { 0x1004A4B,       { "settings_menu",     id(settings_menu) } }, // "MENU" Button
+            { 0x1002B2A,       { "back",              id(back) } },          // "RETURN" Button
+            { 0x1009C9D,       { "home",              id(home) } },          // "INFO" Button
+            { 0x10090F1,       { "game_menu",         id(game_menu) } },     // "APPS" Button
+            { 0x100A0A1,       { "input",             id(input) } },         // "AV" Input Button
+            { 0x1000B0A,       { "picture",           id(picture) } },       // "PICTURE" / Mode Cycle Button
+            { 0x100C2C3,       { "focus_manual",      id(focus_manual) } },  // "FOCUS +" Button (or LENS toggle)
+            { 0x100E2E3,       { "focus_auto",        id(focus_auto) } },    // "FOCUS -" Button (or ASPECT toggle)
+            { 0x1000E0F,       { "shortcut_1",        id(shortcut_1) } },    // "RED" Macro Button
+            { 0x1008E8F,       { "shortcut_2",        id(shortcut_2) } },    // "GREEN" Macro Button
+            { 0x1004E4F,       { "shortcut_3",        id(shortcut_3) } },    // "YELLOW" Macro Button
+            { 0x100CECF,       { "shortcut_4",        id(shortcut_4) } },    // "BLUE" Macro Button
+            { 0x1000405,       { "volume_up",         id(home) } },          // "VOL +" Button
+            { 0x1008485,       { "volume_down",       id(home) } },          // "VOL -" Button
+            { 0x1004C4D,       { "mute",              id(home) } },          // "MUTE" Button
+            { 0x100A8A9,       { "token_sniff",       id(token_sniff) } },   // "Key 4" Physical Button
+            { 0x1002829,       { "token_clear",       id(token_clear) } },   // "Key 5" Physical Button
+            { 0x100C8C9,       { "token_recall",      id(token_recall) } },  // "Key 6" Physical Button
+            { 0x1008889,       { "BT_start_pair",     id(bluetooth_pairing_start) } }, // "Key 2" Physical Button
+            { 0x1004849,       { "BT_clear_pair",     id(bluetooth_pairing_clear) } }, // "Key 3" Physical Button
+           
+            // other buttons. Not assigned to xgimi function
+            { 0x1009899,       { "0",                 id(home) } },  // "Key 0" Physical Button
+            { 0x1000809,       { "1",                 id(home) } }, // "Key 1" Physical Button
+            { 0x1006869,       { "7",                 id(home) } }, // "Key 7" Physical Button
+            { 0x100E8E9,       { "8",                 id(home) } }, // "Key 8" Physical Button
+            { 0x1001819,       { "9",                 id(home) } }, // "Key 9" Physical Button
+            { 0x1002223,       { "input_hdmi1",       id(home) } }, // "HDMI 1" Button
+            { 0x100A2A3,       { "input_hdmi2",       id(home) } }, // "HDMI 2" Button
+            { 0x1006263,       { "input_computer",    id(home) } } // "COMPUTER" Button
           }
         });
-        
+
+                
         // Tell the system exactly how many factory items exist in RAM right now
         factory_count = remote_profiles.size();
         
