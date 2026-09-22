@@ -7,7 +7,7 @@
 
 substitutions:
 
-  ble_remote_name: "Waveshare 134"  # <===== Name your IR remote. (20 char max. No special characters)
+  ble_remote_name: "IR Xgimi Kuo"  # <===== Name your IR remote. (20 char max. No special characters)
 
 
   # --- Default IR profile. Uncomment one (and only one)
@@ -30,6 +30,7 @@ packages:
   # --- ESP32 board, Uncomment one (and only one) for your board
   hardware_package: !include ir-common-kuo/hardware-c3.yaml                  # supports built-in 0.42 inch OLED display
   #hardware_package: !include ir-common-kuo/hardware-c6.yaml                 # supports external 0.9 inch i2c OLED display
+  #hardware_package: !include ir-common-kuo/hardware-c6-lafvintech-lcd-1.47.yaml
   #hardware_package: !include ir-common-kuo/hardware-m5stack-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
   #hardware_package: !include ir-common-kuo/hardware-s3-hosyond-lcd-3.5-touch.yaml
   #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-esp32-s3-touch-lcd-2.8.yaml
