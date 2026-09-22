@@ -61,8 +61,8 @@ esp32:
   partitions: ir-common-kuo/appkit/partitions.csv  #larger app partition needed 
 
 logger:
-  level: DEBUG
-  # level: INFO
+#  level: DEBUG
+  level: INFO
   hardware_uart: USB_CDC      # Directs logs to the native internal S3 USB port
   baud_rate: 115200
 
