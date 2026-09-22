@@ -92,6 +92,7 @@ Supplied hardware files are for ESP32 boards ...
 
 * hardware-c3.yaml
 * hardware-c6.yaml
+* hardware-c6-lafvintech-lcd-1.47.yaml
 * hardware-m5stack-atom-lite.yaml
 * hardware-s3-hosyond-lcd-3.5-touch.yaml
 * hardware-s3-waveshare-esp32-s3-touch-lcd-2.8.yaml
