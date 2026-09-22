@@ -583,13 +583,13 @@ script:
               
               // Flash sequence alterations
               if (b_idx == 27) {
-                id(flash_led_custom).execute(5, 20, 0.6, 1.0, 0.0);
-                id(flash_led_custom).execute(5, 50, 0.5, 1.0, 0.5);
+                id(flash_led_custom).execute(5, 40, 0.6, 1.0, 0.0);
+                id(flash_led_custom).execute(5, 80, 0.5, 1.0, 0.5);
               } else {
                 if (b_idx % 5 == 0) {
-                  id(flash_led_custom).execute(1, 200, 0.6, 1.0, 0.6);
+                  id(flash_led_custom).execute(1, 360, 0.6, 1.0, 0.6);
                 } else {
-                  id(flash_led_custom).execute(1, 60, 0.6, 1.0, 0.6);
+                  id(flash_led_custom).execute(1, 180, 0.6, 1.0, 0.6);
                 }              
               }
               
