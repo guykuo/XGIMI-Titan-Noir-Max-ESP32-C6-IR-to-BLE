@@ -23,7 +23,7 @@ substitutions:
   #def_profile: "9"  # sony-VPL-XW600ES 
   #def_profile: "10" # sony-XBR-77A9G 
   #def_profile: "11" # tivo-roamio-TCD846500 
-  #def_profile: "13" # xgimi-titan (untested, published Original Titan IR codes)
+  #def_profile: "12" # panasonnic projector
 
 
 packages: 
@@ -61,7 +61,7 @@ esp32:
   partitions: ir-common-kuo/appkit/partitions.csv  #larger app partition needed 
 
 logger:
-#  level: DEBUG
+  # level: DEBUG
   level: INFO
   hardware_uart: USB_CDC      # Directs logs to the native internal S3 USB port
   baud_rate: 115200
@@ -191,8 +191,7 @@ esphome:
     - <vector>
     - <algorithm>
     - <cctype>
-    - ir-common-kuo/appkit/secrets_bridge.h
-    - ir-common-kuo/appkit/ir_profile.h
+    - ir-common-kuo/appkit/cpp_lib.h
 
 
   build_flags: "-Wl,--require-defined=cJSON_Parse"
@@ -240,7 +239,7 @@ esphome:
               
               ESP_LOGD("boot_loader", "Using learned 15-byte token from NVS flash: %s", formatted_hex.c_str());
               
-              id(flash_led_custom).execute(8, 150, 0.0, 0.5, 0.0); // flash 8 times indicate has learned token.
+              id(flash_led_custom).execute(8, 150, 0.0, 1.0, 0.0); // flash 8 times indicate has learned token.
 
 
             } else {
@@ -272,7 +271,7 @@ esphome:
                   snprintf(buf, sizeof(buf), "%02x", active_token_vector[i]);
                   hex_log_str += buf;
               }    
-              id(flash_led_custom).execute(2, 200, 1.0, 0.5, 0.0); // flash two indicate default token.
+              id(flash_led_custom).execute(2, 200, 0.0, 1.0, 0.5); // flash two indicate default token.
               
               ESP_LOGD("boot_loader", "Active wake token vector now set to hex: %s", hex_log_str.c_str());
             }        
@@ -479,14 +478,14 @@ binary_sensor:
 
 
     filters:
-      - delayed_on: 50 ms
+      - delayed_on: 60 ms
     on_multi_click:
       # 1. TRIPLE CLICK starts learning mode
       - timing:
           - ON for at most 0.5s
-          - OFF for at most 0.35s
+          - OFF for at most 0.40s
           - ON for at most 0.5s
-          - OFF for at most 0.35s
+          - OFF for at most 0.40s
           - ON for at most 0.5s
           - OFF for at least 0.2s
         then:
@@ -499,7 +498,7 @@ binary_sensor:
       # 2. DOUBLE CLICK starts setting of IRmap (Profile Selection Mode)
       - timing:
           - ON for at most 0.5s
-          - OFF for at most 0.35s
+          - OFF for at most 0.40s
           - ON for at most 0.5s
           - OFF for at least 0.35s
         then:
@@ -519,8 +518,8 @@ binary_sensor:
 
       # 3. SINGLE CLICK starts token sniffing
       - timing:
-          - ON for at most 400ms
-          - OFF for at least 0.4s
+          - ON for at most 500ms
+          - OFF for at least 0.7s
         then:
           - button.press: token_sniff
           - logger.log: "Boot button short click. Starting token sniffing"
