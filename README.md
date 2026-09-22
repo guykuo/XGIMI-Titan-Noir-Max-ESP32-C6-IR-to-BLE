@@ -82,7 +82,7 @@ These "factory" IR profiles have known working IR code sets ...
 | **sony-XBR-77A9G** | Sony XBR-77A9G TV |
 | **tivo-roamio-TCD846500** | TiVo Roamio |
 | **AWOL-projector** | Valerion using Hisense IR codes. WIP and may have incomplete or incorrect IR mapping |
-| **xgimi-titan** | ORIGINAL Titan, not NOIR. WIP and may have incomplete or incorrect IR mapping |
+| **Panasonic** | Panasonic projectors. WIP IR mapping |
 
 
 ## Hardware Definition Packages
