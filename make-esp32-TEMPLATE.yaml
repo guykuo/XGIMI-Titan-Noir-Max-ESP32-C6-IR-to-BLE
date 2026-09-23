@@ -28,8 +28,8 @@ substitutions:
 
 packages: 
   # --- ESP32 board, Uncomment one (and only one) for your board
-  hardware_package: !include ir-common-kuo/hardware-c3.yaml                 # supports built-in 0.42 inch OLED display
-  #hardware_package: !include ir-common-kuo/hardware-c6.yaml                 # supports external 0.9 inch i2c OLED display
+  hardware_package: !include ir-common-kuo/hardware-esp32-c3-0.42-OLED.yaml  # supports built-in 0.42 inch OLED display
+  #hardware_package: !include ir-common-kuo/hardware-esp32-c6-wroom-1.yaml   # supports external 0.9 inch i2c OLED display
   #hardware_package: !include ir-common-kuo/hardware-c6-lafvintech-lcd-1.47.yaml
   #hardware_package: !include ir-common-kuo/hardware-m5stack-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
   #hardware_package: !include ir-common-kuo/hardware-s3-hosyond-lcd-3.5-touch.yaml
@@ -68,13 +68,14 @@ logger:
 
 
 wifi:
-  reboot_timeout: 5min
-  output_power: ${wifi_tx_power}
   # networks: []
+  reboot_timeout: 24h
+  output_power: ${wifi_tx_power}
+  power_save_mode: LIGHT
   ap:
     ssid: "${ble_remote_name}"
     password: !secret fallback_ap_password
-    ap_timeout: 60s
+    ap_timeout: 1min
   on_connect:
     then:
       lambda: |-
@@ -123,7 +124,7 @@ web_server:
 api:
   encryption:
     key: !secret api_encryption_key
-  reboot_timeout: 30min #time before reboot if HomeAssistant is not present. 
+  reboot_timeout: 24h #time before reboot if HomeAssistant is not present. 
 
   actions:
     # ---------- 1) Import ----------
