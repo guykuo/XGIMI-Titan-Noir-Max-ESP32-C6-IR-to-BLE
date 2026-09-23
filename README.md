@@ -417,7 +417,8 @@ ESP32 board is set by uncommenting one and only one line. Here it is *hardware-c
 #   hardware_package
 
 substitutions:
-  ble_remote_name: "IR to Xgimi Kuo"  # <===== Name your IR remote. (20 char max. No special characters)
+
+  ble_remote_name: "IR Xgimi Kuo"  # <===== Name your IR remote. (20 char max. No special characters)
 
 
   # --- Default IR profile. Uncomment one (and only one)
@@ -433,22 +434,22 @@ substitutions:
   #def_profile: "9"  # sony-VPL-XW600ES 
   #def_profile: "10" # sony-XBR-77A9G 
   #def_profile: "11" # tivo-roamio-TCD846500 
-  #def_profile: "13" # xgimi-titan (untested, published Original Titan IR codes)
+  #def_profile: "12" # panasonic projector
 
 
 packages: 
   # --- ESP32 board, Uncomment one (and only one) for your board
-  hardware_package: !include ir-common-kuo/hardware-c3.yaml                  # supports built-in 0.42 inch OLED display
+  hardware_package: !include ir-common-kuo/hardware-c3.yaml                 # supports built-in 0.42 inch OLED display
   #hardware_package: !include ir-common-kuo/hardware-c6.yaml                 # supports external 0.9 inch i2c OLED display
+  #hardware_package: !include ir-common-kuo/hardware-c6-lafvintech-lcd-1.47.yaml
   #hardware_package: !include ir-common-kuo/hardware-m5stack-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
   #hardware_package: !include ir-common-kuo/hardware-s3-hosyond-lcd-3.5-touch.yaml
   #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-esp32-s3-touch-lcd-2.8.yaml
-
-  #hardware_package: !include ir-common-kuo/HARDWARE.YAML # Or uncomment this line and replace HARDWARE.YAML with your file.
-
-
-
+  #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-lcd-1.47B.yaml # This board MUST use IR Sensor WITHOUT LED
+                                                                             # Like the Vishay TSOP series.  Otherwise 3Vcc load causes crash durng boot.
+                                                                                
 # ========== END Configuration Options KUO ==============================================================================
+
 ```  
 ### 5a Build and Flash the Firmware
 Once our make file has been created and customized, you are ready to compile and flash firmware to ESP32 board.
