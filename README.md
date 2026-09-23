@@ -465,7 +465,7 @@ MacOS or Linux
 Windows Powershell
 
 ```powershell
-.venv\\Scripts\\esphome.exe run makemine.yaml
+.venv\Scripts\esphome.exe run makemine.yaml
 
 ```
 
