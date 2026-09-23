@@ -146,7 +146,6 @@ Boards that will NOT work
 
 *   Original ESP32 (WROOM-32 /DevKitC)
 *   ESP32-S2 series
-*   Waveshare-esp32-s3-touch-lcd-2.8 (Unable to boot with most recent firmware)
     
 <br>
 Each variation of ESP board has its own pinout and specific GPIO pins suitable for for IR signal input. It is particularly important to obtain pinout information and know which GPIO pins are actually free for use (not strapping pins or already assigned to other board functions). Because that process can be overwhelming, four board configuration "hardware" files have been supplied. These pre-define board type and pinouts. Most likely, you can simply specify one of the supplied hardware files within your make file.
