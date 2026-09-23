@@ -1170,7 +1170,7 @@ switch:
             
 #======================
 interval:
-  - interval: 2.0s
+  - interval: 1.0s
     id: dynamic_select_hydration_timer
     then:
 
@@ -1243,7 +1243,7 @@ interval:
                 
             - component.suspend: dynamic_select_hydration_timer
     
-  - interval: 3s # Avalones ---------------
+  - interval: 2s # Avalones ---------------
     id: publish_when_profiles_ready
     then:
       - if:
@@ -1254,7 +1254,7 @@ interval:
             - script.execute: publish_selected_profile_json
             - component.suspend: publish_when_profiles_ready
 
-  - interval: 4s
+  - interval: 3s
     then:
       - lambda: |-
           if (remote_profiles.empty()) return;
