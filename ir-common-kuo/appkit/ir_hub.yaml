@@ -437,7 +437,7 @@ script:
           id(learn_last_save_time) = 0; // reset button repeat lockout timer
           id(ir_receiver_allowed_protocol) = "ALL"; 
           
-          id(display_show)->execute(false, "Learning IR", "Press Btn", "power_on");
+          id(display_show)->execute(false, "LEARNING IR", "Press Btn", "power_on");
           ESP_LOGI("IR Learn", "Learning active. Click power_on to establish protocol footprint.");
           
           id(learn_cache_clear).execute();
@@ -473,7 +473,7 @@ script:
   - id: learn_cache_clear
     then:
       - lambda: |-
-          for (uint16_t idx = 0; idx < MAX_LEARNED_PROFILES; idx++) {
+          for (size_t idx = 0; idx < id(learn_cache_protocol).size(); idx++) {
              id(learn_cache_protocol)[idx] = "";
              id(learn_cache_address)[idx] = 0;
              id(learn_cache_command)[idx] = 0;
@@ -493,7 +493,6 @@ script:
     then: 
       - delay: 120ms
       - lambda: |-
-          // 1. Clock variable initialization at the absolute top
           uint32_t now = millis();
           
           id(ir_window_active) = false;
@@ -505,17 +504,7 @@ script:
             return;
           }
 
-          static const char* const learn_button_names[] = {
-            "power_on", "power_off", "cursor_left", "cursor_right", "cursor_up", "cursor_down",
-            "cursor_enter", "settings_menu", "back", "home", "game_menu", "input", "picture",
-            "focus_manual", "focus_auto", "shortcut_1", "shortcut_2", "shortcut_3", "shortcut_4",
-            "volume_up", "volume_down", "mute", "token_sniff", "token_clear", "token_recall",
-            "BT_start_pair", "BT_clear_pair"
-          };
-
-          constexpr size_t TOTAL_BUTTONS = sizeof(learn_button_names) / sizeof(learn_button_names[0]);
-
-          if (b_idx < 27) {
+          if (b_idx < (int)TOTAL_LEARN_BUTTONS) {
             if (b_idx == -1) {
               if (id(learn_detected_protocol) == "UNKNOWN") {
                 id(learn_cache_clear).execute();
@@ -554,7 +543,7 @@ script:
             }
             
             // CRITICAL DEFENSIVE GUARD: Explicitly block negative indices from reaching downstream handlers
-            if (b_idx < 0 || b_idx >= 27) {
+            if (b_idx < 0 || b_idx >= (int)TOTAL_LEARN_BUTTONS) {
               id(learn_cache_clear).execute();
               return;
             }
@@ -582,7 +571,7 @@ script:
               id(learn_current_button_idx) = b_idx;
               
               // Flash sequence alterations
-              if (b_idx == 27) {
+              if (b_idx == (int)TOTAL_LEARN_BUTTONS) {
                 id(flash_led_custom).execute(5, 40, 0.6, 1.0, 0.0);
                 id(flash_led_custom).execute(5, 80, 0.5, 1.0, 0.5);
               } else {
@@ -597,7 +586,7 @@ script:
               id(learn_mode_timeout_watcher).execute(); // Reset 30s timer
               
               // SAFE HALT GATE: Evaluate state ONLY after increment step completes
-              if (b_idx < 27) {
+              if (b_idx < (int)TOTAL_LEARN_BUTTONS) {
                 ESP_LOGI("IR Learn", "Press ====== IR BUTTON ====== %s ======", learn_button_names[b_idx]);
                 id(display_show)->execute(false, "IR Learn:", "Press Btn", std::string(learn_button_names[b_idx]));
               } else {
@@ -632,15 +621,13 @@ script:
           // Fetch the current active remote layout index
           int current_idx = id(active_remote_layout);
           
-          // Calculate true index. Wrapped FACTORY_COUNT to ensure scope access if defined globally.
-          size_t true_hardware_index = (current_idx < 0) ? (factory_count + (current_idx * -1) - 1) : current_idx;
-
           // Abort if the index is out of bounds for your profile list
-          if (true_hardware_index >= remote_profiles.size()) {
+          if (current_idx < 0 || current_idx >= (int)remote_profiles.size()) {
+            ESP_LOGE("IR_HUB", "Active remote layout index %d is out of bounds!", current_idx);
             return; 
           }
-          
-          const auto& active_profile = remote_profiles[true_hardware_index];
+
+          const auto& active_profile = remote_profiles[current_idx];
 
           static const char* const learn_button_names[] = {
             "power_on", "power_off", "cursor_left", "cursor_right", "cursor_up", "cursor_down",
@@ -675,7 +662,7 @@ script:
                 id(ir_settling_timer).execute();
               }                 
               
-              if (b_idx == 27) {
+              if (b_idx == (int)TOTAL_LEARN_BUTTONS) {
                 int selected_slot = -1;
                 if (ir_command == id(session_captured_codes).at(6))       selected_slot = 0;
                 else if (ir_command == id(session_captured_codes).at(4))  selected_slot = 1;
@@ -693,8 +680,8 @@ script:
                   learned_profile.cmd_clear_token_arm = id(session_captured_codes).at(23);
                   learned_profile.cmd_clear_token_fire = id(session_captured_codes).at(6);
 
-                  learned_profile.cmd_codes.reserve(27);
-                  for (size_t i = 0; i < 27; i++) {
+                  learned_profile.cmd_codes.reserve((int)TOTAL_LEARN_BUTTONS);
+                  for (size_t i = 0; i < (int)TOTAL_LEARN_BUTTONS; i++) {
                     IRCommand cmd;
                     std::strncpy(cmd.name, learn_button_names[i], sizeof(cmd.name) - 1);
                     cmd.name[sizeof(cmd.name) - 1] = '\0';
@@ -751,13 +738,13 @@ script:
                 if (key_matched) {
                   id(set_profile_timeout_watcher).stop();
               
+                  // No conversion necessary! Assign directly.
                   id(active_remote_layout) = static_cast<int>(i);
                   id(setup_ir_receiver_for_current_profile).execute();
                   id(ir_receiver_mode) = 1;
                   
                   id(flash_led_custom).execute(4, 50, 1.0, 0.0, 0.0);
                   id(flash_led_custom).execute(2, 100, 0.0, 1.0, 0.0);
-                  id(flash_led_custom).execute(1, 200, 0.6, 0.8, 0.6);
 
                   id(display_show)->execute(true, "Setting Profile", 
                                                   profile.profile_name, 
@@ -766,18 +753,27 @@ script:
                   break; 
                 }
               }
-
-              if (!match_found) {
-                ESP_LOGD("IR HUB", "Packet (Addr: 0x%X, Cmd: 0x%X) did not match.", (unsigned int)ir_address, (unsigned int)ir_command);
-              }
-              break; 
+              break;
             }
 
             case 1: { // action -----------------------------------------------
               if (now - id(last_ir_press) < 120) return; // 110 msec is low limit before BenQ debounce failure
               id(last_ir_press) = now;
 
+              // Fetch the current active remote layout index directly
+              int current_idx = id(active_remote_layout);
+              
+              // CRITICAL BOUNDARY GUARD: Ensure the index cleanly falls inside our loaded profiles array
+              if (current_idx < 0 || current_idx >= (int)remote_profiles.size()) {
+                ESP_LOGE("IR_HUB", "Active remote layout index %d is out of bounds!", current_idx);
+                return; 
+              }
+              
+              // No translation math needed! Safely pull the continuous vector reference
+              const auto& active_profile = remote_profiles[current_idx];
+
               ESP_LOGI("IR_HUB", "IR processing Protocol %s      Address 0x%X,      Command 0x%X", ir_protocolStr.c_str(), (unsigned int)ir_address, (unsigned int)ir_command);
+
 
               // Handle special actions clear arming, and trigger first
               if (ir_address == active_profile.device_address) {
@@ -916,20 +912,9 @@ script:
   - id: setup_ir_receiver_for_current_profile
     then:
       - lambda: |-
-          int current_idx = id(active_remote_layout);
-          size_t true_hardware_index = 0;
+          size_t true_hardware_index = id(active_remote_layout);
 
-          // DYNAMIC TRANSLATION RAILS
-          if (current_idx < 0) {
-            // Its a custom learned profile! (e.g., -1 means Custom Slot 0)
-            int custom_slot = (current_idx * -1) - 1; 
-            true_hardware_index = factory_count + custom_slot;
-          } else {
-            // It is a standard factory profile
-            true_hardware_index = current_idx;
-          }
-          
-          // BOUNDARY CHECK USING TRANSLATED INDEX
+          // BOUNDARY CHECK USING UNIFIED INDEX
           if (true_hardware_index >= remote_profiles.size()) {
             ESP_LOGW("Profile Control", "Target index out of bounds! Overriding to safe default layout...");
             id(active_remote_layout) = id(default_profile); 
@@ -941,7 +926,7 @@ script:
           id(ir_receiver_allowed_protocol) = active_profile.protocol;
           
           ESP_LOGI("Profile Control", "Profile layout '%s' engaged via index %d.", 
-                   active_profile.profile_name.c_str(), current_idx); 
+                   active_profile.profile_name.c_str(), (int)true_hardware_index); 
           
           
   #----------------------------------------
@@ -1691,46 +1676,39 @@ interval:
   - interval: 2.0sec 
     id: boot_initialization_timer 
     then:
-      # PASS 1: Native verification gate forces factory maps into index positions 0-12
       - if:
           condition:
             lambda: 'return remote_profiles.empty();'
           then:
             - script.execute: populate_factory_profiles
-            - logger.log: "System baseline check: Factory profiles built cleanly. Awaiting next pass..."
             - delay: 100ms 
 
-      # PASS 2: Safely read our persistent custom layout tracks out of the physical NVS blocks
       - lambda: |-
-          ESP_LOGI("ir_hub", "Executing physical flash database rehydration pass...");
+          ESP_LOGI("ir_hub", "Executing secure unified database rehydration pass...");
           load_saved_flash_profiles();
           link_hardware_buttons();
-          ESP_LOGI("ir_hub", "Hardware pointer mapping complete. System armed.");
-          
-          // ----------- 1. Fetch Select Control Target Pointer Address
-          auto select_obj = id(ir_profile_slot_selector);
 
-          // ----------- 2. ALIGN SELECTION ON BOOT
+          // 1. Read directly from the unified index
           int boot_idx = id(active_remote_layout); 
-          if (boot_idx < 0) {
-            int custom_slot = (boot_idx * -1) - 1;
-            boot_idx = (int)factory_count + custom_slot;
+          
+          // Safety fallback if storage was cleared or corrupted
+          if (boot_idx < 0 || boot_idx >= (int)remote_profiles.size()) {
+            boot_idx = id(default_profile);
+            id(active_remote_layout) = boot_idx;
           }
 
           id(selected_profile_slot) = boot_idx;
 
-          // ----------- 3. EMIT ACTIVE STATE TO FRONTEND NATIVELY
-          // Pulls the matching string directly from the static options list without throwing an error
+          // 2. Synchronize frontend dropdown tracking option selection state seamlessly
+          auto select_obj = id(ir_profile_slot_selector);
           if (boot_idx >= 0 && boot_idx < (int)select_obj->traits.get_options().size()) {
             select_obj->publish_state(select_obj->traits.get_options()[boot_idx]);
           }
 
-
       - script.execute: setup_ir_receiver_for_current_profile
       - lambda: |-      
-          id(ir_receiver_mode) = 1; // Securely move device into active listening mode
+          id(ir_receiver_mode) = 1; 
+          id(ir_active_profile_ts).update();
 
       - script.execute: display_token_remote_profile
-      
-      # The Kill Switch: Permanently shuts down this initialization timer loop
       - component.suspend: boot_initialization_timer

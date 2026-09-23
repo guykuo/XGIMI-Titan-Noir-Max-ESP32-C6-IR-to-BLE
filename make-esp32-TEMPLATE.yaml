@@ -23,12 +23,12 @@ substitutions:
   #def_profile: "9"  # sony-VPL-XW600ES 
   #def_profile: "10" # sony-XBR-77A9G 
   #def_profile: "11" # tivo-roamio-TCD846500 
-  #def_profile: "12" # panasonnic projector
+  #def_profile: "12" # panasonic projector
 
 
 packages: 
   # --- ESP32 board, Uncomment one (and only one) for your board
-  hardware_package: !include ir-common-kuo/hardware-c3.yaml                  # supports built-in 0.42 inch OLED display
+  hardware_package: !include ir-common-kuo/hardware-c3.yaml                 # supports built-in 0.42 inch OLED display
   #hardware_package: !include ir-common-kuo/hardware-c6.yaml                 # supports external 0.9 inch i2c OLED display
   #hardware_package: !include ir-common-kuo/hardware-c6-lafvintech-lcd-1.47.yaml
   #hardware_package: !include ir-common-kuo/hardware-m5stack-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
@@ -61,8 +61,8 @@ esp32:
   partitions: ir-common-kuo/appkit/partitions.csv  #larger app partition needed 
 
 logger:
-  level: DEBUG
-  # level: INFO
+  # level: DEBUG
+  level: INFO
   hardware_uart: USB_CDC      # Directs logs to the native internal S3 USB port
   baud_rate: 115200
 
@@ -309,6 +309,12 @@ esphome:
 
 # ============================================================
 globals:
+
+  - id: boot_hydration_latch
+    type: bool
+    initial_value: "false"
+    restore_value: no
+    
   - id: selectRepopulated
     type: bool
     initial_value: "false"
@@ -424,11 +430,6 @@ text_sensor:
     update_interval: 2s
     lambda: |-
       int idx = id(active_remote_layout);
-      // Normalize the legacy negative convention used by ir_hub.yaml
-      if (idx < 0) {
-        int custom_slot = (idx * -1) - 1;
-        idx = (int) factory_count + custom_slot;
-      }
       char buf[160];
       if (idx < 0 || idx >= (int) remote_profiles.size()) {
         snprintf(buf, sizeof(buf), "idx=%d (profile not loaded)", idx);
@@ -476,10 +477,8 @@ binary_sensor:
         sorting_group_id: settingsGroup
         sorting_weight: 14
 
-
     filters:
-      - delayed_on: 25 ms
-      - delayed_off: 25 ms
+      - delayed_on_off: 25 ms
       
     on_multi_click:
       # 1. TRIPLE CLICK starts learning mode
@@ -577,87 +576,6 @@ binary_sensor:
 
 # ============================================================
 button:
-  
-  # - platform: template
-  #   name: "Change Select Options"
-  #   id: change_select_options_btn
-  #   icon: "mdi:playlist-edit"
-  #   web_server:
-  #     sorting_group_id: profileGroup
-  #     sorting_weight: 23
-  #   on_press:
-  #     then:
-  #       - lambda: |-
-  #           // 1. Permanent, fixed-allocation string container to prevent heap churn
-  #           static std::vector<std::string> string_cache;
-  #           string_cache.clear();
-  #           string_cache.reserve(factory_count + 5);
-# 
-  #           // CORRECTED: Fixed the character array buffer size constraint definition 
-  #           char buf[128];
-# 
-  #           // 2. Populate factory profiles dynamically
-  #           for (size_t i = 0; i < factory_count; i++) {
-  #             if (i < remote_profiles.size()) {
-  #               std::memset(buf, 0, sizeof(buf));
-  #               snprintf(buf, sizeof(buf), "%d  internal  (%s)", 
-  #                        (int)i, 
-  #                        remote_profiles[i].profile_name.c_str());
-  #               string_cache.push_back(std::string(buf));
-  #             }
-  #           }
-# 
-  #           // 3. Append the 5 Custom Memory Slots
-  #           for (size_t k = 0; k < 5; k++) {
-  #             size_t custom_idx = factory_count + k;
-  #             std::memset(buf, 0, sizeof(buf));
-  #             snprintf(buf, sizeof(buf), "%d  custom    (slot %d)", 
-  #                      (int)custom_idx, 
-  #                      (int)k);
-  #             string_cache.push_back(std::string(buf));
-  #           }
-# 
-  #           // 4. PERMANENT STATIC STORAGE: Allocated once in the global memory sector
-  #           static const char* permanent_pointer_matrix[95];
-  #           size_t total_items = string_cache.size();
-  #           
-  #           if (total_items > 95) total_items = 95;
-# 
-  #           // Map string addresses straight into our permanent global matrix array
-  #           for (size_t i = 0; i < total_items; i++) {
-  #             permanent_pointer_matrix[i] = string_cache[i].c_str();
-  #           }
-# 
-  #           // 5. Structure-Match an esphome::FixedVector layout
-  #           struct FixedVectorLayout {
-  #             const char** data;
-  #             size_t size;
-  #             size_t capacity;
-  #           };
-# 
-  #           FixedVectorLayout fake_vector;
-  #           fake_vector.data = permanent_pointer_matrix;
-  #           fake_vector.size = total_items;
-  #           fake_vector.capacity = total_items;
-# 
-  #           // Cast our custom matrix seamlessly into the exact class reference signature required
-  #           const auto* native_vector_ptr = reinterpret_cast<const esphome::FixedVector<const char*>*>(&fake_vector);
-# 
-  #           // 6. Invoke the public traits configuration cleanly with zero allocations
-  #           id(ir_profile_slot_selector).traits.set_options(*native_vector_ptr);
-  #           
-  #           // 7. Apply the current selection index as the visual target
-  #           int active_idx = id(selected_profile_slot);
-  #           if (active_idx >= 0 && active_idx < (int)total_items) {
-  #             id(ir_profile_slot_selector).publish_state(string_cache[active_idx]);
-  #           } else {
-  #             if (!string_cache.empty()) {
-  #               id(ir_profile_slot_selector).publish_state(string_cache[0]);
-  #             }
-  #           }
-# 
-  #           ESP_LOGI("custom_select", "Select dropdown successfully populated with %d runtime layouts!", (int)total_items);
-# 
             
   - platform: template # button to start sniffing for wake token. W
     name: "token_sniff"
@@ -702,9 +620,6 @@ button:
       then:
         - script.execute: execute_token_recall_routine
       
-
-
-
 # ============================================================
 
 script:
@@ -1116,36 +1031,24 @@ script:
   - id: display_token_remote_profile
     then:
       - lambda: |-
-      
-          // build token_hex_str for logging report
           std::string token_hex_str = "";
-          // Use the underlying C-array via ->value()
           unsigned char* token_bytes = active_wake_token->value();
-          
           for (size_t i = 0; i < 15; ++i) {
-            if (i > 0) token_hex_str += " ";
-            
-            char buf[8]; // buffer size to hold 2 hex digits + null terminator
-            // Force cast to int to prevent compiler warnings with %02X
-            snprintf(buf, sizeof(buf), "%02X", static_cast<int>(token_bytes[i]));
+            char buf[8];
+            snprintf(buf, sizeof(buf), "%02X ", static_cast<int>(token_bytes[i]));
             token_hex_str += buf;
           }
+          if (!token_hex_str.empty()) token_hex_str.pop_back();
           
-          // get current profile name
           int current_idx = id(active_remote_layout);
-          if (!(0 <= current_idx && current_idx < remote_profiles.size())) {
-            id(display_show).execute(true,
-                                     "${ble_remote_name}",
-                                     token_hex_str,
-                                     "No profile");
-          } else {
-            const auto& active_profile = remote_profiles[current_idx]; // Get the active_profile struct
-              
-            id(display_show).execute(true,
-                                     token_hex_str,
-                                     "${ble_remote_name}",
-                                     active_profile.profile_name);
 
+          if (current_idx < 0 || current_idx >= (int)remote_profiles.size()) {
+            id(display_show).execute(true, "${ble_remote_name}", token_hex_str, "No profile");
+          } else {
+            id(display_show).execute(true,
+                                     token_hex_str,
+                                     "${ble_remote_name}",
+                                     remote_profiles[current_idx].profile_name);
           }
 
 # ====================================
@@ -1173,9 +1076,9 @@ select:
     optimistic: true
     restore_value: yes
     options:
-      - "0  internal  (AWOL-proj)*"
-      - "1  internal  (cool-w5800)*"
-      - "2  internal  (epson-pro-cinema-LS12000)*"
+      - "0  internal  (AWOL-proj)"
+      - "1  internal  (cool-w5800)"
+      - "2  internal  (epson-pro-cinema-LS12000)"
       - "3  internal  (hisense-50u6g)"
       - "4  internal  (jvc-hr-S9600u)"
       - "5  internal  (jvc-rs2-codeset-A)"
@@ -1185,9 +1088,9 @@ select:
       - "9  internal  (sony-VPL-XW600ES)"
       - "10 internal  (sony-XBR-77A9G)"
       - "11 internal  (tivo-roamio-TCD846500)"
-      - "12 internal  (xgimi-titan)"
-      - "13 custom    (slot 0)*"
-      - "14 custom    (slot 1)*"
+      - "12 internal  (panasonic-projector)"
+      - "13 custom    (slot 0)"
+      - "14 custom    (slot 1)"
       - "15 custom    (slot 2)"
       - "16 custom    (slot 3)"
       - "17 custom    (slot 4)"
@@ -1196,11 +1099,7 @@ select:
     on_value:
       then:
         - lambda: |-
-            // If the item does not start with a number (like your dynamic placeholder bypass tests), gracefully drop it
-            if (x.empty() || x[0] < '0' || x[0] > '9') {
-              ESP_LOGD("select_bypass", "Custom placeholder selected: %s", x.c_str());
-              return; 
-            }
+            if (x.empty() || x[0] < '0' || x[0] > '9') return;
 
             int extracted_idx = 0;
             size_t pos = 0;
@@ -1209,37 +1108,21 @@ select:
               pos++;
             }
 
-            // Guard rails setup
-            int factory = (int) factory_count;
-            int max_total_slots = factory + 5; // Factory counts + 5 dynamic slots
+            if (extracted_idx < 0 || extracted_idx >= (int)remote_profiles.size()) return;
 
-            if (extracted_idx < 0 || extracted_idx >= max_total_slots) {
-              ESP_LOGE("select_on_value", "Extracted index %d out of bounds map ranges.", extracted_idx);
-              return;
-            }
-
-            // Core Profile Array Tracking Index assignment 
             id(selected_profile_slot) = extracted_idx;
 
-            // Convert back to layout context format conventions
-            int layout_context_idx = extracted_idx;
-            if (extracted_idx >= factory) {
-              int target_custom_slot = extracted_idx - factory;
-              layout_context_idx = -1 - target_custom_slot; // e.g., index 13 becomes slot 0 context index: -1
-            }
-
-            if (!remote_profiles.empty() && extracted_idx < (int) remote_profiles.size()) {
+            // Direct assignment with no nested translation blocks required!
+            if (!remote_profiles.empty()) {
               int cur = id(active_remote_layout);
-              if (cur != layout_context_idx) {
-                id(active_remote_layout) = layout_context_idx;
+              if (cur != extracted_idx) {
+                id(active_remote_layout) = extracted_idx;
                 id(setup_ir_receiver_for_current_profile).execute();
-                ESP_LOGI("webui", "Active IR profile changed to context idx=%d via selector", layout_context_idx);
-                id(last_active_idx_seen) = layout_context_idx;
+                id(last_active_idx_seen) = extracted_idx;
                 id(ir_active_profile_ts).update();
               }
             }
         - script.execute: publish_selected_profile_json
-
 #=================================================================
 
 switch:
@@ -1371,16 +1254,15 @@ interval:
             - script.execute: publish_selected_profile_json
             - component.suspend: publish_when_profiles_ready
 
-  - interval: 4s # Avalones ---------------
+  - interval: 4s
     then:
       - lambda: |-
           if (remote_profiles.empty()) return;
 
           int idx = id(active_remote_layout);
-          if (idx < 0) {
-            int cs = (idx * -1) - 1;
-            idx = (int) factory_count + cs;
-          }
+          
+          // CRITICAL BOUNDARY GUARD: Keep within current allocation constraints
+          if (idx < 0 || idx >= (int)remote_profiles.size()) return;
           if (idx == id(last_active_idx_seen)) return;
 
           id(last_active_idx_seen) = idx;

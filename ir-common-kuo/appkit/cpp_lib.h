@@ -102,8 +102,21 @@ struct IRProfile {
   std::vector<std::pair<uint32_t, IRCommand>> cmd_codes; 
 };
 
-// CENTRAL CONFIGURATION FOR LEARNED PROFILES
+// Central configuration for learned profiles
 inline constexpr uint16_t MAX_LEARNED_PROFILES = 5; 
+
+// --- SINGLE SOURCE OF TRUTH FOR BUTTON NAMES ---
+inline constexpr const char* learn_button_names[] = {
+  "power_on", "power_off", "cursor_left", "cursor_right", "cursor_up", "cursor_down",
+  "cursor_enter", "settings_menu", "back", "home", "game_menu", "input", "picture",
+  "focus_manual", "focus_auto", "shortcut_1", "shortcut_2", "shortcut_3", "shortcut_4",
+  "volume_up", "volume_down", "mute", "token_sniff", "token_clear", "token_recall",
+  "BT_start_pair", "BT_clear_pair"
+};
+
+// Calculate total elements automatically at the compiler level
+inline constexpr size_t TOTAL_LEARN_BUTTONS = sizeof(learn_button_names) / sizeof(learn_button_names[0]);
+
 
 // --- GLOBALS ---
 inline std::vector<IRProfile> remote_profiles;
