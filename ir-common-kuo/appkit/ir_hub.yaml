@@ -424,7 +424,7 @@ script:
 
 
   # ====================================================================
-  # IR code learning mode scrpts
+  # IR code learning mode scripts
   # ====================================================================
 
 
@@ -572,13 +572,13 @@ script:
               
               // Flash sequence alterations
               if (b_idx == (int)TOTAL_LEARN_BUTTONS) {
-                id(flash_led_custom).execute(5, 40, 0.6, 1.0, 0.0);
-                id(flash_led_custom).execute(5, 80, 0.5, 1.0, 0.5);
+                id(flash_led_custom).execute(5, 100, 0.6, 1.0, 0.0);
+                id(flash_led_custom).execute(5, 150, 0.2, 1.0, 0.4);
               } else {
                 if (b_idx % 5 == 0) {
-                  id(flash_led_custom).execute(1, 360, 0.6, 1.0, 0.6);
+                  id(flash_led_custom).execute(1, 460, 0.0, 1.0, 0.0);
                 } else {
-                  id(flash_led_custom).execute(1, 180, 0.6, 1.0, 0.6);
+                  id(flash_led_custom).execute(1, 200, 0.6, 1.0, 0.6);
                 }              
               }
               
@@ -1673,7 +1673,7 @@ interval:
   # ====================================================================
   # TIMER 2: True One-Shot Post-Boot Storage Recovery & Mapping
   # ====================================================================
-  - interval: 2.0sec 
+  - interval: 1.0sec 
     id: boot_initialization_timer 
     then:
       - if:

@@ -70,7 +70,7 @@ logger:
 wifi:
   reboot_timeout: 5min
   output_power: 15.0dBm
-  # networks: []
+  networks: []
   ap:
     ssid: "${ble_remote_name}"
     password: !secret fallback_ap_password
@@ -576,7 +576,7 @@ binary_sensor:
 
 # ============================================================
 button:
-            
+              
   - platform: template # button to start sniffing for wake token. W
     name: "token_sniff"
     id: token_sniff
@@ -620,6 +620,9 @@ button:
       then:
         - script.execute: execute_token_recall_routine
       
+
+
+
 # ============================================================
 
 script:
@@ -1243,7 +1246,7 @@ interval:
                 
             - component.suspend: dynamic_select_hydration_timer
     
-  - interval: 2s # Avalones ---------------
+  - interval: 1.2s # Avalones ---------------
     id: publish_when_profiles_ready
     then:
       - if:
@@ -1254,7 +1257,7 @@ interval:
             - script.execute: publish_selected_profile_json
             - component.suspend: publish_when_profiles_ready
 
-  - interval: 3s
+  - interval: 1.5s
     then:
       - lambda: |-
           if (remote_profiles.empty()) return;
