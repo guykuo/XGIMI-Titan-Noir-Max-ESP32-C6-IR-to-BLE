@@ -61,8 +61,8 @@ esp32:
   partitions: ir-common-kuo/appkit/partitions.csv  #larger app partition needed 
 
 logger:
-  # level: DEBUG
-  level: INFO
+  level: DEBUG
+  # level: INFO
   hardware_uart: USB_CDC      # Directs logs to the native internal S3 USB port
   baud_rate: 115200
 
@@ -478,16 +478,18 @@ binary_sensor:
 
 
     filters:
-      - delayed_on: 60 ms
+      - delayed_on: 25 ms
+      - delayed_off: 25 ms
+      
     on_multi_click:
       # 1. TRIPLE CLICK starts learning mode
       - timing:
-          - ON for at most 0.5s
-          - OFF for at most 0.40s
-          - ON for at most 0.5s
-          - OFF for at most 0.40s
-          - ON for at most 0.5s
-          - OFF for at least 0.2s
+          - ON for at most 0.4s
+          - OFF for at most 0.30s
+          - ON for at most 0.4s
+          - OFF for at most 0.30s
+          - ON for at most 0.4s
+          - OFF for at least 0.1s # Triggers fast! No 4-click to wait fo
         then:
           - lambda: |-
               id(flash_led_custom).execute(3, 100, 0.4, 0.6, 0.4); // flash 3 times indicate triple click.
@@ -497,10 +499,10 @@ binary_sensor:
 
       # 2. DOUBLE CLICK starts setting of IRmap (Profile Selection Mode)
       - timing:
-          - ON for at most 0.5s
-          - OFF for at most 0.40s
-          - ON for at most 0.5s
-          - OFF for at least 0.35s
+          - ON for at most 0.4s
+          - OFF for at most 0.30s
+          - ON for at most 0.4s
+          - OFF for at least 0.30s # Must match the "OFF for at most" of triple click
         then:
           - script.execute: 
               id: display_show
@@ -518,8 +520,8 @@ binary_sensor:
 
       # 3. SINGLE CLICK starts token sniffing
       - timing:
-          - ON for at most 500ms
-          - OFF for at least 0.7s
+          - ON for at most 0.4s
+          - OFF for at least 0.8s # Must be longer to avoid triggering before double and triple click
         then:
           - button.press: token_sniff
           - logger.log: "Boot button short click. Starting token sniffing"
