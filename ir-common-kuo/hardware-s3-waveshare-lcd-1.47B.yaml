@@ -4,6 +4,7 @@ substitutions:
   pin_ir_receiver: GPIO2
   pin_indicator_LED: GPIO38
   pin_action_btn: GPIO0 # use boot button to start actions
+  wifi_tx_power: "14dB"
 
 # Core Architecture Declaration
 

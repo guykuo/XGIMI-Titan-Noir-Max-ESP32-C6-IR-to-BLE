@@ -69,8 +69,8 @@ logger:
 
 wifi:
   reboot_timeout: 5min
-  output_power: 15.0dBm
-  networks: []
+  output_power: ${wifi_tx_power}
+  # networks: []
   ap:
     ssid: "${ble_remote_name}"
     password: !secret fallback_ap_password
