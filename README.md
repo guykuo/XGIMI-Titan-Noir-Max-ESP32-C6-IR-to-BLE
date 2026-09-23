@@ -86,12 +86,12 @@ These "factory" IR profiles have known working IR code sets ...
 
 
 ## Hardware Definition Packages
-ESP32 board is defined in ir-common-kuo/ as hardware.yaml files. These hardware files contain board specific information used to create the translator firmware. Several board types are supplied. You can also create your "hardware" file to support a new ESP32 board type or to customize GPIO assignments.
+ESP32 boards are defined in ir-common-kuo/ as hardware.yaml files. These hardware files contain board specific information used to create the translator firmware. Several board types are supplied. You can also create your "hardware" file to support a new ESP32 board type or to customize GPIO assignments.
 
 Supplied hardware files are for ESP32 boards ...
 
-* hardware-c3.yaml
-* hardware-c6.yaml
+* hardware-esp32-c3-0.42-OLED.yaml
+* hardware-esp32-c6-wroom-1.yaml
 * hardware-c6-lafvintech-lcd-1.47.yaml
 * hardware-m5stack-atom-lite.yaml
 * hardware-s3-hosyond-lcd-3.5-touch.yaml
@@ -168,7 +168,8 @@ substitutions:
   pin_ir_receiver: GPIO1   # IR sensor. 
   pin_indicator_LED: GPIO8 # LED indicator (both ESP32-C3 and C6)
   pin_action_btn: GPIO9     # use boot button for actions. Both ESP32-c3 and ESP32-C6 use pin 9 for boot button. 
-  
+  wifi_tx_power: "12dB"     # wifi power for this board.
+
 # Core Architecture Declaration
 esp32:
   board: esp32-c3-devkitm-1
@@ -191,14 +192,17 @@ You also must edit the make file to include your new hardware file.
 ```yaml
 packages: 
   # --- ESP32 board, Uncomment one (and only one) for your board
-  #hardware_package: !include ir-common-kuo/hardware-c3.yaml                  # supports built-in 0.42 inch OLED display
-  #hardware_package: !include ir-common-kuo/hardware-c6.yaml                 # supports external 0.9 inch i2c OLED display
+  hardware_package: !include ir-common-kuo/hardware-esp32-c3-0.42-OLED.yaml  # supports built-in 0.42 inch OLED display
+  #hardware_package: !include ir-common-kuo/hardware-esp32-c6-wroom-1.yaml   # supports external 0.9 inch i2c OLED display
+  #hardware_package: !include ir-common-kuo/hardware-c6-lafvintech-lcd-1.47.yaml
   #hardware_package: !include ir-common-kuo/hardware-m5stack-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
   #hardware_package: !include ir-common-kuo/hardware-s3-hosyond-lcd-3.5-touch.yaml
   #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-esp32-s3-touch-lcd-2.8.yaml
-  #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-lcd-1.47B.yaml
+  #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-lcd-1.47B.yaml # This board MUST use IR Sensor WITHOUT LED
+                                                                             # Like the Vishay TSOP series.  Otherwise 3Vcc load causes crash durng boot.
+                                                                                
+  #hardware_package: !include ir-common-kuo/HARDWARE.YAML # Or uncomment this line and replace HARDWARE.YAML with your file.
 
-  hardware_package: !include ir-common-kuo/my-hardware-file.YAML #<--- Your hardware file name must be here. Line uncommented.
 ```
 
 Most users are better off obtaining one of the already tested and known working ESP32 boards.
@@ -439,8 +443,8 @@ substitutions:
 
 packages: 
   # --- ESP32 board, Uncomment one (and only one) for your board
-  hardware_package: !include ir-common-kuo/hardware-c3.yaml                 # supports built-in 0.42 inch OLED display
-  #hardware_package: !include ir-common-kuo/hardware-c6.yaml                 # supports external 0.9 inch i2c OLED display
+  hardware_package: !include ir-common-kuo/hardware-esp32-c3-0.42-OLED.yaml  # supports built-in 0.42 inch OLED display
+  #hardware_package: !include ir-common-kuo/hardware-esp32-c6-wroom-1.yaml   # supports external 0.9 inch i2c OLED display
   #hardware_package: !include ir-common-kuo/hardware-c6-lafvintech-lcd-1.47.yaml
   #hardware_package: !include ir-common-kuo/hardware-m5stack-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
   #hardware_package: !include ir-common-kuo/hardware-s3-hosyond-lcd-3.5-touch.yaml
@@ -448,7 +452,12 @@ packages:
   #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-lcd-1.47B.yaml # This board MUST use IR Sensor WITHOUT LED
                                                                              # Like the Vishay TSOP series.  Otherwise 3Vcc load causes crash durng boot.
                                                                                 
+  #hardware_package: !include ir-common-kuo/HARDWARE.YAML # Or uncomment this line and replace HARDWARE.YAML with your file.
+
+
+
 # ========== END Configuration Options KUO ==============================================================================
+
 
 ```  
 ### 5a Build and Flash the Firmware
