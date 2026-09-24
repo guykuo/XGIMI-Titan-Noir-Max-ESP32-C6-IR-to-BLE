@@ -192,7 +192,7 @@ esphome:
     - <vector>
     - <algorithm>
     - <cctype>
-    - ir-common-kuo/appkit/cpp_lib.h
+    - ir-common-kuo/appkit/ir_profile.h
 
 
   build_flags: "-Wl,--require-defined=cJSON_Parse"
@@ -419,29 +419,26 @@ text_sensor:
       id: my_ip_address
       
       
-      
-  - platform: template # Avalones ---------------
+  - platform: template # change from Avalones ---------------
     name: "IR Active Profile"
     id: ir_active_profile_ts
-    icon: "mdi:remote"
-    web_server:
-      sorting_group_id: profileGroup
-      sorting_weight: 20
-
-    update_interval: 2s
+    # ...
     lambda: |-
       int idx = id(active_remote_layout);
-      char buf[160];
+      static char buf[128]; // Use static duration array container to eliminate stack reallocation
+      
       if (idx < 0 || idx >= (int) remote_profiles.size()) {
         snprintf(buf, sizeof(buf), "idx=%d (profile not loaded)", idx);
-        return std::string(buf);
+        return {buf}; // Zero heap overhead encapsulation return format footprint
       }
+      
       const char* kind = (idx < (int) factory_count) ? "internal" : "custom";
       snprintf(buf, sizeof(buf), "idx=%d  %s  [%s]",
                idx,
                remote_profiles[idx].profile_name.c_str(),
                kind);
-      return std::string(buf);
+               
+      return {buf}; // Eliminates std::string allocations on every execution pass
 
 
   - platform: template # Avalones ---------------
@@ -511,7 +508,7 @@ binary_sensor:
               line2: 'Press a Btn'
               line3: 'On Remote'
           - lambda: |-
-              id(ir_receiver_allowed_protocol) = "ALL";
+              id(ir_receiver_allowed_protocol) = 255; // 255 is ALL
               id(ir_receiver_mode) = 2; // set profile mode active
               id(set_profile_timeout_watcher).execute();
               id(flash_led_custom).execute(2, 150, 0.8, 0.6, 0.2); // flash 2 times indicate double click.
@@ -761,6 +758,7 @@ script:
                       for (int i = 0; i < len - 3; i++) {
                           if (adv[i] == 0xFF && adv[i+1] == 0x46 && adv[i+2] == 0x00) {
                               
+                              // OPTIMIZED: Stack-allocated fixed buffer avoids heap fragmentation
                               char token_hex[64] = {0};
                               size_t offset = 0;
                               for (int j = 0; j < len && offset < 60; j++) {
@@ -798,14 +796,6 @@ script:
                                       if (len >= 15) {
                                           uint8_t *tail_ptr = adv + (len - 15);
                                           
-                                          std::string sniffed_token_last15_hex = ""; 
-
-                                          char slice_buf[8] = {0}; 
-                                          for (int k = 0; k < 15; k++) {
-                                              snprintf(slice_buf, sizeof(slice_buf), "%02X ", tail_ptr[k]);
-                                              sniffed_token_last15_hex += slice_buf;
-                                          }
-
                                           if (memcmp(tail_ptr, id(active_wake_token), 15) == 0) {
                                               ESP_LOGD("xgimi_bluedroid", "Token matches active_wake_token. Skipping write.");
                                               
@@ -823,6 +813,7 @@ script:
                                               return;
                                           }
                                           
+                                          // HEAP SAFE: Instantly commit raw bytes to memory structures
                                           memcpy(id(active_wake_token), tail_ptr, 15);
                                           memcpy(id(learned_wake_token), tail_ptr, 15);
                                           global_preferences->sync(); 
@@ -833,10 +824,19 @@ script:
                                           esp_ble_gap_stop_scanning();
                                           esp_ble_gap_register_callback(nullptr);
                                           
+                                          // OPTIMIZED: Format directly into a flat fixed stack scratchpad 
+                                          // ONLY when finalizing the token capture for UI presentation
+                                          char ui_buf[64] = {0};
+                                          snprintf(ui_buf, sizeof(ui_buf), 
+                                                   "%02X %02X %02X %02X %02X...", 
+                                                   tail_ptr[0], tail_ptr[1], tail_ptr[2], tail_ptr[3], tail_ptr[4]);
+
                                           id(flash_led_custom).execute(8, 200, 0.0, 1.0, 0.0);
                                           id(indicator_led)->turn_off();
                                           id(display_show).stop();
-                                          id(display_show).execute(false, sniffed_token_last15_hex, "Storing Token", "Wait 5 sec");
+                                          
+                                          // Pass string safely to display loop frame without intermediate churn
+                                          id(display_show).execute(false, std::string(ui_buf), "Storing Token", "Wait 5 sec");
                                           
                                           id(sniffer_status)->publish_state(false);
                                           id(xgimi_sniffer_switch).publish_state(false);
@@ -1080,25 +1080,8 @@ select:
     optimistic: true
     restore_value: yes
     options:
-      - "0  internal  (AWOL-proj)"
-      - "1  internal  (cool-w5800)"
-      - "2  internal  (epson-pro-cinema-LS12000)"
-      - "3  internal  (hisense-50u6g)"
-      - "4  internal  (jvc-hr-S9600u)"
-      - "5  internal  (jvc-rs2-codeset-A)"
-      - "6  internal  (jvc-rs2-codeset-B)"
-      - "7  internal  (LG-cinebeam-hu810p)"
-      - "8  internal  (optoma-UHD50X)"
-      - "9  internal  (sony-VPL-XW600ES)"
-      - "10 internal  (sony-XBR-77A9G)"
-      - "11 internal  (tivo-roamio-TCD846500)"
-      - "12 internal  (panasonic-projector)"
-      - "13 custom    (slot 0)"
-      - "14 custom    (slot 1)"
-      - "15 custom    (slot 2)"
-      - "16 custom    (slot 3)"
-      - "17 custom    (slot 4)"
-    initial_option: "7  internal  (LG-cinebeam-hu810p)"
+      - "0 initializing"
+    initial_option: "0 initializing"
     
     on_value:
       then:

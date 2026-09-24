@@ -39,68 +39,64 @@ remote_receiver:
         uint32_t head_space = std::abs(x[1]);
         size_t total_pulses = x.size();
 
-        // Heap Optimization: Stack pointer to Flash ROM literals instead of heap allocations
-        const char* proto = "UNKNOWN";
+        uint8_t proto = PROTO_UNKNOWN;
 
         // --- 1. MANCHESTER / SHORT-HEADER PROTOCOLS (RC5 & RC6) ---
         if (head_mark >= 700 && head_mark <= 1100 && total_pulses >= 18 && total_pulses <= 30) {
-          proto = "RC5";
+          proto = PROTO_RC5;
         }
         else if (head_mark >= 2400 && head_mark <= 2900 && head_space >= 700 && head_space <= 1100) {
           if (total_pulses >= 34 && total_pulses <= 46) {
-            proto = "RC6";
+            proto = PROTO_RC6;
           }
         }
 
         // --- 2. STANDARD SPACE/DISTANCE PROTOCOLS ---
-        if (std::strcmp(proto, "UNKNOWN") == 0) {
+        if (proto == PROTO_UNKNOWN) {
           // JVC Test: 8.4ms Mark / 4.2ms Space
           if (head_mark >= 7600 && head_mark < 8800 && head_space >= 3800 && head_space <= 4600) {
-            proto = "JVC";
+            proto = PROTO_JVC;
           }
           // SONY Test: Header pulse 2.4ms, short space < 900us, max 42 pulses
           else if (head_mark >= 2100 && head_mark <= 2700 && head_space < 900 && total_pulses <= 42) {
-            proto = "SONY";
+            proto = PROTO_SONY;
           }
           // PANASONIC Test: Header 3.4ms, space 1.7ms
           else if (head_mark >= 3100 && head_mark <= 3700 && head_space >= 1500 && head_space <= 2000) {
-            proto = "PANASONIC";
+            proto = PROTO_PANASONIC;
           }
           // LG Test: Symmetric 4.5ms Mark / 4.5ms Space
           else if (head_mark >= 4000 && head_mark <= 5000 && head_space >= 4000 && head_space <= 5000) {
-            proto = "LG";
+            proto = PROTO_LG;
           }
           // NEC / TViX Test: 9.0ms Mark
           else if (head_mark >= 8500 && head_mark <= 9500) {
-            proto = "NEC";
+            proto = PROTO_NEC;
           }
         }
         
         // --- 3. FALLBACK SANITY CHECK (For Headerless Repeat Packets) ---
-        if (std::strcmp(proto, "UNKNOWN") == 0) {
-          // Captures JVC headerless repeat data streams
+        if (proto == PROTO_UNKNOWN) {
           if (total_pulses == 34 && head_mark >= 400 && head_mark <= 600 && head_space >= 1400 && head_space <= 1800) {
-            proto = "JVC";
+            proto = PROTO_JVC;
           }
-          // Check Sony second
           else if (total_pulses >= 24 && total_pulses <= 42 && head_space < 1000) {
-            proto = "SONY";
+            proto = PROTO_SONY;
           } 
-          else if (total_pulses >= 64 && total_pulses <= 68) proto = "NEC";
-          else if (total_pulses >= 96 && total_pulses <= 102) proto = "PANASONIC";
+          else if (total_pulses >= 64 && total_pulses <= 68) { proto = PROTO_NEC; }
+          else if (total_pulses >= 96 && total_pulses <= 102) { proto = PROTO_PANASONIC; }
         }
 
-        // Convert const char* to std::string ONLY when finalizing data out of the interrupt pipeline
-        id(learn_detected_protocol) = std::string(proto);
+        id(learn_detected_protocol) = proto;
         
         ESP_LOGD("IR_RECOGNIZER", "Detected Protocol: %s (Mark: %uus, Space: %uus, Pulses: %u)", 
-         proto, (unsigned int)head_mark, (unsigned int)head_space, total_pulses);
+         to_string(proto), (unsigned int)head_mark, (unsigned int)head_space, total_pulses);
 
   # ======= MULTI-PROTOCOL CONVERSION GATES =======
 
   on_nec:
     - lambda: |-
-        if (id(ir_receiver_allowed_protocol) == "NEC" || id(ir_receiver_allowed_protocol) == "ALL") {
+        if (id(ir_receiver_allowed_protocol) == PROTO_NEC || id(ir_receiver_allowed_protocol) == 255) {
           // set up common format address, command, command_repeats
           std::string ir_protocolStr = "NEC";
           
@@ -115,7 +111,7 @@ remote_receiver:
 
   on_jvc:
     - lambda: |-
-        if (id(ir_receiver_allowed_protocol) == "JVC" || id(ir_receiver_allowed_protocol) == "ALL") {
+        if (id(ir_receiver_allowed_protocol) == PROTO_JVC || id(ir_receiver_allowed_protocol) == 255) {
           // set up common format address, command, command_repeats, etc
           std::string ir_protocolStr = "JVC";
           
@@ -132,7 +128,7 @@ remote_receiver:
     # Sony is handled differently because it does not have a true, separate per device address
     # Instead, Sony has a single long code of variable length. The entirety of which must be tested against.
     - lambda: |-
-        if (id(ir_receiver_allowed_protocol) == "SONY" || id(ir_receiver_allowed_protocol) == "ALL") {
+        if (id(ir_receiver_allowed_protocol) == PROTO_SONY || id(ir_receiver_allowed_protocol) == 255) {
           // set up common format address, command, command_repeats
           std::string ir_protocolStr = "SONY"; 
           
@@ -147,7 +143,7 @@ remote_receiver:
       
   on_lg:
     - lambda: |-
-        if (id(ir_receiver_allowed_protocol) == "LG" || id(ir_receiver_allowed_protocol) == "ALL") {
+        if (id(ir_receiver_allowed_protocol) == PROTO_LG || id(ir_receiver_allowed_protocol) == 255) {
           // set up common format address, command, command_repeats
           std::string ir_protocolStr = "LG";
           
@@ -163,7 +159,7 @@ remote_receiver:
 
   on_panasonic:
     - lambda: |-
-        if (id(ir_receiver_allowed_protocol) == "PANASONIC" || id(ir_receiver_allowed_protocol) == "ALL") {
+        if (id(ir_receiver_allowed_protocol) == PROTO_PANASONIC || id(ir_receiver_allowed_protocol) == 255) {
           // set up common format address, command, command_repeats
           std::string ir_protocolStr = "PANASONIC";
           
@@ -179,7 +175,7 @@ remote_receiver:
 
   on_rc5:
     - lambda: |-
-        if (id(ir_receiver_allowed_protocol) == "RC5" || id(ir_receiver_allowed_protocol) == "ALL") {
+        if (id(ir_receiver_allowed_protocol) == PROTO_RC5 || id(ir_receiver_allowed_protocol) == 255) {
           // set up common format address, command, command_repeats
           std::string ir_protocolStr = "RC5";
           
@@ -195,7 +191,7 @@ remote_receiver:
 
   on_rc6:
     - lambda: |-
-        if (id(ir_receiver_allowed_protocol) == "RC6" || id(ir_receiver_allowed_protocol) == "ALL") {
+        if (id(ir_receiver_allowed_protocol) == PROTO_RC6 || id(ir_receiver_allowed_protocol) == 255) {
           // set up common format address, command, command_repeats
           std::string ir_protocolStr = "RC6";
           
@@ -219,16 +215,16 @@ globals:
     initial_value: ${def_profile}
     restore_value: yes
 
-  - id: ir_receiver_allowed_protocol #ALL, NEC, JVC, SONY, LG, PANASONIC, RC5, RC6
-    type: std::string
+  - id: ir_receiver_allowed_protocol 
+    type: uint8_t
     restore_value: no
+    initial_value: '0' # Default to PROTO_UNKNOWN (or write 255 if you want a global 'ALL' token flag)
     
   - id: ir_receiver_mode
     # 0 deactivated (no active profile found)
     # 1 action
     # 2 set profile
     # 3 learn
-    
     type: uint32_t
     restore_value: no
     initial_value: "0" #start disabled to avoid crash from errant ir noise at boot.
@@ -289,31 +285,31 @@ globals:
     initial_value: '0'
     restore_value: no
 
-
   - id: learn_last_save_time # used to avoid repeated button during IR learning.
     type: uint32_t
     initial_value: '0'
     restore_value: no
         
   - id: learn_active_protocol
-    type: std::string
-    initial_value: '""'
+    type: uint8_t
+    initial_value: '0' # Default to PROTO_UNKNOWN
     restore_value: no
+    
   - id: learn_active_address
     type: uint32_t
     initial_value: '0'
     restore_value: no
 
- 
   - id: learn_detected_protocol
-    type: std::string
-    initial_value: '""'
+    type: uint8_t
+    initial_value: '0' # Default to PROTO_UNKNOWN
     restore_value: no
     
   - id: learn_cache_protocol
-    type: std::array<std::string, 50> # Over-allocated container bounds barrier
-    initial_value: '{"", ""}'          # Clear literal definition to establish type footprint
+    type: std::array<uint8_t, 50>
+    initial_value: '{0}' # Flattens array initialization cleanly for compiler tracks
     restore_value: no
+
 
   - id: learn_cache_address
     type: std::array<uint32_t, 50>
@@ -435,7 +431,7 @@ script:
           id(learn_current_button_idx) = -1; // -1 means we are sniffing for the best protocol
           id(learn_sniff_start_time) = 0;
           id(learn_last_save_time) = 0; // reset button repeat lockout timer
-          id(ir_receiver_allowed_protocol) = "ALL"; 
+          id(ir_receiver_allowed_protocol) = 255; //255 is ALL
           
           id(display_show)->execute(false, "LEARNING IR", "Press Btn", "power_on");
           ESP_LOGI("IR Learn", "Learning active. Click power_on to establish protocol footprint.");
@@ -474,7 +470,7 @@ script:
     then:
       - lambda: |-
           for (size_t idx = 0; idx < id(learn_cache_protocol).size(); idx++) {
-             id(learn_cache_protocol)[idx] = "";
+             id(learn_cache_protocol)[idx] = PROTO_UNKNOWN;
              id(learn_cache_address)[idx] = 0;
              id(learn_cache_command)[idx] = 0;
           }
@@ -506,16 +502,16 @@ script:
 
           if (b_idx < (int)TOTAL_LEARN_BUTTONS) {
             if (b_idx == -1) {
-              if (id(learn_detected_protocol) == "UNKNOWN") {
+              if (id(learn_detected_protocol) == PROTO_UNKNOWN) {
                 id(learn_cache_clear).execute();
-                id(learn_active_protocol) = "";
+                id(learn_active_protocol) = PROTO_UNKNOWN;
                 id(learn_active_address) = 0x0;             
                 id(learned_best_command) = 0;             
                 return; 
               }
             
               auto& primary_array = id(learn_cache_protocol);
-              std::string target = id(learn_detected_protocol);
+              uint8_t target = id(learn_detected_protocol);
               
               // Search strictly within the range defined by MAX_LEARNED_PROFILES
               int index = -1;
@@ -528,7 +524,7 @@ script:
             
               if (index == -1) {
                 id(learn_cache_clear).execute();
-                id(learn_active_protocol) = "";
+                id(learn_active_protocol) = PROTO_UNKNOWN;
                 id(learn_active_address) = 0x0;             
                 id(learned_best_command) = 0;             
                 return; 
@@ -550,7 +546,7 @@ script:
                 
             // Process IR captures into current button    
             auto& secondary_array = id(learn_cache_protocol);
-            std::string active_target = id(learn_active_protocol);
+            uint8_t active_target = id(learn_active_protocol);
             
             int index = -1;
             for (size_t i = 0; i < secondary_array.size(); i++) {
@@ -596,7 +592,7 @@ script:
                   
             } else {
               id(learn_cache_clear).execute();
-              id(learn_active_protocol) = "";
+              id(learn_active_protocol) = PROTO_UNKNOWN;
               id(learn_active_address) = 0x0;
               id(learned_best_command) = 0;             
               return; 
@@ -618,6 +614,15 @@ script:
       - lambda: |-
           uint32_t now = millis();
 
+          uint8_t incoming_proto = PROTO_UNKNOWN;
+          if (ir_protocolStr == "NEC") incoming_proto = PROTO_NEC;
+          else if (ir_protocolStr == "JVC") incoming_proto = PROTO_JVC;
+          else if (ir_protocolStr == "SONY") incoming_proto = PROTO_SONY;
+          else if (ir_protocolStr == "LG") incoming_proto = PROTO_LG;
+          else if (ir_protocolStr == "PANASONIC") incoming_proto = PROTO_PANASONIC;
+          else if (ir_protocolStr == "RC5") incoming_proto = PROTO_RC5;
+          else if (ir_protocolStr == "RC6") incoming_proto = PROTO_RC6;
+
           // Fetch the current active remote layout index
           int current_idx = id(active_remote_layout);
           
@@ -628,14 +633,6 @@ script:
           }
 
           const auto& active_profile = remote_profiles[current_idx];
-
-          static const char* const learn_button_names[] = {
-            "power_on", "power_off", "cursor_left", "cursor_right", "cursor_up", "cursor_down",
-            "cursor_enter", "settings_menu", "back", "home", "game_menu", "input", "picture",
-            "focus_manual", "focus_auto", "shortcut_1", "shortcut_2", "shortcut_3", "shortcut_4",
-            "volume_up", "volume_down", "mute", "token_sniff", "token_clear", "token_recall",
-            "BT_start_pair", "BT_clear_pair"
-          };
 
           switch(id(ir_receiver_mode)) {
             case 0: { // deactivated --------------
@@ -649,7 +646,7 @@ script:
               int cache_idx = id(learn_cache_idx);
               cache_idx++;
               if (cache_idx < MAX_LEARNED_PROFILES) {
-                id(learn_cache_protocol)[cache_idx] = ir_protocolStr;
+                id(learn_cache_protocol)[cache_idx] = incoming_proto;
                 id(learn_cache_address)[cache_idx]  = ir_address;
                 id(learn_cache_command)[cache_idx]  = ir_command;
                 id(learn_cache_idx) = cache_idx;
@@ -683,7 +680,7 @@ script:
                   learned_profile.cmd_codes.reserve((int)TOTAL_LEARN_BUTTONS);
                   for (size_t i = 0; i < (int)TOTAL_LEARN_BUTTONS; i++) {
                     IRCommand cmd;
-                    std::strncpy(cmd.name, learn_button_names[i], sizeof(cmd.name) - 1);
+                    std::strncpy(cmd.name, ::learn_button_names[i], sizeof(cmd.name) - 1);
                     cmd.name[sizeof(cmd.name) - 1] = '\0';
                     cmd.button_obj = resolve_button(learn_button_names[i]);
 
@@ -692,7 +689,7 @@ script:
 
                   size_t target_vector_index = factory_count + selected_slot;
                   while (remote_profiles.size() <= target_vector_index) {
-                    remote_profiles.push_back({ "Placeholder", "NEC", 0, 0, 0, {} });
+                    remote_profiles.push_back({ "Placeholder", PROTO_UNKNOWN, 0, 0, 0, {} });
                   }
                   
                   remote_profiles[target_vector_index] = learned_profile;
@@ -724,7 +721,7 @@ script:
                 i--;
                 const auto& profile = remote_profiles[i];
               
-                if (profile.protocol != ir_protocolStr) continue;
+                if (profile.protocol != incoming_proto) continue;
                 if (profile.device_address != ir_address) continue;
               
                 bool key_matched = false;
@@ -914,7 +911,6 @@ script:
       - lambda: |-
           size_t true_hardware_index = id(active_remote_layout);
 
-          // BOUNDARY CHECK USING UNIFIED INDEX
           if (true_hardware_index >= remote_profiles.size()) {
             ESP_LOGW("Profile Control", "Target index out of bounds! Overriding to safe default layout...");
             id(active_remote_layout) = id(default_profile); 
@@ -923,6 +919,8 @@ script:
 
           const auto& active_profile = remote_profiles[true_hardware_index];
           id(ir_receiver_mode) = 1; 
+          
+          // FIXED: Fast byte copy handles validation permissions instantaneously with 0 allocations
           id(ir_receiver_allowed_protocol) = active_profile.protocol;
           
           ESP_LOGI("Profile Control", "Profile layout '%s' engaged via index %d.", 
@@ -1022,7 +1020,7 @@ script:
         // INDEX 0: Mapping 1 (AWOL Valerion Projector)
         // ====================================================================
         remote_profiles.push_back({
-          "AWOL Projector", "NEC", 0x7300, 0x17, 0x14, // HDMI 1, OK
+          "AWOL Projector", PROTO_NEC, 0x7300, 0x17, 0x14, // HDMI 1, OK
           {
             { 0xA7,       { "power_on",      id(power_on) } },          // power on
             { 0x67,       { "power_off",     id(power_off_immediately) } }, // power off
@@ -1058,7 +1056,7 @@ script:
         // INDEX 1: Mapping 2 (BenQ W5800 Projector)
         // ====================================================================
         remote_profiles.push_back({
-          "BenQ Projector", "NEC", 0x3000, 0x629D, 0xEA15, // Play, OK
+          "BenQ Projector", PROTO_NEC, 0x3000, 0x629D, 0xEA15, // Play, OK
           {
             { 0xB04F,       { "power_on",      id(power_on) } },              // power on
             { 0xB14E,       { "power_off",     id(power_off_immediately) } }, // power off
@@ -1096,7 +1094,7 @@ script:
         // INDEX 2: Mapping 3 (Epson Pro Cinema LS12000)
         // ====================================================================
         remote_profiles.push_back({
-          "Epson Projector", "NEC", 0x5583, 0xC23D, 0x7A85, // RGBCMY, enter
+          "Epson Projector", PROTO_NEC, 0x5583, 0xC23D, 0x7A85, // RGBCMY, enter
           {
             { 0x6F90,       { "power_on",         id(power_on) } },              // Power On
             { 0x6E91,       { "power_off",        id(power_off_immediately) } }, // Power Off
@@ -1147,7 +1145,7 @@ script:
         // INDEX 3: Mapping 4 (Hisense 50u6g TV)
         // ====================================================================
         remote_profiles.push_back({
-          "Hisense", "NEC", 0xFB04, 0xEA15, 0xA55A, // 5, select
+          "Hisense", PROTO_NEC, 0xFB04, 0xEA15, 0xA55A, // 5, select
           {
             { 0xF708,       { "power_on",      id(power_on) } },              // discrete power on
             { 0x8E71,       { "power_on_alt",  id(power_on) } },              // discrete power on (variant)
@@ -1186,7 +1184,7 @@ script:
         // INDEX 4: Mapping 5 (JVC HR-S9600u VCR)
         // ====================================================================
         remote_profiles.push_back({
-          "JVC HR-S9600u VCR", "JVC", 0x03C2, 0xC2A4, 0xC23C, // 5, OK
+          "JVC HR-S9600u VCR", PROTO_JVC, 0x03C2, 0xC2A4, 0xC23C, // 5, OK
           {
             { 0xC2D0,       { "power_on",      id(power_on) } },      // power (as discrete)
             { 0xC2B8,       { "power_on_alt",  id(power_on) } },      // power (alternate)
@@ -1228,7 +1226,7 @@ script:
         // INDEX 5: Mapping 6 (JVC projectors code set A)
         // ====================================================================
         remote_profiles.push_back({
-          "JVC Projector A", "JVC", 0xCE, 0x56, 0xF4, // natural, OK
+          "JVC Projector A", PROTO_JVC, 0xCE, 0x56, 0xF4, // natural, OK
           {
             { 0xA0,       { "power_on",      id(power_on) } },          // power on
             { 0x60,       { "power_off", id(power_off_immediately) } }, // power off
@@ -1300,7 +1298,7 @@ script:
         // INDEX 6: Mapping 7 (JVC projectors code set B)
         // ====================================================================
         remote_profiles.push_back({
-          "JVC Projector B", "JVC", 0x36, 0x56, 0xF4, // natural, OK
+          "JVC Projector B", PROTO_JVC, 0x36, 0x56, 0xF4, // natural, OK
           {
             { 0xA0,       { "power_on",      id(power_on) } },          // power on
             { 0x60,       { "power_off", id(power_off_immediately) } }, // power off
@@ -1374,7 +1372,7 @@ script:
         // INDEX 7: Mapping 8 (LG Cinebeam HU810p)
         // ====================================================================
         remote_profiles.push_back({
-          "LG Projector", "NEC", 0xFB04, 0xEA15, 0xBB44, // 5, OK
+          "LG Projector", PROTO_NEC, 0xFB04, 0xEA15, 0xBB44, // 5, OK
           {
             { 0xF708,       { "power_on",      id(power_on) } },          // power toggle
             { 0x23DC,       { "power_on-alt",  id(power_on) } },          // Discrete Power On
@@ -1425,7 +1423,7 @@ script:
         // INDEX 8: Mapping 9 (Optoma UHD50X projector)
         // ====================================================================
         remote_profiles.push_back({
-          "Optoma Projector", "NEC", 0xCD32, 0x9A65, 0xF00F, // User 1, OK
+          "Optoma Projector", PROTO_NEC, 0xCD32, 0x9A65, 0xF00F, // User 1, OK
           {
             { 0xFD02,       { "power_on",      id(power_on) } },              // power on
             { 0xD12E,       { "power_off",     id(power_off_immediately) } }, // power off
@@ -1460,7 +1458,7 @@ script:
         // INDEX 9: Mapping 10 (Sony VPL-XW600ES projector)
         // ====================================================================
         remote_profiles.push_back({
-          "Sony Projector", "SONY", 0x0000, 0x8AB54, 0x02D2A, // BRT TV, OK
+          "Sony Projector", PROTO_SONY, 0x0000, 0x8AB54, 0x02D2A, // BRT TV, OK
           {
             { 0x03A2A,       { "power_on",      id(power_on) } },             // Power On (discrete)
             { 0x07A2A,       { "power_off",     id(power_off_immediately)}},  // Power Off (discrete)
@@ -1522,7 +1520,7 @@ script:
         // INDEX 10: Mapping 11 (Sony XBR-77A9G TV)
         // ====================================================================
         remote_profiles.push_back({
-          "Sony XBR", "SONY", 0x0000, 0x0210, 0x0A70, // 5, Arrow Select
+          "Sony XBR", PROTO_SONY, 0x0000, 0x0210, 0x0A70, // 5, Arrow Select
           {
             { 0x0750,       { "power_on",      id(power_on) } },             // power on discrete
             { 0x0A90,       { "power_on_alt",  id(power_on) } },             // power (toggle)
@@ -1560,7 +1558,7 @@ script:
         // INDEX 11: Mapping 12 (TiVo Roamio TCD846500)
         // ====================================================================
         remote_profiles.push_back({
-          "TiVo Roamio", "NEC", 0x3085, 0xD02C, 0xE019, // 5, Arrow Select
+          "TiVo Roamio", PROTO_NEC, 0x3085, 0xD02C, 0xE019, // 5, Arrow Select
           {
             { 0xE010,       { "power_on",      id(power_on) } },              // tv power (as discrete on)
             { 0xE011,       { "power_off",     id(power_off_immediately) } }, // live TV (as discrete off)
@@ -1599,7 +1597,7 @@ script:
         // INDEX 12: Mapping 13 Panasonic Projector Map
         // ====================================================================
         remote_profiles.push_back({
-          "Panasonic Projector", "PANASONIC", 0x4004, 0x1002829, 0x1009293, // Profile Name, Protocol, Device Address, Clear Token Arm (Key 5), Clear Token Fire (OK)
+          "Panasonic Projector", PROTO_PANASONIC, 0x4004, 0x1002829, 0x1009293, // Profile Name, Protocol, Device Address, Clear Token Arm (Key 5), Clear Token Fire (OK)
           {
             // --- System Power Operations (Discrete remote buttons) ---
             { 0x1003A3B,       { "power_on",          id(power_on) } },               // "ON" Button
