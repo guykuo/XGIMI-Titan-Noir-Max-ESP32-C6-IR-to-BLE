@@ -92,10 +92,13 @@ Supplied hardware files are for ESP32 boards ...
 
 * hardware-esp32-c3-0.42-OLED.yaml
 * hardware-esp32-c6-wroom-1.yaml
-* hardware-c6-lafvintech-lcd-1.47.yaml
-* hardware-m5stack-atom-lite.yaml
-* hardware-s3-hosyond-lcd-3.5-touch.yaml
-* hardware-s3-waveshare-esp32-s3-touch-lcd-2.8.yaml
+* hardware-hosyond-s3-lcd-3.5-touch.yaml
+* hardware-ideaspark-esp32-0.96-OLED.yaml  (under testing)
+* hardware-lafvintech-c6-lcd-1.47.yaml
+* hardware-m5stack-pico-d4-atom-lite.yaml
+* hardware-waveshare-c6-lcd-1.47.yaml      (thanks to Avalones)
+* hardware-waveshare-s3-lcd-1.47B.yaml
+* hardware-waveshare-s3-touch-lcd-2.8.yaml
 
 Look in the hardware file for actual GPIO pins for IR receiver and optional i2c display
   
@@ -144,7 +147,7 @@ Board series that should work:
 <br>
 Boards that will NOT work
 
-*   Original ESP32 (WROOM-32 /DevKitC)
+*   Original ESP32 (WROOM-32 /DevKitC) This limitation may not be true. Under investigation.
 *   ESP32-S2 series
     
 <br>
@@ -184,23 +187,6 @@ i2c:
   id: bus_a
   
 # ============= END Configuration Options KUO ==========
-
-```
-
-You also must edit the make file to include your new hardware file.
-```yaml
-packages: 
-  # --- ESP32 board, Uncomment one (and only one) for your board
-  hardware_package: !include ir-common-kuo/hardware-esp32-c3-0.42-OLED.yaml  # supports built-in 0.42 inch OLED display
-  #hardware_package: !include ir-common-kuo/hardware-esp32-c6-wroom-1.yaml   # supports external 0.9 inch i2c OLED display
-  #hardware_package: !include ir-common-kuo/hardware-c6-lafvintech-lcd-1.47.yaml
-  #hardware_package: !include ir-common-kuo/hardware-m5stack-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
-  #hardware_package: !include ir-common-kuo/hardware-s3-hosyond-lcd-3.5-touch.yaml
-  #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-esp32-s3-touch-lcd-2.8.yaml
-  #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-lcd-1.47B.yaml # This board MUST use IR Sensor WITHOUT LED
-                                                                             # Like the Vishay TSOP series.  Otherwise 3Vcc load causes crash durng boot.
-                                                                                
-  #hardware_package: !include ir-common-kuo/HARDWARE.YAML # Or uncomment this line and replace HARDWARE.YAML with your file.
 
 ```
 
@@ -414,17 +400,25 @@ ESP32 board is set by uncommenting one and only one line. Here it is *hardware-c
 ```YAML
 # ============= BEGIN Configuration Options KUO ======================================================================
 
-# Only three things to configure here
+# Three things must be configured here
 #   ble_remote_name
 #   Default IR profile
 #   hardware_package
 
 substitutions:
+  # 1 ======= ble_remote_name, Bluetooth Name for your IR remote ===========================
 
-  ble_remote_name: "IR Xgimi Kuo"  # <===== Name your IR remote. (20 char max. No special characters)
+  ble_remote_name: "Xgimi IR Kuo"  # (20 char max. No special characters. No underscore) 
+ 
+  # may optionally change these other three names 
+  ssid_name:     ${ble_remote_name} # Name of AP wifi network
+  friendly_name: ${ble_remote_name} # Displayed name in Home Assitant
+  device_name:   esp32-xgimi # formal Home Assitant ID. lowercase a-z, digits 0-9, hyphen (no spaces, no caps, no underscore)
 
 
-  # --- Default IR profile. Uncomment one (and only one)
+
+  # 2 ======= Default IR profile. Uncomment one (and only one) ============================
+  
   #def_profile: "0"  # AWOL-projector (untested, Hisense IR codes)
   #def_profile: "1"  # benq-w5800
   def_profile: "2"  # epson-pro-cinema-LS12000
@@ -438,24 +432,27 @@ substitutions:
   #def_profile: "10" # sony-XBR-77A9G 
   #def_profile: "11" # tivo-roamio-TCD846500 
   #def_profile: "12" # panasonic projector
+  
 
 
 packages: 
-  # --- ESP32 board, Uncomment one (and only one) for your board
-  hardware_package: !include ir-common-kuo/hardware-esp32-c3-0.42-OLED.yaml  # supports built-in 0.42 inch OLED display
-  #hardware_package: !include ir-common-kuo/hardware-esp32-c6-wroom-1.yaml   # supports external 0.9 inch i2c OLED display
-  #hardware_package: !include ir-common-kuo/hardware-c6-lafvintech-lcd-1.47.yaml
-  #hardware_package: !include ir-common-kuo/hardware-m5stack-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
-  #hardware_package: !include ir-common-kuo/hardware-s3-hosyond-lcd-3.5-touch.yaml
-  #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-esp32-s3-touch-lcd-2.8.yaml
-  #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-lcd-1.47B.yaml # This board MUST use IR Sensor WITHOUT LED
-                                                                             # Like the Vishay TSOP series.  Otherwise 3Vcc load causes crash durng boot.
+  # 3 =======  ESP32 board, Uncomment one (and only one) to specify board ===================
+  
+  hardware_package: !include ir-common-kuo/hardware-esp32-c3-0.42-OLED.yaml      # supports built-in 0.42 inch OLED display
+  #hardware_package: !include ir-common-kuo/hardware-esp32-c6-wroom-1.yaml        # supports external 0.9 inch i2c OLED display
+  #hardware_package: !include ir-common-kuo/hardware-lafvintech-c6-lcd-1.47.yaml
+  #hardware_package: !include ir-common-kuo/hardware-m5stack-pico-d4-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
+  #hardware_package: !include ir-common-kuo/hardware-hosyond-s3-lcd-3.5-touch.yaml
+  #hardware_package: !include ir-common-kuo/hardware-waveshare-c6-lcd-1.47.yaml
+  #hardware_package: !include ir-common-kuo/hardware-waveshare-s3-touch-lcd-2.8.yaml
+  #hardware_package: !include ir-common-kuo/hardware-waveshare-s3-lcd-1.47B.yaml # this board requires IR sensor WITHOUT LED like VS1838B
+                                                                                 # Otherwise 3Vcc load causes crash durng boot.
                                                                                 
   #hardware_package: !include ir-common-kuo/HARDWARE.YAML # Or uncomment this line and replace HARDWARE.YAML with your file.
 
 
 
-# ========== END Configuration Options KUO ==============================================================================
+# === END Configuration Options KUO =========================================================================
 
 
 ```  
