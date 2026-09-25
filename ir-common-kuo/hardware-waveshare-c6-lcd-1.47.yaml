@@ -5,7 +5,7 @@ substitutions:
   pin_ir_receiver: GPIO1      # IR receiver
   pin_indicator_LED: GPIO8    # Onboard RGB LED (WS2812/SK6812)
   pin_action_btn: GPIO9       # BOOT button (same as original)
-  wifi_tx_power: "14dB"
+  wifi_tx_power: "12dB"
 
 # Core Architecture Declaration
 
