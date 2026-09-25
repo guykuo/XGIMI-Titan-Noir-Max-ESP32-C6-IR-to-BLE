@@ -1,16 +1,24 @@
 # ============= BEGIN Configuration Options KUO ======================================================================
 
-# Only three things to configure here
+# Three things must be configured here
 #   ble_remote_name
 #   Default IR profile
 #   hardware_package
 
 substitutions:
+  # 1 ======= ble_remote_name, Bluetooth Name for your IR remote ===========================
 
-  ble_remote_name: "IR Xgimi Kuo"  # <===== Name your IR remote. (20 char max. No special characters)
+  ble_remote_name: "Xgimi IR Kuo"  # (20 char max. No special characters. No underscore) 
+ 
+  # may optionally change these other three names 
+  ssid_name:     ${ble_remote_name} # Name of AP wifi network
+  friendly_name: ${ble_remote_name} # Displayed name in Home Assitant
+  device_name:   esp32-xgimi # formal Home Assitant ID. lowercase a-z, digits 0-9, hyphen (no spaces, no caps, no underscore)
 
 
-  # --- Default IR profile. Uncomment one (and only one)
+
+  # 2 ======= Default IR profile. Uncomment one (and only one) ============================
+  
   #def_profile: "0"  # AWOL-projector (untested, Hisense IR codes)
   #def_profile: "1"  # benq-w5800
   def_profile: "2"  # epson-pro-cinema-LS12000
@@ -24,26 +32,30 @@ substitutions:
   #def_profile: "10" # sony-XBR-77A9G 
   #def_profile: "11" # tivo-roamio-TCD846500 
   #def_profile: "12" # panasonic projector
+  
 
 
 packages: 
-  # --- ESP32 board, Uncomment one (and only one) for your board
-  hardware_package: !include ir-common-kuo/hardware-esp32-c3-0.42-OLED.yaml  # supports built-in 0.42 inch OLED display
-  #hardware_package: !include ir-common-kuo/hardware-esp32-c6-wroom-1.yaml   # supports external 0.9 inch i2c OLED display
-  #hardware_package: !include ir-common-kuo/hardware-c6-lafvintech-lcd-1.47.yaml
-  #hardware_package: !include ir-common-kuo/hardware-m5stack-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
-  #hardware_package: !include ir-common-kuo/hardware-s3-hosyond-lcd-3.5-touch.yaml
-  #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-esp32-s3-touch-lcd-2.8.yaml
-  #hardware_package: !include ir-common-kuo/hardware-s3-waveshare-lcd-1.47B.yaml # This board MUST use IR Sensor WITHOUT LED
-                                                                             # Like the Vishay TSOP series.  Otherwise 3Vcc load causes crash durng boot.
+  # 3 =======  ESP32 board, Uncomment one (and only one) to specify board ===================
+  
+  hardware_package: !include ir-common-kuo/hardware-esp32-c3-0.42-OLED.yaml      # supports built-in 0.42 inch OLED display
+  #hardware_package: !include ir-common-kuo/hardware-esp32-c6-wroom-1.yaml        # supports external 0.9 inch i2c OLED display
+  #hardware_package: !include ir-common-kuo/hardware-lafvintech-c6-lcd-1.47.yaml
+  #hardware_package: !include ir-common-kuo/hardware-m5stack-pico-d4-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
+  #hardware_package: !include ir-common-kuo/hardware-hosyond-s3-lcd-3.5-touch.yaml
+  #hardware_package: !include ir-common-kuo/hardware-waveshare-c6-lcd-1.47.yaml
+  #hardware_package: !include ir-common-kuo/hardware-waveshare-s3-touch-lcd-2.8.yaml
+  #hardware_package: !include ir-common-kuo/hardware-waveshare-s3-lcd-1.47B.yaml # this board requires IR sensor WITHOUT LED like VS1838B
+                                                                                 # Otherwise 3Vcc load causes crash durng boot.
                                                                                 
   #hardware_package: !include ir-common-kuo/HARDWARE.YAML # Or uncomment this line and replace HARDWARE.YAML with your file.
 
 
 
-# ========== END Configuration Options KUO ==============================================================================
+# === END Configuration Options KUO =========================================================================
 # Code after this point typically does not need to be changed.
-# =======================================================================================================================
+# ===========================================================================================================
+
 
   ir_hub_package:         !include ir-common-kuo/appkit/ir_hub.yaml
   mrmachine_BLE_package:  !include ir-common-kuo/appkit/mrmachine_bluetooth_V1.0.0.yaml # required, modified mrmachine BLE package
@@ -72,10 +84,12 @@ wifi:
   reboot_timeout: 24h
   output_power: ${wifi_tx_power}
   power_save_mode: LIGHT
+  
   ap:
     ssid: "${ble_remote_name}"
     password: !secret fallback_ap_password
     ap_timeout: 1min
+    
   on_connect:
     then:
       lambda: |-
@@ -199,7 +213,7 @@ esphome:
   
   project:
     name: xgimi.titan-noir-esp32-ir-kuo
-    version: 26.09.18.001
+    version: 26.09.25.001
 
   on_boot:
 
@@ -1069,7 +1083,7 @@ script:
 
 #=================================================================
 select:
-  - platform: template # Avalones ---------------
+  - platform: template
     name: "IR Profile to Export"
     id: ir_profile_slot_selector
     icon: "mdi:format-list-numbered"
@@ -1095,19 +1109,32 @@ select:
               pos++;
             }
 
-            if (extracted_idx < 0 || extracted_idx >= (int)remote_profiles.size()) return;
+            int total_valid_slots = static_cast<int>(factory_count) + MAX_LEARNED_PROFILES;
+            if (extracted_idx < 0 || extracted_idx >= total_valid_slots) return;
 
             id(selected_profile_slot) = extracted_idx;
 
-            // Direct assignment with no nested translation blocks required!
-            if (!remote_profiles.empty()) {
-              int cur = id(active_remote_layout);
-              if (cur != extracted_idx) {
-                id(active_remote_layout) = extracted_idx;
-                id(setup_ir_receiver_for_current_profile).execute();
-                id(last_active_idx_seen) = extracted_idx;
-                id(ir_active_profile_ts).update();
-              }
+            int cur = id(active_remote_layout);
+            if (cur != extracted_idx) {
+              id(active_remote_layout) = extracted_idx;
+              
+              // 1. Hydrate the active workspace container state immediately
+              load_profile_to_workspace(extracted_idx);
+              
+              id(setup_ir_receiver_for_current_profile).execute();
+              
+              // 2. Clear the guard to allow future background loops to process correctly
+              id(last_active_idx_seen) = -999; 
+              
+              // 3. Construct and force push state update to text_sensor instantly
+              static char change_buf[128];
+              const char* kind = (extracted_idx < (int)factory_count) ? "internal" : "custom";
+              snprintf(change_buf, sizeof(change_buf), "idx=%d  %s  [%s]",
+                       extracted_idx,
+                       active_profile_workspace.profile_name.c_str(),
+                       kind);
+                       
+              id(ir_active_profile_ts).publish_state(change_buf);
             }
         - script.execute: publish_selected_profile_json
 #=================================================================
@@ -1157,43 +1184,63 @@ switch:
             
 #======================
 interval:
-  - interval: 1.0s
+  # ====================================================================
+  # TIMER On-Demand Dynamic Select Dropdown Metadata Population
+  # ====================================================================
+  - interval: 2.0s
     id: dynamic_select_hydration_timer
     then:
-
       - if:
           condition:
-            lambda: 'return !remote_profiles.empty() && flash_hydration_complete;'
+            lambda: 'return flash_hydration_complete;'
           then:
             - lambda: |-
                 static std::vector<std::string> string_cache;
                 string_cache.clear();
-                string_cache.reserve(factory_count + 5);
+                string_cache.reserve(factory_count + MAX_LEARNED_PROFILES);
           
                 char buf[128];
+                int factory = static_cast<int>(factory_count);
           
-                for (size_t i = 0; i < factory_count; i++) {
-                  if (i < remote_profiles.size()) {
-                    std::memset(buf, 0, sizeof(buf));
-                    snprintf(buf, sizeof(buf), "%d  internal  (%s)", 
-                             (int)i, 
-                             remote_profiles[i].profile_name.c_str());
-                    string_cache.push_back(std::string(buf));
-                  }
-                }
-          
-                for (size_t k = 0; k < 5; k++) {
-                  size_t custom_idx = factory_count + k;
+                // 1. STREAM BUILT-IN DEVICE NAMES DYNAMICALLY ON-THE-FLY
+                for (int i = 0; i < factory; i++) {
+                  load_profile_to_workspace(i);
+                  
                   std::memset(buf, 0, sizeof(buf));
-                  snprintf(buf, sizeof(buf), "%d  custom    (slot %d)", 
-                           (int)custom_idx, 
-                           (int)k);
+                  snprintf(buf, sizeof(buf), "%d  internal  (%s)", 
+                           i, 
+                           active_profile_workspace.profile_name.c_str());
                   string_cache.push_back(std::string(buf));
                 }
           
+                // 2. CHECK PERSISTENT CUSTOM NVS DATA FOR MEMORY SLOTS
+                for (uint16_t k = 0; k < MAX_LEARNED_PROFILES; k++) {
+                  size_t custom_idx = factory + k;
+                  uint64_t slot_nvs_key = 1948204712ULL + k;
+                  auto pref_obj = esphome::global_preferences->make_preference<FlashStoredProfile>(slot_nvs_key);
+                  
+                  static FlashStoredProfile flash_p;
+                  std::memset(&flash_p, 0, sizeof(flash_p));
+                  
+                  std::memset(buf, 0, sizeof(buf));
+                  if (pref_obj.load(&flash_p) && flash_p.total_keys > 0 && std::strlen(flash_p.profile_name) > 0) {
+                    snprintf(buf, sizeof(buf), "%d  custom    (%s)", 
+                             (int)custom_idx, 
+                             flash_p.profile_name);
+                  } else {
+                    snprintf(buf, sizeof(buf), "%d  custom    (slot %d)", 
+                             (int)custom_idx, 
+                             (int)k);
+                  }
+                  string_cache.push_back(std::string(buf));
+                }
+          
+                // FIXED: Using localized explicit initialization to completely protect scope access rules
+                int current_boot_layout_idx = id(active_remote_layout);
+                load_profile_to_workspace(current_boot_layout_idx);
+          
                 static const char* permanent_pointer_matrix[95];
                 size_t total_items = string_cache.size();
-                
                 if (total_items > 95) total_items = 95;
           
                 for (size_t i = 0; i < total_items; i++) {
@@ -1212,25 +1259,30 @@ interval:
                 fake_vector.capacity = total_items;
           
                 const auto* native_vector_ptr = reinterpret_cast<const esphome::FixedVector<const char*>*>(&fake_vector);
-          
                 id(ir_profile_slot_selector).traits.set_options(*native_vector_ptr);
                 
                 int active_idx = id(selected_profile_slot);
                 if (active_idx >= 0 && active_idx < (int)total_items) {
                   id(ir_profile_slot_selector).publish_state(string_cache[active_idx]);
-                } else {
-                  if (!string_cache.empty()) {
-                    id(ir_profile_slot_selector).publish_state(string_cache[0]);
-                  }
+                } else if (!string_cache.empty()) {
+                  id(ir_profile_slot_selector).publish_state(string_cache[0]);
                 }
-          
+
+                // set text sensor value
+                static char dropdown_sync_buf[128];
+                const char* final_kind = (current_boot_layout_idx < factory) ? "internal" : "custom";
+                snprintf(dropdown_sync_buf, sizeof(dropdown_sync_buf), "idx=%d  %s  [%s]",
+                         current_boot_layout_idx,
+                         active_profile_workspace.profile_name.c_str(),
+                         final_kind);
+                id(ir_active_profile_ts).publish_state(dropdown_sync_buf);
+
                 ESP_LOGI("custom_select", "Select dropdown successfully populated with %d runtime layouts!", (int)total_items);
-          
                 id(selectRepopulated) = true;
                 
             - component.suspend: dynamic_select_hydration_timer
     
-  - interval: 1.2s # Avalones ---------------
+  - interval: 2.3s # Avalones ---------------
     id: publish_when_profiles_ready
     then:
       - if:
@@ -1240,17 +1292,3 @@ interval:
             - logger.log: "Profiles fully loaded (factory + custom); publishing selected JSON."
             - script.execute: publish_selected_profile_json
             - component.suspend: publish_when_profiles_ready
-
-  - interval: 1.5s
-    then:
-      - lambda: |-
-          if (remote_profiles.empty()) return;
-
-          int idx = id(active_remote_layout);
-          
-          // CRITICAL BOUNDARY GUARD: Keep within current allocation constraints
-          if (idx < 0 || idx >= (int)remote_profiles.size()) return;
-          if (idx == id(last_active_idx_seen)) return;
-
-          id(last_active_idx_seen) = idx;
-          id(ir_active_profile_ts).update();
