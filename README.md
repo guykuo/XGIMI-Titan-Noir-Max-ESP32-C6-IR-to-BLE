@@ -148,7 +148,8 @@ Board series that should work:
 <br>
 Boards that will NOT work
 
-*   ESP32-S2 series
+*   ESP32-S2 series (no bluetooth)
+*   ESP32-P4 series (no bluetooth)
     
 <br>
 Each variation of ESP board has its own pinout and specific GPIO pins suitable for for IR signal input. It is particularly important to obtain pinout information and know which GPIO pins are actually free for use (not strapping pins or already assigned to other board functions). Because that process can be overwhelming, four board configuration "hardware" files have been supplied. These pre-define board type and pinouts. Most likely, you can simply specify one of the supplied hardware files within your make file.
