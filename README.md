@@ -93,7 +93,7 @@ Supplied hardware files are for ESP32 boards ...
 * hardware-esp32-c3-0.42-OLED.yaml
 * hardware-esp32-c6-wroom-1.yaml
 * hardware-hosyond-s3-lcd-3.5-touch.yaml
-* hardware-ideaspark-esp32-0.96-OLED.yaml  (under testing)
+* hardware-ideaspark-esp32-0.96-OLED.yaml
 * hardware-lafvintech-c6-lcd-1.47.yaml
 * hardware-m5stack-pico-d4-atom-lite.yaml
 * hardware-waveshare-c6-lcd-1.47.yaml      (thanks to Avalones)
@@ -143,11 +143,11 @@ Board series that should work:
 *   ESP32-C3
 *   ESP32-C6
 *   ESP32 pico d4
+*   ESP32 (esp32dev)
     
 <br>
 Boards that will NOT work
 
-*   Original ESP32 (WROOM-32 /DevKitC) This limitation may not be true. Under investigation.
 *   ESP32-S2 series
     
 <br>
