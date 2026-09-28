@@ -977,6 +977,34 @@ sufficient to get a capture. Learned token is kept on ESP non-volatile flash.
 OLED display nicely shows when board begins token sniffing and completes capture.
 Non-display ESP32 will still work, but gives feedback only via log.
 
+#Webserver
+This project includes a webserver which can be reached at your ESP32 board's IP address after it has been provisioned onto your local network via the usual Home Assistant device captive AP setup.
+
+Credentials for webserver are admin / fallback_ap_password from your secrets file
+
+<img width="1088" height="1704" alt="Screenshot 2026-09-27 at 20 33 39" src="https://github.com/user-attachments/assets/724df177-cf7b-4109-9097-aed48b06bb22" />
+
+_Active Profile_ is the profile that is currently being used for IR mapping to Xgimi bluetooth.<br><br>
+
+_Select Target Profile Slot:_ sets which profile you want to work with.<br><br>
+
+_Activate Selected Profile_ sets selected profile as the active profile for IR mapping.<br><br>
+
+_Download CSV_ downloads selected profile as a CSV file.<br><br>
+
+_Choose file_ lets you chose a CSV to upload. You should have target slot set to one of the custom memories for upload. If you attempt to upload to a factor slot, it will instead be uploaded into memory slot 0.<br><br>
+
+_Upload CSV_ performs the actual upload. Click this after you have set a target profile slot into which to upload.<br><br>
+
+Here is a sample CSV.
+The META row is slot#, profile name, protocol, device address, token_clear_arming_code, token_clear_fire_code
+
+The KEY rows are command, xgimi-action, button-name-on-original-remote
+<img width="852" height="1388" alt="Screenshot 2026-09-27 at 20 53 46" src="https://github.com/user-attachments/assets/a76debf0-86fe-4c12-bfac-d70ce6385661" />
+
+In addition to letting you save and restore learned profiles, you can also override a factory profile. To do so, download a factory profile, edit it and uploading into a custom slot. During profile setting, the system searches for a match starting within custom profiles in reverse order. It will find your modified version first and use that instead of a matching factory profile.
+
+
 
     
 
