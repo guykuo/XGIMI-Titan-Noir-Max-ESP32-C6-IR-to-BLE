@@ -7,8 +7,7 @@
 
 substitutions:
   # 1 ======= ble_remote_name, Bluetooth Name for your IR remote ===========================
-
-  ble_remote_name: "Xgimi IR Kuo"  # (20 char max. No special characters. No underscore) 
+  ble_remote_name: "IR Xgimi Kuo"  # (20 char max. No special characters. No underscore) 
  
   # may optionally change these other three names 
   ssid_name:     ${ble_remote_name} # Name of AP wifi network
@@ -18,7 +17,6 @@ substitutions:
 
 
   # 2 ======= Default IR profile. Uncomment one (and only one) ============================
-  
   #def_profile: "0"  # AWOL-projector (untested, Hisense IR codes)
   #def_profile: "1"  # benq-w5800
   def_profile: "2"  # epson-pro-cinema-LS12000
@@ -37,9 +35,9 @@ substitutions:
 
 packages: 
   # 3 =======  ESP32 board, Uncomment one (and only one) to specify board ===================
-  
   hardware_package: !include ir-common-kuo/hardware-esp32-c3-0.42-OLED.yaml      # supports built-in 0.42 inch OLED display
   #hardware_package: !include ir-common-kuo/hardware-esp32-c6-wroom-1.yaml        # supports external 0.9 inch i2c OLED display
+  #hardware_package: !include ir-common-kuo/hardware-ideaspark-esp32-OLED.yaml
   #hardware_package: !include ir-common-kuo/hardware-lafvintech-c6-lcd-1.47.yaml
   #hardware_package: !include ir-common-kuo/hardware-m5stack-pico-d4-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
   #hardware_package: !include ir-common-kuo/hardware-hosyond-s3-lcd-3.5-touch.yaml
@@ -47,9 +45,8 @@ packages:
   #hardware_package: !include ir-common-kuo/hardware-waveshare-s3-touch-lcd-2.8.yaml
   #hardware_package: !include ir-common-kuo/hardware-waveshare-s3-lcd-1.47B.yaml # this board requires IR sensor WITHOUT LED like VS1838B
                                                                                  # Otherwise 3Vcc load causes crash durng boot.
-                                                                                
-  #hardware_package: !include ir-common-kuo/HARDWARE.YAML # Or uncomment this line and replace HARDWARE.YAML with your file.
 
+  #hardware_package: !include ir-common-kuo/HARDWARE.YAML # Or uncomment this line and replace HARDWARE.YAML with your file.
 
 
 # === END Configuration Options KUO =========================================================================
@@ -75,8 +72,6 @@ esp32:
 logger:
   # level: DEBUG
   level: INFO
-  hardware_uart: USB_CDC      # Directs logs to the native internal S3 USB port
-  baud_rate: 115200
 
 
 wifi:
@@ -84,7 +79,6 @@ wifi:
   reboot_timeout: 24h
   output_power: ${wifi_tx_power}
   power_save_mode: LIGHT
-  
   ap:
     ssid: "${ble_remote_name}"
     password: !secret fallback_ap_password
@@ -104,34 +98,6 @@ ota:
 
 captive_portal:
 
-# Enable v3 Web Server component
-web_server:
-  port: 80
-  version: 3
-  local: true
-  auth:
-    type: digest
-    username: "admin"
-    password: !secret fallback_ap_password
-
-  sorting_groups:
-    - id: powerGroup
-      name: "Power"
-      sorting_weight: 1
-    - id: navigationGroup
-      name: "Navigation"
-      sorting_weight: 2
-    - id: settingsGroup
-      name: "Settings"
-      sorting_weight: 3
-    - id: dxGroup
-      name: "Info"
-      sorting_weight: 4
-    - id: profileGroup
-      name: "Profiles"
-      sorting_weight: 5
-      
-      
       
       
 # ======================================
@@ -141,28 +107,8 @@ api:
   reboot_timeout: 24h #time before reboot if HomeAssistant is not present. 
 
   actions:
-    # ---------- 1) Import ----------
-    - action: import_json_profiles # Avalones ---------------
-      variables:
-        json_data: string
-      then:
-        - lambda: |-
-            ESP_LOGW("JSON Import", "Incoming remote migration configuration data packet received from Home Assistant API.");
-            bool import_success = import_profiles_from_json(json_data);
-            if (import_success) {
-              ESP_LOGI("JSON Import", "Migration successful. Re-linking layout action object pointers...");
-              link_hardware_buttons();
-              id(setup_ir_receiver_for_current_profile).execute();
-              id(ir_receiver_mode) = 1;
-              id(display_token_remote_profile).execute();
-              id(display_show)->execute(true, "JSON Imported!", "Profiles Recovered", "Database Active");
-            } else {
-              ESP_LOGE("JSON Import", "Failed parsing configuration payload string! Incompatible or corrupted JSON layout format.");
-              id(display_show)->execute(false, "Import Failed", "Corrupted File", "Rejected");
-            }
-
-    # ---------- 2) Count ----------
-    - action: get_profile_count # Avalones ---------------
+    # ---------- Count ----------
+    - action: get_profile_count
       supports_response: only
       then:
         - api.respond:
@@ -171,28 +117,46 @@ api:
               root["factory_count"] = (int) factory_count;
 
 
-    # ---------- 3) Export one profile (Unified Heap-Safe Action) ----------
-    - action: export_json_profile
+    # ---------- Export one profile via flat CSV string ----------
+    - action: export_csv_profile
       variables:
         index: int
       supports_response: only
       then:
         - api.respond:
             data: !lambda |-
-              std::string json_out = generate_minified_profile_json(index);
-              if (!json_out.empty()) {
-                // ArduinoJson v7 zero-allocation syntax reads string directly in-place
-                JsonDocument doc;
-                DeserializationError err = deserializeJson(doc, json_out);
-                
-                if (!err) {
-                  // v7 direct assignment from local document to response root
-                  root = doc.as<JsonObject>();
-                  return;
-                }
+              std::string csv_data = generate_profile_csv(index);
+              if (!csv_data.empty()) {
+                root["csv"] = csv_data;
+              } else {
+                root["error"] = "CSV stream generation failed";
               }
-              root["error"] = "Unified JSON string generation failed";
 
+    # ---------- 2) Import a profile via flat CSV string ----------
+    - action: import_csv_profile
+      variables:
+        csv_data: string
+      then:
+        - lambda: |-
+            ESP_LOGW("CSV Import", "Incoming profile migration package stream received via Native API.");
+            
+            bool import_success = import_profile_from_csv(csv_data);
+            
+            if (import_success) {
+              ESP_LOGI("CSV Import", "Migration successful. Mapping workspace component action indicators...");
+              link_hardware_buttons();
+              id(setup_ir_receiver_for_current_profile).execute();
+              commit_database_to_flash(id(selected_profile_slot));
+              id(ir_receiver_mode) = 1; // Return safely to normal Action Mode
+              id(display_token_remote_profile).execute();
+              id(display_show)->execute(true, "CSV Imported!", "Profile Active", active_profile_workspace.profile_name);
+              id(publish_selected_profile_csv).execute();
+            } else {
+              ESP_LOGE("CSV Import", "Profile rejected! Incompatible data streams or parsing validation failure.");
+              id(display_show)->execute(false, "Import Failed", "Corrupted CSV", "Rejected");
+            }
+            
+            
 # ============================================================
 
 esphome:
@@ -208,8 +172,12 @@ esphome:
     - <cctype>
     - ir-common-kuo/appkit/ir_profile.h
 
-
-  build_flags: "-Wl,--require-defined=cJSON_Parse"
+  build_flags: 
+    - "-Wl,--require-defined=cJSON_Parse"
+    # ============================================================
+    # POWER USERS: Uncomment the line below to activate extra buttons!
+    # - "-DENABLE_EXTRA_BUTTONS"
+    # ============================================================
   
   project:
     name: xgimi.titan-noir-esp32-ir-kuo
@@ -217,12 +185,20 @@ esphome:
 
   on_boot:
 
+    - priority: -100.0
+      then:
+        - lambda: !lambda |-
+            extern void start_custom_web_server(); 
+            start_custom_web_server(); 
+
+
     - priority: -50
       then:
+  
         - binary_sensor.template.publish:
             id: sniffer_status
             state: OFF
-        
+                
         - lambda: |-
             bool learned_wake_token_exists = false; // check if any bytes are not 0x00
             for (int i = 0; i < 15; i++) {
@@ -391,24 +367,12 @@ sensor:
 
     free:
       name: "Heap Free RAM"
-      web_server:
-        sorting_group_id: dxGroup
-        sorting_weight: 20
     fragmentation:
       name: "Heap Fragmentation"
-      web_server:
-        sorting_group_id: dxGroup
-        sorting_weight: 21
     block:
       name: "Max Free Heap Block"
-      web_server:
-        sorting_group_id: dxGroup
-        sorting_weight: 22
     loop_time:
       name: "Main Loop Time"
-      web_server:
-        sorting_group_id: dxGroup
-        sorting_weight: 23
 
 
 # ============================================================
@@ -416,17 +380,9 @@ sensor:
 text_sensor:
   - platform: debug
     device:
-      name: "Device Hardware Info" # Shows flash chip size, speed, mode, and ESP version
-      web_server:
-        sorting_group_id: dxGroup
-        sorting_weight: 10
-      
+      name: "Device Hardware Info" # Shows flash chip size, speed, mode, and ESP version      
     reset_reason:
       name: "Last Reset Reason"
-      web_server:
-        sorting_group_id: dxGroup
-        sorting_weight: 24
-
 
   - platform: wifi_info
     ip_address:
@@ -455,16 +411,6 @@ text_sensor:
       return {buf}; // Eliminates std::string allocations on every execution pass
 
 
-  - platform: template # Avalones ---------------
-    name: "IR Profile Selected JSON"
-    id: ir_profile_selected_json
-    icon: "mdi:code-json"
-    web_server:
-      sorting_group_id: profileGroup
-      sorting_weight: 21
-
-    update_interval: never
-
 
 # ============================================================
 binary_sensor:
@@ -472,9 +418,6 @@ binary_sensor:
     name: "XGIMI Sniffer Active Status"
     id: sniffer_status
     icon: "mdi:radar"
-    web_server:
-      sorting_group_id: settingsGroup
-      sorting_weight: 7
 
   - platform: gpio # Implement physical button for sniff
     pin:
@@ -485,9 +428,6 @@ binary_sensor:
         pullup: true
     name: "Action Button"
     id: action_button
-    web_server:
-        sorting_group_id: settingsGroup
-        sorting_weight: 14
 
     filters:
       - delayed_on_off: 25 ms
@@ -593,9 +533,6 @@ button:
     name: "token_sniff"
     id: token_sniff
     icon: "mdi:bluetooth-audio"
-    web_server:
-        sorting_group_id: settingsGroup
-        sorting_weight: 9
     on_press:
       then:
         - script.execute: sniffing_sequence
@@ -605,9 +542,6 @@ button:
     name: "token_clear"
     id: token_clear
     icon: "mdi:bluetooth-audio"
-    web_server:
-        sorting_group_id: settingsGroup
-        sorting_weight: 10
     on_press:
       then:
         - script.execute:
@@ -625,9 +559,6 @@ button:
     name: "token_recall"
     id: token_recall
     icon: "mdi:bluetooth"
-    web_server:
-        sorting_group_id: settingsGroup
-        sorting_weight: 11
     on_press:
       then:
         - script.execute: execute_token_recall_routine
@@ -1070,15 +1001,14 @@ script:
           }
 
 # ====================================
-  - id: publish_selected_profile_json
+  - id: publish_selected_profile_csv
     mode: restart
-    then:
+    then: 
       - delay: 100ms
       - lambda: |-
-          std::string json_out = generate_minified_profile_json(id(selected_profile_slot));
-          if (!json_out.empty()) {
-            id(ir_profile_selected_json).publish_state(json_out);
-          }
+          // Simply log the sync event. We do not push to a text sensor 
+          // to completely protect dynamic heap memory stability.
+          ESP_LOGD("csv_sync", "Profile dropdown select synchronized with index slot %d", id(selected_profile_slot));
 
 
 #=================================================================
@@ -1087,10 +1017,6 @@ select:
     name: "IR Profile to Export"
     id: ir_profile_slot_selector
     icon: "mdi:format-list-numbered"
-    web_server:
-      sorting_group_id: profileGroup
-      sorting_weight: 22
-
     optimistic: true
     restore_value: yes
     options:
@@ -1136,7 +1062,7 @@ select:
                        
               id(ir_active_profile_ts).publish_state(change_buf);
             }
-        - script.execute: publish_selected_profile_json
+        - script.execute: publish_selected_profile_csv
 #=================================================================
 
 switch:
@@ -1144,10 +1070,6 @@ switch:
     name: "Xgimi Token Sniffer"
     id: xgimi_sniffer_switch
     icon: mdi:radar
-    web_server:
-      sorting_group_id: settingsGroup
-      sorting_weight: 8
-      
       
     lambda: |-
       return id(sniffer_status).state;
@@ -1290,5 +1212,5 @@ interval:
             lambda: 'return !remote_profiles.empty() && id(selectRepopulated);'
           then:
             - logger.log: "Profiles fully loaded (factory + custom); publishing selected JSON."
-            - script.execute: publish_selected_profile_json
+            - script.execute: publish_selected_profile_csv
             - component.suspend: publish_when_profiles_ready

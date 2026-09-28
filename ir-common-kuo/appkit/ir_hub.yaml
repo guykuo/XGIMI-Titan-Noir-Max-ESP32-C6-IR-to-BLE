@@ -327,7 +327,7 @@ globals:
     restore_value: no   
 
   - id: session_captured_codes #command codes are stored here during learning
-    type: std::array<uint32_t, 27>
+    type: std::array<uint32_t, 32> #27 + 5 when ENABLE_EXTRA_BUTTONS
     initial_value: '{0}'
     restore_value: no
   - id: learn_current_button_idx
@@ -353,19 +353,15 @@ script:
       - lambda: |-
           ESP_LOGI("ir_hub", "Safe flash window open. Hydrating profiles via framework preference registry...");
           
-          // 1. Call the function ALREADY in your ir_profile.h header file
           load_saved_flash_profiles();
-          
-          // 2. Safely map text targets to true ESPHome component button pointer addresses
           link_hardware_buttons();
-          
-          // 3. Fire background layout and profile execution engines
+                    
           id(setup_ir_receiver_for_current_profile).execute();
-          id(ir_receiver_mode) = 1; // Set to action mode
+          id(ir_receiver_mode) = 1; // Set back to Action Mode
           
           id(display_token_remote_profile).execute();
-          
           ESP_LOGI("ir_hub", "Local memory profiles fully active and standalone-ready.");
+
 
   
   # ====================================================================

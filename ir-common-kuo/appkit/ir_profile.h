@@ -9,6 +9,10 @@
 #include <cctype>
 #include <sstream>
 #include <cstdint>
+#include "esp_heap_caps.h"
+#include "esp_system.h"
+#include "esp_log.h"
+
 
 // --- HUMAN-READABLE PROTOCOL FOOTPRINTS ---
 #define PROTO_UNKNOWN   0
@@ -40,11 +44,6 @@ inline const char* to_string(uint8_t proto_id) {
   }
 }
 
-// FIXED: Converted definition into a minified inline function body to instantly resolve the linker mismatch
-inline bool import_profiles_from_json(const std::string& json_data) {
-    ESP_LOGE("JSON Import", "Legacy JSON importer is deactivated to protect memory pools.");
-    return false;
-}
 
 // ====================================================================
 // SECRETS.YAML BINARY INJECTION PARSER (DO NOT CHANGE)
@@ -116,7 +115,6 @@ struct IRProfile {
   std::vector<std::pair<uint32_t, IRCommand>> cmd_codes; 
 };
 
-
 // --- THE SINGLE RUNTIME RAM WORKSPACE ---
 // This is the ONLY profile container that lives permanently on your workbench RAM
 inline IRProfile active_profile_workspace;
@@ -126,8 +124,11 @@ inline size_t factory_count = 13;
 inline constexpr uint16_t MAX_LEARNED_PROFILES = 5;
 inline bool flash_hydration_complete = false;
 
-inline constexpr uint32_t CURRENT_STRUCT_VERSION = 57; // <===== current version factory struct
-
+#ifdef ENABLE_EXTRA_BUTTONS
+  inline constexpr uint32_t CURRENT_STRUCT_VERSION = 59; // Power user footprint track
+#else
+  inline constexpr uint32_t CURRENT_STRUCT_VERSION = 62; // <-- STEPPED TO 62 FOR THE 80-KEY CEILING
+#endif
 
 // ====================================================================
 // COMPILER BRIDGING STRUCTURE FOR LEGACY YAMLS
@@ -148,7 +149,6 @@ struct RemoteProfilesBridge {
 inline RemoteProfilesBridge remote_profiles;
 // ====================================================================
 
-
 // ====================================================================
 // 2. THE THREE-FIELD FLASH PERSISTENCE LAYER (NVS REGISTER SETS)
 // ====================================================================
@@ -167,7 +167,7 @@ struct FlashStoredProfile {
   uint32_t cmd_clear_token_arm;  
   uint32_t cmd_clear_token_fire; 
   uint16_t total_keys;
-  FlashStoredKey keys[55];       // Centralized configuration ceiling cap
+  FlashStoredKey keys[80];       // Centralized configuration ceiling cap
 };
 
 // --- SINGLE SOURCE OF TRUTH FOR BUTTON NAMES ---
@@ -177,6 +177,12 @@ inline constexpr const char* learn_button_names[] = {
   "focus_manual", "focus_auto", "shortcut_1", "shortcut_2", "shortcut_3", "shortcut_4",
   "volume_up", "volume_down", "mute", "token_sniff", "token_clear", "token_recall",
   "BT_start_pair", "BT_clear_pair"
+  
+  // Power User Toggle Boundary Gates
+  #ifdef ENABLE_EXTRA_BUTTONS
+  ,"custom_macro_1", "custom_macro_2", "custom_macro_3", "custom_macro_4", "custom_macro_5"
+  #endif
+
 };
 
 inline constexpr size_t TOTAL_LEARN_BUTTONS = sizeof(learn_button_names) / sizeof(learn_button_names[0]);
@@ -234,7 +240,7 @@ inline void commit_database_to_flash(uint16_t target_slot) {
 
   uint16_t k_idx = 0;
   for (const auto& kv_pair : active_profile_workspace.cmd_codes) {
-    if (k_idx >= 55) break; 
+    if (k_idx >= 80) break; // increased to 80
     flash_p.keys[k_idx].hex_code = kv_pair.first;
     std::strncpy(flash_p.keys[k_idx].target_button_id, kv_pair.second.name, sizeof(flash_p.keys[k_idx].target_button_id) - 1);
     std::strncpy(flash_p.keys[k_idx].button_name, kv_pair.second.button_name, sizeof(flash_p.keys[k_idx].button_name) - 1);
@@ -245,14 +251,537 @@ inline void commit_database_to_flash(uint16_t target_slot) {
   esphome::global_preferences->sync();
 }
 
+// Flash memory optimized layout item (12 bytes total per row)
+struct FlashCommandRow {
+  uint32_t hex_code;
+  const char* name;         // 4-byte flash address pointer
+  const char* button_name;  // 4-byte flash address pointer
+};
+
+// --- PROGMEM FACTORY DATA STORAGE TABLES (SINGLE-ITEM-PER-LINE) ---
+
+const FlashCommandRow AWOL_COMMANDS[] PROGMEM = {
+  { 0xA7, "power_on",       "power on" },
+  { 0x67, "power_off",      "power off" },
+  { 0x24, "cursor_left",    "left arrow" },
+  { 0xA4, "cursor_right",   "right arrow" },
+  { 0x64, "cursor_up",      "up arrow" },
+  { 0xE4, "cursor_down",    "down arrow" },
+  { 0x14, "cursor_enter",   "ok" },
+  { 0x5A, "settings_menu",  "menu" },
+  { 0x3A, "back",           "back" },
+  { 0xDA, "home",           "home" },
+  { 0x1B, "game_menu",      "profile" },
+  { 0x48, "input",          "input" },
+  { 0xCA, "picture",        "picture mode" },
+  { 0x9B, "focus_manual",   "focus" },
+  { 0x47, "focus_auto",     "live guide" },
+  { 0xBB, "shortcut_1",     "Prime Video" },
+  { 0x3B, "shortcut_2",     "Netflix" },
+  { 0x7B, "shortcut_3",     "Disney" },
+  { 0xDB, "shortcut_4",     "YouTube" },
+  { 0x50, "volume_up",      "volume up" },
+  { 0xD0, "volume_down",    "volume down" },
+  { 0xD8, "mute",           "mute" },
+  { 0xE7, "token_sniff",    "HDMI 1" },
+  { 0x17, "token_clear",    "HDMI 2" },
+  { 0x97, "token_recall",   "HDMI 3" },
+  { 0x07, "BT_start_pair",  "Back + Down" },
+  { 0xC7, "BT_clear_pair",  "Back + Home" }
+};
+
+const FlashCommandRow BENQ_COMMANDS[] PROGMEM = {
+  { 0xB04F, "power_on",       "power on" },
+  { 0xB14E, "power_off",      "power off" },
+  { 0xF40B, "cursor_up",      "up arrow" },
+  { 0xF30C, "cursor_down",    "down arrow" },
+  { 0xF20D, "cursor_left",    "left arrow" },
+  { 0xF10E, "cursor_right",   "right arrow" },
+  { 0xEA15, "cursor_enter",   "ok" },
+  { 0xF00F, "settings_menu",  "menu" },
+  { 0x7A85, "back",           "back" },
+  { 0x8778, "home",           "default" },
+  { 0x41BE, "game_menu",      "cinema master" },
+  { 0xFB04, "input",          "source" },
+  { 0xEF10, "picture",        "picure mode" },
+  { 0xEC13, "focus_manual",   "aspect" },
+  { 0xF708, "focus_auto",     "auto" },
+  { 0xE916, "shortcut_1",     "brightness" },
+  { 0xEE11, "shortcut_2",     "contrast" },
+  { 0x837C, "shortcut_3",     "dynamic iris" },
+  { 0xCF30, "shortcut_4",     "light mode" },
+  { 0xA15E, "volume_up",      "gamma" },
+  { 0x817E, "volume_down",    "sharp" },
+  { 0xF807, "mute",           "eco blank" },
+  { 0xC33C, "token_sniff",    "HDR" },
+  { 0x629D, "token_clear",    "invert" },
+  { 0x639C, "token_recall",   "3D" },
+  { 0xA05F, "BT_start_pair",  "color temp" },
+  { 0xA45B, "BT_clear_pair",  "color manage" },
+  { 0x6B94, "home",           "test pattern" }
+};
+
+const FlashCommandRow EPSON_COMMANDS[] PROGMEM = {
+  { 0x6F90, "power_on",       "Power On" },
+  { 0x6E91, "power_off",      "Power Off" },
+  { 0x4FB0, "cursor_up",      "up arrow" },
+  { 0x4DB2, "cursor_down",    "down arrow" },
+  { 0x4CB3, "cursor_left",    "left arrow" },
+  { 0x4EB1, "cursor_right",   "right arrow" },
+  { 0x7A85, "cursor_enter",   "enter" },
+  { 0x659A, "settings_menu",  "menu" },
+  { 0x7B84, "back",           "ESC" },
+  { 0xC639, "home",           "default" },
+  { 0x708F, "game_menu",      "color mode" },
+  { 0xA956, "input",          "HDMI link" },
+  { 0x55AA, "picture",        "image enhance" },
+  { 0xA25D, "focus_manual",   "skip back" },
+  { 0x728D, "focus_manual",   "lens NH" },
+  { 0xA45B, "focus_auto",     "pause" },
+  { 0xA55A, "shortcut_1",     "reverse" },
+  { 0xA15E, "shortcut_2",     "play" },
+  { 0xA35C, "shortcut_3",     "FF" },
+  { 0xA05F, "shortcut_4",     "skip forward" },
+  { 0x8C73, "shortcut_1",     "HDMI 1" },
+  { 0x8877, "shortcut_2",     "HDMI 2" },
+  { 0x7D82, "shortcut_3",     "P-in-P NH" },
+  { 0x629D, "shortcut_4",     "PC NH" },
+  { 0x6798, "volume_up",      "volume up" },
+  { 0x6699, "volume_down",    "volume down" },
+  { 0x52AD, "mute",           "mute" },
+  { 0x7C83, "token_sniff",    "frame interp" },
+  { 0xC23D, "token_clear",    "RGBCMY" },
+  { 0x6996, "token_recall",   "pattern" },
+  { 0xC43B, "BT_start_pair",  "3D format" },
+  { 0x758A, "BT_clear_pair",  "Aspect" },
+  { 0x6A95, "home",           "Home" },
+  { 0x8B74, "home",           "input LAN" },
+  { 0x609F, "home",           "user" },
+  { 0x9F60, "home",           "link menu" },
+  { 0x6C93, "home",           "blank NH" },
+  { 0x748B, "home",           "memory NH" },
+  { 0x51AE, "home",           "lens1 NH" },
+  { 0x50AF, "home",           "lens2 NH" }
+};
+
+const FlashCommandRow HISENSE_COMMANDS[] PROGMEM = {
+  { 0xF708, "power_on",       "power on" },
+  { 0x8E71, "power_on",       "power on" },
+  { 0xEF10, "power_off",      "power off" },
+  { 0x8D72, "power_off",      "0" },
+  { 0xA956, "cursor_up",      "arrow up" },
+  { 0xA857, "cursor_down",    "arrow down" },
+  { 0xA758, "cursor_left",    "arrow left" },
+  { 0xA659, "cursor_right",   "arrow right" },
+  { 0xA55A, "cursor_enter",   "select" },
+  { 0xFB04, "back",           "back" },
+  { 0xBC43, "home",           "home" },
+  { 0xF40B, "input",          "input" },
+  { 0xB54A, "settings_menu",  "menu" },
+  { 0x718E, "settings_menu",  "menu" },
+  { 0x35CA, "game_menu",      "apps" },
+  { 0xFF00, "picture",        "channel up" },
+  { 0xE817, "focus_manual",   "7" },
+  { 0xE718, "focus_auto",     "8" },
+  { 0xAB54, "shortcut_1",     "yellow" },
+  { 0xAA55, "shortcut_2",     "blue" },
+  { 0xAD52, "shortcut_3",     "red" },
+  { 0xAC53, "shortcut_4",     "green" },
+  { 0xFD02, "volume_up",      "volume up" },
+  { 0xFC03, "volume_down",    "volume down" },
+  { 0xF609, "mute",           "mute" },
+  { 0xEB14, "token_sniff",    "4" },
+  { 0xEA15, "token_clear",    "5" },
+  { 0xE916, "token_recall",   "6" },
+  { 0xB847, "BT_start_pair",  "Prime Video" },
+  { 0xB649, "BT_clear_pair",  "Youtube" }
+};
+
+const FlashCommandRow JVC_VCR_COMMANDS[] PROGMEM = {
+  { 0xC2D0, "power_on",       "power on" },
+  { 0xC2B8, "power_on",       "power on" },
+  { 0xC258, "power_off",      "power off" },
+  { 0xC2E8, "power_off",      "audio monitor" },
+  { 0xC2CC, "power_off",      "0" },
+  { 0xC2C3, "back",           "review" },
+  { 0xC241, "cursor_up",      "cursor up" },
+  { 0xC298, "cursor_up",      "cursor up H" },
+  { 0xC218, "cursor_down",    "cursor down" },
+  { 0xC261, "cursor_down",    "cursor down H" },
+  { 0xC2A8, "cursor_left",    "cursor left" },
+  { 0xC228, "cursor_right",   "cursor right H" },
+  { 0xC23C, "cursor_enter",   "OK" },
+  { 0xC2EC, "settings_menu",  "menu" },
+  { 0xC207, "settings_menu",  "memu" },
+  { 0xC26C, "home",           "cancel" },
+  { 0xC230, "game_menu",      "game menu" },
+  { 0xC2C8, "input",          "tv/vcr" },
+  { 0xC260, "picture",        "fast forward" },
+  { 0xC214, "focus_manual",   "8" },
+  { 0xC2E4, "focus_auto",     "7" },
+  { 0xC283, "shortcut_1",     "prog" },
+  { 0xC2BC, "shortcut_2",     "prog check" },
+  { 0xC28C, "shortcut_3",     "SP/EP" },
+  { 0xC269, "shortcut_4",     "skip search" },
+  { 0xC213, "volume_up",      "start down" },
+  { 0xC293, "volume_down",    "start up" },
+  { 0xC2B0, "mute",           "pause" },
+  { 0xC224, "token_sniff",    "4" },
+  { 0xC2A4, "token_clear",    "5" },
+  { 0xC264, "token_recall",   "6" },
+  { 0xC284, "BT_start_pair",  "1" },
+  { 0xC244, "BT_clear_pair",  "2" }
+};
+
+const FlashCommandRow JVC_PROJ_A_COMMANDS[] PROGMEM = {
+  { 0xA0,   "power_on",       "power on" },
+  { 0x60,   "power_off",      "power off" },
+  { 0x80,   "cursor_up",      "up arrow" },
+  { 0x40,   "cursor_down",    "down arrow" },
+  { 0x6C,   "cursor_left",    "left arrow" },
+  { 0x2C,   "cursor_right",   "right arrow" },
+  { 0xF4,   "cursor_enter",   "enter/ok" },
+  { 0x74,   "settings_menu",  "menu" },
+  { 0xC0,   "back",           "exit" },
+  { 0xB8,   "home",           "hide" },
+  { 0xD6,   "game_menu",      "dynamic" },
+  { 0xCE,   "game_menu",      "advanced menu" },
+  { 0x0E,   "input",          "input HDMI 1" },
+  { 0x8E,   "picture",        "input HDMI 2" },
+  { 0x2F,   "picture",        "picture mode" },
+  { 0xCC,   "focus_manual",   "focus -" },
+  { 0x8C,   "focus_auto",     "focus +" },
+  { 0x11,   "focus_manual",   "color profile" },
+  { 0xAF,   "focus_auto",     "gamma settings" },
+  { 0x36,   "shortcut_1",     "user 1" },
+  { 0xB6,   "shortcut_2",     "user 2" },
+  { 0x76,   "shortcut_3",     "user 3" },
+  { 0xEE,   "shortcut_4",     "aspect" },
+  { 0x1B,   "shortcut_1",     "mode 1" },
+  { 0x9B,   "shortcut_2",     "mode 2" },
+  { 0x5B,   "shortcut_3",     "mode 3" },
+  { 0x2E,   "shortcut_4",     "info" },
+  { 0x5E, "volume_up",      "brightness up" },
+  { 0xDE, "volume_down",    "brightness down" },
+  { 0x6E, "mute",           "color temp" },
+  { 0x04, "volume_up",      "lens AP" },
+  { 0x0C, "volume_down",    "lens control_" },
+  { 0xA3, "mute",           "anamorphic" },
+  { 0x16, "token_sniff",    "cinema" },
+  { 0x96, "token_sniff",    "cinema" },
+  { 0x56, "token_clear",    "natural" },
+  { 0xAE, "token_recall",   "gamma" },
+  { 0xB7, "token_recall",   "HDR" },
+  { 0xFE, "BT_start_pair",  "sharp down" },
+  { 0x9A, "BT_clear_pair",  "sharp up" },
+  { 0x51, "BT_start_pair",  "CMD" },
+  { 0x0F, "BT_clear_pair",  "mpc" },
+  { 0x3E, "home",           "color up" },
+  { 0xBE, "home",           "color down" },
+  { 0x1E, "home",           "contast up" },
+  { 0x9E, "home",           "contrast down" },
+  { 0x36, "home",           "test" },
+  { 0xAC, "home",           "zoom T" },
+  { 0xEC, "home",           "zoom W" },
+  { 0x6B, "home",           "3D format" },
+  { 0x4E, "home",           "pic adjust" }
+};
+
+const FlashCommandRow JVC_PROJ_B_COMMANDS[] PROGMEM = {
+  { 0xA0,   "power_on",       "power on" },
+  { 0x60,   "power_off",      "power off" },
+  { 0x80,   "cursor_up",      "up arrow" },
+  { 0x40,   "cursor_down",    "down arrow" },
+  { 0x6C,   "cursor_left",    "left arrow" },
+  { 0x2C,   "cursor_right",   "right arrow" },
+  { 0xF4,   "cursor_enter",   "enter" },
+  { 0x74,   "settings_menu",  "menu" },
+  { 0xC0,   "back",           "exit" },
+  { 0xB8,   "home",           "hide" },
+  { 0xD6,   "game_menu",      "dynamic" },
+  { 0xCE,   "game_menu",      "advanced menu_" },
+  { 0x0E,   "input",          "input HDMI 1" },
+  { 0x8E,   "picture",        "input HDMI 2" },
+  { 0x2F,   "picture",        "picture mode_" },
+  { 0xCC,   "focus_manual",   "focus -" },
+  { 0x8C,   "focus_auto",     "focus +" },
+  { 0x11,   "focus_manual",   "color profile" },
+  { 0xAF,   "focus_auto",     "gamma settings" },
+  { 0x36,   "shortcut_1",     "user 1" },
+  { 0xB6,   "shortcut_2",     "user 2" },
+  { 0x76,   "shortcut_3",     "user 3" },
+  { 0xEE,   "shortcut_4",     "aspect" },
+  { 0x1B,   "shortcut_1",     "mode 1_" },
+  { 0x9B,   "shortcut_2",     "mode 2_" },
+  { 0x5B,   "shortcut_3",     "mode 3_" },
+  { 0x2E,   "shortcut_4",     "info" },
+  { 0x5E, "volume_up",      "brightness up" },
+  { 0xDE, "volume_down",    "brightness down" },
+  { 0x6E, "mute",           "color temp" },
+  { 0x04, "volume_up",      "lens AP_" },
+  { 0x0C, "volume_down",    "lens control_" },
+  { 0xA3, "mute",           "anamorphic_" },
+  { 0x16, "token_sniff",    "cinema" },
+  { 0x96, "token_sniff",    "cinema" },
+  { 0x56, "token_clear",    "natural" },
+  { 0xAE, "token_recall",   "gamma" },
+  { 0xB7, "token_recall",   "HDR" },
+  { 0xFE, "BT_start_pair",  "sharp down" },
+  { 0x9A, "BT_clear_pair",  "sharp up" },
+  { 0x51, "BT_start_pair",  "CMD" },
+  { 0x0F, "BT_clear_pair",  "mpc" },
+  { 0x3E, "home",           "color up" },
+  { 0xBE, "home",           "color down" },
+  { 0x1E, "home",           "contast up" },
+  { 0x9E, "home",           "contrast down" },
+  { 0x36, "home",           "test" },
+  { 0xAC, "home",           "zoom T" },
+  { 0xEC, "home",           "zoom W" },
+  { 0x6B, "home",           "3D format" },
+  { 0x4E, "home",           "pic adjust" }
+};
+
+const FlashCommandRow LG_COMMANDS[] PROGMEM = {
+  { 0xF708, "power_on",       "power toggle" },
+  { 0x23DC, "power_on",       "Discrete Power On" },
+  { 0x2CC3, "power_off",      "Discrete Power Off" },
+  { 0xEF10, "power_off",      "0" },
+  { 0xD728, "back",           "Return" },
+  { 0xF807, "cursor_left",    "cursor left" },
+  { 0xF906, "cursor_right",   "cursor right" },
+  { 0xBF40, "cursor_up",      "cursor up" },
+  { 0xBE41, "cursor_down",    "cursor down" },
+  { 0xBB44, "cursor_enter",   "select" },
+  { 0xBC43, "settings_menu",  "menu" },
+  { 0x837C, "home",           "home" },
+  { 0xF40B, "input",          "input toggle" },
+  { 0xFE01, "game_menu",      "channel down" },
+  { 0xB24D, "picture",        "picture mode" },
+  { 0x8679, "focus_manual",   "aspect ratio" },
+  { 0x4FB0, "focus_auto",     "play" },
+  { 0x8d72, "shortcut_1",     "red" },
+  { 0x8e71, "shortcut_2",     "green" },
+  { 0x9C63, "shortcut_3",     "yellow" },
+  { 0x9E61, "shortcut_4",     "blue" },
+  { 0xFD02, "volume_up",      "volume up" },
+  { 0xFC03, "volume_down",    "volume down" },
+  { 0xF609, "mute",           "mute" },
+  { 0xEB14, "token_sniff",    "4" },
+  { 0xEA15, "token_clear",    "5" },
+  { 0xE916, "token_recall",   "6" },
+  { 0xA956, "BT_start_pair",  "Netflix" },
+  { 0xA35C, "BT_clear_pair",  "Prime video" },
+  { 0xEE11, "home",           "1" },
+  { 0xED12, "home",           "2" },
+  { 0xEC13, "home",           "3" },
+  { 0xE817, "home",           "7" },
+  { 0xE718, "home",           "8" },
+  { 0xE619, "home",           "9" },
+  { 0x54AB, "home",           "ch_list" },
+  { 0xB34C, "home",           "-" },
+  { 0xE51A, "home",           "pre-ch" },
+  { 0xF10E, "home",           "sleep" },
+  { 0xF30C, "home",           "portal" },
+  { 0xC639, "home",           "cc" }
+};
+
+const FlashCommandRow OPTOMA_COMMANDS[] PROGMEM = {
+  { 0xFD02, "power_on",       "power on" },
+  { 0xD12E, "power_off",      "power off" },
+  { 0xEF10, "cursor_left",    "left arrow" },
+  { 0xEC12, "cursor_right",   "right arrow" },
+  { 0xEE11, "cursor_up",      "up arrow" },
+  { 0xEB14, "cursor_down",    "down arrow" },
+  { 0xF00F, "cursor_enter",   "ok" },
+  { 0xF10E, "settings_menu",  "menu" },
+  { 0x9C63, "back",           "sleep" },
+  { 0xE916, "input",          "input HDMI 1" },
+  { 0xCF30, "game_menu",      "input HDMI 2" },
+  { 0xFA05, "picture",        "mode" },
+  { 0x9B64, "focus_manual",   "aspect" },
+  { 0xBB44, "focus_auto",     "DB" },
+  { 0xE41B, "shortcut_1",     "input VGA 1" },
+  { 0xE11E, "shortcut_2",     "input VGA 2" },
+  { 0xE31C, "shortcut_3",     "input video" },
+  { 0xE817, "shortcut_4",     "input YPbPr" },
+  { 0x7689, "volume_up",      "3D" },
+  { 0xF807, "volume_down",    "keystone" },
+  { 0xAD52, "mute",           "mute" },
+  { 0xC936, "token_sniff",    "user 1" },
+  { 0x9A65, "token_clear",    "user 2" },
+  { 0x9966, "token_recall",   "user 3" },
+  { 0xBE41, "BT_start_pair",  "brightness" },
+  { 0xBD42, "BT_clear_pair",  "contrast" }
+};
+
+const FlashCommandRow SONY_PROJ_COMMANDS[] PROGMEM = {
+  { 0x03A2A, "power_on",      "Power On" },
+  { 0x07A2A, "power_off",     "Power Off" },
+  { 0x0542A, "power_on",      "Power Toggle" },
+  { 0x0562A, "cursor_up",     "up arrow" },
+  { 0x0362A, "cursor_down",   "down arrow" },
+  { 0x0162A, "cursor_left",   "left arrow" },
+  { 0x0662A, "cursor_right",  "right arrow" },
+  { 0x02D2A, "cursor_enter",  "OK / Enter" },
+  { 0x04A2A, "settings_menu", "Menu" },
+  { 0x06F2A, "home",          "Reset" },
+  { 0x18BE4, "back",          "Position" },
+  { 0x6AB54, "game_menu",     "Game" },
+  { 0xEAB54, "picture",       "Photo" },
+  { 0x0752A, "input",         "Input" },
+  { 0x26B54, "focus_manual",  "Focus" },
+  { 0x46B54, "focus_auto",    "Zoom" },
+  { 0x76B54, "shortcut_1",    "aspect ratio" },
+  { 0x0502A, "shortcut_2",    "motion flow" },
+  { 0xDCB54, "shortcut_3",    "3D" },
+  { 0xD2B54, "shortcut_4",    "color Space" },
+  { 0x00C2A, "volume_up",     "contrast" },
+  { 0x04C2A, "volume_down",   "contrast down" },
+  { 0xFAB54, "mute",          "advanced iris" },
+  { 0x9AB54, "token_sniff",   "BRT Cinema" },
+  { 0x8AB54, "token_clear",   "BRT TV" },
+  { 0x2AB54, "token_recall",  "User" },
+  { 0x07C2A, "BT_start_pair", "Brightness down" },
+  { 0x03C2A, "BT_clear_pair", "brightness up" },
+  { 0x3AB54, "home",          "color temp" },
+  { 0x0702A, "home",          "contrast enhancer" },
+  { 0xCAB54, "home",          "film 1" },
+  { 0x1AB54, "home",          "film 2" },
+  { 0x7AB54, "home",          "gamma Corr" },
+  { 0x06A2A, "home",          "input HDMI 1" },
+  { 0x01A2A, "home",          "input HDMI 2" },
+  { 0x04BE4, "home",          "position 1.85" },
+  { 0x84BE4, "home",          "position 2.35" },
+  { 0xC4BE4, "home",          "position Custom 2" },
+  { 0x24BE4, "home",          "position Custom 3" },
+  { 0x32B54, "home",          "reality creation" },
+  { 0xAAB54, "home",          "REF" },
+  { 0x0622A, "home",          "sharpness down" },
+  { 0x0222A, "home",          "sharpness up" },
+  { 0xC6B54, "home",          "shift" },
+  { 0x4AB54, "home",          "TV" },
+  { 0x42BE4, "home",          "wide mode full" },
+  { 0xFCBE4, "home",          "wide mode full1" },
+  { 0x02BE4, "home",          "wide mode full2" },
+  { 0x82BE4, "home",          "wide mode normal" },
+  { 0x7CBE4, "home",          "wide mode WZoom" },
+  { 0xC2BE4, "home",          "wide mode zoom" },
+  { 0x22BE4, "home",          "wide mode anamorphic zoom" }
+};
+
+const FlashCommandRow SONY_XBR_COMMANDS[] PROGMEM = {
+  { 0x0750, "power_on",       "power on" },
+  { 0x0A90, "power_on",       "power toggle" },
+  { 0x0F50, "power_off",      "power off" },
+  { 0x0910, "power_off",      "0" },
+  { 0x02D0, "cursor_left",    "Arrow Left" },
+  { 0x0CD0, "cursor_right",   "Arrow Right" },
+  { 0x02F0, "cursor_up",      "Arrow Up" },
+  { 0x0AF0, "cursor_down",    "Arrow Down" },
+  { 0x0A70, "cursor_enter",   "Arrow Select" },
+  { 0x6923, "settings_menu",  "Action Menu" },
+  { 0x62E9, "back",           "Back" },
+  { 0x0070, "home",           "Home" },
+  { 0x3123, "game_menu",      "Google Play" },
+  { 0x0A50, "input",          "Input" },
+  { 0x0250, "picture",        "TV" },
+  { 0x0AE9, "focus_auto",     "subtitle" },
+  { 0x0E90, "focus_manual",   "audio" },
+  { 0x72E9, "shortcut_1",     "yellow" },
+  { 0x12E9, "shortcut_2",     "blue" },
+  { 0x52E9, "shortcut_3",     "red" },
+  { 0x32E9, "shortcut_4",     "green" },
+  { 0x0490, "volume_up",      "volume up" },
+  { 0x0C90, "volume_down",    "volume down" },
+  { 0x0290, "mute",           "mute" },
+  { 0x0C10, "token_sniff",    "4" },
+  { 0x0210, "token_clear",    "5" },
+  { 0x0A10, "token_recall",   "6" },
+  { 0x2CE9, "BT_start_pair",  "play" },
+  { 0x1CE9, "BT_clear_pair",  "fast forward" }
+};
+
+const FlashCommandRow TIVO_COMMANDS[] PROGMEM = {
+  { 0xE010, "power_on",       "TV power)" },
+  { 0xE011, "power_off",      "live TV" },
+  { 0xC031, "power_off",      "0" },
+  { 0xE014, "cursor_up",      "arrow up" },
+  { 0xE016, "cursor_down",    "arrow down" },
+  { 0xE017, "cursor_left",    "arrow left" },
+  { 0xE015, "cursor_right",   "arrow right" },
+  { 0xE019, "cursor_enter",   "select" },
+  { 0xF00C, "settings_menu",  "tivo" },
+  { 0xF00D, "settings_menu",  "tivo (myHarmony version)" },
+  { 0xB044, "back",           "zoom" },
+  { 0xE01E, "home",           "channel up" },
+  { 0xC036, "game_menu",      "guide" },
+  { 0xC034, "input",          "input" },
+  { 0xE013, "picture",        "into" },
+  { 0xD02E, "focus_auto",     "7" },
+  { 0xD02F, "focus_manual",   "8" },
+  { 0x9060, "shortcut_1",     "A yellow" },
+  { 0x9061, "shortcut_2",     "B blue" },
+  { 0x9062, "shortcut_3",     "C red" },
+  { 0x9063, "shortcut_4",     "D green" },
+  { 0xE01C, "volume_up",      "volume up" },
+  { 0xE01D, "volume_down",    "volume down" },
+  { 0xE01B, "mute",           "mute" },
+  { 0xD02B, "token_sniff",    "4" },
+  { 0xD02C, "token_clear",    "5" },
+  { 0xD02D, "token_recall",   "6" },
+  { 0xC033, "BT_start_pair",  "enter" },
+  { 0xC032, "BT_clear_pair",  "clear" }
+};
+
+const FlashCommandRow PANASONIC_COMMANDS[] PROGMEM = {
+  { 0x1003A3B, "power_on",    "on" },
+  { 0x100BCBD, "power_off",   "off" },
+  { 0x1007273, "cursor_left", "left arrow" },
+  { 0x100F2F3, "cursor_right","right arrow" },
+  { 0x1005253, "cursor_up",    "up arrow" },
+  { 0x100D2D3, "cursor_down",  "down arrow" },
+  { 0x1009293, "cursor_enter", "OK" },
+  { 0x1004A4B, "settings_menu","menu" },
+  { 0x1002B2A, "back",         "return" },
+  { 0x1009C9D, "home",         "info" },
+  { 0x10090F1, "game_menu",    "apps" },
+  { 0x100A0A1, "input",        "AV input" },
+  { 0x1000B0A, "picture",      "picture mode" },
+  { 0x100C2C3, "focus_manual", "focus +" },
+  { 0x100E2E3, "focus_auto",   "focus -" },
+  { 0x1000E0F, "shortcut_1",   "red" },
+  { 0x1008E8F, "shortcut_2",   "green" },
+  { 0x1004E4F, "shortcut_3",   "yellow" },
+  { 0x100CECF, "shortcut_4",   "blue" },
+  { 0x1000405, "home",         "volume +" },
+  { 0x1008485, "home",         "volume -" },
+  { 0x1004C4D, "home",         "mute" },
+  { 0x100A8A9, "token_sniff",  "4" },
+  { 0x1002829, "token_clear",  "5" },
+  { 0x100C8C9, "token_recall", "6" },
+  { 0x1008889, "BT_start_pair","2" },
+  { 0x1004849, "BT_clear_pair","3" },
+  { 0x1009899, "home",         "0" },
+  { 0x1000809, "home",         "1" },
+  { 0x1006869, "home",         "7" },
+  { 0x100E8E9, "home",         "8" },
+  { 0x1001819, "home",         "9" },
+  { 0x1002223, "home",         "HDMI 1" },
+  { 0x100A2A3, "home",         "HDMI 2" },
+  { 0x1006263, "home",         "computer" }
+};
+
 // THE UNIFIED ON-DEMAND DYNAMIC HYDRATION ENGINE
 inline void load_profile_to_workspace(int idx) {
   active_profile_workspace.cmd_codes.clear();
   int factory = static_cast<int>(factory_count);
 
   if (idx < factory) {
+    const FlashCommandRow* flash_array = nullptr;
+    size_t array_size = 0;
+
     // -----------------------------------------------------------
-    // FACTORY LAYOUT INDEX 0: MAPPING FOR THE AWOL PROJECTOR
+    // EVALUATE PROFILE METADATA & SELECT TARGET PROGMEM MATRIX
     // -----------------------------------------------------------
     if (idx == 0) {
         active_profile_workspace.profile_name = "AWOL Projector";
@@ -260,619 +789,145 @@ inline void load_profile_to_workspace(int idx) {
         active_profile_workspace.device_address = 0x7300;
         active_profile_workspace.cmd_clear_token_arm = 0x17;
         active_profile_workspace.cmd_clear_token_fire = 0x14;
-
-        // Syntax: add_cmd( Hex Code, Visible Xgimi Token, Hidden Remote Comment );
-        add_cmd( 0xA7, "power_on",      "power on" );
-        add_cmd( 0x67, "power_off",     "power off" );
-        add_cmd( 0x24, "cursor_left",   "left arrow" );
-        add_cmd( 0xA4, "cursor_right",  "right arrow" );
-        add_cmd( 0x64, "cursor_up",     "up arrow" );
-        add_cmd( 0xE4, "cursor_down",   "down arrow" );
-        add_cmd( 0x14, "cursor_enter",  "ok" );
-        add_cmd( 0x5A, "settings_menu", "menu" );
-        add_cmd( 0x3A, "back",          "back" );
-        add_cmd( 0xDA, "home",          "home" );
-        add_cmd( 0x1B, "game_menu",     "profile" );
-        add_cmd( 0x48, "input",         "input" );
-        add_cmd( 0xCA, "picture",       "picture mode" );
-        add_cmd( 0x9B, "focus_manual",  "focus" );
-        add_cmd( 0x47, "focus_auto",    "live guide" );
-        add_cmd( 0xBB, "shortcut_1",    "Prime Video" );
-        add_cmd( 0x3B, "shortcut_2",    "Netflix" );
-        add_cmd( 0x7B, "shortcut_3",    "Disney" );
-        add_cmd( 0xDB, "shortcut_4",    "YouTube" );
-        add_cmd( 0x50, "volume_up",     "volume up" );
-        add_cmd( 0xD0, "volume_down",   "volume down" );
-        add_cmd( 0xD8, "mute",          "mute" );
-        add_cmd( 0xE7, "token_sniff",   "HDMI 1" );
-        add_cmd( 0x17, "token_clear",   "HDMI 2" );
-        add_cmd( 0x97, "token_recall",  "HDMI 3" );
-        add_cmd( 0x07, "BT_start_pair", "Back + Down" );
-        add_cmd( 0xC7, "BT_clear_pair", "Back + Home" );
+        flash_array = AWOL_COMMANDS;
+        array_size = sizeof(AWOL_COMMANDS) / sizeof(FlashCommandRow);
     }
-    // -----------------------------------------------------------
-    // FACTORY LAYOUT INDEX 1: MAPPING FOR THE BENQ W5800
-    // -----------------------------------------------------------
     else if (idx == 1) { 
         active_profile_workspace.profile_name = "BenQ Projector";
         active_profile_workspace.protocol = PROTO_NEC;
         active_profile_workspace.device_address = 0x3000;
         active_profile_workspace.cmd_clear_token_arm = 0x629D;
         active_profile_workspace.cmd_clear_token_fire = 0xEA15;
-        
-        add_cmd( 0xB04F, "power_on",      "power on" );
-        add_cmd( 0xB14E, "power_off",     "power off" );
-        add_cmd( 0xF40B, "cursor_up",     "up arrow" );
-        add_cmd( 0xF30C, "cursor_down",   "down arrow" );
-        add_cmd( 0xF20D, "cursor_left",   "left arrow" );
-        add_cmd( 0xF10E, "cursor_right",  "right arrow" );
-        add_cmd( 0xEA15, "cursor_enter",  "ok" );
-        add_cmd( 0xF00F, "settings_menu", "menu" );
-        add_cmd( 0x7A85, "back",          "back" );
-        add_cmd( 0x8778, "home",          "default" );
-        add_cmd( 0x41BE, "game_menu",     "cinema master" ); 
-        add_cmd( 0xFB04, "input",         "source" );
-        add_cmd( 0xEF10, "picture",       "picure mode" );
-        add_cmd( 0xEC13, "focus_manual",  "aspect" );
-        add_cmd( 0xF708, "focus_auto",    "auto" );
-        add_cmd( 0xE916, "shortcut_1",    "brightness" );
-        add_cmd( 0xEE11, "shortcut_2",    "contrast" );
-        add_cmd( 0x837C, "shortcut_3",    "dynamic iris" );
-        add_cmd( 0xCF30, "shortcut_4",    "light mode" );
-        add_cmd( 0xA15E, "volume_up",     "gamma" );
-        add_cmd( 0x817E, "volume_down",   "sharp" );
-        add_cmd( 0xF807, "mute",          "eco blank" );
-        add_cmd( 0xC33C, "token_sniff",   "HDR" );
-        add_cmd( 0x629D, "token_clear",   "invert" );
-        add_cmd( 0x639C, "token_recall",  "3D" );
-        add_cmd( 0xA05F, "BT_start_pair", "color temp" );
-        add_cmd( 0xA45B, "BT_clear_pair", "color manage" );
-        add_cmd( 0x6B94, "home",          "test pattern" ); 
+        flash_array = BENQ_COMMANDS;
+        array_size = sizeof(BENQ_COMMANDS) / sizeof(FlashCommandRow);
     }
-        // -----------------------------------------------------------
-    // FACTORY LAYOUT INDEX 2: EPSON PRO CINEMA LS12000
-    // -----------------------------------------------------------
     else if (idx == 2) {
         active_profile_workspace.profile_name = "Epson Projector";
         active_profile_workspace.protocol = PROTO_NEC;
         active_profile_workspace.device_address = 0x5583;
         active_profile_workspace.cmd_clear_token_arm = 0xC23D;
         active_profile_workspace.cmd_clear_token_fire = 0x7A85;
-
-        add_cmd( 0x6F90, "power_on",         "Power On" );
-        add_cmd( 0x6E91, "power_off",        "Power Off" );
-        add_cmd( 0x4FB0, "cursor_up",        "up arrow" );
-        add_cmd( 0x4DB2, "cursor_down",      "down arrow" );
-        add_cmd( 0x4CB3, "cursor_left",      "left arrow" );
-        add_cmd( 0x4EB1, "cursor_right",     "right arrow" );
-        add_cmd( 0x7A85, "cursor_enter",     "enter" );
-        add_cmd( 0x659A, "settings_menu",    "menu" );
-        add_cmd( 0x7B84, "back",             "ESC" );
-        add_cmd( 0xC639, "home",             "default" );
-        add_cmd( 0x708F, "game_menu",        "color mode" );
-        add_cmd( 0xA956, "input",            "HDMI link" );
-        add_cmd( 0x55AA, "picture",          "image enhance" );
-        add_cmd( 0xA25D, "focus_manual",     "skip back" );
-        add_cmd( 0x728D, "focus_manual",     "lens NH" );
-        add_cmd( 0xA45B, "focus_auto",       "pause" );
-        add_cmd( 0xA55A, "shortcut_1",       "reverse" );
-        add_cmd( 0xA15E, "shortcut_2",       "play" );
-        add_cmd( 0xA35C, "shortcut_3",       "FF" );
-        add_cmd( 0xA05F, "shortcut_4",       "skip forward" );
-        add_cmd( 0x8C73, "shortcut_1",       "HDMI 1" );
-        add_cmd( 0x8877, "shortcut_2",       "HDMI 2" );
-        add_cmd( 0x7D82, "shortcut_3",       "P-in-P NH" );
-        add_cmd( 0x629D, "shortcut_4",       "PC NH" );
-        add_cmd( 0x6798, "volume_up",        "volume up" );
-        add_cmd( 0x6699, "volume_down",      "volume down" );
-        add_cmd( 0x52AD, "mute",             "mute" );
-        add_cmd( 0x7C83, "token_sniff",      "frame interp" );
-        add_cmd( 0xC23D, "token_clear",      "RGBCMY" );
-        add_cmd( 0x6996, "token_recall",     "pattern" );
-        add_cmd( 0xC43B, "BT_start_pair",    "3D format" );
-        add_cmd( 0x758A, "BT_clear_pair",    "Aspect" );
-        add_cmd( 0x6A95, "home",             "Home" );
-        add_cmd( 0x8B74, "home",             "input LAN" );
-        add_cmd( 0x609F, "home",             "user" );
-        add_cmd( 0x9F60, "home",             "link menu" );
-        add_cmd( 0x6C93, "home",             "blank NH" );
-        add_cmd( 0x748B, "home",             "memory NH" );
-        add_cmd( 0x51AE, "home",             "lens1 NH" );
-        add_cmd( 0x50AF, "home",             "lens2 NH" );
+        flash_array = EPSON_COMMANDS;
+        array_size = sizeof(EPSON_COMMANDS) / sizeof(FlashCommandRow);
     }
-    // -----------------------------------------------------------
-    // FACTORY LAYOUT INDEX 3: MAPPING FOR THE HISENSE 50U6G TV
-    // -----------------------------------------------------------
     else if (idx == 3) {
         active_profile_workspace.profile_name = "Hisense";
         active_profile_workspace.protocol = PROTO_NEC;
         active_profile_workspace.device_address = 0xFB04;
         active_profile_workspace.cmd_clear_token_arm = 0xEA15;
         active_profile_workspace.cmd_clear_token_fire = 0xA55A;
-
-        // Syntax: add_cmd( Field 1: Hex, Field 2: Visible Xgimi Token, Field 3: Hidden Comment );
-        add_cmd( 0xF708, "power_on",      "power on" );
-        add_cmd( 0x8E71, "power_on",      "power on" ); // Shared target action mapping
-        add_cmd( 0xEF10, "power_off",     "power off" );
-        add_cmd( 0x8D72, "power_off",     "0" );
-        add_cmd( 0xA956, "cursor_up",     "arrow up" );
-        add_cmd( 0xA857, "cursor_down",   "arrow down" );
-        add_cmd( 0xA758, "cursor_left",   "arrow left" );
-        add_cmd( 0xA659, "cursor_right",  "arrow right" );
-        add_cmd( 0xA55A, "cursor_enter",  "select" );
-        add_cmd( 0xFB04, "back",          "back" );
-        add_cmd( 0xBC43, "home",          "home" );
-        add_cmd( 0xF40B, "input",         "input" );
-        add_cmd( 0xB54A, "settings_menu", "menu" );
-        add_cmd( 0x718E, "settings_menu", "menu" );
-        add_cmd( 0x35CA, "game_menu",     "apps" );
-        add_cmd( 0xFF00, "picture",       "channel up" );
-        add_cmd( 0xE817, "focus_manual",  "7" );
-        add_cmd( 0xE718, "focus_auto",    "8" );
-        add_cmd( 0xAB54, "shortcut_1",    "yellow" );
-        add_cmd( 0xAA55, "shortcut_2",    "blue" );
-        add_cmd( 0xAD52, "shortcut_3",    "red" );
-        add_cmd( 0xAC53, "shortcut_4",    "green" );
-        add_cmd( 0xFD02, "volume_up",     "volume up" );
-        add_cmd( 0xFC03, "volume_down",   "volume down" );
-        add_cmd( 0xF609, "mute",          "mute" );
-        add_cmd( 0xEB14, "token_sniff",   "4" );
-        add_cmd( 0xEA15, "token_clear",   "5" );
-        add_cmd( 0xE916, "token_recall",  "6" );
-        add_cmd( 0xB847, "BT_start_pair", "Prime Video" );
-        add_cmd( 0xB649, "BT_clear_pair", "Youtube" );
+        flash_array = HISENSE_COMMANDS;
+        array_size = sizeof(HISENSE_COMMANDS) / sizeof(FlashCommandRow);
     }
-    // -----------------------------------------------------------
-    // FACTORY LAYOUT INDEX 4: JVC HR-S9600U VCR
-    // -----------------------------------------------------------
     else if (idx == 4) {
         active_profile_workspace.profile_name = "JVC HR-S9600u VCR";
         active_profile_workspace.protocol = PROTO_JVC;
         active_profile_workspace.device_address = 0x03C2;
         active_profile_workspace.cmd_clear_token_arm = 0xC2A4;
         active_profile_workspace.cmd_clear_token_fire = 0xC23C;
-
-        // Syntax: add_cmd( Field 1: Hex, Field 2: Visible Xgimi Token, Field 3: Hidden Comment );
-        add_cmd( 0xC2D0, "power_on",      "power on" );
-        add_cmd( 0xC2B8, "power_on",      "power on" );
-        add_cmd( 0xC258, "power_off",     "power off" );
-        add_cmd( 0xC2E8, "power_off",     "audio monitor" );
-        add_cmd( 0xC2CC, "power_off",     "0" );
-        add_cmd( 0xC2C3, "back",          "review" );
-        add_cmd( 0xC241, "cursor_up",     "cursor up" );
-        add_cmd( 0xC298, "cursor_up",     "cursor up H" );
-        add_cmd( 0xC218, "cursor_down",   "cursor down" );
-        add_cmd( 0xC261, "cursor_down",   "cursor down H" );
-        add_cmd( 0xC2A8, "cursor_left",   "cursor left" );
-        add_cmd( 0xC228, "cursor_right",  "cursor right H" );
-        add_cmd( 0xC23C, "cursor_enter",  "OK" );
-        add_cmd( 0xC2EC, "settings_menu", "menu" );
-        add_cmd( 0xC207, "settings_menu", "memu" );
-        add_cmd( 0xC26C, "home",          "cancel" );
-        add_cmd( 0xC230, "game_menu",     "game menu" );
-        add_cmd( 0xC2C8, "input",         "tv/vcr" );
-        add_cmd( 0xC260, "picture",       "fast forward" );
-        add_cmd( 0xC214, "focus_manual",  "8" );
-        add_cmd( 0xC2E4, "focus_auto",    "7" );
-        add_cmd( 0xC283, "shortcut_1",    "prog" );
-        add_cmd( 0xC2BC, "shortcut_2",    "prog check" );
-        add_cmd( 0xC28C, "shortcut_3",    "SP/EP" );
-        add_cmd( 0xC269, "shortcut_4",    "skip search" );
-        add_cmd( 0xC213, "volume_up",     "start down" );
-        add_cmd( 0xC293, "volume_down",   "start up" );
-        add_cmd( 0xC2B0, "mute",          "pause" );
-        add_cmd( 0xC224, "token_sniff",   "4" );
-        add_cmd( 0xC2A4, "token_clear",   "5" );
-        add_cmd( 0xC264, "token_recall",  "6" );
-        add_cmd( 0xC284, "BT_start_pair", "1" );
-        add_cmd( 0xC244, "BT_clear_pair", "2" );
+        flash_array = JVC_VCR_COMMANDS;
+        array_size = sizeof(JVC_VCR_COMMANDS) / sizeof(FlashCommandRow);
     }
-    // -----------------------------------------------------------
-    // FACTORY LAYOUT INDEX 5: JVC PROJECTORS CODE SET A
-    // -----------------------------------------------------------
     else if (idx == 5) {
         active_profile_workspace.profile_name = "JVC Projector A";
         active_profile_workspace.protocol = PROTO_JVC;
         active_profile_workspace.device_address = 0xCE;
         active_profile_workspace.cmd_clear_token_arm = 0x56;
         active_profile_workspace.cmd_clear_token_fire = 0xF4;
-
-        // Syntax: add_cmd( Field 1: Hex, Field 2: Visible Xgimi Token, Field 3: Hidden Comment );
-        add_cmd( 0xA0, "power_on",      "power on" );
-        add_cmd( 0x60, "power_off",     "power off" );
-        add_cmd( 0x80, "cursor_up",     "up arrow" );
-        add_cmd( 0x40, "cursor_down",   "down arrow" );
-        add_cmd( 0x6C, "cursor_left",   "left arrow" );
-        add_cmd( 0x2C, "cursor_right",  "right arrow" );
-        add_cmd( 0xF4, "cursor_enter",  "enter/ok" );
-        add_cmd( 0x74, "settings_menu", "menu" );
-        add_cmd( 0xC0, "back",          "exit" );
-        add_cmd( 0xB8, "home",          "hide" );
-        add_cmd( 0xD6, "game_menu",     "dynamic" );
-        add_cmd( 0xCE, "game_menu",     "advanced menu" );
-        add_cmd( 0x0E, "input",         "input HDMI 1" );
-        add_cmd( 0x8E, "picture",       "input HDMI 2" );
-        add_cmd( 0x2F, "picture",       "picture mode" );
-        add_cmd( 0xCC, "focus_manual",  "focus -" );
-        add_cmd( 0x8C, "focus_auto",    "focus +" );
-        add_cmd( 0x11, "focus_manual",  "color profile" );
-        add_cmd( 0xAF, "focus_auto",    "gamma settings" );
-        add_cmd( 0x36, "shortcut_1",    "user 1" );
-        add_cmd( 0xB6, "shortcut_2",    "user 2" );
-        add_cmd( 0x76, "shortcut_3",    "user 3" );
-        add_cmd( 0xEE, "shortcut_4",    "aspect" );
-        add_cmd( 0x1B, "shortcut_1",    "mode 1" );
-        add_cmd( 0x9B, "shortcut_2",    "mode 2" );
-        add_cmd( 0x5B, "shortcut_3",    "mode 3" );
-        add_cmd( 0x2E, "shortcut_4",    "info" );
-        add_cmd( 0x5E, "volume_up",     "brightness up" );
-        add_cmd( 0xDE, "volume_down",   "brightness down" );
-        add_cmd( 0x6E, "mute",          "color temp" );
-        add_cmd( 0x04, "volume_up",     "lens AP" );
-        add_cmd( 0x0C, "volume_down",   "lens control_" );
-        add_cmd( 0xA3, "mute",          "anamorphic" );
-        add_cmd( 0x16, "token_sniff",   "cinema" );
-        add_cmd( 0x96, "token_sniff",   "cinema" );
-        add_cmd( 0x56, "token_clear",   "natural" );
-        add_cmd( 0xAE, "token_recall",  "gamma" );
-        add_cmd( 0xB7, "token_recall",  "HDR" );
-        add_cmd( 0xFE, "BT_start_pair", "sharp down" );
-        add_cmd( 0x9A, "BT_clear_pair", "sharp up" );
-        add_cmd( 0x51, "BT_start_pair", "CMD" );
-        add_cmd( 0x0F, "BT_clear_pair", "mpc" );
-        add_cmd( 0x3E, "home",          "color up" );
-        add_cmd( 0xBE, "home",          "color down" );
-        add_cmd( 0x1E, "home",          "contast up" );
-        add_cmd( 0x9E, "home",          "contrast down" );
-        add_cmd( 0x36, "home",          "test" );
-        add_cmd( 0xAC, "home",          "zoom T" );
-        add_cmd( 0xEC, "home",          "zoom W" );
-        add_cmd( 0x6B, "home",          "3D format" );
-        add_cmd( 0x4E, "home",          "pic adjust" );
+        flash_array = JVC_PROJ_A_COMMANDS;
+        array_size = sizeof(JVC_PROJ_A_COMMANDS) / sizeof(FlashCommandRow);
     }
-    // -----------------------------------------------------------
-    // FACTORY LAYOUT INDEX 6: JVC PROJECTORS CODE SET B
-    // -----------------------------------------------------------
     else if (idx == 6) {
         active_profile_workspace.profile_name = "JVC Projector B";
         active_profile_workspace.protocol = PROTO_JVC;
         active_profile_workspace.device_address = 0x36;
         active_profile_workspace.cmd_clear_token_arm = 0x56;
         active_profile_workspace.cmd_clear_token_fire = 0xF4;
-
-        add_cmd( 0xA0, "power_on",      "power on" );
-        add_cmd( 0x60, "power_off",     "power off" );
-        add_cmd( 0x80, "cursor_up",     "up arrow" );
-        add_cmd( 0x40, "cursor_down",   "down arrow" );
-        add_cmd( 0x6C, "cursor_left",   "left arrow" );
-        add_cmd( 0x2C, "cursor_right",  "right arrow" );
-        add_cmd( 0xF4, "cursor_enter",  "enter" );
-        add_cmd( 0x74, "settings_menu", "menu" );
-        add_cmd( 0xC0, "back",          "exit" );
-        add_cmd( 0xB8, "home",          "hide" );
-        add_cmd( 0xD6, "game_menu",     "dynamic" );
-        add_cmd( 0xCE, "game_menu",     "advanced menu_" );
-        add_cmd( 0x0E, "input",         "input HDMI 1" );
-        add_cmd( 0x8E, "picture",       "input HDMI 2" );
-        add_cmd( 0x2F, "picture",       "picture mode_" );
-        add_cmd( 0xCC, "focus_manual",  "focus -" );
-        add_cmd( 0x8C, "focus_auto",    "focus +" );
-        add_cmd( 0x11, "focus_manual",  "color profile" );
-        add_cmd( 0xAF, "focus_auto",    "gamma settings" );
-        add_cmd( 0x36, "shortcut_1",    "user 1" );
-        add_cmd( 0xB6, "shortcut_2",    "user 2" );
-        add_cmd( 0x76, "shortcut_3",    "user 3" );
-        add_cmd( 0xEE, "shortcut_4",    "aspect" );
-        add_cmd( 0x1B, "shortcut_1",    "mode 1_" );
-        add_cmd( 0x9B, "shortcut_2",    "mode 2_" );
-        add_cmd( 0x5B, "shortcut_3",    "mode 3_" );
-        add_cmd( 0x2E, "shortcut_4",    "info" );
-        add_cmd( 0x5E, "volume_up",     "brightness up" );
-        add_cmd( 0xDE, "volume_down",   "brightness down" );
-        add_cmd( 0x6E, "mute",          "color temp" );
-        add_cmd( 0x04, "volume_up",     "lens AP_" );
-        add_cmd( 0x0C, "volume_down",   "lens control_" );
-        add_cmd( 0xA3, "mute",          "anamorphic_" );
-        add_cmd( 0x16, "token_sniff",   "cinema" );
-        add_cmd( 0x96, "token_sniff",   "cinema" );
-        add_cmd( 0x56, "token_clear",   "natural" );
-        add_cmd( 0xAE, "token_recall",  "gamma" );
-        add_cmd( 0xB7, "token_recall",  "HDR" );
-        add_cmd( 0xFE, "BT_start_pair", "sharp down" );
-        add_cmd( 0x9A, "BT_clear_pair", "sharp up" );
-        add_cmd( 0x51, "BT_start_pair", "CMD" );
-        add_cmd( 0x0F, "BT_clear_pair", "mpc" );
-        add_cmd( 0x3E, "home",          "color up" );
-        add_cmd( 0xBE, "home",          "color down" );
-        add_cmd( 0x1E, "home",          "contast up" );
-        add_cmd( 0x9E, "home",          "contrast down" );
-        add_cmd( 0x36, "home",          "test" );
-        add_cmd( 0xAC, "home",          "zoom T" );
-        add_cmd( 0xEC, "home",          "zoom W" );
-        add_cmd( 0x6B, "home",          "3D format" );
-        add_cmd( 0x4E, "home",          "pic adjust" );
+        flash_array = JVC_PROJ_B_COMMANDS;
+        array_size = sizeof(JVC_PROJ_B_COMMANDS) / sizeof(FlashCommandRow);
     }
-    // -----------------------------------------------------------
-    // FACTORY LAYOUT INDEX 7: LG CINEBEAM HU810P
-    // -----------------------------------------------------------
     else if (idx == 7) {
         active_profile_workspace.profile_name = "LG Projector";
         active_profile_workspace.protocol = PROTO_NEC;
         active_profile_workspace.device_address = 0xFB04;
         active_profile_workspace.cmd_clear_token_arm = 0xEA15;
         active_profile_workspace.cmd_clear_token_fire = 0xBB44;
-
-        // Syntax: add_cmd( Field 1: Hex, Field 2: Visible Xgimi Token, Field 3: Hidden Comment );
-        add_cmd( 0xF708, "power_on",      "power toggle" );
-        add_cmd( 0x23DC, "power_on",      "Discrete Power On" );
-        add_cmd( 0x2CC3, "power_off",     "Discrete Power Off" );
-        add_cmd( 0xEF10, "power_off",     "0" );
-        add_cmd( 0xD728, "back",          "Return" );
-        add_cmd( 0xF807, "cursor_left",   "cursor left" );
-        add_cmd( 0xF906, "cursor_right",  "cursor right" );
-        add_cmd( 0xBF40, "cursor_up",     "cursor up" );
-        add_cmd( 0xBE41, "cursor_down",   "cursor down" );
-        add_cmd( 0xBB44, "cursor_enter",  "select" );
-        add_cmd( 0xBC43, "settings_menu", "menu" );
-        add_cmd( 0x837C, "home",          "home" );
-        add_cmd( 0xF40B, "input",         "input toggle" );
-        add_cmd( 0xFE01, "game_menu",     "channel down" );
-        add_cmd( 0xB24D, "picture",       "picture mode" );
-        add_cmd( 0x8679, "focus_manual",  "aspect ratio" );
-        add_cmd( 0x4FB0, "focus_auto",    "play" );
-        add_cmd( 0x8d72, "shortcut_1",    "red" );
-        add_cmd( 0x8e71, "shortcut_2",    "green" );
-        add_cmd( 0x9C63, "shortcut_3",    "yellow" );
-        add_cmd( 0x9E61, "shortcut_4",    "blue" );
-        add_cmd( 0xFD02, "volume_up",     "volume up" );
-        add_cmd( 0xFC03, "volume_down",   "volume down" );
-        add_cmd( 0xF609, "mute",          "mute" );
-        add_cmd( 0xEB14, "token_sniff",   "4" );
-        add_cmd( 0xEA15, "token_clear",   "5" );
-        add_cmd( 0xE916, "token_recall",  "6" );
-        add_cmd( 0xA956, "BT_start_pair", "Netflix" );
-        add_cmd( 0xA35C, "BT_clear_pair", "Prime video" );
-        add_cmd( 0xEE11, "home",          "1" );
-        add_cmd( 0xED12, "home",          "2" );
-        add_cmd( 0xEC13, "home",          "3" );
-        add_cmd( 0xE817, "home",          "7" );
-        add_cmd( 0xE718, "home",          "8" );
-        add_cmd( 0xE619, "home",          "9" );
-        add_cmd( 0x54AB, "home",          "ch_list" );
-        add_cmd( 0xB34C, "home",          "-" );
-        add_cmd( 0xE51A, "home",          "pre-ch" );
-        add_cmd( 0xF10E, "home",          "sleep" );
-        add_cmd( 0xF30C, "home",          "portal" );
-        add_cmd( 0xC639, "home",          "cc" );
+        flash_array = LG_COMMANDS;
+        array_size = sizeof(LG_COMMANDS) / sizeof(FlashCommandRow);
     }
-    // -----------------------------------------------------------
-    // FACTORY LAYOUT INDEX 8: OPTOMA UHD50X
-    // -----------------------------------------------------------
     else if (idx == 8) {
         active_profile_workspace.profile_name = "Optoma Projector";
         active_profile_workspace.protocol = PROTO_NEC;
         active_profile_workspace.device_address = 0xCD32;
         active_profile_workspace.cmd_clear_token_arm = 0x9A65;
         active_profile_workspace.cmd_clear_token_fire = 0xF00F;
-
-        add_cmd( 0xFD02, "power_on",      "power on" );
-        add_cmd( 0xD12E, "power_off",     "power off" );
-        add_cmd( 0xEF10, "cursor_left",   "left arrow" );
-        add_cmd( 0xEC12, "cursor_right",  "right arrow" );
-        add_cmd( 0xEE11, "cursor_up",     "up arrow" );
-        add_cmd( 0xEB14, "cursor_down",   "down arrow" );
-        add_cmd( 0xF00F, "cursor_enter",  "ok" );
-        add_cmd( 0xF10E, "settings_menu", "menu" );
-        add_cmd( 0x9C63, "back",          "sleep" );
-        add_cmd( 0xE916, "input",         "input HDMI 1" );
-        add_cmd( 0xCF30, "game_menu",     "input HDMI 2" );
-        add_cmd( 0xFA05, "picture",       "mode" );
-        add_cmd( 0x9B64, "focus_manual",  "aspect" );
-        add_cmd( 0xBB44, "focus_auto",    "DB" );
-        add_cmd( 0xE41B, "shortcut_1",    "input VGA 1" );
-        add_cmd( 0xE11E, "shortcut_2",    "input VGA 2" );
-        add_cmd( 0xE31C, "shortcut_3",    "input video" );
-        add_cmd( 0xE817, "shortcut_4",    "input YPbPr" );
-        add_cmd( 0x7689, "volume_up",     "3D" );
-        add_cmd( 0xF807, "volume_down",   "keystone" );
-        add_cmd( 0xAD52, "mute",          "mute" );
-        add_cmd( 0xC936, "token_sniff",   "user 1" );
-        add_cmd( 0x9A65, "token_clear",   "user 2" );
-        add_cmd( 0x9966, "token_recall",  "user 3" );
-        add_cmd( 0xBE41, "BT_start_pair", "brightness" );
-        add_cmd( 0xBD42, "BT_clear_pair", "contrast" );
+        flash_array = OPTOMA_COMMANDS;
+        array_size = sizeof(OPTOMA_COMMANDS) / sizeof(FlashCommandRow);
     }
-    // -----------------------------------------------------------
-    // FACTORY LAYOUT INDEX 9: SONY VPL-XW600ES
-    // -----------------------------------------------------------
     else if (idx == 9) {
         active_profile_workspace.profile_name = "Sony Projector";
         active_profile_workspace.protocol = PROTO_SONY;
         active_profile_workspace.device_address = 0x0000;
         active_profile_workspace.cmd_clear_token_arm = 0x8AB54;
         active_profile_workspace.cmd_clear_token_fire = 0x02D2A;
-
-        add_cmd( 0x03A2A, "power_on",      "Power On" );
-        add_cmd( 0x07A2A, "power_off",     "Power Off" );
-        add_cmd( 0x0542A, "power_on",      "Power Toggle" );
-        add_cmd( 0x0562A, "cursor_up",     "up arrow" );
-        add_cmd( 0x0362A, "cursor_down",   "down arrow" );
-        add_cmd( 0x0162A, "cursor_left",   "left arrow" );
-        add_cmd( 0x0662A, "cursor_right",  "right arrow" );
-        add_cmd( 0x02D2A, "cursor_enter",  "OK / Enter" );
-        add_cmd( 0x04A2A, "settings_menu", "Menu" );
-        add_cmd( 0x06F2A, "home",          "Reset" );
-        add_cmd( 0x18BE4, "back",          "Position" );
-        add_cmd( 0x6AB54, "game_menu",     "Game" );
-        add_cmd( 0xEAB54, "picture",       "Photo" );
-        add_cmd( 0x0752A, "input",         "Input" );
-        add_cmd( 0x26B54, "focus_manual",  "Focus" );
-        add_cmd( 0x46B54, "focus_auto",    "Zoom" );
-        add_cmd( 0x76B54, "shortcut_1",    "aspect ratio" );
-        add_cmd( 0x0502A, "shortcut_2",    "motion flow" );
-        add_cmd( 0xDCB54, "shortcut_3",    "3D" );
-        add_cmd( 0xD2B54, "shortcut_4",    "color Space" );
-        add_cmd( 0x00C2A, "volume_up",     "contrast" );
-        add_cmd( 0x04C2A, "volume_down",   "contrast down" );
-        add_cmd( 0xFAB54, "mute",          "advanced iris" );
-        add_cmd( 0x9AB54, "token_sniff",   "BRT Cinema" );
-        add_cmd( 0x8AB54, "token_clear",   "BRT TV" );
-        add_cmd( 0x2AB54, "token_recall",  "User" );
-        add_cmd( 0x07C2A, "BT_start_pair", "Brightness down" );
-        add_cmd( 0x03C2A, "BT_clear_pair", "brightness up" );
-        add_cmd( 0x3AB54, "home",          "color temp" );
-        add_cmd( 0x0702A, "home",          "contrast enhancer" );
-        add_cmd( 0xCAB54, "home",          "film 1" );
-        add_cmd( 0x1AB54, "home",          "film 2" );
-        add_cmd( 0x7AB54, "home",          "gamma Corr" );
-        add_cmd( 0x06A2A, "home",          "input HDMI 1" );
-        add_cmd( 0x01A2A, "home",          "input HDMI 2" );
-        add_cmd( 0x04BE4, "home",          "position 1.85" );
-        add_cmd( 0x84BE4, "home",          "position 2.35" );
-        add_cmd( 0xC4BE4, "home",          "position Custom 2" );
-        add_cmd( 0x24BE4, "home",          "position Custom 3" );
-        add_cmd( 0x32B54, "home",          "reality creation" );
-        add_cmd( 0xAAB54, "home",          "REF" );
-        add_cmd( 0x0622A, "home",          "sharpness down" );
-        add_cmd( 0x0222A, "home",          "sharpness up" );
-        add_cmd( 0xC6B54, "home",          "shift" );
-        add_cmd( 0x4AB54, "home",          "TV" );
-        add_cmd( 0x42BE4, "home",          "wide mode full" );
-        add_cmd( 0xFCBE4, "home",          "wide mode full1" );
-        add_cmd( 0x02BE4, "home",          "wide mode full2" );
-        add_cmd( 0x82BE4, "home",          "wide mode normal" );
-        add_cmd( 0x7CBE4, "home",          "wide mode WZoom" );
-        add_cmd( 0xC2BE4, "home",          "wide mode zoom" );
-        add_cmd( 0x22BE4, "home",          "wide mode anamorphic zoom" );
+        flash_array = SONY_PROJ_COMMANDS;
+        array_size = sizeof(SONY_PROJ_COMMANDS) / sizeof(FlashCommandRow);
     }
-    // -----------------------------------------------------------
-    // FACTORY LAYOUT INDEX 10: SONY XBR-77A9G TV
-    // -----------------------------------------------------------
     else if (idx == 10) {
         active_profile_workspace.profile_name = "Sony XBR";
         active_profile_workspace.protocol = PROTO_SONY;
         active_profile_workspace.device_address = 0x0000;
         active_profile_workspace.cmd_clear_token_arm = 0x0210;
         active_profile_workspace.cmd_clear_token_fire = 0x0A70;
-
-        // Syntax: add_cmd( Field 1: Hex, Field 2: Visible Xgimi Token, Field 3: Hidden Comment );
-        add_cmd( 0x0750, "power_on",      "power on" );
-        add_cmd( 0x0A90, "power_on",      "power toggle" );
-        add_cmd( 0x0F50, "power_off",     "power off" );
-        add_cmd( 0x0910, "power_off",     "0" );
-        add_cmd( 0x02D0, "cursor_left",   "Arrow Left" );
-        add_cmd( 0x0CD0, "cursor_right",  "Arrow Right" );
-        add_cmd( 0x02F0, "cursor_up",     "Arrow Up" );
-        add_cmd( 0x0AF0, "cursor_down",   "Arrow Down" );
-        add_cmd( 0x0A70, "cursor_enter",  "Arrow Select" );
-        add_cmd( 0x6923, "settings_menu", "Action Menu" );
-        add_cmd( 0x62E9, "back",          "Back" );
-        add_cmd( 0x0070, "home",          "Home" );
-        add_cmd( 0x3123, "game_menu",     "Google Play" );
-        add_cmd( 0x0A50, "input",         "Input" );
-        add_cmd( 0x0250, "picture",       "TV" );
-        add_cmd( 0x0AE9, "focus_auto",    "subtitle" );
-        add_cmd( 0x0E90, "focus_manual",  "audio" );
-        add_cmd( 0x72E9, "shortcut_1",    "yellow" );
-        add_cmd( 0x12E9, "shortcut_2",    "blue" );
-        add_cmd( 0x52E9, "shortcut_3",    "red" );
-        add_cmd( 0x32E9, "shortcut_4",    "green" );
-        add_cmd( 0x0490, "volume_up",     "volume up" );
-        add_cmd( 0x0C90, "volume_down",   "volume down" );
-        add_cmd( 0x0290, "mute",          "mute" );
-        add_cmd( 0x0C10, "token_sniff",   "4" );
-        add_cmd( 0x0210, "token_clear",   "5" );
-        add_cmd( 0x0A10, "token_recall",  "6" );
-        add_cmd( 0x2CE9, "BT_start_pair", "play" );
-        add_cmd( 0x1CE9, "BT_clear_pair", "fast forward" );
+        flash_array = SONY_XBR_COMMANDS;
+        array_size = sizeof(SONY_XBR_COMMANDS) / sizeof(FlashCommandRow);
     }
-    // -----------------------------------------------------------
-    // FACTORY LAYOUT INDEX 11: TIVO ROAMIO TCD846500
-    // -----------------------------------------------------------
     else if (idx == 11) {
         active_profile_workspace.profile_name = "TiVo Roamio";
         active_profile_workspace.protocol = PROTO_NEC;
         active_profile_workspace.device_address = 0x3085;
         active_profile_workspace.cmd_clear_token_arm = 0xD02C;
         active_profile_workspace.cmd_clear_token_fire = 0xE019;
-
-        add_cmd( 0xE010, "power_on",      "TV power)" );
-        add_cmd( 0xE011, "power_off",     "live TV" );
-        add_cmd( 0xC031, "power_off",     "0" );
-        add_cmd( 0xE014, "cursor_up",     "arrow up" );
-        add_cmd( 0xE016, "cursor_down",   "arrow down" );
-        add_cmd( 0xE017, "cursor_left",   "arrow left" );
-        add_cmd( 0xE015, "cursor_right",  "arrow right" );
-        add_cmd( 0xE019, "cursor_enter",  "select" );
-        add_cmd( 0xF00C, "settings_menu", "tivo" );
-        add_cmd( 0xF00D, "settings_menu", "tivo (myHarmony version)" );
-        add_cmd( 0xB044, "back",          "zoom" );
-        add_cmd( 0xE01E, "home",          "channel up" );
-        add_cmd( 0xC036, "game_menu",     "guide" );
-        add_cmd( 0xC034, "input",         "input" );
-        add_cmd( 0xE013, "picture",       "into" );
-        add_cmd( 0xD02E, "focus_auto",    "7" );
-        add_cmd( 0xD02F, "focus_manual",  "8" );
-        add_cmd( 0x9060, "shortcut_1",    "A yellow" );
-        add_cmd( 0x9061, "shortcut_2",    "B blue" );
-        add_cmd( 0x9062, "shortcut_3",    "C red" );
-        add_cmd( 0x9063, "shortcut_4",    "D green" );
-        add_cmd( 0xE01C, "volume_up",     "volume up" );
-        add_cmd( 0xE01D, "volume_down",   "volume down" );
-        add_cmd( 0xE01B, "mute",          "mute" );
-        add_cmd( 0xD02B, "token_sniff",   "4" );
-        add_cmd( 0xD02C, "token_clear",   "5" );
-        add_cmd( 0xD02D, "token_recall",  "6" );
-        add_cmd( 0xC033, "BT_start_pair", "enter" );
-        add_cmd( 0xC032, "BT_clear_pair", "clear" );
+        flash_array = TIVO_COMMANDS;
+        array_size = sizeof(TIVO_COMMANDS) / sizeof(FlashCommandRow);
     }
-    // -----------------------------------------------------------
-    // FACTORY LAYOUT INDEX 12: PANASONIC PROJECTOR
-    // -----------------------------------------------------------
     else if (idx == 12) {
         active_profile_workspace.profile_name = "Panasonic Projector";
         active_profile_workspace.protocol = PROTO_PANASONIC;
         active_profile_workspace.device_address = 0x4004;
         active_profile_workspace.cmd_clear_token_arm = 0x1002829;
         active_profile_workspace.cmd_clear_token_fire = 0x1009293;
-
-        add_cmd( 0x1003A3B, "power_on",          "on" );
-        add_cmd( 0x100BCBD, "power_off",         "off" );
-        add_cmd( 0x1007273, "cursor_left",       "left arrow" );
-        add_cmd( 0x100F2F3, "cursor_right",      "right arrow" );
-        add_cmd( 0x1005253, "cursor_up",         "up arrow" );
-        add_cmd( 0x100D2D3, "cursor_down",       "down arrow" );
-        add_cmd( 0x1009293, "cursor_enter",      "OK" );
-        add_cmd( 0x1004A4B, "settings_menu",     "menu" );
-        add_cmd( 0x1002B2A, "back",              "return" );
-        add_cmd( 0x1009C9D, "home",              "info" );
-        add_cmd( 0x10090F1, "game_menu",         "apps" );
-        add_cmd( 0x100A0A1, "input",             "AV input" );
-        add_cmd( 0x1000B0A, "picture",           "picture mode" );
-        add_cmd( 0x100C2C3, "focus_manual",      "focus +" );
-        add_cmd( 0x100E2E3, "focus_auto",        "focus -" );
-        add_cmd( 0x1000E0F, "shortcut_1",        "red" );
-        add_cmd( 0x1008E8F, "shortcut_2",        "green" );
-        add_cmd( 0x1004E4F, "shortcut_3",        "yellow" );
-        add_cmd( 0x100CECF, "shortcut_4",        "blue" );
-        add_cmd( 0x1000405, "home",              "volume +" );
-        add_cmd( 0x1008485, "home",              "volume -" );
-        add_cmd( 0x1004C4D, "home",              "mute" );
-        add_cmd( 0x100A8A9, "token_sniff",       "4" );
-        add_cmd( 0x1002829, "token_clear",       "5" );
-        add_cmd( 0x100C8C9, "token_recall",      "6" );
-        add_cmd( 0x1008889, "BT_start_pair",     "2" );
-        add_cmd( 0x1004849, "BT_clear_pair",     "3" );
-        add_cmd( 0x1009899, "home",              "0" );
-        add_cmd( 0x1000809, "home",              "1" );
-        add_cmd( 0x1006869, "home",              "7" );
-        add_cmd( 0x100E8E9, "home",              "8" );
-        add_cmd( 0x1001819, "home",              "9" );
-        add_cmd( 0x1002223, "home",              "HDMI 1" );
-        add_cmd( 0x100A2A3, "home",              "HDMI 2" );
-        add_cmd( 0x1006263, "home",              "computer" );
+        flash_array = PANASONIC_COMMANDS;
+        array_size = sizeof(PANASONIC_COMMANDS) / sizeof(FlashCommandRow);
     }
 
+    // -----------------------------------------------------------
+    // ONE CENTRAL LOOP TO REHYDRATE FROM THE FLASH COLD-STORAGE
+    // -----------------------------------------------------------
+    if (flash_array != nullptr) {
+        active_profile_workspace.cmd_codes.reserve(array_size);
+
+        for (size_t i = 0; i < array_size; i++) {
+            // Under ESP-IDF on ESP32, flash can be read directly like normal RAM!
+            uint32_t code = flash_array[i].hex_code;
+            const char* name_flash_ptr = flash_array[i].name;
+            const char* btn_flash_ptr  = flash_array[i].button_name;
+            
+            char name_ram_buf[32] = {0};
+            char btn_ram_buf[32]  = {0};
+            
+            // Use standard, safe strncpy instead of strncpy_P
+            if (name_flash_ptr != nullptr) {
+                std::strncpy(name_ram_buf, name_flash_ptr, sizeof(name_ram_buf) - 1);
+            }
+            if (btn_flash_ptr != nullptr) {
+                std::strncpy(btn_ram_buf, btn_flash_ptr, sizeof(btn_ram_buf) - 1);
+            }
+            
+            // Build directly into your runtime RAM workspace vectors
+            add_cmd(code, name_ram_buf, btn_ram_buf);
+        }
+    }
   }
   else {
     // -----------------------------------------------------------
@@ -892,7 +947,7 @@ inline void load_profile_to_workspace(int idx) {
         active_profile_workspace.cmd_clear_token_arm = flash_p.cmd_clear_token_arm;
         active_profile_workspace.cmd_clear_token_fire = flash_p.cmd_clear_token_fire;
         
-        uint16_t load_limit = (flash_p.total_keys > 55) ? 55 : flash_p.total_keys;
+        uint16_t load_limit = (flash_p.total_keys > 80) ? 80 : flash_p.total_keys;
         active_profile_workspace.cmd_codes.resize(load_limit);
         
         for (uint16_t k = 0; k < load_limit; k++) {
@@ -906,6 +961,8 @@ inline void load_profile_to_workspace(int idx) {
   active_profile_workspace.cmd_codes.shrink_to_fit();
 }
 
+
+
 // Legacy bridge function placeholders required by older initialization clocks
 inline void load_saved_flash_profiles() {
   flash_hydration_complete = true;
@@ -913,49 +970,539 @@ inline void load_saved_flash_profiles() {
 
 inline void link_hardware_buttons() {}
 
+
+
 // ====================================================================
-// 6. MINIFIED ZERO-ALLOCATION EXCEL TRANSIT EXPORT STREAM GENERATOR
+// 8. HEAP-SAFE HIGH-EFFICIENCY FLAT CSV EXPORT STREAM GENERATOR
 // ====================================================================
-inline std::string generate_minified_profile_json(int idx) {
-  std::string json_out;
-  json_out.reserve(5120); 
-  char row_buf[512];
-
-  // If the request points directly to the active layout, extract it straight out of workspace RAM
-  if (idx == id(active_remote_layout)) {
-      const auto& p = active_profile_workspace;
-      snprintf(row_buf, sizeof(row_buf), "{\n  \"idx\":%d,\n  \"nam\":\"%s\",\n  \"pro\":\"%s\",\n  \"adr\":\"%X\",\n  \"car\":\"%X\",\n  \"cfr\":\"%X\",\n  \"key\":[\n",
-               idx, p.profile_name.c_str(), to_string(p.protocol), (unsigned int)p.device_address, (unsigned int)p.cmd_clear_token_arm, (unsigned int)p.cmd_clear_token_fire);
-      json_out += row_buf;
-      
-      for (size_t i = 0; i < p.cmd_codes.size(); i++) {
-          bool is_last = (i == p.cmd_codes.size() - 1);
-          snprintf(row_buf, sizeof(row_buf), "    {\"x\":\"%X\",\"b\":\"%s\",\"l\":\"%s\"}%s\n",
-                   (unsigned int)p.cmd_codes[i].first, p.cmd_codes[i].second.name, p.cmd_codes[i].second.button_name, is_last ? "" : ",");
-          json_out += row_buf;
-      }
-      json_out += "  ]\n}";
-      return json_out;
-  }
-
-  // Otherwise, quickly step into the flash track, dump the details, and jump straight back
-  load_profile_to_workspace(idx);
-  const auto& p = active_profile_workspace;
-  snprintf(row_buf, sizeof(row_buf), 
-         "{\n  \"idx\":%d,\n  \"nam\":\"%s\",\n  \"pro\":\"%s\",\n  \"adr\":\"%X\",\n  \"car\":\"%X\",\n  \"cfr\":\"%X\",\n  \"key\":[\n",
-         idx, p.profile_name.c_str(), to_string(p.protocol), (unsigned int)p.device_address, (unsigned int)p.cmd_clear_token_arm, (unsigned int)p.cmd_clear_token_fire);
-
-  json_out += row_buf;
+inline std::string generate_profile_csv(int idx) {
+  int current_active = esphome::id(active_remote_layout).value();
   
-  for (size_t i = 0; i < p.cmd_codes.size(); i++) {
-      bool is_last = (i == p.cmd_codes.size() - 1);
-      snprintf(row_buf, sizeof(row_buf), "    {\"x\":\"%X\",\"b\":\"%s\",\"l\":\"%s\"}%s\n",
-               (unsigned int)p.cmd_codes[i].first, p.cmd_codes[i].second.name, p.cmd_codes[i].second.button_name, is_last ? "" : ",");
-      json_out += row_buf;
+  if (idx != current_active) {
+      load_profile_to_workspace(idx);
   }
-  json_out += "  ]\n}";
 
-  // Instantly rehydrate back to the active operating layout before function teardown finishes
-  load_profile_to_workspace(id(active_remote_layout));
-  return json_out;
+  const auto& p = active_profile_workspace;
+
+  // Pre-calculate exact memory footprint boundaries (approx 45 bytes per row)
+  size_t reserved_size = 128 + (p.cmd_codes.size() * 45);
+
+  std::string csv_out;
+  csv_out.reserve(reserved_size);
+
+  char chunk_buf[128];
+
+  // Determine the best padding width format string based on active protocol structure tracks
+  // %02X -> Enforces 2 characters (e.g., 0xA7)
+  // %04X -> Enforces 4 characters (e.g., 0xB04F)
+  // %05X -> Enforces 5 characters (e.g., 0x03A2A)
+  const char* addr_fmt = "%04X"; // Default fallback
+  const char* key_fmt  = "%X";   // Default fallback
+
+  if (p.protocol == PROTO_NEC) {
+      // NEC addresses are typically 4 hex digits (e.g. 0x7300), commands are 2 digits (e.g. 0x17)
+      addr_fmt = "%04X";
+      key_fmt  = "%02X";
+  } else if (p.protocol == PROTO_JVC) {
+      addr_fmt = "%04X";
+      key_fmt  = "%04X";
+  } else if (p.protocol == PROTO_SONY) {
+      // Sony layouts use extended bit values (e.g. address 0x0000, keys 0x03A2A -> 5 digits)
+      addr_fmt = "%04X";
+      key_fmt  = "%05X";
+  } else if (p.protocol == PROTO_PANASONIC) {
+      addr_fmt = "%04X";
+      key_fmt  = "%07X"; // Panasonic uses large 7-digit codes (e.g., 1003A3B)
+  }
+
+  // Row 1: Profile Configuration Header Metadata Line (Strict Padding Applied)
+  std::string meta_line = "META," + std::to_string(idx) + "," + p.profile_name + "," + to_string(p.protocol) + ",";
+  
+  char addr_buf[32];
+  char arm_buf[32];
+  char fire_buf[32];
+  
+  snprintf(addr_buf, sizeof(addr_buf), addr_fmt, (unsigned int)p.device_address);
+  snprintf(arm_buf, sizeof(arm_buf), key_fmt, (unsigned int)p.cmd_clear_token_arm);
+  snprintf(fire_buf, sizeof(fire_buf), key_fmt, (unsigned int)p.cmd_clear_token_fire);
+  
+  snprintf(chunk_buf, sizeof(chunk_buf), "%s,%s,%s\n", addr_buf, arm_buf, fire_buf);
+  csv_out += meta_line + chunk_buf;
+
+  // Rows 2+: Command Code Data Rows (Strict Padding Applied)
+  for (size_t i = 0; i < p.cmd_codes.size(); i++) {
+      char hex_code_buf[32];
+      snprintf(hex_code_buf, sizeof(hex_code_buf), key_fmt, (unsigned int)p.cmd_codes[i].first);
+      
+      snprintf(chunk_buf, sizeof(chunk_buf), "KEY,%s,%s,%s\n",
+               hex_code_buf, p.cmd_codes[i].second.name, p.cmd_codes[i].second.button_name);
+      csv_out += chunk_buf;
+  }
+
+  if (idx != current_active) {
+      load_profile_to_workspace(current_active);
+  }
+
+  return csv_out;
 }
+
+
+
+// ====================================================================
+// 10. HIGH-EFFICIENCY ZERO-ALLOCATION COLD-STREAM CSV PARSING IMPORT ENGINE
+// ====================================================================
+inline bool import_profile_from_csv(const std::string& csv_data) {
+    if (csv_data.empty()) {
+        ESP_LOGE("CSV Import", "Aborting import: Empty payload string received.");
+        return false;
+    }
+
+    std::stringstream ss(csv_data);
+    std::string line;
+    bool meta_parsed = false;
+    size_t keys_imported = 0;
+
+    // Clear runtime dynamic vector memory structures before starting hydration pass
+    active_profile_workspace.cmd_codes.clear();
+
+    while (std::getline(ss, line)) {
+        // Strip trailing carriage returns if data originated from a Windows host file
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        if (line.empty()) continue;
+
+        std::stringstream line_ss(line);
+        std::string cell_type;
+        std::getline(line_ss, cell_type, ',');
+
+        // -----------------------------------------------------------
+        // METADATA CONFIGURATION LINE PASS
+        // -----------------------------------------------------------
+        if (cell_type == "META") {
+            std::string idx_str, name_str, proto_str, addr_str, arm_str, fire_str;
+            
+            std::getline(line_ss, idx_str, ','); // Read past the index string cell (ignored)
+            std::getline(line_ss, name_str, ',');
+            std::getline(line_ss, proto_str, ',');
+            std::getline(line_ss, addr_str, ',');
+            std::getline(line_ss, arm_str, ',');
+            std::getline(line_ss, fire_str, ',');
+
+            active_profile_workspace.profile_name = name_str;
+
+            // Resolve human-readable protocol string back into integer definitions
+            if (proto_str == "NEC")        active_profile_workspace.protocol = PROTO_NEC;
+            else if (proto_str == "JVC")   active_profile_workspace.protocol = PROTO_JVC;
+            else if (proto_str == "SONY")  active_profile_workspace.protocol = PROTO_SONY;
+            else if (proto_str == "LG")    active_profile_workspace.protocol = PROTO_LG;
+            else if (proto_str == "PANASONIC") active_profile_workspace.protocol = PROTO_PANASONIC;
+            else if (proto_str == "RC5")   active_profile_workspace.protocol = PROTO_RC5;
+            else if (proto_str == "RC6")   active_profile_workspace.protocol = PROTO_RC6;
+            else                           active_profile_workspace.protocol = PROTO_UNKNOWN;
+
+            // Extract core configuration hex properties from raw text streams
+            active_profile_workspace.device_address = std::strtoul(addr_str.c_str(), nullptr, 16);
+            active_profile_workspace.cmd_clear_token_arm = std::strtoul(arm_str.c_str(), nullptr, 16);
+            active_profile_workspace.cmd_clear_token_fire = std::strtoul(fire_str.c_str(), nullptr, 16);
+
+            meta_parsed = true;
+            ESP_LOGI("CSV Import", "Metadata locked. Profile: %s, Protocol: %s, Address: 0x%X",
+                     name_str.c_str(), proto_str.c_str(), (unsigned int)active_profile_workspace.device_address);
+        }
+        
+        // -----------------------------------------------------------
+        // HARDWARE DATA KEY EXTRAPOLATION PASS
+        // -----------------------------------------------------------
+        else if (cell_type == "KEY") {
+            if (!meta_parsed) {
+                ESP_LOGE("CSV Import", "Structure malformed! Received KEY block before valid META row.");
+                return false;
+            }
+
+            std::string code_str, token_str, label_str;
+            std::getline(line_ss, code_str, ',');
+            std::getline(line_ss, token_str, ',');
+            std::getline(line_ss, label_str, ',');
+
+            uint32_t command_code = std::strtoul(code_str.c_str(), nullptr, 16);
+            
+            // Build and load directly using your lightweight row constructor function
+            add_cmd(command_code, token_str.c_str(), label_str.c_str());
+            keys_imported++;
+        }
+    }
+
+    if (!meta_parsed || keys_imported == 0) {
+        ESP_LOGE("CSV Import", "Parsing failed: Meta missing or zero keys processed.");
+        return false;
+    }
+
+    active_profile_workspace.cmd_codes.shrink_to_fit();
+    ESP_LOGI("CSV Import", "Successfully recovered %d layout items via cold-stream parsing.", (int)keys_imported);
+    return true;
+}
+
+
+//=========================== webserver =======================
+#include "esp_http_server.h"
+
+// 1. FLASH-BOUND USER INTERFACE HTML DEFINITION (UPDATED WITH STATS CARD)
+static const char dashboard_html[] PROGMEM = R"rawliteral(
+<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IR Hub Storage Matrix</title>
+<style>
+  body{font-family:system-ui,-apple-system,sans-serif;margin:20px;background:#0d1117;color:#c9d1d9}
+  .box{background:#161b22;padding:24px;border:1px solid #30363d;border-radius:6px;max-width:480px;margin:auto;margin-bottom:20px}
+  h3{margin-top:0;color:#58a6ff;border-bottom:1px solid #21262d;padding-bottom:10px;font-size:18px}
+  label{display:block;margin:14px 0 6px;font-size:14px;font-weight:600}
+  select,input[type="file"]{width:100%;padding:8px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#fff;box-sizing:border-box}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+  .btn{padding:10px;background:#238636;color:#fff;border:0;border-radius:6px;font-weight:bold;text-align:center;text-decoration:none;cursor:pointer;font-size:14px}
+  .btn.sec{background:#21262d;border:1px solid #30363d;color:#c9d1d9}
+  .btn:hover{opacity:0.9}
+  .stat-list{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+  .stat-row{display:flex;justify-content:space-between;align-items:center;background:#0d1117;padding:12px 16px;border-radius:6px;border:1px solid #21262d}
+  .stat-lbl{color:#8b949e;font-size:13px;font-weight:600;text-transform:uppercase}
+  .stat-val{font-family:monospace;font-weight:bold;color:#ff7b72;font-size:14px}
+</style>
+<script>
+  function updateActionUrls(){
+    const idx = document.getElementById('profile_sel').value;
+    document.getElementById('export_link').href = '/export?slot=' + idx;
+    document.getElementById('upload_form').action = '/import?slot=' + idx;
+  }
+  window.onload = updateActionUrls;
+</script>
+</head><body>
+<div class="box">
+  <h3>IR Control Workspace</h3>
+  <p style="font-size:13px;color:#8b949e;margin:0 0 15px">Active Profile: <span style="color:#58a6ff;font-weight:bold">%ACTIVE_NAME%</span></p>
+  <form action="/select" method="GET">
+    <label for="profile_sel">Select Target Profile Slot:</label>
+    <select id="profile_sel" name="slot" onchange="updateActionUrls()">%OPTIONS_MARKER%</select>
+    
+    <button type="submit" class="btn" style="width:100%;margin-top:12px;background:#1f6feb">Activate Selected Profile</button>
+  </form>
+  
+  <h3 style="margin-top:24px;font-size:16px">Backup & Recovery Operations</h3>
+  <div style="margin-bottom:12px;">
+    <a id="export_link" href="#" class="btn sec" style="display:block;margin-bottom:12px;">Download CSV</a>
+  </div>
+
+  <form id="upload_form" method="POST" enctype="multipart/form-data" style="margin-top:12px">
+    <label style="display:block;margin-bottom:6px;font-size:12px;color:#8b949e;">Choose Backup File:</label>
+    <input type="file" id="file_picker" name="file" onchange="document.getElementById('ul_btn').disabled=false;">
+    
+    <button type="submit" id="ul_btn" class="btn" style="width:100%;background:#238636;margin-top:12px;" disabled>Upload CSV</button>
+  </form>
+</div>
+
+<div class="box">
+  <h3>System Diagnostics</h3>
+  <div class="stat-list">
+    <div class="stat-row">
+      <div class="stat-lbl">Free Heap RAM</div>
+      <div class="stat-val">%FREE_RAM%</div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-lbl">Heap Fragmentation</div>
+      <div class="stat-val">%FRAGMENTATION%</div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-lbl">Max Free Block</div>
+      <div class="stat-val">%MAX_BLOCK%</div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-lbl">Free Stack Space</div>
+      <div class="stat-val">%STACK_SIZE%</div>
+    </div>
+  </div>
+  
+  <div style="margin-top:15px; font-size:12px; border-top:1px solid #21262d; padding-top:12px">
+    <div style="margin-bottom:6px"><span style="color:#8b949e">Reset Reason:</span> <span style="font-family:monospace;color:#79c0ff">%RESET_REASON%</span></div>
+    <div><span style="color:#8b949e">Hardware Info:</span> <span style="font-family:monospace;font-size:11px;color:#79c0ff">%HW_INFO%</span></div>
+  </div>
+</div>
+</body></html>
+)rawliteral";
+
+// 2. ENTRY POINT ROUTE HANDLERS
+inline esp_err_t root_handler(httpd_req_t *req) {
+    httpd_resp_set_type(req, "text/html");
+    std::string html(dashboard_html);
+    std::string active_name = active_profile_workspace.profile_name;
+    std::string options = "";
+    int total_slots = static_cast<int>(factory_count) + MAX_LEARNED_PROFILES;
+    
+    int active_idx = esphome::id(active_remote_layout).value();
+
+    for (int i = 0; i < total_slots; i++) {
+        char opt_buf[128];
+        const char* kind = (i < static_cast<int>(factory_count)) ? "Factory" : "Custom";
+        std::string label_str;
+        if (i < static_cast<int>(factory_count)) {
+            load_profile_to_workspace(i);
+            label_str = active_profile_workspace.profile_name;
+        } else {
+            label_str = "Memory Slot " + std::to_string(i - static_cast<int>(factory_count));
+        }
+        snprintf(opt_buf, sizeof(opt_buf), "<option value=\"%d\" %s>%s [%s]</option>", i, (i == active_idx) ? "selected" : "", label_str.c_str(), kind);
+        options += opt_buf;
+    }
+    
+    load_profile_to_workspace(esphome::id(active_remote_layout).value());
+    
+    // FETCH DIAGNOSTIC DATA DIRECTLY FROM THE CORE KERNEL APPS
+    char scratch[128];
+    
+    // 1. Free Heap RAM
+    size_t free_heap = esp_get_free_heap_size(); // <-- Ensure this exact line is here!
+    snprintf(scratch, sizeof(scratch), "%u Bytes", (unsigned int)free_heap);
+    std::string free_ram(scratch);
+    
+    // 2. Heap Fragmentation (Static placeholder to prevent calculation macro crashes)
+    size_t largest_free_block = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+    float fragmentation_percentage = 0.0f;
+    if (free_heap > 0) {
+        fragmentation_percentage = (1.0f - ((float)largest_free_block / (float)free_heap)) * 100.0f;
+    }
+    snprintf(scratch, sizeof(scratch), "%0.1f %%", fragmentation_percentage);
+    std::string frag(scratch);
+    
+    // 3. Max Free Block Size (Cast to unsigned int for compiler format matching)
+    snprintf(scratch, sizeof(scratch), "%u Bytes", (unsigned int)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+    std::string max_block(scratch);
+    
+    // 4. Free Stack Space Room 
+    unsigned int free_stack = (unsigned int)uxTaskGetStackHighWaterMark(NULL);
+    snprintf(scratch, sizeof(scratch), "%u Bytes", free_stack);
+    std::string stack_size_str(scratch); // Renamed variable
+    
+    // 5. Reset Reason Code
+    int reason_code = (int)esp_reset_reason();
+    std::string reset_reason = "Code " + std::to_string(reason_code);
+    
+    // 6. Hardware Info (Safely extract the C-string from ESPHome's StringRef object)
+    std::string hw_info = esphome::App.get_name().c_str(); 
+
+    // EXTRANEOUS STRING REPLACEMENTS PASS
+    size_t pos;
+    while ((pos = html.find("%ACTIVE_NAME%")) != std::string::npos) html.replace(pos, 13, active_name);
+    while ((pos = html.find("%OPTIONS_MARKER%")) != std::string::npos) html.replace(pos, 16, options);
+    while ((pos = html.find("%FREE_RAM%")) != std::string::npos) html.replace(pos, 10, free_ram);
+    while ((pos = html.find("%FRAGMENTATION%")) != std::string::npos) html.replace(pos, 15, frag);
+    while ((pos = html.find("%MAX_BLOCK%")) != std::string::npos) html.replace(pos, 11, max_block);
+    while ((pos = html.find("%STACK_SIZE%")) != std::string::npos) html.replace(pos, 12, stack_size_str);
+    while ((pos = html.find("%RESET_REASON%")) != std::string::npos) html.replace(pos, 14, reset_reason);
+    while ((pos = html.find("%HW_INFO%")) != std::string::npos) html.replace(pos, 9, hw_info);
+    
+    return httpd_resp_send(req, html.c_str(), HTTPD_RESP_USE_STRLEN);
+}
+
+//==========================
+inline esp_err_t select_handler(httpd_req_t *req) {
+    size_t buf_len = httpd_req_get_url_query_len(req) + 1;
+    if (buf_len > 1) {
+        char* buf = (char*)malloc(buf_len);
+        if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
+            char param[32];
+            if (httpd_query_key_value(buf, "slot", param, sizeof(param)) == ESP_OK) {
+                int chosen_slot = atoi(param);
+
+                // 1. Sync the value over to Home Assistant's global configuration tracker
+                esphome::id(active_remote_layout).value() = chosen_slot;
+                
+                // 2. Clear state variables & pull the layout profile instantly into RAM
+                load_profile_to_workspace(chosen_slot);
+                
+                // 3. Arm the physical hardware parameters (protocol, timings) to the new rules
+                esphome::id(setup_ir_receiver_for_current_profile).execute();
+                
+                // 4. Update frontend state strings so the dashboard reflects the new layout name
+                static char change_buf[128];
+                const char* kind = (chosen_slot < (int)factory_count) ? "internal" : "custom";
+                snprintf(change_buf, sizeof(change_buf), "idx=%d  %s  [%s]",
+                         chosen_slot, active_profile_workspace.profile_name.c_str(), kind);
+                esphome::id(ir_active_profile_ts).publish_state(change_buf);
+            }
+        }
+        free(buf);
+    }
+
+    httpd_resp_set_status(req, "303 See Other");
+    httpd_resp_set_hdr(req, "Location", "/");
+    httpd_resp_send(req, NULL, 0);
+    return ESP_OK;
+}
+
+//----------
+inline esp_err_t export_handler(httpd_req_t *req) {
+    int target_slot = 0;
+    
+    size_t buf_len = httpd_req_get_url_query_len(req) + 1;
+    if (buf_len > 1) {
+        char* buf = (char*)malloc(buf_len);
+        if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
+            char param[8];
+            if (httpd_query_key_value(buf, "slot", param, sizeof(param)) == ESP_OK) {
+                target_slot = atoi(param);
+            }
+        }
+        free(buf);
+    }
+
+    // FIX: Generate complete profile context payload data utilizing your pre-built function block
+    std::string csv_data = generate_profile_csv(target_slot);
+
+    httpd_resp_set_type(req, "text/csv");
+    
+    char header_buf[128];
+    snprintf(header_buf, sizeof(header_buf), "attachment; filename=profile_slot_%d.csv", target_slot);
+    httpd_resp_set_hdr(req, "Content-Disposition", header_buf);
+
+    // Stream out the populated dataset contents cleanly
+    httpd_resp_send(req, csv_data.c_str(), csv_data.length());
+    
+    // Safely rehydrate original running workspace layout state configuration rules
+    load_profile_to_workspace(esphome::id(active_remote_layout).value());
+    
+    return ESP_OK;
+}
+
+// --------------------------------------------------------------------
+// HIGH-PERFORMANCE ZERO-HEAP STREAMING HTTP POST CSV IMPORT ENGINE
+// --------------------------------------------------------------------
+inline esp_err_t import_handler(httpd_req_t *req) {
+    int target_slot = 0;
+    
+    size_t query_len = httpd_req_get_url_query_len(req) + 1;
+    if (query_len > 1) {
+        char* buf = (char*)malloc(query_len);
+        if (httpd_req_get_url_query_str(req, buf, query_len) == ESP_OK) {
+            char param[32]; 
+            if (httpd_query_key_value(buf, "slot", param, sizeof(param)) == ESP_OK) {
+                target_slot = atoi(param); // Captures the exact slot selected in the web UI dropdown
+            }
+        }
+        free(buf);
+    }
+
+    size_t total_bytes = req->content_len;
+    size_t remaining = total_bytes;
+    
+    if (total_bytes == 0) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "File is empty.");
+        return ESP_FAIL;
+    }
+
+    std::string csv_accumulator;
+    csv_accumulator.reserve(total_bytes);
+
+    char chunk_buf[512]; 
+    int received = 0;
+
+    while (remaining > 0) {
+        size_t read_target = (remaining < sizeof(chunk_buf)) ? remaining : sizeof(chunk_buf);
+        if ((received = httpd_req_recv(req, chunk_buf, read_target)) <= 0) {
+            if (received == HTTPD_SOCK_ERR_TIMEOUT) continue;
+            return ESP_FAIL;
+        }
+        csv_accumulator.append(chunk_buf, received);
+        remaining -= received;
+    }
+
+    size_t start_pos = csv_accumulator.find("META,");
+    if (start_pos == std::string::npos) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid backup configuration layout.");
+        return ESP_FAIL;
+    }
+
+    size_t end_pos = csv_accumulator.rfind("\n-");
+    std::string clean_csv = (end_pos != std::string::npos) ? 
+                             csv_accumulator.substr(start_pos, end_pos - start_pos) : 
+                             csv_accumulator.substr(start_pos);
+
+    // Parse data structure straight into the workspace RAM workbench
+    if (import_profile_from_csv(clean_csv)) {
+        link_hardware_buttons();
+        esphome::id(setup_ir_receiver_for_current_profile).execute();
+        
+        // DYNAMIC TARGET SLOTTING ENGAGEMENT:
+        // Calculate the raw relative index slice for your user-learned custom slots
+        int final_custom_slot = target_slot - (int)factory_count;
+        
+        // Safety boundary guard: If the user selected a Factory Slot from the dropdown (less than 0)
+        // or overflows our custom pool size, intercept it and route to Custom Memory Slot 0.
+        if (final_custom_slot < 0 || final_custom_slot >= MAX_LEARNED_PROFILES) {
+            ESP_LOGW("Web Import", "Factory slot selected for import destination. Redirecting safely to Custom Memory Slot 0.");
+            final_custom_slot = 0; 
+            
+            // Mirror the override configuration back into the global tracking variable
+            int hardware_slot_override = (int)factory_count + final_custom_slot;
+            esphome::id(active_remote_layout).value() = hardware_slot_override;
+        } else {
+            // SUCCESSFUL TARGETING: Lock the device's running layout selection to match the chosen dropdown slot
+            esphome::id(active_remote_layout).value() = target_slot;
+        }
+        
+        // Commit the parsed 80-key profile directly into the dynamically targeted custom slot!
+        commit_database_to_flash(final_custom_slot);
+        
+        // Rehydrate the current runtime RAM container layout state variables cleanly
+        load_profile_to_workspace(esphome::id(active_remote_layout).value());
+        esphome::id(display_show).execute(true, "CSV Web Uploaded!", "Profile Operational", active_profile_workspace.profile_name);
+    } else {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "CSV processing failure.");
+        return ESP_FAIL;
+    }
+
+    httpd_resp_set_status(req, "303 See Other");
+    httpd_resp_set_hdr(req, "Location", "/");
+    httpd_resp_send(req, NULL, 0);
+    return ESP_OK;
+}
+
+// 2. DOUBLE-CHECK THE URI STRUCTURE STRINGS INSIDE YOUR SETUP ENGINE
+inline void start_custom_web_server() {
+    httpd_handle_t server = NULL;
+    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.ctrl_port = 32768; 
+    config.stack_size = 8192; 
+
+    httpd_uri_t root_uri = {
+        .uri       = "/",
+        .method    = HTTP_GET,
+        .handler   = root_handler,
+        .user_ctx  = NULL
+    };
+
+    httpd_uri_t select_uri = {
+        .uri       = "/select",
+        .method    = HTTP_GET,
+        .handler   = select_handler,
+        .user_ctx  = NULL
+    };
+
+    httpd_uri_t export_uri = {
+        .uri       = "/export",
+        .method    = HTTP_GET,
+        .handler   = export_handler,
+        .user_ctx  = NULL
+    };
+
+    httpd_uri_t import_uri = {
+        .uri       = "/import",       // <-- Check spelling
+        .method    = HTTP_POST,      // <-- Must be POST protocol
+        .handler   = import_handler, // <-- Points to function above
+        .user_ctx  = NULL
+    };
+
+    if (httpd_start(&server, &config) == ESP_OK) {
+        httpd_register_uri_handler(server, &root_uri);
+        httpd_register_uri_handler(server, &select_uri);
+        httpd_register_uri_handler(server, &export_uri);
+        httpd_register_uri_handler(server, &import_uri); // <-- REGISTER PASSED HERE
+    }
+}
+
