@@ -24,6 +24,8 @@
 #define PROTO_RC5       6
 #define PROTO_RC6       7
 
+static const char *const TAG_MAPS = "universal_hid_maps";
+
 // --- FIXED-SIZE CHARACTER BUFFER SIZE ALIASES ---
 typedef char XgimiBtnStr[32];   // Field 2: Visible Xgimi Token (e.g., "game_menu")
 typedef char ButtonNameStr[32]; // Field 3: Hidden Physical Remote Comment (e.g., "Cinema Master")
@@ -153,7 +155,7 @@ inline RemoteProfilesBridge remote_profiles;
 // 2. THE THREE-FIELD FLASH PERSISTENCE LAYER (NVS REGISTER SETS)
 // ====================================================================
 struct FlashStoredKey {
-  uint32_t hex_code; 
+  uint32_t irCommand; 
   XgimiBtnStr target_button_id; // Maps straight to Field 2 (Xgimi Action)
   ButtonNameStr button_name;    // Maps straight to Field 3 (Hidden Comment)
 };
@@ -206,7 +208,7 @@ inline esphome::button::Button* resolve_button(const char* name) {
 // ====================================================================
 // 4. LIGHTWEIGHT INITIALIZATION ROW BUILDER HELPER
 // ====================================================================
-inline void add_cmd(uint32_t hex_code, const char* xgimi_id, const char* comment) {
+inline void add_cmd(uint32_t irCommand, const char* xgimi_id, const char* comment) {
     IRCommand cmd;
     std::strncpy(cmd.name, xgimi_id, sizeof(cmd.name) - 1);
     cmd.name[sizeof(cmd.name) - 1] = '\0'; // FIXED: Cleared literal space character loop tracker warning
@@ -214,7 +216,7 @@ inline void add_cmd(uint32_t hex_code, const char* xgimi_id, const char* comment
     std::strncpy(cmd.button_name, comment, sizeof(cmd.button_name) - 1);
     cmd.button_name[sizeof(cmd.button_name) - 1] = '\0'; // FIXED: Cleared literal space character loop tracker warning
 
-    active_profile_workspace.cmd_codes.push_back({ hex_code, cmd });
+    active_profile_workspace.cmd_codes.push_back({ irCommand, cmd });
 }
 
 // ====================================================================
@@ -241,7 +243,7 @@ inline void commit_database_to_flash(uint16_t target_slot) {
   uint16_t k_idx = 0;
   for (const auto& kv_pair : active_profile_workspace.cmd_codes) {
     if (k_idx >= 80) break; // increased to 80
-    flash_p.keys[k_idx].hex_code = kv_pair.first;
+    flash_p.keys[k_idx].irCommand = kv_pair.first;
     std::strncpy(flash_p.keys[k_idx].target_button_id, kv_pair.second.name, sizeof(flash_p.keys[k_idx].target_button_id) - 1);
     std::strncpy(flash_p.keys[k_idx].button_name, kv_pair.second.button_name, sizeof(flash_p.keys[k_idx].button_name) - 1);
     k_idx++;
@@ -251,16 +253,18 @@ inline void commit_database_to_flash(uint16_t target_slot) {
   esphome::global_preferences->sync();
 }
 
+// ====================================================================
+
 // Flash memory optimized layout item (12 bytes total per row)
 struct FlashCommandRow {
-  uint32_t hex_code;
+  uint32_t irCommand;
   const char* name;         // 4-byte flash address pointer
   const char* button_name;  // 4-byte flash address pointer
 };
 
 // --- PROGMEM FACTORY DATA STORAGE TABLES (SINGLE-ITEM-PER-LINE) ---
 
-const FlashCommandRow AWOL_COMMANDS[] PROGMEM = {
+alignas(4) const FlashCommandRow AWOL_COMMANDS[] {
   { 0xA7, "power_on",       "power on" },
   { 0x67, "power_off",      "power off" },
   { 0x24, "cursor_left",    "left arrow" },
@@ -290,7 +294,7 @@ const FlashCommandRow AWOL_COMMANDS[] PROGMEM = {
   { 0xC7, "BT_clear_pair",  "Back + Home" }
 };
 
-const FlashCommandRow BENQ_COMMANDS[] PROGMEM = {
+alignas(4) const FlashCommandRow BENQ_COMMANDS[] {
   { 0xB04F, "power_on",       "power on" },
   { 0xB14E, "power_off",      "power off" },
   { 0xF40B, "cursor_up",      "up arrow" },
@@ -321,7 +325,7 @@ const FlashCommandRow BENQ_COMMANDS[] PROGMEM = {
   { 0x6B94, "home",           "test pattern" }
 };
 
-const FlashCommandRow EPSON_COMMANDS[] PROGMEM = {
+alignas(4) const FlashCommandRow EPSON_COMMANDS[]{
   { 0x6F90, "power_on",       "Power On" },
   { 0x6E91, "power_off",      "Power Off" },
   { 0x4FB0, "cursor_up",      "up arrow" },
@@ -364,7 +368,7 @@ const FlashCommandRow EPSON_COMMANDS[] PROGMEM = {
   { 0x50AF, "home",           "lens2 NH" }
 };
 
-const FlashCommandRow HISENSE_COMMANDS[] PROGMEM = {
+alignas(4) const FlashCommandRow HISENSE_COMMANDS[] {
   { 0xF708, "power_on",       "power on" },
   { 0x8E71, "power_on",       "power on" },
   { 0xEF10, "power_off",      "power off" },
@@ -397,7 +401,7 @@ const FlashCommandRow HISENSE_COMMANDS[] PROGMEM = {
   { 0xB649, "BT_clear_pair",  "Youtube" }
 };
 
-const FlashCommandRow JVC_VCR_COMMANDS[] PROGMEM = {
+alignas(4) const FlashCommandRow JVC_VCR_COMMANDS[] {
   { 0xC2D0, "power_on",       "power on" },
   { 0xC2B8, "power_on",       "power on" },
   { 0xC258, "power_off",      "power off" },
@@ -433,7 +437,7 @@ const FlashCommandRow JVC_VCR_COMMANDS[] PROGMEM = {
   { 0xC244, "BT_clear_pair",  "2" }
 };
 
-const FlashCommandRow JVC_PROJ_A_COMMANDS[] PROGMEM = {
+alignas(4) const FlashCommandRow JVC_PROJ_A_COMMANDS[] {
   { 0xA0,   "power_on",       "power on" },
   { 0x60,   "power_off",      "power off" },
   { 0x80,   "cursor_up",      "up arrow" },
@@ -487,7 +491,7 @@ const FlashCommandRow JVC_PROJ_A_COMMANDS[] PROGMEM = {
   { 0x4E, "home",           "pic adjust" }
 };
 
-const FlashCommandRow JVC_PROJ_B_COMMANDS[] PROGMEM = {
+alignas(4) const FlashCommandRow JVC_PROJ_B_COMMANDS[] {
   { 0xA0,   "power_on",       "power on" },
   { 0x60,   "power_off",      "power off" },
   { 0x80,   "cursor_up",      "up arrow" },
@@ -541,7 +545,7 @@ const FlashCommandRow JVC_PROJ_B_COMMANDS[] PROGMEM = {
   { 0x4E, "home",           "pic adjust" }
 };
 
-const FlashCommandRow LG_COMMANDS[] PROGMEM = {
+alignas(4) const FlashCommandRow LG_COMMANDS[] {
   { 0xF708, "power_on",       "power toggle" },
   { 0x23DC, "power_on",       "Discrete Power On" },
   { 0x2CC3, "power_off",      "Discrete Power Off" },
@@ -585,7 +589,7 @@ const FlashCommandRow LG_COMMANDS[] PROGMEM = {
   { 0xC639, "home",           "cc" }
 };
 
-const FlashCommandRow OPTOMA_COMMANDS[] PROGMEM = {
+alignas(4) const FlashCommandRow OPTOMA_COMMANDS[] {
   { 0xFD02, "power_on",       "power on" },
   { 0xD12E, "power_off",      "power off" },
   { 0xEF10, "cursor_left",    "left arrow" },
@@ -614,7 +618,7 @@ const FlashCommandRow OPTOMA_COMMANDS[] PROGMEM = {
   { 0xBD42, "BT_clear_pair",  "contrast" }
 };
 
-const FlashCommandRow SONY_PROJ_COMMANDS[] PROGMEM = {
+alignas(4) const FlashCommandRow SONY_PROJ_COMMANDS[] {
   { 0x03A2A, "power_on",      "Power On" },
   { 0x07A2A, "power_off",     "Power Off" },
   { 0x0542A, "power_on",      "Power Toggle" },
@@ -669,7 +673,7 @@ const FlashCommandRow SONY_PROJ_COMMANDS[] PROGMEM = {
   { 0x22BE4, "home",          "wide mode anamorphic zoom" }
 };
 
-const FlashCommandRow SONY_XBR_COMMANDS[] PROGMEM = {
+alignas(4) const FlashCommandRow SONY_XBR_COMMANDS[] {
   { 0x0750, "power_on",       "power on" },
   { 0x0A90, "power_on",       "power toggle" },
   { 0x0F50, "power_off",      "power off" },
@@ -701,7 +705,7 @@ const FlashCommandRow SONY_XBR_COMMANDS[] PROGMEM = {
   { 0x1CE9, "BT_clear_pair",  "fast forward" }
 };
 
-const FlashCommandRow TIVO_COMMANDS[] PROGMEM = {
+alignas(4) const FlashCommandRow TIVO_COMMANDS[] {
   { 0xE010, "power_on",       "TV power)" },
   { 0xE011, "power_off",      "live TV" },
   { 0xC031, "power_off",      "0" },
@@ -733,7 +737,7 @@ const FlashCommandRow TIVO_COMMANDS[] PROGMEM = {
   { 0xC032, "BT_clear_pair",  "clear" }
 };
 
-const FlashCommandRow PANASONIC_COMMANDS[] PROGMEM = {
+alignas(4) const FlashCommandRow PANASONIC_COMMANDS[] {
   { 0x1003A3B, "power_on",    "on" },
   { 0x100BCBD, "power_off",   "off" },
   { 0x1007273, "cursor_left", "left arrow" },
@@ -909,7 +913,7 @@ inline void load_profile_to_workspace(int idx) {
 
         for (size_t i = 0; i < array_size; i++) {
             // Under ESP-IDF on ESP32, flash can be read directly like normal RAM!
-            uint32_t code = flash_array[i].hex_code;
+            uint32_t code = flash_array[i].irCommand;
             const char* name_flash_ptr = flash_array[i].name;
             const char* btn_flash_ptr  = flash_array[i].button_name;
             
@@ -952,7 +956,7 @@ inline void load_profile_to_workspace(int idx) {
         
         for (uint16_t k = 0; k < load_limit; k++) {
             auto& kv_pair = active_profile_workspace.cmd_codes[k];
-            kv_pair.first = flash_p.keys[k].hex_code;
+            kv_pair.first = flash_p.keys[k].irCommand;
             std::strncpy(kv_pair.second.name, flash_p.keys[k].target_button_id, sizeof(kv_pair.second.name) - 1);
             std::strncpy(kv_pair.second.button_name, flash_p.keys[k].button_name, sizeof(kv_pair.second.button_name) - 1);
         }
@@ -1031,11 +1035,11 @@ inline std::string generate_profile_csv(int idx) {
 
   // Rows 2+: Command Code Data Rows (Strict Padding Applied)
   for (size_t i = 0; i < p.cmd_codes.size(); i++) {
-      char hex_code_buf[32];
-      snprintf(hex_code_buf, sizeof(hex_code_buf), key_fmt, (unsigned int)p.cmd_codes[i].first);
+      char irCommand_buf[32];
+      snprintf(irCommand_buf, sizeof(irCommand_buf), key_fmt, (unsigned int)p.cmd_codes[i].first);
       
       snprintf(chunk_buf, sizeof(chunk_buf), "KEY,%s,%s,%s\n",
-               hex_code_buf, p.cmd_codes[i].second.name, p.cmd_codes[i].second.button_name);
+               irCommand_buf, p.cmd_codes[i].second.name, p.cmd_codes[i].second.button_name);
       csv_out += chunk_buf;
   }
 
@@ -1143,8 +1147,9 @@ inline bool import_profile_from_csv(const std::string& csv_data) {
     return true;
 }
 
-
-//=========================== webserver =======================
+// ====================================================================
+// ==== Custom Webserver ===
+// ====================================================================
 #include "esp_http_server.h"
 
 // 1. FLASH-BOUND USER INTERFACE HTML DEFINITION (UPDATED WITH STATS CARD)

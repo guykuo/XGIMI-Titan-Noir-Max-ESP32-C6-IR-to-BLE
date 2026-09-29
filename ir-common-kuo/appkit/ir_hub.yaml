@@ -643,7 +643,11 @@ script:
               ESP_LOGI("IR_HUB", "IR processing Protocol %s      Address 0x%X,      Command 0x%X", ir_protocolStr.c_str(), (unsigned int)ir_address, (unsigned int)ir_command);
 
               // --- Handle special actions: clear arming, and trigger first ---
-              if (ir_address == active_profile.device_address) {
+              // Allow address 0 bypass for LG/Sony devices during structural checks
+              bool is_zero_address_proto = (ir_protocolStr == "LG" || ir_protocolStr == "SONY");
+              bool address_matches = (ir_address == active_profile.device_address || is_zero_address_proto);
+
+              if (address_matches) {
                 if (ir_command == active_profile.cmd_clear_token_arm) {
                   id(global_token_clear_armed) = true;
                   id(token_clear_safety_timeout).execute();
@@ -689,9 +693,6 @@ script:
               } else { 
                 addressStr = active_profile.profile_name; 
                 
-                // ============================================================
-                // RESTORED TIMING TRACKING ENGINE LINES
-                // ============================================================
                 if (id(global_cached_command) != ir_command || id(global_initial_press_time) == 0) {
                   id(global_cached_command) = ir_command;
                   id(global_initial_press_time) = now; 
@@ -699,26 +700,10 @@ script:
                   id(global_last_raw_packet_time) = now; 
                   id(global_is_holding) = false;      
                   
-                  // Executing hidden action paths on the fly via visible token name
                   id(commandName).assign(found_cmd->name);
 
-                  if (std::strcmp(found_cmd->name, "token_sniff") == 0) {
-                    id(showing_special_info) = true;
-                    id(sniffing_sequence).execute(); 
-                  } 
-                  else if (std::strcmp(found_cmd->name, "token_recall") == 0) {
-                    id(showing_special_info) = true;
-                    id(execute_token_recall_routine).execute();
-                  } 
-                  else if (std::strcmp(found_cmd->name, "token_clear") == 0) {
-                    id(run_token_clear_worker).execute();
-                  }
-                  else {
-                    auto* dynamic_button_target = resolve_button(found_cmd->name);
-                    if (dynamic_button_target != nullptr) {
-                       dynamic_button_target->press();
-                    }
-                  }
+                  id(ir_map_processor).execute(ir_command, false);
+
                 } else {
                   id(global_last_raw_packet_time) = now;
                 }
@@ -757,7 +742,7 @@ script:
                   
                   // Scan the keys residing entirely inside this temporary stack-allocated flash block
                   for (uint16_t k = 0; k < flash_p.total_keys; k++) {
-                    if (flash_p.keys[k].hex_code == ir_command) {
+                    if (flash_p.keys[k].irCommand == ir_command) {
                       matched_index = factory + slot; // Calculate true dynamic index position
                       match_found = true;
                       break;
@@ -948,6 +933,8 @@ script:
               }
             }
             
+            // == Handle special server actions ====
+
             if (std::strcmp(found_cmd->name, "token_sniff") == 0) {
               id(showing_special_info) = true;
               id(sniffing_sequence).execute(); 
@@ -959,13 +946,40 @@ script:
             else if (std::strcmp(found_cmd->name, "token_clear") == 0) {
               id(run_token_clear_worker).execute();
             }
+            
+            
+            // Parse Raw Keyboard String Action (e.g., "RKEY:52")
+            if (std::strncmp(found_cmd->name, "RKEY:", 5) == 0) {
+              uint16_t usageId = std::strtoul(found_cmd->name + 5, nullptr, 16);
+              ESP_LOGD("IR_HUB", "Parsed raw keyboard command: 0x%02X", usageId);
+              
+              if (!is_hold) {
+                id(xgimi_remote_controller).press_keyboard((uint8_t)usageId);
+              } else {
+                id(xgimi_remote_controller).hold_keyboard((uint8_t)usageId);
+              }
+              return;
+            }
+            
+            // Parse Raw Consumer String Action (e.g., "RCON:01BC")
+            else if (std::strncmp(found_cmd->name, "RCON:", 5) == 0) {
+              uint16_t usageId = std::strtoul(found_cmd->name + 5, nullptr, 16);
+              ESP_LOGD("IR_HUB", "Parsed raw consumer command: 0x%04X", usageId);
+              
+              id(xgimi_remote_controller).press_consumer(usageId); // does not handle holds
+              return;
+            }         
+            
+            // == Handle regular actions ====
             else {
               auto* dynamic_button_target = resolve_button(found_cmd->name);
               if (dynamic_button_target != nullptr) {
                  dynamic_button_target->press();
               }
             }
+            
           } else {
+            // hex command was not found in active profile
             id(commandName).assign("Unassigned"); 
           }
 
@@ -993,10 +1007,7 @@ script:
           
           ESP_LOGI("Profile Control", "Profile layout '%s' engaged via index %d.", 
                    active_profile.profile_name.c_str(), (int)true_hardware_index); 
-          
-          
-  #----------------------------------------
-  
+            
 
   #----------------------------------------
   # High Speed Timeout Watcher Register Cleanup

@@ -65,7 +65,7 @@ light:
     pin: ${pin_indicator_LED}
     chipset: WS2812
     num_leds: 1
-    channel_colors: RGB
+    rgb_order: RGB
     name: "Sniffer Indicator"
     internal: true
 
