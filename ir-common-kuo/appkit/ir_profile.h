@@ -12,7 +12,14 @@
 #include "esp_heap_caps.h"
 #include "esp_system.h"
 #include "esp_log.h"
+#include "esp_chip_info.h"
+#include "esp_flash.h"
+#include "esp_private/esp_clk.h" 
+#include "esp_ota_ops.h"
+#include "esp_image_format.h"
 
+#define STRINGIFY_MACRO(x) #x
+#define TOSTRING_MACRO(x) STRINGIFY_MACRO(x)
 
 // --- HUMAN-READABLE PROTOCOL FOOTPRINTS ---
 #define PROTO_UNKNOWN   0
@@ -1197,7 +1204,7 @@ inline bool import_profile_from_csv(const std::string& csv_data) {
 // ====================================================================
 #include "esp_http_server.h"
 
-// 1. FLASH-BOUND USER INTERFACE HTML DEFINITION (UPDATED WITH STATS CARD)
+// 1. FLASH-BOUND USER INTERFACE HTML DEFINITION (UPDATED WITH SPEED METRIC)
 static const char dashboard_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>IR Hub Storage Matrix</title>
@@ -1226,7 +1233,7 @@ static const char dashboard_html[] PROGMEM = R"rawliteral(
 </script>
 </head><body>
 <div class="box">
-  <h3>IR Control Workspace</h3>
+  <h3>%BLE_REMOTE_NAME%</h3>
   <p style="font-size:13px;color:#8b949e;margin:0 0 15px">Active Profile: <span style="color:#58a6ff;font-weight:bold">%ACTIVE_NAME%</span></p>
   <form action="/select" method="GET">
     <label for="profile_sel">Select Target Profile Slot:</label>
@@ -1235,7 +1242,7 @@ static const char dashboard_html[] PROGMEM = R"rawliteral(
     <button type="submit" class="btn" style="width:100%;margin-top:12px;background:#1f6feb">Activate Selected Profile</button>
   </form>
   
-  <h3 style="margin-top:24px;font-size:16px">Backup & Recovery Operations</h3>
+  <h3>Backup & Recovery Operations</h3>
   <div style="margin-bottom:12px;">
     <a id="export_link" href="#" class="btn sec" style="display:block;margin-bottom:12px;">Download CSV</a>
   </div>
@@ -1243,7 +1250,6 @@ static const char dashboard_html[] PROGMEM = R"rawliteral(
   <form id="upload_form" method="POST" enctype="multipart/form-data" style="margin-top:12px">
     <label style="display:block;margin-bottom:6px;font-size:12px;color:#8b949e;">Choose Backup File:</label>
     <input type="file" id="file_picker" name="file" onchange="document.getElementById('ul_btn').disabled=false;">
-    
     <button type="submit" id="ul_btn" class="btn" style="width:100%;background:#238636;margin-top:12px;" disabled>Upload CSV</button>
   </form>
 </div>
@@ -1252,18 +1258,30 @@ static const char dashboard_html[] PROGMEM = R"rawliteral(
   <h3>System Diagnostics</h3>
   <div class="stat-list">
     <div class="stat-row">
-      <div class="stat-lbl">Free Heap RAM</div>
-      <div class="stat-val">%FREE_RAM%</div>
+      <div class="stat-lbl">CPU</div>
+      <div class="stat-val" style="color:#79c0ff">%CPU_TYPE%</div>
+      <div class="stat-lbl">Cores & Clock</div>
+      <div class="stat-val" style="color:#79c0ff">%CPU_CORES% Cores @ %CPU_SPEED%</div>
     </div>
     <div class="stat-row">
+      <div class="stat-lbl">Total Flash</div>
+      <div class="stat-val" style="color:#79c0ff">%TOTAL_FLASH%</div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-lbl">App Partition</div>
+      <div class="stat-val" style="color:#79c0ff">%APP_TOTAL%</div>
+      <div class="stat-lbl">App Used</div>
+      <div class="stat-val">%APP_USED%</div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-lbl">Total / Free Heap RAM</div>
+      <div class="stat-val">%TOTAL_RAM% / %FREE_RAM%</div>
       <div class="stat-lbl">Heap Fragmentation</div>
       <div class="stat-val">%FRAGMENTATION%</div>
-    </div>
+    </div>    
     <div class="stat-row">
       <div class="stat-lbl">Max Free Block</div>
       <div class="stat-val">%MAX_BLOCK%</div>
-    </div>
-    <div class="stat-row">
       <div class="stat-lbl">Free Stack Space</div>
       <div class="stat-val">%STACK_SIZE%</div>
     </div>
@@ -1306,12 +1324,80 @@ inline esp_err_t root_handler(httpd_req_t *req) {
     // FETCH DIAGNOSTIC DATA DIRECTLY FROM THE CORE KERNEL APPS
     char scratch[128];
     
-    // 1. Free Heap RAM
-    size_t free_heap = esp_get_free_heap_size(); // <-- Ensure this exact line is here!
+    // Core SoC Property Detections
+    esp_chip_info_t chip_info;
+    esp_chip_info(&chip_info);
+    
+    // Resolve Chip Model Strings
+    const char* chip_model_str = "ESP32 (Unknown Variant)";
+    switch(chip_info.model) {
+        case CHIP_ESP32:   chip_model_str = "ESP32 (Classic)"; break;
+        case CHIP_ESP32S2: chip_model_str = "ESP32-S2"; break;
+        case CHIP_ESP32S3: chip_model_str = "ESP32-S3"; break;
+        case CHIP_ESP32C3: chip_model_str = "ESP32-C3"; break;
+        case CHIP_ESP32C6: chip_model_str = "ESP32-C6"; break;
+        case CHIP_ESP32H2: chip_model_str = "ESP32-H2"; break;
+        default: break;
+    }
+    std::string cpu_type_str(chip_model_str);
+    std::string cpu_cores_str = std::to_string(chip_info.cores);
+    
+    // Fetch Active CPU Clock Speed directly from the system clock configuration register
+    uint32_t cpu_speed_hz = esp_clk_cpu_freq();
+    snprintf(scratch, sizeof(scratch), "%u MHz", (unsigned int)(cpu_speed_hz / 1000000));
+    std::string cpu_speed_str(scratch);
+    
+    // --- 1. DYNAMIC FLASH CAPACITY DECODING ---
+    uint32_t flash_size = 0;
+    if (esp_flash_get_size(NULL, &flash_size) != ESP_OK) {
+        flash_size = 0; 
+    }
+    
+    snprintf(scratch, sizeof(scratch), "%u MB", (unsigned int)(flash_size / (1024 * 1024)));
+    std::string total_flash_str(scratch);
+    
+    // --- 2. APP PARTITION OVER-THE-AIR DIAGNOSTICS ---
+    const esp_partition_t *running_part = esp_ota_get_running_partition();
+    uint32_t app_total_bytes = 0;
+    uint32_t app_used_bytes = 0;
+    float app_used_percent = 0.0;
+
+    if (running_part != NULL) {
+        app_total_bytes = running_part->size;
+        
+        esp_image_metadata_t img_meta;
+        const esp_partition_pos_t part_pos = {
+            .offset = running_part->address,
+            .size = running_part->size,
+        };
+        
+        if (esp_image_get_metadata(&part_pos, &img_meta) == ESP_OK) {
+            app_used_bytes = img_meta.image_len;
+            if (app_total_bytes > 0) {
+                app_used_percent = ((float)app_used_bytes / (float)app_total_bytes) * 100.0;
+            }
+        }
+    }
+
+    // Format strings to map cleanly into placeholders
+    snprintf(scratch, sizeof(scratch), "%.2f MB", (float)app_total_bytes / (1024.0 * 1024.0));
+    std::string app_total_str(scratch);
+
+    snprintf(scratch, sizeof(scratch), "%.2f MB (%.1f%%)", (float)app_used_bytes / (1024.0 * 1024.0), app_used_percent);
+    std::string app_used_str(scratch);
+    
+    // Dynamic RAM Calculations
+    multi_heap_info_t heap_info;
+    heap_caps_get_info(&heap_info, MALLOC_CAP_8BIT);
+    snprintf(scratch, sizeof(scratch), "%u KB", (unsigned int)(heap_info.total_free_bytes + heap_info.total_allocated_bytes) / 1024);
+    std::string total_ram_str(scratch);
+
+    // Free Heap RAM
+    size_t free_heap = esp_get_free_heap_size(); 
     snprintf(scratch, sizeof(scratch), "%u Bytes", (unsigned int)free_heap);
     std::string free_ram(scratch);
     
-    // 2. Heap Fragmentation (Static placeholder to prevent calculation macro crashes)
+    // Heap Fragmentation
     size_t largest_free_block = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
     float fragmentation_percentage = 0.0f;
     if (free_heap > 0) {
@@ -1320,32 +1406,40 @@ inline esp_err_t root_handler(httpd_req_t *req) {
     snprintf(scratch, sizeof(scratch), "%0.1f %%", fragmentation_percentage);
     std::string frag(scratch);
     
-    // 3. Max Free Block Size (Cast to unsigned int for compiler format matching)
-    snprintf(scratch, sizeof(scratch), "%u Bytes", (unsigned int)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+    // Max Free Block Size 
+    snprintf(scratch, sizeof(scratch), "%u Bytes", (unsigned int)largest_free_block);
     std::string max_block(scratch);
     
-    // 4. Free Stack Space Room 
+    // Free Stack Space Room 
     unsigned int free_stack = (unsigned int)uxTaskGetStackHighWaterMark(NULL);
     snprintf(scratch, sizeof(scratch), "%u Bytes", free_stack);
-    std::string stack_size_str(scratch); // Renamed variable
+    std::string stack_size_str(scratch); 
     
-    // 5. Reset Reason Code
+    // Reset Reason Code
     int reason_code = (int)esp_reset_reason();
     std::string reset_reason = "Code " + std::to_string(reason_code);
     
-    // 6. Hardware Info (Safely extract the C-string from ESPHome's StringRef object)
+    // Hardware Info 
     std::string hw_info = esphome::App.get_name().c_str(); 
 
     // EXTRANEOUS STRING REPLACEMENTS PASS
     size_t pos;
+    while ((pos = html.find("%BLE_REMOTE_NAME%")) != std::string::npos) html.replace(pos, 17, TOSTRING_MACRO(BLE_REMOTE_NAME_STR));
     while ((pos = html.find("%ACTIVE_NAME%")) != std::string::npos) html.replace(pos, 13, active_name);
     while ((pos = html.find("%OPTIONS_MARKER%")) != std::string::npos) html.replace(pos, 16, options);
+    while ((pos = html.find("%CPU_TYPE%")) != std::string::npos) html.replace(pos, 10, cpu_type_str);
+    while ((pos = html.find("%CPU_CORES%")) != std::string::npos) html.replace(pos, 11, cpu_cores_str);
+    while ((pos = html.find("%CPU_SPEED%")) != std::string::npos) html.replace(pos, 11, cpu_speed_str);
+    while ((pos = html.find("%TOTAL_FLASH%")) != std::string::npos) html.replace(pos, 13, total_flash_str);
+    while ((pos = html.find("%TOTAL_RAM%")) != std::string::npos) html.replace(pos, 11, total_ram_str);
     while ((pos = html.find("%FREE_RAM%")) != std::string::npos) html.replace(pos, 10, free_ram);
     while ((pos = html.find("%FRAGMENTATION%")) != std::string::npos) html.replace(pos, 15, frag);
     while ((pos = html.find("%MAX_BLOCK%")) != std::string::npos) html.replace(pos, 11, max_block);
     while ((pos = html.find("%STACK_SIZE%")) != std::string::npos) html.replace(pos, 12, stack_size_str);
     while ((pos = html.find("%RESET_REASON%")) != std::string::npos) html.replace(pos, 14, reset_reason);
     while ((pos = html.find("%HW_INFO%")) != std::string::npos) html.replace(pos, 9, hw_info);
+    while ((pos = html.find("%APP_TOTAL%")) != std::string::npos) html.replace(pos, 11, app_total_str);
+    while ((pos = html.find("%APP_USED%")) != std::string::npos) html.replace(pos, 10, app_used_str);
     
     return httpd_resp_send(req, html.c_str(), HTTPD_RESP_USE_STRLEN);
 }
@@ -1360,16 +1454,10 @@ inline esp_err_t select_handler(httpd_req_t *req) {
             if (httpd_query_key_value(buf, "slot", param, sizeof(param)) == ESP_OK) {
                 int chosen_slot = atoi(param);
 
-                // 1. Sync the value over to Home Assistant's global configuration tracker
                 esphome::id(active_remote_layout).value() = chosen_slot;
-                
-                // 2. Clear state variables & pull the layout profile instantly into RAM
                 load_profile_to_workspace(chosen_slot);
-                
-                // 3. Arm the physical hardware parameters (protocol, timings) to the new rules
                 esphome::id(setup_ir_receiver_for_current_profile).execute();
                 
-                // 4. Update frontend state strings so the dashboard reflects the new layout name
                 static char change_buf[128];
                 const char* kind = (chosen_slot < (int)factory_count) ? "internal" : "custom";
                 snprintf(change_buf, sizeof(change_buf), "idx=%d  %s  [%s]",
@@ -1402,21 +1490,15 @@ inline esp_err_t export_handler(httpd_req_t *req) {
         free(buf);
     }
 
-    // FIX: Generate complete profile context payload data utilizing your pre-built function block
     std::string csv_data = generate_profile_csv(target_slot);
-
     httpd_resp_set_type(req, "text/csv");
     
     char header_buf[128];
     snprintf(header_buf, sizeof(header_buf), "attachment; filename=profile_slot_%d.csv", target_slot);
     httpd_resp_set_hdr(req, "Content-Disposition", header_buf);
 
-    // Stream out the populated dataset contents cleanly
     httpd_resp_send(req, csv_data.c_str(), csv_data.length());
-    
-    // Safely rehydrate original running workspace layout state configuration rules
     load_profile_to_workspace(esphome::id(active_remote_layout).value());
-    
     return ESP_OK;
 }
 
@@ -1432,7 +1514,7 @@ inline esp_err_t import_handler(httpd_req_t *req) {
         if (httpd_req_get_url_query_str(req, buf, query_len) == ESP_OK) {
             char param[32]; 
             if (httpd_query_key_value(buf, "slot", param, sizeof(param)) == ESP_OK) {
-                target_slot = atoi(param); // Captures the exact slot selected in the web UI dropdown
+                target_slot = atoi(param); 
             }
         }
         free(buf);
@@ -1473,30 +1555,20 @@ inline esp_err_t import_handler(httpd_req_t *req) {
                              csv_accumulator.substr(start_pos, end_pos - start_pos) : 
                              csv_accumulator.substr(start_pos);
 
-    // Parse data structure straight into the workspace RAM workbench
     if (import_profile_from_csv(clean_csv)) {
         link_hardware_buttons();
         esphome::id(setup_ir_receiver_for_current_profile).execute();
         
-        // DYNAMIC TARGET SLOTTING ENGAGEMENT:
-        // Calculate the raw relative index slice for your user-learned custom slots
         int final_custom_slot = target_slot - (int)factory_count;
-        
-        // Safety boundary guard: If the user selected a Factory Slot from the dropdown (less than 0)
-        // or overflows our custom pool size, intercept it and route to Custom Memory Slot 0.
         if (final_custom_slot < 0 || final_custom_slot >= MAX_LEARNED_PROFILES) {
             ESP_LOGW("Web Import", "Factory slot selected for import destination. Redirecting safely to Custom Memory Slot 0.");
             final_custom_slot = 0; 
-            
-            // Mirror the override configuration back into the global tracking variable
             int hardware_slot_override = (int)factory_count + final_custom_slot;
             esphome::id(active_remote_layout).value() = hardware_slot_override;
         } else {
-            // SUCCESSFUL TARGETING: Lock the device's running layout selection to match the chosen dropdown slot
             esphome::id(active_remote_layout).value() = target_slot;
         }
         
-        // Commit the parsed 80-key profile directly into the dynamically targeted custom slot!
         commit_database_to_flash(final_custom_slot);
         esphome::id(display_show).execute(true, "CSV Web Uploaded!", "Profile Operational", active_profile_workspace.profile_name);
     } else {
@@ -1510,7 +1582,6 @@ inline esp_err_t import_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-// 2. DOUBLE-CHECK THE URI STRUCTURE STRINGS INSIDE YOUR SETUP ENGINE
 inline void start_custom_web_server() {
     httpd_handle_t server = NULL;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
@@ -1539,9 +1610,9 @@ inline void start_custom_web_server() {
     };
 
     httpd_uri_t import_uri = {
-        .uri       = "/import",       // <-- Check spelling
-        .method    = HTTP_POST,      // <-- Must be POST protocol
-        .handler   = import_handler, // <-- Points to function above
+        .uri       = "/import",       
+        .method    = HTTP_POST,      
+        .handler   = import_handler, 
         .user_ctx  = NULL
     };
 
@@ -1549,7 +1620,6 @@ inline void start_custom_web_server() {
         httpd_register_uri_handler(server, &root_uri);
         httpd_register_uri_handler(server, &select_uri);
         httpd_register_uri_handler(server, &export_uri);
-        httpd_register_uri_handler(server, &import_uri); // <-- REGISTER PASSED HERE
+        httpd_register_uri_handler(server, &import_uri); 
     }
 }
-
