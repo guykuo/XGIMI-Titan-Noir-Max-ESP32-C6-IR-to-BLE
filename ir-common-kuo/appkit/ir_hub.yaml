@@ -147,8 +147,12 @@ remote_receiver:
           // set up common format address, command, command_repeats
           std::string ir_protocolStr = "LG";
           
-          uint32_t ir_address = 0; // LG does not have separate address. In LG IRmaps we set target_address to zero.
-          uint32_t ir_command = x.data;
+          // EXTRACT ADDRESS: Isolate the upper 16 bits (e.g., 0x20DF)
+          uint32_t ir_address = (x.data >> 16) & 0xFFFF; 
+          
+          // EXTRACT COMMAND: Isolate the lower 16 bits
+          uint32_t ir_command = x.data & 0xFFFF; 
+
           uint16_t ir_command_repeats = 0; // LG does not have command_repeats
   
           ESP_LOGD("main", "LG Command:---- 0x%04X ----", (unsigned int)ir_command);
@@ -643,8 +647,8 @@ script:
               ESP_LOGI("IR_HUB", "IR processing Protocol %s      Address 0x%X,      Command 0x%X", ir_protocolStr.c_str(), (unsigned int)ir_address, (unsigned int)ir_command);
 
               // --- Handle special actions: clear arming, and trigger first ---
-              // Allow address 0 bypass for LG/Sony devices during structural checks
-              bool is_zero_address_proto = (ir_protocolStr == "LG" || ir_protocolStr == "SONY");
+              // Allow address 0 bypass for Sony devices during structural checks
+              bool is_zero_address_proto = (ir_protocolStr == "SONY");
               bool address_matches = (ir_address == active_profile.device_address || is_zero_address_proto);
 
               if (address_matches) {
@@ -926,7 +930,6 @@ script:
           if (found_cmd != nullptr) {
             if (!id(global_token_clear_armed)) {
               if (is_hold) {
-                // HARDENED: Raw character buffer evaluation avoids generating dynamic string duplicates
                 id(commandName).assign(std::string(found_cmd->name) + " (Hold)");
               } else {
                 id(commandName).assign(found_cmd->name);
@@ -934,52 +937,49 @@ script:
             }
             
             // == Handle special server actions ====
-
             if (std::strcmp(found_cmd->name, "token_sniff") == 0) {
               id(showing_special_info) = true;
               id(sniffing_sequence).execute(); 
+              return;
             } 
             else if (std::strcmp(found_cmd->name, "token_recall") == 0) {
               id(showing_special_info) = true;
               id(execute_token_recall_routine).execute();
+              return;
             } 
             else if (std::strcmp(found_cmd->name, "token_clear") == 0) {
               id(run_token_clear_worker).execute();
-            }
-            
-            
-            // Parse Raw Keyboard String Action (e.g., "RKEY:52")
-            if (std::strncmp(found_cmd->name, "RKEY:", 5) == 0) {
-              uint16_t usageId = std::strtoul(found_cmd->name + 5, nullptr, 16);
-              ESP_LOGD("IR_HUB", "Parsed raw keyboard command: 0x%02X", usageId);
-              
-              if (!is_hold) {
-                id(xgimi_remote_controller).press_keyboard((uint8_t)usageId);
-              } else {
-                id(xgimi_remote_controller).hold_keyboard((uint8_t)usageId);
-              }
               return;
             }
             
-            // Parse Raw Consumer String Action (e.g., "RCON:01BC")
+            // Parse Raw Keyboard String Actions...
+            if (std::strncmp(found_cmd->name, "RKEY:", 5) == 0) {
+              uint16_t usageId = std::strtoul(found_cmd->name + 5, nullptr, 16);
+              id(xgimi_remote_controller).press_keyboard((uint8_t)usageId);
+              
+              return;
+            }
             else if (std::strncmp(found_cmd->name, "RCON:", 5) == 0) {
               uint16_t usageId = std::strtoul(found_cmd->name + 5, nullptr, 16);
-              ESP_LOGD("IR_HUB", "Parsed raw consumer command: 0x%04X", usageId);
-              
-              id(xgimi_remote_controller).press_consumer(usageId); // does not handle holds
+              id(xgimi_remote_controller).press_consumer(usageId);
               return;
             }         
             
-            // == Handle regular actions ====
+            // ============================================================
+            // FIXED STRICT LINKER INTERCEPT: Force resolve against cmd.name
+            // ============================================================
             else {
+              // Direct matching lookup pass using the first field parameter ("focus_manual")
               auto* dynamic_button_target = resolve_button(found_cmd->name);
               if (dynamic_button_target != nullptr) {
+                 ESP_LOGD("IR_LINKER", "Successfully bound to hardware button ID: %s", found_cmd->name);
                  dynamic_button_target->press();
+              } else {
+                 ESP_LOGE("IR_LINKER", "Failed to resolve button: %s. No hardware entity matches this key.", found_cmd->name);
               }
             }
             
           } else {
-            // hex command was not found in active profile
             id(commandName).assign("Unassigned"); 
           }
 

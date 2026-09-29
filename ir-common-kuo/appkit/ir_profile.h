@@ -129,7 +129,7 @@ inline bool flash_hydration_complete = false;
 #ifdef ENABLE_EXTRA_BUTTONS
   inline constexpr uint32_t CURRENT_STRUCT_VERSION = 59; // Power user footprint track
 #else
-  inline constexpr uint32_t CURRENT_STRUCT_VERSION = 62; // <-- STEPPED TO 62 FOR THE 80-KEY CEILING
+  inline constexpr uint32_t CURRENT_STRUCT_VERSION = 64; // <-- STEPPED TO 63 FOR Field swap fix
 #endif
 
 // ====================================================================
@@ -190,20 +190,59 @@ inline constexpr const char* learn_button_names[] = {
 inline constexpr size_t TOTAL_LEARN_BUTTONS = sizeof(learn_button_names) / sizeof(learn_button_names[0]);
 
 // ====================================================================
-// 3. INTERNAL LINKER EXTRACTION HELPER
+// 3. INTERNAL LINKER EXTRACTION HELPER (ROBUST SANITIZATION ENGINE)
 // ====================================================================
 inline esphome::button::Button* resolve_button(const char* name) {
+  if (name == nullptr) return nullptr;
+
+  // --- STEP 1: INITIAL LOWERCASE CONVERSION ---
+  std::string target_str(name);
+  std::transform(target_str.begin(), target_str.end(), target_str.begin(), 
+                 [](unsigned char c){ return std::tolower(c); });
+
+  // --- STEP 2: HARDWARE ALIAS BRIDGING ---
+  // Smoothly intercept and map legacy DB tokens directly to your active YAML IDs
+  if (target_str == "bt_start_pair") {
+      target_str = "bluetooth_pairing_mode";
+  } else if (target_str == "bt_clear_pair") {
+      target_str = "clear_bluetooth_pairings";
+  }
+
+  // --- STEP 3: NON-ALPHANUMERIC STRIPPER WORKER ---
+  // Local lambda helper that drops all underscores, dashes, and extra spacing
+  auto strip_to_raw_alphanumeric = [](const std::string& input) {
+      std::string clean_output;
+      clean_output.reserve(input.size());
+      for (char c : input) {
+          if (std::isalnum(static_cast<unsigned char>(c))) {
+              clean_output += std::tolower(static_cast<unsigned char>(c));
+          }
+      }
+      return clean_output;
+  };
+
+  std::string clean_target = strip_to_raw_alphanumeric(target_str);
+
+  // --- STEP 4: SCAN AND MATCH COMPILED ENTITIES ---
   for (auto* btn : esphome::App.get_buttons()) {
     ComponentBufferStr buffer = {0}; 
     std::span<char, 128> buf_span(buffer);
     esphome::StringRef id_ref = btn->get_object_id_to(buf_span);
     
-    if (std::strcmp(id_ref.c_str(), name) == 0) {
+    // Normalize the compiled hardware ID from the core engine loop
+    std::string clean_hardware = strip_to_raw_alphanumeric(id_ref.c_str());
+    
+    // Evaluate stripped variants (e.g. "focusmanual" == "focusmanual")
+    if (clean_target == clean_hardware) {
+      ESP_LOGD("IR_LINKER", "Resolved: Flash Data '%s' matched Hardware Button '%s'", name, id_ref.c_str());
       return btn;
     }
   }
+  
+  ESP_LOGE("IR_LINKER", "Failed to resolve button: %s. (Cleaned target was: '%s')", name, clean_target.c_str());
   return nullptr; 
 }
+
 
 // ====================================================================
 // 4. LIGHTWEIGHT INITIALIZATION ROW BUILDER HELPER
@@ -957,8 +996,14 @@ inline void load_profile_to_workspace(int idx) {
         for (uint16_t k = 0; k < load_limit; k++) {
             auto& kv_pair = active_profile_workspace.cmd_codes[k];
             kv_pair.first = flash_p.keys[k].irCommand;
+            
+            // Field 2 (Internal target token ID) maps to target_button_id
             std::strncpy(kv_pair.second.name, flash_p.keys[k].target_button_id, sizeof(kv_pair.second.name) - 1);
+            kv_pair.second.name[sizeof(kv_pair.second.name) - 1] = '\0';
+            
+            // Field 3 (Visual/Comment Label Description) maps to button_name
             std::strncpy(kv_pair.second.button_name, flash_p.keys[k].button_name, sizeof(kv_pair.second.button_name) - 1);
+            kv_pair.second.button_name[sizeof(kv_pair.second.button_name) - 1] = '\0';
         }
     }
   }
@@ -1453,9 +1498,6 @@ inline esp_err_t import_handler(httpd_req_t *req) {
         
         // Commit the parsed 80-key profile directly into the dynamically targeted custom slot!
         commit_database_to_flash(final_custom_slot);
-        
-        // Rehydrate the current runtime RAM container layout state variables cleanly
-        load_profile_to_workspace(esphome::id(active_remote_layout).value());
         esphome::id(display_show).execute(true, "CSV Web Uploaded!", "Profile Operational", active_profile_workspace.profile_name);
     } else {
         httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "CSV processing failure.");
