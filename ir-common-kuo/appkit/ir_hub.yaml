@@ -952,18 +952,21 @@ script:
               return;
             }
             
-            // Parse Raw Keyboard String Actions...
+            // Parse Raw Keyboard and Consumer String Actions...
             if (std::strncmp(found_cmd->name, "RKEY:", 5) == 0) {
-              uint16_t usageId = std::strtoul(found_cmd->name + 5, nullptr, 16);
+              // Extract exactly up to 2 hex characters for 8-bit keyboard codes
+              std::string hex_str(found_cmd->name + 5, std::min<size_t>(2, std::strlen(found_cmd->name + 5)));
+              uint16_t usageId = std::strtoul(hex_str.c_str(), nullptr, 16);
               id(xgimi_remote_controller).press_keyboard((uint8_t)usageId);
-              
               return;
             }
             else if (std::strncmp(found_cmd->name, "RCON:", 5) == 0) {
-              uint16_t usageId = std::strtoul(found_cmd->name + 5, nullptr, 16);
+              // Extract exactly up to 4 hex characters for 16-bit consumer usage IDs
+              std::string hex_str(found_cmd->name + 5, std::min<size_t>(4, std::strlen(found_cmd->name + 5)));
+              uint16_t usageId = std::strtoul(hex_str.c_str(), nullptr, 16);
               id(xgimi_remote_controller).press_consumer(usageId);
               return;
-            }         
+            }           
             
             // ============================================================
             // FIXED STRICT LINKER INTERCEPT: Force resolve against cmd.name
