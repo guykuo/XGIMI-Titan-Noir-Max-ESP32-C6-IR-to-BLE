@@ -1204,24 +1204,29 @@ inline bool import_profile_from_csv(const std::string& csv_data) {
 // ====================================================================
 #include "esp_http_server.h"
 
-// 1. FLASH-BOUND USER INTERFACE HTML DEFINITION (UPDATED WITH SPEED METRIC)
+// 1. FLASH-BOUND USER INTERFACE HTML DEFINITION (UPDATED TO EXACTLY THREE FONT SIZES)
 static const char dashboard_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>IR Hub Storage Matrix</title>
 <style>
-  body{font-family:system-ui,-apple-system,sans-serif;margin:20px;background:#0d1117;color:#c9d1d9}
+  :root {
+    --fs-lg: 18px;
+    --fs-md: 14px;
+    --fs-sm: 12px;
+  }
+  body{font-family:system-ui,-apple-system,sans-serif;margin:20px;background:#0d1117;color:#c9d1d9;font-size:var(--fs-md)}
   .box{background:#161b22;padding:24px;border:1px solid #30363d;border-radius:6px;max-width:480px;margin:auto;margin-bottom:20px}
-  h3{margin-top:0;color:#58a6ff;border-bottom:1px solid #21262d;padding-bottom:10px;font-size:18px}
-  label{display:block;margin:14px 0 6px;font-size:14px;font-weight:600}
-  select,input[type="file"]{width:100%;padding:8px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#fff;box-sizing:border-box}
+  h3{margin-top:0;color:#58a6ff;border-bottom:1px solid #21262d;padding-bottom:10px;font-size:var(--fs-lg)}
+  label{display:block;margin:14px 0 6px;font-size:var(--fs-md);font-weight:600}
+  select,input[type="file"]{width:100%;padding:8px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#fff;box-sizing:border-box;font-size:var(--fs-md)}
   .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
-  .btn{padding:10px;background:#238636;color:#fff;border:0;border-radius:6px;font-weight:bold;text-align:center;text-decoration:none;cursor:pointer;font-size:14px}
+  .btn{padding:10px;background:#238636;color:#fff;border:0;border-radius:6px;font-weight:bold;text-align:center;text-decoration:none;cursor:pointer;font-size:var(--fs-md)}
   .btn.sec{background:#21262d;border:1px solid #30363d;color:#c9d1d9}
   .btn:hover{opacity:0.9}
   .stat-list{display:flex;flex-direction:column;gap:10px;margin-top:10px}
   .stat-row{display:flex;justify-content:space-between;align-items:center;background:#0d1117;padding:12px 16px;border-radius:6px;border:1px solid #21262d}
-  .stat-lbl{color:#8b949e;font-size:13px;font-weight:600;text-transform:uppercase}
-  .stat-val{font-family:monospace;font-weight:bold;color:#ff7b72;font-size:14px}
+  .stat-lbl{color:#8b949e;font-size:var(--fs-sm);font-weight:600;text-transform:uppercase}
+  .stat-val{font-family:monospace;font-weight:bold;color:#ff7b72;font-size:var(--fs-md)}
 </style>
 <script>
   function updateActionUrls(){
@@ -1234,7 +1239,7 @@ static const char dashboard_html[] PROGMEM = R"rawliteral(
 </head><body>
 <div class="box">
   <h3>%BLE_REMOTE_NAME%</h3>
-  <p style="font-size:13px;color:#8b949e;margin:0 0 15px">Active Profile: <span style="color:#58a6ff;font-weight:bold">%ACTIVE_NAME%</span></p>
+  <p style="font-size:var(--fs-sm);color:#8b949e;margin:0 0 15px">Active Profile: <span style="color:#58a6ff;font-weight:bold">%ACTIVE_NAME%</span></p>
   <form action="/select" method="GET">
     <label for="profile_sel">Select Target Profile Slot:</label>
     <select id="profile_sel" name="slot" onchange="updateActionUrls()">%OPTIONS_MARKER%</select>
@@ -1248,7 +1253,7 @@ static const char dashboard_html[] PROGMEM = R"rawliteral(
   </div>
 
   <form id="upload_form" method="POST" enctype="multipart/form-data" style="margin-top:12px">
-    <label style="display:block;margin-bottom:6px;font-size:12px;color:#8b949e;">Choose Backup File:</label>
+    <label style="display:block;margin-bottom:6px;font-size:var(--fs-sm);color:#8b949e;">Choose Backup File:</label>
     <input type="file" id="file_picker" name="file" onchange="document.getElementById('ul_btn').disabled=false;">
     <button type="submit" id="ul_btn" class="btn" style="width:100%;background:#238636;margin-top:12px;" disabled>Upload CSV</button>
   </form>
@@ -1276,7 +1281,7 @@ static const char dashboard_html[] PROGMEM = R"rawliteral(
     <div class="stat-row">
       <div class="stat-lbl">Total / Free Heap RAM</div>
       <div class="stat-val">%TOTAL_RAM% / %FREE_RAM%</div>
-      <div class="stat-lbl">Heap Fragmentation</div>
+      <div class="stat-lbl">Heap Frag.</div>
       <div class="stat-val">%FRAGMENTATION%</div>
     </div>    
     <div class="stat-row">
@@ -1287,9 +1292,9 @@ static const char dashboard_html[] PROGMEM = R"rawliteral(
     </div>
   </div>
   
-  <div style="margin-top:15px; font-size:12px; border-top:1px solid #21262d; padding-top:12px">
+  <div style="margin-top:15px; font-size:var(--fs-sm); border-top:1px solid #21262d; padding-top:12px">
     <div style="margin-bottom:6px"><span style="color:#8b949e">Reset Reason:</span> <span style="font-family:monospace;color:#79c0ff">%RESET_REASON%</span></div>
-    <div><span style="color:#8b949e">Hardware Info:</span> <span style="font-family:monospace;font-size:11px;color:#79c0ff">%HW_INFO%</span></div>
+    <div><span style="color:#8b949e">Hardware Info:</span> <span style="font-family:monospace;color:#79c0ff">%HW_INFO%</span></div>
   </div>
 </div>
 </body></html>
