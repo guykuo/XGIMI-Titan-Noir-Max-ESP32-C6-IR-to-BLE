@@ -17,6 +17,7 @@
 #include "esp_private/esp_clk.h" 
 #include "esp_ota_ops.h"
 #include "esp_image_format.h"
+#include <unordered_set>
 
 #define STRINGIFY_MACRO(x) #x
 #define TOSTRING_MACRO(x) STRINGIFY_MACRO(x)
@@ -33,12 +34,6 @@
 
 static const char *const TAG_MAPS = "universal_hid_maps";
 
-// --- FIXED-SIZE CHARACTER BUFFER SIZE ALIASES ---
-typedef char XgimiBtnStr[32];   // Field 2: Visible Xgimi Token (e.g., "game_menu")
-typedef char ButtonNameStr[32]; // Field 3: Hidden Physical Remote Comment (e.g., "Cinema Master")
-typedef char ProfileNameStr[32];
-typedef char ComponentBufferStr[128];
-
 // Zero-heap translation helper function for logging statements
 inline const char* to_string(uint8_t proto_id) {
   switch (proto_id) {
@@ -53,58 +48,146 @@ inline const char* to_string(uint8_t proto_id) {
   }
 }
 
+// Global tracking configuration variables
+inline size_t factory_count = 13; 
+inline constexpr uint16_t MAX_LEARNED_PROFILES = 5;
+inline bool flash_hydration_complete = false;
+#ifdef ENABLE_EXTRA_BUTTONS
+  inline constexpr uint32_t CURRENT_STRUCT_VERSION = 59; // Power user footprint track
+#else
+  inline constexpr uint32_t CURRENT_STRUCT_VERSION = 64; // <-- STEPPED TO 63 FOR Field swap fix
+#endif
+
+// Single Source of Truth for Button Mapping Arrays
+inline constexpr const char* learn_button_names[] = {
+  "power_on", "power_off", "cursor_left", "cursor_right", "cursor_up", "cursor_down",
+  "cursor_enter", "settings_menu", "back", "home", "game_menu", "input", "picture",
+  "focus_manual", "focus_auto", "shortcut_1", "shortcut_2", "shortcut_3", "shortcut_4",
+  "volume_up", "volume_down", "mute", "token_sniff", "token_clear", "token_recall",
+  "macro_record", "macro_play"
+  #ifdef ENABLE_EXTRA_BUTTONS
+  ,"custom_1", "custom_2", "custom_3", "custom_4", "custom_5"
+  #endif
+};
+
+inline constexpr size_t TOTAL_SYSTEM_BUTTONS = sizeof(learn_button_names) / sizeof(learn_button_names[0]);
 
 // ====================================================================
-// SECRETS.YAML BINARY INJECTION PARSER (DO NOT CHANGE)
+// 📦 UNIVERSAL IMMUTABLE STORAGE STRUCTS
 // ====================================================================
-__asm__(
-    ".section .rodata\n"
-    ".global _yaml_data_start\n"
-    ".global _yaml_data_end\n"
-    "_yaml_data_start:\n"
-    ".incbin \"../../../../secrets.yaml\"\n"
-    "_yaml_data_end:\n"
-    ".byte 0\n"
-    ".section .text\n"
-);
+#define MAX_MACRO_STEPS    48  
+#define MAX_BOUND_HOTKEYS  12  
 
-extern "C" {
-    extern const char _yaml_data_start[];
-    extern const char _yaml_data_end[];
-}
+struct UniversalMacroStep {
+    uint16_t action_payload; 
+    uint8_t  action_type;    // 0 = RKEY, 1 = RCON, 2 = Named Token
+    uint8_t  event_state;    // 0 = DOWN, 2 = UP
+    uint16_t delay_ms;       
+};
 
-namespace SecretsParser {
-    inline uint8_t parse_hex_byte(char high, char low) {
-        auto convert = [](char c) -> uint8_t {
-            if (c >= '0' && c <= '9') return c - '0';
-            if (c >= 'a' && c <= 'f') return c - 'a' + 10;
-            if (c >= 'A' && c <= 'F') return c - 'A' + 10;
-            return 0;
-        };
-        return (convert(high) << 4) | convert(low);
+struct UniversalFlashMacro {
+    uint32_t struct_version;
+    uint16_t total_steps;
+    UniversalMacroStep steps[MAX_MACRO_STEPS];
+};
+
+struct BindingPair {
+    uint16_t universal_action_id; 
+    uint8_t  action_type;         
+    uint8_t  shared_macro_slot;   // 255 = Unbound
+};
+
+struct UniversalBindingRegistry {
+    uint32_t struct_version;
+    uint16_t total_bound_keys;
+    BindingPair bindings[MAX_BOUND_HOTKEYS];
+};
+
+// ====================================================================
+// 💾 UNIFIED BINARY BACKUP PACKAGE STRUCTURE (Bit-Perfect Alignment)
+// ====================================================================
+struct alignas(4) MacroBackupPackage {
+    uint32_t magic_header;             // 0x554D4250 -> "UMBP"
+    uint32_t struct_version;           // Structure validation track tracking
+    UniversalBindingRegistry registry; // Key mapping dictionary references
+    UniversalFlashMacro slots[12];     // All 12 independent macro slots packed sequentially
+    uint32_t crc32_checksum;           // Data validation integrity checksum
+};
+
+
+// Expose workspaces globally to fix compilation linkages
+inline UniversalFlashMacro active_recording_buffer{};
+inline UniversalBindingRegistry global_binding_registry{};
+
+// Initialize actual storage space allocations safely across translational units
+#ifdef DEFINE_GLOBAL_WORKSPACE_RESERVES
+  UniversalFlashMacro active_recording_buffer{};
+  UniversalBindingRegistry global_binding_registry{};
+#endif
+
+// ====================================================================
+// 🧮 DECODING AND ABSOLUTE CONVERSION ALGORITHMS
+// ====================================================================
+inline uint16_t encode_action_to_id(const char* name, uint8_t& out_type) {
+    if (name == nullptr) return 0xFFFF;
+    if (std::strncmp(name, "RKEY:", 5) == 0) {
+        out_type = 0;
+        return (uint16_t)std::strtoul(name + 5, nullptr, 16);
     }
-
-    inline void fill_tokens(uint8_t* destination) {
-        const char* start = _yaml_data_start;
-        const char* end = _yaml_data_end;
-        size_t length = end - start;
-        size_t idx = 0;
-        if (length < 4) return;
-
-        for (size_t i = 0; i < length - 3 && idx < 15; ++i) {
-            if (start[i] == '0' && (start[i+1] == 'x' || start[i+1] == 'X')) {
-                destination[idx++] = parse_hex_byte(start[i+2], start[i+3]);
-                i += 3;
-            }
+    if (std::strncmp(name, "RCON:", 5) == 0) {
+        out_type = 1;
+        return (uint16_t)std::strtoul(name + 5, nullptr, 16);
+    }
+    
+    out_type = 2; 
+    for (size_t i = 0; i < TOTAL_SYSTEM_BUTTONS; i++) {
+        if (std::strcmp(name, learn_button_names[i]) == 0) {
+            return (uint16_t)i;
         }
     }
+    return 0xFFFF;
 }
 
-inline std::vector<uint8_t> get_secret_wake_token() {
-    std::vector<uint8_t> token(15, 0);
-    SecretsParser::fill_tokens(token.data());
-    return token;
+inline const char* decode_id_to_action_string(uint16_t action_id) {
+    if (action_id < TOTAL_SYSTEM_BUTTONS) {
+        return learn_button_names[action_id];
+    }
+    return "unassigned";
 }
+
+inline bool is_action_allowed_as_macro_hotkey(uint16_t action_id, uint8_t action_type) {
+    if (action_type == 0 || action_type == 1) return true; 
+    const char* action_name = decode_id_to_action_string(action_id);
+    
+    // Hard Guard: Prevent macro storage and playback keys from carrying macros
+    static const std::unordered_set<std::string> blocked_keys = {
+        "macro_record", "macro_play"
+    };
+    return (blocked_keys.count(action_name) == 0);
+}
+
+inline uint8_t get_bound_macro_slot(uint16_t action_id, uint8_t action_type) {
+    // Explicitly block macro record and playback buttons from ever matching a slot registry item
+    if (action_type == 2) {
+        if (!is_action_allowed_as_macro_hotkey(action_id, action_type)) {
+            return 255; // Secure fallback sentinel: Always return unassigned
+        }
+    }
+
+    for (uint16_t i = 0; i < global_binding_registry.total_bound_keys; i++) {
+        if (global_binding_registry.bindings[i].universal_action_id == action_id &&
+            global_binding_registry.bindings[i].action_type == action_type) {
+            return global_binding_registry.bindings[i].shared_macro_slot;
+        }
+    }
+    return 255; 
+}
+
+
+typedef char XgimiBtnStr[32];   // Field 2: Visible Xgimi Token (e.g., "game_menu")
+typedef char ButtonNameStr[32]; // Field 3: Hidden Physical Remote Comment (e.g., "Cinema Master")
+typedef char ProfileNameStr[32];
+typedef char ComponentBufferStr[128];
 
 // ====================================================================
 // 1. THE 3-FIELD ACTIVE RUNTIME ROW STRUCTURE
@@ -128,16 +211,7 @@ struct IRProfile {
 // This is the ONLY profile container that lives permanently on your workbench RAM
 inline IRProfile active_profile_workspace;
 
-// Global tracking configuration variables
-inline size_t factory_count = 13; 
-inline constexpr uint16_t MAX_LEARNED_PROFILES = 5;
-inline bool flash_hydration_complete = false;
 
-#ifdef ENABLE_EXTRA_BUTTONS
-  inline constexpr uint32_t CURRENT_STRUCT_VERSION = 59; // Power user footprint track
-#else
-  inline constexpr uint32_t CURRENT_STRUCT_VERSION = 64; // <-- STEPPED TO 63 FOR Field swap fix
-#endif
 
 // ====================================================================
 // COMPILER BRIDGING STRUCTURE FOR LEGACY YAMLS
@@ -179,22 +253,10 @@ struct FlashStoredProfile {
   FlashStoredKey keys[80];       // Centralized configuration ceiling cap
 };
 
-// --- SINGLE SOURCE OF TRUTH FOR BUTTON NAMES ---
-inline constexpr const char* learn_button_names[] = {
-  "power_on", "power_off", "cursor_left", "cursor_right", "cursor_up", "cursor_down",
-  "cursor_enter", "settings_menu", "back", "home", "game_menu", "input", "picture",
-  "focus_manual", "focus_auto", "shortcut_1", "shortcut_2", "shortcut_3", "shortcut_4",
-  "volume_up", "volume_down", "mute", "token_sniff", "token_clear", "token_recall",
-  "BT_start_pair", "BT_clear_pair"
-  
-  // Power User Toggle Boundary Gates
-  #ifdef ENABLE_EXTRA_BUTTONS
-  ,"custom_macro_1", "custom_macro_2", "custom_macro_3", "custom_macro_4", "custom_macro_5"
-  #endif
 
-};
 
-inline constexpr size_t TOTAL_LEARN_BUTTONS = sizeof(learn_button_names) / sizeof(learn_button_names[0]);
+
+
 
 // ====================================================================
 // 3. INTERNAL LINKER EXTRACTION HELPER (ROBUST SANITIZATION ENGINE)
@@ -207,16 +269,16 @@ inline esphome::button::Button* resolve_button(const char* name) {
   std::transform(target_str.begin(), target_str.end(), target_str.begin(), 
                  [](unsigned char c){ return std::tolower(c); });
 
-  // --- STEP 2: HARDWARE ALIAS BRIDGING ---
-  // Smoothly intercept and map legacy DB tokens directly to your active YAML IDs
-  if (target_str == "bt_start_pair") {
-      target_str = "bluetooth_pairing_mode";
-  } else if (target_str == "bt_clear_pair") {
-      target_str = "clear_bluetooth_pairings";
+  // Since macro_record and macro_play are virtual state-machine triggers 
+  // that do not have physical compiled button entities, exit quietly 
+  // with a nullptr to completely stop loud error logs from generating.
+  if (target_str == "macro_record" || target_str == "macro_play") {
+    return nullptr;
   }
 
-  // --- STEP 3: NON-ALPHANUMERIC STRIPPER WORKER ---
-  // Local lambda helper that drops all underscores, dashes, and extra spacing
+  // --- STEP 2: NON-ALPHANUMERIC STRIPPER WORKER ---
+  // Normalizes formatting irregularities (like double __ or trailing _) 
+  // by stripping text down to raw alphanumeric signatures.
   auto strip_to_raw_alphanumeric = [](const std::string& input) {
       std::string clean_output;
       clean_output.reserve(input.size());
@@ -230,16 +292,16 @@ inline esphome::button::Button* resolve_button(const char* name) {
 
   std::string clean_target = strip_to_raw_alphanumeric(target_str);
 
-  // --- STEP 4: SCAN AND MATCH COMPILED ENTITIES ---
+  // --- STEP 3: SCAN AND MATCH COMPILED ENTITIES ---
   for (auto* btn : esphome::App.get_buttons()) {
     ComponentBufferStr buffer = {0}; 
     std::span<char, 128> buf_span(buffer);
     esphome::StringRef id_ref = btn->get_object_id_to(buf_span);
     
-    // Normalize the compiled hardware ID from the core engine loop
+    // Normalize the compiled hardware identifier from the core engine loop
     std::string clean_hardware = strip_to_raw_alphanumeric(id_ref.c_str());
     
-    // Evaluate stripped variants (e.g. "focusmanual" == "focusmanual")
+    // Evaluate stripped variants safely (e.g., "cursorright" == "cursorright")
     if (clean_target == clean_hardware) {
       ESP_LOGD("IR_LINKER", "Resolved: Flash Data '%s' matched Hardware Button '%s'", name, id_ref.c_str());
       return btn;
@@ -336,8 +398,8 @@ alignas(4) const FlashCommandRow AWOL_COMMANDS[] {
   { 0xE7, "token_sniff",    "HDMI 1" },
   { 0x17, "token_clear",    "HDMI 2" },
   { 0x97, "token_recall",   "HDMI 3" },
-  { 0x07, "BT_start_pair",  "Back + Down" },
-  { 0xC7, "BT_clear_pair",  "Back + Home" }
+  { 0x07, "macro_record",  "Back + Down" },
+  { 0xC7, "macro_play",  "Back + Home" }
 };
 
 alignas(4) const FlashCommandRow BENQ_COMMANDS[] {
@@ -366,8 +428,8 @@ alignas(4) const FlashCommandRow BENQ_COMMANDS[] {
   { 0xC33C, "token_sniff",    "HDR" },
   { 0x629D, "token_clear",    "invert" },
   { 0x639C, "token_recall",   "3D" },
-  { 0xA05F, "BT_start_pair",  "color temp" },
-  { 0xA45B, "BT_clear_pair",  "color manage" },
+  { 0xA05F, "macro_record",  "color temp" },
+  { 0xA45B, "macro_play",  "color manage" },
   { 0x6B94, "home",           "test pattern" }
 };
 
@@ -402,8 +464,8 @@ alignas(4) const FlashCommandRow EPSON_COMMANDS[]{
   { 0x7C83, "token_sniff",    "frame interp" },
   { 0xC23D, "token_clear",    "RGBCMY" },
   { 0x6996, "token_recall",   "pattern" },
-  { 0xC43B, "BT_start_pair",  "3D format" },
-  { 0x758A, "BT_clear_pair",  "Aspect" },
+  { 0xC43B, "macro_record",  "3D format" },
+  { 0x758A, "macro_play",  "Aspect" },
   { 0x6A95, "home",           "Home" },
   { 0x8B74, "home",           "input LAN" },
   { 0x609F, "home",           "user" },
@@ -443,8 +505,8 @@ alignas(4) const FlashCommandRow HISENSE_COMMANDS[] {
   { 0xEB14, "token_sniff",    "4" },
   { 0xEA15, "token_clear",    "5" },
   { 0xE916, "token_recall",   "6" },
-  { 0xB847, "BT_start_pair",  "Prime Video" },
-  { 0xB649, "BT_clear_pair",  "Youtube" }
+  { 0xB847, "macro_record",  "Prime Video" },
+  { 0xB649, "macro_play",  "Youtube" }
 };
 
 alignas(4) const FlashCommandRow JVC_VCR_COMMANDS[] {
@@ -479,8 +541,8 @@ alignas(4) const FlashCommandRow JVC_VCR_COMMANDS[] {
   { 0xC224, "token_sniff",    "4" },
   { 0xC2A4, "token_clear",    "5" },
   { 0xC264, "token_recall",   "6" },
-  { 0xC284, "BT_start_pair",  "1" },
-  { 0xC244, "BT_clear_pair",  "2" }
+  { 0xC284, "macro_record",  "1" },
+  { 0xC244, "macro_play",  "2" }
 };
 
 alignas(4) const FlashCommandRow JVC_PROJ_A_COMMANDS[] {
@@ -522,10 +584,10 @@ alignas(4) const FlashCommandRow JVC_PROJ_A_COMMANDS[] {
   { 0x56, "token_clear",    "natural" },
   { 0xAE, "token_recall",   "gamma" },
   { 0xB7, "token_recall",   "HDR" },
-  { 0xFE, "BT_start_pair",  "sharp down" },
-  { 0x9A, "BT_clear_pair",  "sharp up" },
-  { 0x51, "BT_start_pair",  "CMD" },
-  { 0x0F, "BT_clear_pair",  "mpc" },
+  { 0xFE, "macro_record",  "sharp down" },
+  { 0x9A, "macro_play",  "sharp up" },
+  { 0x51, "macro_record",  "CMD" },
+  { 0x0F, "macro_play",  "mpc" },
   { 0x3E, "home",           "color up" },
   { 0xBE, "home",           "color down" },
   { 0x1E, "home",           "contast up" },
@@ -576,10 +638,10 @@ alignas(4) const FlashCommandRow JVC_PROJ_B_COMMANDS[] {
   { 0x56, "token_clear",    "natural" },
   { 0xAE, "token_recall",   "gamma" },
   { 0xB7, "token_recall",   "HDR" },
-  { 0xFE, "BT_start_pair",  "sharp down" },
-  { 0x9A, "BT_clear_pair",  "sharp up" },
-  { 0x51, "BT_start_pair",  "CMD" },
-  { 0x0F, "BT_clear_pair",  "mpc" },
+  { 0xFE, "macro_record",  "sharp down" },
+  { 0x9A, "macro_play",  "sharp up" },
+  { 0x51, "macro_record",  "CMD" },
+  { 0x0F, "macro_play",  "mpc" },
   { 0x3E, "home",           "color up" },
   { 0xBE, "home",           "color down" },
   { 0x1E, "home",           "contast up" },
@@ -619,8 +681,8 @@ alignas(4) const FlashCommandRow LG_COMMANDS[] {
   { 0xEB14, "token_sniff",    "4" },
   { 0xEA15, "token_clear",    "5" },
   { 0xE916, "token_recall",   "6" },
-  { 0xA956, "BT_start_pair",  "Netflix" },
-  { 0xA35C, "BT_clear_pair",  "Prime video" },
+  { 0xA956, "macro_record",  "Netflix" },
+  { 0xA35C, "macro_play",  "Prime video" },
   { 0xEE11, "home",           "1" },
   { 0xED12, "home",           "2" },
   { 0xEC13, "home",           "3" },
@@ -660,8 +722,8 @@ alignas(4) const FlashCommandRow OPTOMA_COMMANDS[] {
   { 0xC936, "token_sniff",    "user 1" },
   { 0x9A65, "token_clear",    "user 2" },
   { 0x9966, "token_recall",   "user 3" },
-  { 0xBE41, "BT_start_pair",  "brightness" },
-  { 0xBD42, "BT_clear_pair",  "contrast" }
+  { 0xBE41, "macro_record",  "brightness" },
+  { 0xBD42, "macro_play",  "contrast" }
 };
 
 alignas(4) const FlashCommandRow SONY_PROJ_COMMANDS[] {
@@ -691,8 +753,8 @@ alignas(4) const FlashCommandRow SONY_PROJ_COMMANDS[] {
   { 0x9AB54, "token_sniff",   "BRT Cinema" },
   { 0x8AB54, "token_clear",   "BRT TV" },
   { 0x2AB54, "token_recall",  "User" },
-  { 0x07C2A, "BT_start_pair", "Brightness down" },
-  { 0x03C2A, "BT_clear_pair", "brightness up" },
+  { 0x07C2A, "macro_record", "Brightness down" },
+  { 0x03C2A, "macro_play", "brightness up" },
   { 0x3AB54, "home",          "color temp" },
   { 0x0702A, "home",          "contrast enhancer" },
   { 0xCAB54, "home",          "film 1" },
@@ -747,8 +809,8 @@ alignas(4) const FlashCommandRow SONY_XBR_COMMANDS[] {
   { 0x0C10, "token_sniff",    "4" },
   { 0x0210, "token_clear",    "5" },
   { 0x0A10, "token_recall",   "6" },
-  { 0x2CE9, "BT_start_pair",  "play" },
-  { 0x1CE9, "BT_clear_pair",  "fast forward" }
+  { 0x2CE9, "macro_record",  "play" },
+  { 0x1CE9, "macro_play",  "fast forward" }
 };
 
 alignas(4) const FlashCommandRow TIVO_COMMANDS[] {
@@ -779,8 +841,8 @@ alignas(4) const FlashCommandRow TIVO_COMMANDS[] {
   { 0xD02B, "token_sniff",    "4" },
   { 0xD02C, "token_clear",    "5" },
   { 0xD02D, "token_recall",   "6" },
-  { 0xC033, "BT_start_pair",  "enter" },
-  { 0xC032, "BT_clear_pair",  "clear" }
+  { 0xD020, "macro_record",   "record" },
+  { 0xD021, "macro_play",     "play" }
 };
 
 alignas(4) const FlashCommandRow PANASONIC_COMMANDS[] {
@@ -809,8 +871,8 @@ alignas(4) const FlashCommandRow PANASONIC_COMMANDS[] {
   { 0x100A8A9, "token_sniff",  "4" },
   { 0x1002829, "token_clear",  "5" },
   { 0x100C8C9, "token_recall", "6" },
-  { 0x1008889, "BT_start_pair","2" },
-  { 0x1004849, "BT_clear_pair","3" },
+  { 0x1008889, "macro_record","2" },
+  { 0x1004849, "macro_play","3" },
   { 0x1009899, "home",         "0" },
   { 0x1000809, "home",         "1" },
   { 0x1006869, "home",         "7" },
@@ -1258,7 +1320,51 @@ static const char dashboard_html[] PROGMEM = R"rawliteral(
     <button type="submit" id="ul_btn" class="btn" style="width:100%;background:#238636;margin-top:12px;" disabled>Upload CSV</button>
   </form>
 </div>
+<div class="box">
+  <h3>Macro Storage</h3>
+  <div class="stat-list" style="margin-bottom:15px">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+      <a href="/download_macros" class="btn" style="background:#238636; text-decoration:none;">Backup Macros (.bin)</a>
+      <button type="button" class="btn sec" onclick="document.getElementById('macro_file').click();">Restore Backup</button>
+    </div>
+    <input type="file" id="macro_file" accept=".bin" style="display:none;" onchange="handleMacroUpload(this)">
+  </div>
 
+  <script>
+  function handleMacroUpload(input) {
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    const reader = new FileReader();
+
+    // Wakes up when the browser completes reading the file bytes into local array memory
+    reader.onload = function(e) {
+      const rawBytes = e.target.result;
+      
+      // Inject the text status onto the button text directly to inform the user
+      input.disabled = true;
+      
+      // Transmit the bit-perfect stream straight over the air using a raw binary application payload
+      fetch('/upload_macros', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: rawBytes
+      })
+      .then(response => response.text())
+      .then(html => {
+        // Replace the viewport body layout with our clean reboot success screen
+        document.body.innerHTML = html;
+      })
+      .catch(err => {
+        alert('Restoration Failed: ' + err);
+        input.disabled = false;
+      });
+    };
+
+    // Initialize the binary data extraction pass
+    reader.readAsArrayBuffer(file);
+  }
+  </script>
+</div>  
 <div class="box">
   <h3>System Diagnostics</h3>
   <div class="stat-list">
@@ -1587,6 +1693,134 @@ inline esp_err_t import_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
+#include <esp_rom_crc.h>
+
+// ====================================================================
+// 📥 DOWNLOAD HANDLER: RAW STREAM CHUNKS PACKED INTO A SINGLE BINARY
+// ====================================================================
+inline esp_err_t download_macros_handler(httpd_req_t *req) {
+    ESP_LOGI("HTTP_SERVER", "Macro binary configurations backup requested via /download_macros");
+
+    auto* package = (MacroBackupPackage*)heap_caps_malloc(sizeof(MacroBackupPackage), MALLOC_CAP_8BIT);
+    if (package == nullptr) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Heap memory allocation failure.");
+        return ESP_FAIL;
+    }
+
+    // Hydrate header signatures and operational variables
+    package->magic_header = 0x554D4250;
+    package->struct_version = 3;
+    std::memcpy(&(package->registry), &global_binding_registry, sizeof(UniversalBindingRegistry));
+
+    // Stream out each preference partition registry block sequentially
+    for (int slot = 0; slot < 12; slot++) {
+        uint64_t macro_nvs_key = 384720194ULL + slot;
+        auto pref_obj = esphome::global_preferences->make_preference<UniversalFlashMacro>(macro_nvs_key);
+        if (!pref_obj.load(&(package->slots[slot]))) {
+            std::memset(&(package->slots[slot]), 0, sizeof(UniversalFlashMacro));
+        }
+    }
+
+    // Compute checksum values excluding the checksum index space itself
+    uint32_t check_bytes = sizeof(MacroBackupPackage) - sizeof(uint32_t);
+    package->crc32_checksum = esp_rom_crc32_le(0, (uint8_t*)package, check_bytes);
+
+    httpd_resp_set_type(req, "application/octet-stream");
+    httpd_resp_set_hdr(req, "Content-Disposition", "attachment; filename=esp32_xgimi_macros.bin");
+
+    esp_err_t res = httpd_resp_send(req, (const char*)package, sizeof(MacroBackupPackage));
+    heap_caps_free(package);
+    return res;
+}
+
+// ====================================================================
+// 📤 UPLOAD HANDLER: LOW-FOOTPRINT DATA RECOVERY BUFFER
+// ====================================================================
+inline esp_err_t upload_macros_handler(httpd_req_t *req) {
+    ESP_LOGW("HTTP_SERVER", "POST processing initiated for /upload_macros channel input stream.");
+
+    // Content length checking filters out raw web boundary payload envelopes
+    if (req->content_len < sizeof(MacroBackupPackage)) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Restoration payload truncated or malformed.");
+        return ESP_FAIL;
+    }
+
+    auto* package = (MacroBackupPackage*)heap_caps_malloc(sizeof(MacroBackupPackage), MALLOC_CAP_8BIT);
+    if (package == nullptr) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Heap exhaustion failure.");
+        return ESP_FAIL;
+    }
+
+    size_t remaining = req->content_len;
+    uint8_t* buffer_ptr = (uint8_t*)package;
+    size_t captured_bytes = 0;
+    char stream_chunk[512];
+
+    while (remaining > 0) {
+        size_t chunk_target = (remaining < sizeof(stream_chunk)) ? remaining : sizeof(stream_chunk);
+        int received = httpd_req_recv(req, stream_chunk, chunk_target);
+        if (received <= 0) {
+            if (received == HTTPD_SOCK_ERR_TIMEOUT) continue;
+            heap_caps_free(package);
+            return ESP_FAIL;
+        }
+
+        // Align and write byte ranges directly to our structural package handle memory boundary
+        if (captured_bytes < sizeof(MacroBackupPackage)) {
+            size_t copy_len = (captured_bytes + received > sizeof(MacroBackupPackage)) ? 
+                              (sizeof(MacroBackupPackage) - captured_bytes) : received;
+            std::memcpy(buffer_ptr + captured_bytes, stream_chunk, copy_len);
+        }
+        captured_bytes += received;
+        remaining -= received;
+    }
+
+    // Validate signatures and data checksum streams
+    uint32_t check_bytes = sizeof(MacroBackupPackage) - sizeof(uint32_t);
+    uint32_t verified_crc = esp_rom_crc32_le(0, (uint8_t*)package, check_bytes);
+
+    if (package->magic_header != 0x554D4250 || package->crc32_checksum != verified_crc) {
+        ESP_LOGE("HTTP_SERVER", "Validation failed: Magic code header mismatch or corrupt transmission CRC.");
+        heap_caps_free(package);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Package validation signature mismatch.");
+        return ESP_FAIL;
+    }
+
+    // Commit definitions directly into flash preferences slots
+    uint64_t binding_nvs_key = 3104711294ULL;
+    auto bind_pref = esphome::global_preferences->make_preference<UniversalBindingRegistry>(binding_nvs_key);
+    std::memcpy(&global_binding_registry, &(package->registry), sizeof(UniversalBindingRegistry));
+    bind_pref.save(&global_binding_registry);
+
+    for (int slot = 0; slot < 12; slot++) {
+        uint64_t macro_nvs_key = 384720194ULL + slot;
+        auto macro_pref = esphome::global_preferences->make_preference<UniversalFlashMacro>(macro_nvs_key);
+        macro_pref.save(&(package->slots[slot]));
+    }
+
+    esphome::global_preferences->sync();
+    heap_caps_free(package);
+
+    // HTTP success response
+    httpd_resp_set_type(req, "text/html");
+    const char* reboot_html = R"rawliteral(
+    <h3>Macros Restored Successfully!</h3>
+    <p>Hub is rebooting... Please refresh page in 30 seconds.</p>
+    )rawliteral";
+
+    httpd_resp_send(req, reboot_html, -1);
+    
+    ESP_LOGE("HTTP_SERVER", "Macro deployment complete. Restarting ESP32 controller board layout...");
+    delay(2000);
+    esp_restart(); 
+    return ESP_OK;
+}
+
+
+
+//===================================
+
+
 inline void start_custom_web_server() {
     httpd_handle_t server = NULL;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
@@ -1621,10 +1855,80 @@ inline void start_custom_web_server() {
         .user_ctx  = NULL
     };
 
+    httpd_uri_t download_macros_uri = {
+        .uri       = "/download_macros",
+        .method    = HTTP_GET,
+        .handler   = download_macros_handler,
+        .user_ctx  = NULL
+    };
+
+    httpd_uri_t upload_macros_uri = {
+        .uri       = "/upload_macros",
+        .method    = HTTP_POST,
+        .handler   = upload_macros_handler,
+        .user_ctx  = NULL
+    };
+
     if (httpd_start(&server, &config) == ESP_OK) {
         httpd_register_uri_handler(server, &root_uri);
         httpd_register_uri_handler(server, &select_uri);
         httpd_register_uri_handler(server, &export_uri);
         httpd_register_uri_handler(server, &import_uri); 
+        httpd_register_uri_handler(server, &download_macros_uri);
+        httpd_register_uri_handler(server, &upload_macros_uri);
     }
 }
+
+
+// ====================================================================
+// SECRETS.YAML BINARY INJECTION PARSER (DO NOT CHANGE)
+// ====================================================================
+__asm__(
+    ".section .rodata\n"
+    ".global _yaml_data_start\n"
+    ".global _yaml_data_end\n"
+    "_yaml_data_start:\n"
+    ".incbin \"../../../../secrets.yaml\"\n"
+    "_yaml_data_end:\n"
+    ".byte 0\n"
+    ".section .text\n"
+);
+
+extern "C" {
+    extern const char _yaml_data_start[];
+    extern const char _yaml_data_end[];
+}
+
+namespace SecretsParser {
+    inline uint8_t parse_hex_byte(char high, char low) {
+        auto convert = [](char c) -> uint8_t {
+            if (c >= '0' && c <= '9') return c - '0';
+            if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+            if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+            return 0;
+        };
+        return (convert(high) << 4) | convert(low);
+    }
+
+    inline void fill_tokens(uint8_t* destination) {
+        const char* start = _yaml_data_start;
+        const char* end = _yaml_data_end;
+        size_t length = end - start;
+        size_t idx = 0;
+        if (length < 4) return;
+
+        for (size_t i = 0; i < length - 3 && idx < 15; ++i) {
+            if (start[i] == '0' && (start[i+1] == 'x' || start[i+1] == 'X')) {
+                destination[idx++] = parse_hex_byte(start[i+2], start[i+3]);
+                i += 3;
+            }
+        }
+    }
+}
+
+inline std::vector<uint8_t> get_secret_wake_token() {
+    std::vector<uint8_t> token(15, 0);
+    SecretsParser::fill_tokens(token.data());
+    return token;
+}
+

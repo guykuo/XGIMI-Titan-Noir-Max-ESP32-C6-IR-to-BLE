@@ -73,7 +73,7 @@ esp32:
   partitions: ir-common-kuo/appkit/partitions.csv  #larger app partition needed 
 
 logger:
-#  level: DEBUG
+ # level: DEBUG
   level: INFO
 
 
@@ -183,10 +183,12 @@ esphome:
     # POWER USERS: Uncomment the line below to activate extra buttons!
     # - "-DENABLE_EXTRA_BUTTONS"
     # ============================================================
-  
+
+
   project:
     name: xgimi.titan-noir-esp32-ir-kuo
     version: 26.09.25.001
+
 
   on_boot:
 
