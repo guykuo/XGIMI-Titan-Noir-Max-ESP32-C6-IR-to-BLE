@@ -626,8 +626,8 @@ Keep the original remote paired as well.
 | token_sniff | 4 | 0xD02B |
 | token_clear | 5 | 0xD02C |
 | token_recall | 6 | 0xD02D |
-| BT_start_pair | enter | 0xC033 |
-| BT_clear_pair | clear | 0xC032 |
+| macro_record | enter | 0xC033 |
+| macro_play | clear | 0xC032 |
 
 ## Hisense 50U6G to Xgimi Titan Noir Mapping
 |Xgimi Remote Command | Hisense Remote Button | (0xEA15) + Command |
@@ -660,8 +660,8 @@ Keep the original remote paired as well.
 | token_sniff | 4 | 0xEB14 |
 | token_clear | 5 | 0xEA15 |
 | token_recall | 6 | 0xE916 |
-| BT_start_pair | prime video | 0xB847 |
-| BT_clear_pair | youtube | 0xB649 |
+| macro_record | prime video | 0xB847 |
+| macro_play | youtube | 0xB649 |
 
 ## LG Cinebeam HU810P to Xgimi Titan Noir Mapping
 (Some items duplicated to accept alternative buttons)
@@ -694,7 +694,7 @@ Keep the original remote paired as well.
 | token_sniff | 4 | 0xEB14 |
 | token_clear | 5 | 0xEA15 |
 | token_recall | 6 | 0xE916 |
-| BT_start_pair | netflix | 0xA956 |
+| macro_record | netflix | 0xA956 |
 
 ## JVC-VCR to Xgimi Titan Noir Mapping
 | Xgimi Remote Command | JVC VCR Btn | (0x03C2) + Command |
@@ -730,8 +730,8 @@ Keep the original remote paired as well.
 | token_sniff | 4 | 0xC224 |
 | token_clear | 5 | 0xC2A4 |
 | token_recall | 6 | 0xC264 |
-| BT_start_pair | 1 | 0xC284 |
-| BT_clear_pair | 2 | 0xC244 |
+| macro_record | 1 | 0xC284 |
+| macro_play | 2 | 0xC244 |
 
 ## JVC Projector to Xgimi Titan Noir Mapping
 The JVC IRmap accomodates several generations of JVC projectors. Buttons on their respective IR remotes have changed over the generations. Some buttons may no longer exist and must be replaced by ones for newer remotes. For this reason, you will see several _alt button mappings for some functions. These let the mapping adapt between older and more current projector remotes.
@@ -779,10 +779,10 @@ Be aware that you need to use physical buttons on projector (or IP / serial cont
 | token_clear |  natural | 0x56 |
 | token_recall |  gamma | 0xAE |
 | token_recall_alt |  HDR_ | 0xB7 |
-| BT_start_pair |  sharp down | 0xFE |
-| BT_clear_pair |  sharp up | 0x9A |
-| BT_start_pair_alt |  CMD_ | 0x51 |
-| BT_clear_pair_alt |  mpc_ | 0x0F |
+| macro_record |  sharp down | 0xFE |
+| macro_play |  sharp up | 0x9A |
+| macro_record |  CMD_ | 0x51 |
+| macro_play |  mpc_ | 0x0F |
 
 
 
@@ -817,8 +817,8 @@ Be aware that you need to use physical buttons on projector (or IP / serial cont
 | token_sniff | 4 | 0x000C10 |
 | token_clear | 5 | 0x000210 |
 | token_recall | 6 | 0x000A10 |
-| BT_start_pair | play | 0x002CE9 |
-| BT_clear_pair | fast forward | 0x001CE9 |
+| macro_record | play | 0x002CE9 |
+| macro_play | fast forward | 0x001CE9 |
 
 ## Sony VPL-XW600ES Projector to Xgimi Titan Noir Mapping
 | Xgimi Command | Sony Projector Remote | Hex Code |
@@ -849,8 +849,8 @@ Be aware that you need to use physical buttons on projector (or IP / serial cont
 | token_sniff | BRT Cinema | 0x0009AB54 |
 | token_clear | BRT TV | 0x0008AB54 |
 | token_recall | User | 0x0002AB54 |
-| BT_start_pair | BRIGHTNESS DOWN | 0x00007C2A |
-| BT_clear_pair | BRIGHTNESS UP | 0x00003C2A |
+| macro_record | BRIGHTNESS DOWN | 0x00007C2A |
+| macro_play | BRIGHTNESS UP | 0x00003C2A |
 
 ## Epson Pro Cinema LS1200 Projector to Xgimi Titan Noir Mapping
 This IRmap also works with other Epson projectors such as the 5050UB
@@ -886,8 +886,8 @@ This IRmap also works with other Epson projectors such as the 5050UB
 | token_sniff | frame interp | 0x7C83 |
 | token_clear | RGBCMY | 0xC23D |
 | token_recall | pattern | 0x6996 |
-| BT_start_pair | 3D format | 0xC43B |
-| BT_clear_pair | Aspect | 0x758A |
+| macro_record | 3D format | 0xC43B |
+| macro_play | Aspect | 0x758A |
 
 ## BenQ W5800 Projector to Xgimi Titan Noir Mapping
 | Xgimi Command | BenQ Projector Btn | (0x3000) + Command |
@@ -917,8 +917,8 @@ This IRmap also works with other Epson projectors such as the 5050UB
 | token_sniff | info | 0xF30C |
 | token_clear | invert | 0x629D |
 | token_recall | 3D | 0x639C |
-| BT_start_pair | color temp | 0xA05F |
-| BT_clear_pair | color manage | 0xA45B |
+| macro_record | color temp | 0xA05F |
+| macro_play | color manage | 0xA45B |
 
 ## Optoma UHD50X Projector to Xgimi Titan Noir Mapping
 | Xgimi Command | Optoma Projector Btn | (0xCD32) + Command |
@@ -947,35 +947,12 @@ This IRmap also works with other Epson projectors such as the 5050UB
 | token_sniff | user 1 | 0xC936 |
 | token_clear | user 2 | 0x9A65 |
 | token_recall | user 3 | 0x9966 |
-| BT_start_pair | brightness | 0xBE41 |
-| BT_clear_pair | contrast | 0xBD42 |
+| macro_record | brightness | 0xBE41 |
+| macro_play | contrast | 0xBD42 |
 
 
 # Recent Changes:
-*   Added original _Xgimi Titan_ IR mapping. That would be _Titan_ IR to _Titan Noir_ BLuetooth 
-*   HOLDING boot button down for 5 seconds toggles display on/off. Setting is retained between boots. 
-       Click of boot button still starts sniffing for tokens.
-
-*   Further adjusted button acceptance speed to approx 10 press/sec.
-*   Added support for holding down button on remote for fast repeat.
-*   Added hardware file for Waveshare ESP32 S3 LCD 1.47B board.
-*   Revamped IR debouncing to improve responsiveness.
-*   Hardware-c6 supports SSD1306 128x32 i2c display
-*   Multiple hardware and ir-map files added to project
-*   Added support for LED light on boards C3 and C6 to act as visual feedback
-*   Pressing BOOT button of board is alternate way to start sniff mode.
-*   Light flashes give information about token presence and sniffing success
-*   Sniffing a token that is identical to one already stored no longer seems to fail.
-*   Sniffing of Xgimi tokens directly by ESP32 board fully working. Captures and
-stores wake token. It's now simply a matter of pressing a button on the IR remote
-twice to start sniffing. Four to six presses of Xgimi remote power button is usually
-sufficient to get a capture. Learned token is kept on ESP non-volatile flash.
-
-*   Supplying a wake token in secret.yaml is now optional.
-  
-*   ESP Board preference is now OLED display bearing ESP32-C3 SuperMini dev board.
-OLED display nicely shows when board begins token sniffing and completes capture.
-Non-display ESP32 will still work, but gives feedback only via log.
+WIP Macro record and playback
 
 #Webserver
 This project includes a webserver which can be reached at your ESP32 board's IP address after it has been provisioned onto your local network via the usual Home Assistant device captive AP setup.
