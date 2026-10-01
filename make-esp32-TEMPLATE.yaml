@@ -81,7 +81,7 @@ wifi:
   # networks: []
   reboot_timeout: 13h
   output_power: ${wifi_tx_power}
-  power_save_mode: LIGHT
+  power_save_mode: NONE
   ap:
     ssid: "${ble_remote_name}"
     password: !secret fallback_ap_password
