@@ -977,7 +977,8 @@ Here is a sample CSV.
 The META row is slot#, profile name, protocol, device address, token_clear_arming_code, token_clear_fire_code
 
 The KEY rows are command, xgimi-action, button-name-on-original-remote
-<img width="852" height="1388" alt="Screenshot 2026-09-27 at 20 53 46" src="https://github.com/user-attachments/assets/a76debf0-86fe-4c12-bfac-d70ce6385661" />
+
+<img width="860" height="1400" alt="sample csv" src="https://github.com/user-attachments/assets/0b06b717-f2e2-40c2-a32b-d824baab2cb3" />
 
 In addition to letting you save and restore learned profiles, you can also override a factory profile. To do so, download a factory profile, edit it and uploading into a custom slot. During profile setting, the system searches for a match starting within custom profiles in reverse order. It will find your modified version first and use that instead of a matching factory profile.
 
