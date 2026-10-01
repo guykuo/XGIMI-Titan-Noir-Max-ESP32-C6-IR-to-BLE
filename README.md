@@ -626,8 +626,8 @@ Keep the original remote paired as well.
 | token_sniff | 4 | 0xD02B |
 | token_clear | 5 | 0xD02C |
 | token_recall | 6 | 0xD02D |
-| macro_record | enter | 0xC033 |
-| macro_play | clear | 0xC032 |
+| macro_record | record | 0xD020 |
+| macro_play | play | 0xD021 |
 
 ## Hisense 50U6G to Xgimi Titan Noir Mapping
 |Xgimi Remote Command | Hisense Remote Button | (0xEA15) + Command |
