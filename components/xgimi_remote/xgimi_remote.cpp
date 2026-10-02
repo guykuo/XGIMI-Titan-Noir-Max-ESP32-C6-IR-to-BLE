@@ -12,9 +12,10 @@
 namespace esphome::xgimi_remote {
 
 static const char *const TAG = "xgimi_remote";
-// static const char *const HID_NAME = "ESP32 xgimi remote";
 static const char *const WAKE_NAME = "ESP32 xgimi remote";
 static constexpr uint16_t IMMEDIATE_POWER_OFF_HOLD_MS = 1500;
+// standalone 20-second watchdog limit for other button holds
+static constexpr uint16_t STANDARD_HOLD_TIMEOUT_MS = 20000; 
 
 void XgimiRemote::setup() {
   ESP_LOGI(TAG, "Initialising captured XGIMI remote emulation");
@@ -26,9 +27,16 @@ void XgimiRemote::loop() {
     this->set_advertised_name_(this->remote_name_.c_str());
   }
 
+  // Keyboard auto-release watchdog
   if (this->held_keyboard_active_ &&
       static_cast<int32_t>(millis() - this->held_release_ms_) >= 0) {
     this->release_held_keyboard_();
+  }
+
+  // Consumer auto-release watchdog
+  if (this->held_consumer_active_ &&
+      static_cast<int32_t>(millis() - this->held_consumer_release_ms_) >= 0) {
+    this->release_held_consumer_();
   }
 
   if (!this->wake_active_ || this->server_ == nullptr)
@@ -51,7 +59,6 @@ void XgimiRemote::loop() {
   this->wake_active_ = false;
   ESP_LOGI(TAG, "Completed XGIMI wake burst (256 rolling counter values)");
 }
-
 
 void XgimiRemote::dump_config() {
   ESP_LOGCONFIG(TAG,
@@ -111,9 +118,6 @@ void XgimiRemote::notify_keyboard_(const uint8_t data[8]) {
     ESP_LOGW(TAG, "Keyboard command ignored: projector HID link is not connected");
     return;
   }
-  ESP_LOGI(TAG, "Sending keyboard HID report %02X%02X%02X%02X%02X%02X%02X%02X (subscribers=%u)", data[0],
-           data[1], data[2], data[3], data[4], data[5], data[6], data[7],
-           static_cast<unsigned>(this->keyboard_report_->get_notify_client_count()));
   this->keyboard_report_->set_value(std::vector<uint8_t>(data, data + 8));
   this->keyboard_report_->notify();
 }
@@ -124,19 +128,15 @@ void XgimiRemote::notify_consumer_(const uint8_t data[6]) {
     ESP_LOGW(TAG, "Consumer command ignored: projector HID link is not connected");
     return;
   }
-  ESP_LOGI(TAG, "Sending consumer HID report %02X%02X%02X%02X%02X%02X (subscribers=%u)", data[0], data[1],
-           data[2], data[3], data[4], data[5],
-           static_cast<unsigned>(this->consumer_report_->get_notify_client_count()));
   this->consumer_report_->set_value(std::vector<uint8_t>(data, data + 6));
   this->consumer_report_->notify();
 }
 
+// ============================================================================
+// 🎹 KEYBOARD PATHWAY CONTROLS
+// ============================================================================
 void XgimiRemote::press_keyboard(uint8_t usage) {
-  if (this->held_keyboard_active_) {
-    ESP_LOGI(TAG, "Keyboard tap 0x%02X ignored while held key 0x%02X is active", usage,
-             this->held_keyboard_usage_);
-    return;
-  }
+  if (this->held_keyboard_active_) return;
   uint8_t press[8] = {0x00, 0x00, usage, 0x00, 0x00, 0x00, 0x00, 0x00};
   uint8_t release[8] = {};
   this->notify_keyboard_(press);
@@ -144,46 +144,63 @@ void XgimiRemote::press_keyboard(uint8_t usage) {
 }
 
 void XgimiRemote::hold_keyboard(uint8_t usage) {
-  if (!this->connected_ || !this->authenticated_ || !this->is_keyboard_subscribed()) {
-    ESP_LOGI(TAG, "Held keyboard command ignored: authenticated HID link is not ready");
-    return;
-  }
-  if (this->held_keyboard_active_) {
-    ESP_LOGI(TAG, "Held keyboard command 0x%02X ignored while key 0x%02X is active", usage,
-             this->held_keyboard_usage_);
-    return;
-  }
+  if (!this->connected_ || !this->authenticated_ || !this->is_keyboard_subscribed()) return;
+  if (this->held_keyboard_active_) return;
 
   uint8_t press[8] = {0x00, 0x00, usage, 0x00, 0x00, 0x00, 0x00, 0x00};
   this->notify_keyboard_(press);
   this->held_keyboard_usage_ = usage;
   this->held_keyboard_active_ = true;
-  this->held_release_ms_ = millis() + IMMEDIATE_POWER_OFF_HOLD_MS;
-  ESP_LOGI(TAG, "Holding keyboard usage 0x%02X for %u ms", usage,
-           static_cast<unsigned>(IMMEDIATE_POWER_OFF_HOLD_MS));
+  // separate from power-off timing. Uses standard 10-second limit.
+  this->held_release_ms_ = millis() + STANDARD_HOLD_TIMEOUT_MS;
+  ESP_LOGD(TAG, "Holding keyboard usage 0x%02X", usage);
 }
 
 void XgimiRemote::release_held_keyboard_() {
+  if (!this->held_keyboard_active_) return;
   uint8_t release[8] = {};
   this->notify_keyboard_(release);
-  ESP_LOGI(TAG, "Released held keyboard usage 0x%02X", this->held_keyboard_usage_);
+  ESP_LOGD(TAG, "Released held keyboard usage 0x%02X", this->held_keyboard_usage_);
   this->held_keyboard_active_ = false;
   this->held_keyboard_usage_ = 0;
 }
 
+// ============================================================================
+// 📺 CONSUMER PATHWAY CONTROLS
+// ============================================================================
 void XgimiRemote::press_consumer(uint16_t usage) {
-  if (this->held_keyboard_active_) {
-    ESP_LOGI(TAG, "Consumer tap 0x%04X ignored while held keyboard key 0x%02X is active", usage,
-             this->held_keyboard_usage_);
-    return;
-  }
-  uint8_t press[6] = {static_cast<uint8_t>(usage & 0xFF), static_cast<uint8_t>((usage >> 8) & 0xFF),
-                      0x00, 0x00, 0x00, 0x00};
+  if (this->held_consumer_active_) return;
+  uint8_t press[6] = {static_cast<uint8_t>(usage & 0xFF), static_cast<uint8_t>((usage >> 8) & 0xFF), 0x00, 0x00, 0x00, 0x00};
   uint8_t release[6] = {};
   this->notify_consumer_(press);
   this->notify_consumer_(release);
 }
 
+void XgimiRemote::hold_consumer(uint16_t usage) {
+  if (!this->connected_ || !this->authenticated_ || !this->is_consumer_subscribed()) return;
+  if (this->held_consumer_active_) return;
+
+  uint8_t press[6] = {static_cast<uint8_t>(usage & 0xFF), static_cast<uint8_t>((usage >> 8) & 0xFF), 0x00, 0x00, 0x00, 0x00};
+  this->notify_consumer_(press);
+  this->held_consumer_usage_ = usage;
+  this->held_consumer_active_ = true;
+  // separated from power-off timing. Uses standard 10-second limit
+  this->held_consumer_release_ms_ = millis() + STANDARD_HOLD_TIMEOUT_MS;
+  ESP_LOGD(TAG, "Holding consumer usage 0x%04X", usage);
+}
+
+void XgimiRemote::release_held_consumer_() {
+  if (!this->held_consumer_active_) return;
+  uint8_t release[6] = {};
+  this->notify_consumer_(release);
+  ESP_LOGD(TAG, "Released held consumer usage 0x%04X", this->held_consumer_usage_);
+  this->held_consumer_active_ = false;
+  this->held_consumer_usage_ = 0;
+}
+
+// ============================================================================
+// 🛰️ GAP & GATTS INFRASTRUCTURE LABELS
+// ============================================================================
 void XgimiRemote::set_advertised_name_(const char *name) {
   const esp_err_t err = esp_ble_gap_set_device_name(name);
   if (err != ESP_OK) {
@@ -199,9 +216,6 @@ void XgimiRemote::restore_hid_subscriptions_() {
   if (this->keyboard_report_ == nullptr || this->consumer_report_ == nullptr)
     return;
 
-  // The bonded Android HID host assumes CCCD values survive a peripheral
-  // restart and may not write them again when it reconnects. Restore the two
-  // input-report subscriptions once the bond has authenticated.
   this->keyboard_report_->set_notify_for_client(this->peer_conn_id_, true);
   this->consumer_report_->set_notify_for_client(this->peer_conn_id_, true);
   ESP_LOGI(TAG, "Restored bonded HID notification subscriptions for client %u", this->peer_conn_id_);
@@ -253,6 +267,7 @@ void XgimiRemote::gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t 
     case ESP_GATTS_DISCONNECT_EVT:
       if (this->matches_peer_(param->disconnect.remote_bda)) {
         if (this->keyboard_report_ != nullptr)
+        if (this->keyboard_report_ != nullptr)
           this->keyboard_report_->set_notify_for_client(param->disconnect.conn_id, false);
         if (this->consumer_report_ != nullptr)
           this->consumer_report_->set_notify_for_client(param->disconnect.conn_id, false);
@@ -261,6 +276,8 @@ void XgimiRemote::gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t 
         this->peer_known_ = false;
         this->held_keyboard_active_ = false;
         this->held_keyboard_usage_ = 0;
+        this->held_consumer_active_ = false;
+        this->held_consumer_usage_ = 0;
         ESP_LOGI(TAG, "Projector HID client disconnected");
       }
       break;
@@ -275,11 +292,31 @@ void XgimiRemote::gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb
       ESP_LOGI(TAG, "Accepting BLE security request");
       esp_ble_gap_security_rsp(param->ble_security.ble_req.bd_addr, true);
       break;
+      
     case ESP_GAP_BLE_AUTH_CMPL_EVT:
       if (this->matches_peer_(param->ble_security.auth_cmpl.bd_addr)) {
         this->authenticated_ = param->ble_security.auth_cmpl.success;
-        if (this->authenticated_)
+        if (this->authenticated_) {
           this->restore_hid_subscriptions_();
+          
+          // ============================================================
+          // ⚡ HIGH-VELOCITY LINK LAYER TUNING FOR HID MACRO PACKETS
+          // ============================================================
+          esp_ble_conn_update_params_t conn_params;
+          std::memcpy(conn_params.bda, this->peer_address_, sizeof(esp_bd_addr_t));
+          
+          conn_params.min_int = 0x06;      // Min Interval: 7.5ms (Spec Absolute Floor)
+          conn_params.max_int = 0x0C;      // Max Interval: 15.0ms (Tight bounds for latency stability)
+          conn_params.latency = 0x00;      // 0 Skippable slave events ensures instant transmission
+          conn_params.timeout = 0x0190;    // 400 * 10ms = 4-second link loss supervision timeout
+          
+          esp_err_t param_err = esp_ble_gap_update_conn_params(&conn_params);
+          if (param_err == ESP_OK) {
+            ESP_LOGI(TAG, "⚡ Hyper-speed low-latency BLE connection parameter constraints loaded successfully.");
+          } else {
+            ESP_LOGW(TAG, "Could not update connection parameters: %s", esp_err_to_name(param_err));
+          }
+        }
         if (this->authenticated_)
           ESP_LOGI(TAG, "Projector BLE bond authenticated successfully");
         else

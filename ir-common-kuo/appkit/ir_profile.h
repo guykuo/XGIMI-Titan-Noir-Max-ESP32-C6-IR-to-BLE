@@ -52,11 +52,14 @@ inline const char* to_string(uint8_t proto_id) {
 inline size_t factory_count = 13; 
 inline constexpr uint16_t MAX_LEARNED_PROFILES = 5;
 inline bool flash_hydration_complete = false;
+
 #ifdef ENABLE_EXTRA_BUTTONS
-  inline constexpr uint32_t CURRENT_STRUCT_VERSION = 1024; // Power user footprint track
+  inline constexpr uint32_t CURRENT_PROFILE_VERSION = 1024; // Power user footprint track
 #else
-  inline constexpr uint32_t CURRENT_STRUCT_VERSION = 65; // <-- bump up whenever change in NVRAM storage structures
+  inline constexpr uint32_t CURRENT_PROFILE_VERSION = 65; // <-- increment this change in NVRAM storage structures
 #endif
+
+
 
 // Single Source of Truth for Button Mapping Arrays
 inline constexpr const char* learn_button_names[] = {
@@ -73,10 +76,11 @@ inline constexpr const char* learn_button_names[] = {
 inline constexpr size_t TOTAL_SYSTEM_BUTTONS = sizeof(learn_button_names) / sizeof(learn_button_names[0]);
 
 // ====================================================================
-// UNIVERSAL IMMUTABLE STORAGE STRUCTS
+// Macro storage STRUCTS
 // ====================================================================
-#define MAX_MACRO_STEPS    48  
-#define MAX_BOUND_HOTKEYS  12  
+#define MAX_MACRO_STEPS    64  
+#define MAX_BOUND_HOTKEYS  9  
+#define CURRENT_MACRO_VERSION  5 
 
 static const size_t MAX_ACTION_STRING_LEN = 32;
 
@@ -91,7 +95,7 @@ struct UniversalFlashMacro {
   uint32_t struct_version;
   uint16_t total_steps;
   UniversalMacroStep steps[MAX_MACRO_STEPS]; 
-}; // Fixed orphaned brace syntax anomaly
+};
 
 struct BindingPair {
     uint16_t universal_action_idx; 
@@ -104,6 +108,9 @@ struct UniversalBindingRegistry {
     uint16_t total_bound_keys;
     BindingPair bindings[MAX_BOUND_HOTKEYS];
 };
+
+
+
 
 // ====================================================================
 // ⚡ HIGH-SPEED MACRO CSV TRANSLATION STRINGS
@@ -129,16 +136,53 @@ inline uint8_t str_to_state(const std::string& str) {
 }
 
 
+
 // ====================================================================
-// UNIFIED BINARY BACKUP PACKAGE STRUCTURE (Bit-Perfect Alignment)
+// ⚡ UNIFIED XGIMI BLUETOOTH HID USE-MAPPING TRANSLATION ENGINE
 // ====================================================================
-struct alignas(4) MacroBackupPackage {
-    uint32_t magic_header;             // 0x554D4250 -> "UMBP"
-    uint32_t struct_version;           // Structure validation track tracking
-    UniversalBindingRegistry registry; // Key mapping dictionary references
-    UniversalFlashMacro slots[12];     // All 12 independent macro slots packed sequentially
-    uint32_t crc32_checksum;           // Data validation integrity checksum
-};
+inline uint16_t resolve_action_to_true_hid(const char* name, uint8_t& out_type) {
+    if (name == nullptr) return 0xFFFF;
+    std::string action_name(name);
+
+    // KEYBOARD RESOLUTION PATH (REPORT TYPE 0)
+    if (action_name == "power_off")         { out_type = 0; return 0x7F; }
+    else if (action_name == "cursor_up")    { out_type = 0; return 0x52; }
+    else if (action_name == "cursor_down")  { out_type = 0; return 0x51; }
+    else if (action_name == "cursor_left")  { out_type = 0; return 0x50; }
+    else if (action_name == "cursor_right") { out_type = 0; return 0x4F; }
+    else if (action_name == "cursor_enter") { out_type = 0; return 0x28; }
+    else if (action_name == "settings_menu"){ out_type = 0; return 0x41; }
+    else if (action_name == "back")          { out_type = 0; return 0x29; }
+    else if (action_name == "home")          { out_type = 0; return 0x4A; }
+    else if (action_name == "game_menu")     { out_type = 0; return 0x65; }
+    else if (action_name == "focus_manual")  { out_type = 0; return 0x3D; }
+    else if (action_name == "focus_auto")    { out_type = 0; return 0x44; }
+    else if (action_name == "volume_up")    { out_type = 0; return 0x80; }
+    else if (action_name == "volume_down")  { out_type = 0; return 0x81; }
+
+    // CONSUMER RESOLUTION PATH (REPORT TYPE 1)
+    else if (action_name == "input")        { out_type = 1; return 0x01BC; }
+    else if (action_name == "picture")      { out_type = 1; return 0x0223; }
+    else if (action_name == "shortcut_1")   { out_type = 1; return 0x021D; }
+    else if (action_name == "shortcut_2")   { out_type = 1; return 0x021F; }
+    else if (action_name == "shortcut_3")   { out_type = 1; return 0x0221; }
+    else if (action_name == "shortcut_4")   { out_type = 1; return 0x0222; }
+    else if (action_name == "mute")         { out_type = 1; return 0x01BD; }
+
+    // WEB ESCAPE HATCH FOR CUSTOM INJECTED CODES
+    else if (action_name.rfind("RKEY:", 0) == 0) {
+        out_type = 0;
+        return (uint16_t)std::strtoul(action_name.substr(5).c_str(), nullptr, 16);
+    }
+    else if (action_name.rfind("RCON:", 0) == 0) {
+        out_type = 1;
+        return (uint16_t)std::strtoul(action_name.substr(5).c_str(), nullptr, 16);
+    }
+
+    out_type = 2; // Default fallback to system/virtual button trigger
+    return 0xFFFF;
+}
+
 
 
 // Expose workspaces globally to fix compilation linkages
@@ -366,7 +410,7 @@ inline void commit_database_to_flash(uint16_t target_slot) {
 
   static FlashStoredProfile flash_p;
   std::memset(&flash_p, 0, sizeof(flash_p));
-  flash_p.struct_version = CURRENT_STRUCT_VERSION; //struct layout signature version
+  flash_p.struct_version = CURRENT_PROFILE_VERSION; //struct layout signature version
   
   std::strncpy(flash_p.profile_name, active_profile_workspace.profile_name.c_str(), sizeof(flash_p.profile_name) - 1);
   flash_p.protocol = active_profile_workspace.protocol; 
@@ -1078,7 +1122,7 @@ inline void load_profile_to_workspace(int idx) {
     static FlashStoredProfile flash_p;
     std::memset(&flash_p, 0, sizeof(flash_p));
     
-    if (pref_obj.load(&flash_p) && flash_p.struct_version == CURRENT_STRUCT_VERSION) {
+    if (pref_obj.load(&flash_p) && flash_p.struct_version == CURRENT_PROFILE_VERSION) {
         active_profile_workspace.profile_name = flash_p.profile_name;
         active_profile_workspace.protocol = flash_p.protocol;
         active_profile_workspace.device_address = flash_p.device_address;
@@ -1689,137 +1733,9 @@ inline esp_err_t import_handler(httpd_req_t *req) {
 
 #include <esp_rom_crc.h>
 
-// ====================================================================
-// DOWNLOAD HANDLER: RAW STREAM CHUNKS PACKED INTO A SINGLE BINARY
-// ====================================================================
-inline esp_err_t download_macros_handler(httpd_req_t *req) {
-    ESP_LOGI("HTTP_SERVER", "Macro binary configurations backup requested via /download_macros");
-
-    // Allocate dynamically from heap caps with 8-bit/32-bit word safe alignments
-    auto* package = (MacroBackupPackage*)heap_caps_malloc(sizeof(MacroBackupPackage), MALLOC_CAP_8BIT);
-    if (package == nullptr) {
-        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Heap memory allocation failure.");
-        return ESP_FAIL;
-    }
-
-    // Hydrate header signatures and operational variables
-    package->magic_header = 0x554D4250;
-    // Bump backup validation signature up to version 4 to protect string boundaries
-    package->struct_version = 4;
-    std::memcpy(&(package->registry), &global_binding_registry, sizeof(UniversalBindingRegistry));
-
-    // Stream out each preference partition registry block sequentially
-    for (int slot = 0; slot < 12; slot++) {
-        uint64_t macro_nvs_key = 384720194ULL + slot;
-        auto pref_obj = esphome::global_preferences->make_preference<UniversalFlashMacro>(macro_nvs_key);
-        if (!pref_obj.load(&(package->slots[slot]))) {
-            std::memset(&(package->slots[slot]), 0, sizeof(UniversalFlashMacro));
-        }
-    }
-
-    // Compute checksum values excluding the checksum index space itself
-    uint32_t check_bytes = sizeof(MacroBackupPackage) - sizeof(uint32_t);
-    package->crc32_checksum = esp_rom_crc32_le(0, (uint8_t*)package, check_bytes);
-
-    httpd_resp_set_type(req, "application/octet-stream");
-    httpd_resp_set_hdr(req, "Content-Disposition", "attachment; filename=esp32_xgimi_macros.bin");
-
-    esp_err_t res = httpd_resp_send(req, (const char*)package, sizeof(MacroBackupPackage));
-    
-    // Always clean up the heap space instantly after socket transmission completes
-    heap_caps_free(package);
-    return res;
-}
 
 // ====================================================================
-// UPLOAD HANDLER: LOW-FOOTPRINT DATA RECOVERY BUFFER
-// ====================================================================
-inline esp_err_t upload_macros_handler(httpd_req_t *req) {
-    ESP_LOGW("HTTP_SERVER", "POST processing initiated for /upload_macros channel input stream.");
-
-    // Content length checking filters out raw web boundary payload envelopes
-    if (req->content_len < sizeof(MacroBackupPackage)) {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Restoration payload truncated or malformed.");
-        return ESP_FAIL;
-    }
-
-    // Safe heap allocation prevents 21KB payload from smashing the task stack space
-    auto* package = (MacroBackupPackage*)heap_caps_malloc(sizeof(MacroBackupPackage), MALLOC_CAP_8BIT);
-    if (package == nullptr) {
-        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Heap exhaustion failure.");
-        return ESP_FAIL;
-    }
-
-    size_t remaining = req->content_len;
-    uint8_t* buffer_ptr = (uint8_t*)package;
-    size_t captured_bytes = 0;
-    char stream_chunk[512];
-
-    while (remaining > 0) {
-        size_t chunk_target = (remaining < sizeof(stream_chunk)) ? remaining : sizeof(stream_chunk);
-        int received = httpd_req_recv(req, stream_chunk, chunk_target);
-        if (received <= 0) {
-            if (received == HTTPD_SOCK_ERR_TIMEOUT) continue;
-            heap_caps_free(package);
-            return ESP_FAIL;
-        }
-
-        // Align and write byte ranges directly to our structural package handle memory boundary
-        if (captured_bytes < sizeof(MacroBackupPackage)) {
-            size_t copy_len = (captured_bytes + received > sizeof(MacroBackupPackage)) ? 
-                              (sizeof(MacroBackupPackage) - captured_bytes) : received;
-            std::memcpy(buffer_ptr + captured_bytes, stream_chunk, copy_len);
-        }
-        captured_bytes += received;
-        remaining -= received;
-    }
-
-    // Validate signatures and data checksum streams
-    uint32_t check_bytes = sizeof(MacroBackupPackage) - sizeof(uint32_t);
-    uint32_t verified_crc = esp_rom_crc32_le(0, (uint8_t*)package, check_bytes);
-
-    // Enforce clear structural version checks. Rejects corrupt files or old version 3 tables instantly
-    if (package->magic_header != 0x554D4250 || package->struct_version != 4 || package->crc32_checksum != verified_crc) {
-        ESP_LOGE("HTTP_SERVER", "Validation failed: Magic code header mismatch, old version 3 backup, or corrupt CRC.");
-        heap_caps_free(package);
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Package validation signature or version mismatch.");
-        return ESP_FAIL;
-    }
-
-    // Commit definitions directly into flash preferences slots
-    uint64_t binding_nvs_key = 3104711294ULL;
-    auto bind_pref = esphome::global_preferences->make_preference<UniversalBindingRegistry>(binding_nvs_key);
-    std::memcpy(&global_binding_registry, &(package->registry), sizeof(UniversalBindingRegistry));
-    bind_pref.save(&global_binding_registry);
-
-    for (int slot = 0; slot < 12; slot++) {
-        uint64_t macro_nvs_key = 384720194ULL + slot;
-        auto macro_pref = esphome::global_preferences->make_preference<UniversalFlashMacro>(macro_nvs_key);
-        macro_pref.save(&(package->slots[slot]));
-    }
-
-    esphome::global_preferences->sync();
-    heap_caps_free(package);
-
-    // HTTP success response
-    httpd_resp_set_type(req, "text/html");
-    const char* reboot_html = R"rawliteral(
-    <h3>Macros Restored Successfully!</h3>
-    <p>Hub is rebooting... Please refresh page in 30 seconds.</p>
-    )rawliteral";
-
-    httpd_resp_send(req, reboot_html, -1);
-    
-    ESP_LOGI("HTTP_SERVER", "Macro deployment complete. Restarting ESP32 controller board layout...");
-    delay(2000);
-    esp_restart(); 
-    return ESP_OK;
-}
-
-
-
-// ====================================================================
-// COMPACT CSV EXPORT GENERATOR FOR ALL MACRO SLOTS (UNIFIED)
+// COMPACT CSV EXPORT GENERATOR FOR ALL MACRO SLOTS (ADAPTABLE)
 // ====================================================================
 inline std::string generate_macro_csv() {
     std::string csv_out;
@@ -1828,7 +1744,8 @@ inline std::string generate_macro_csv() {
     char chunk[128];
     bool found_any_data = false;
 
-    for (int slot_id = 0; slot_id < 12; slot_id++) {
+    // Adaptable: Loops exactly up to your maximum bound buttons
+    for (int slot_id = 0; slot_id < MAX_BOUND_HOTKEYS; slot_id++) {
         uint64_t macro_nvs_key = 384720194ULL + slot_id;
         auto pref_obj = esphome::global_preferences->make_preference<UniversalFlashMacro>(macro_nvs_key);
         
@@ -1846,7 +1763,6 @@ inline std::string generate_macro_csv() {
             const auto& step = macro_buf.steps[i];
             std::memset(chunk, 0, sizeof(chunk));
             
-            // Read the literal text action string natively instead of the dead integer action_payload field
             if (step.action_type == 0) {
                 snprintf(chunk, sizeof(chunk), "STEP,KEYBOARD,%s,%s,%u\n", 
                          step.action_string, state_to_str(step.event_state), step.delay_ms);
@@ -1880,7 +1796,7 @@ inline esp_err_t export_macro_text_handler(httpd_req_t *req) {
 }
 
 // ====================================================================
-// COLD-STREAM ZERO-HEAP CSV MACRO DEPLOYMENT ENGINE (MULTI-SLOT)
+// COLD-STREAM ZERO-HEAP CSV MACRO DEPLOYMENT ENGINE (ADAPTABLE)
 // ====================================================================
 inline bool import_macro_from_csv(const std::string& csv_data) {
     std::stringstream ss(csv_data);
@@ -1888,13 +1804,14 @@ inline bool import_macro_from_csv(const std::string& csv_data) {
     
     static UniversalFlashMacro macro_build;
     std::memset(&macro_build, 0, sizeof(macro_build));
-    // Initialize the import buffer mapping layers to structure version 4
-    macro_build.struct_version = 4;
+    // Set validation tracker to 5 to protect structure bounds
+    macro_build.struct_version = CURRENT_MACRO_VERSION;
     
     int active_slot = -1;
 
     auto save_active_macro = [&]() {
-        if (active_slot >= 0 && active_slot < 12 && macro_build.total_steps > 0) {
+        // Adaptable boundary checking protects slot arrays against overflow
+        if (active_slot >= 0 && active_slot < MAX_BOUND_HOTKEYS && macro_build.total_steps > 0) {
             uint64_t macro_nvs_key = 384720194ULL + active_slot;
             auto pref_obj = esphome::global_preferences->make_preference<UniversalFlashMacro>(macro_nvs_key);
             pref_obj.save(&macro_build);
@@ -1918,9 +1835,10 @@ inline bool import_macro_from_csv(const std::string& csv_data) {
             active_slot = !slot_str.empty() ? std::atoi(slot_str.c_str()) : -1;
             
             std::memset(&macro_build, 0, sizeof(macro_build));
-            macro_build.struct_version = 4; // Target structure version 4 on reset loop passes
+            macro_build.struct_version = CURRENT_MACRO_VERSION; 
         } 
         else if (cell_type == "STEP") {
+            // Adaptable limits verify your memory bounds automatically
             if (active_slot == -1 || macro_build.total_steps >= MAX_MACRO_STEPS) continue;
             
             std::string type_str, payload_str, state_str, delay_str;
@@ -2039,20 +1957,6 @@ inline void start_custom_web_server() {
         .user_ctx  = NULL
     };
 
-    httpd_uri_t download_macros_uri = {
-        .uri       = "/download_macros",
-        .method    = HTTP_GET,
-        .handler   = download_macros_handler,
-        .user_ctx  = NULL
-    };
-
-    httpd_uri_t upload_macros_uri = {
-        .uri       = "/upload_macros",
-        .method    = HTTP_POST,
-        .handler   = upload_macros_handler,
-        .user_ctx  = NULL
-    };
-
     httpd_uri_t export_macro_txt_uri = {
         .uri       = "/export_macro",
         .method    = HTTP_GET,
@@ -2074,8 +1978,6 @@ inline void start_custom_web_server() {
         httpd_register_uri_handler(server, &select_uri);
         httpd_register_uri_handler(server, &export_uri);
         httpd_register_uri_handler(server, &import_uri); 
-        httpd_register_uri_handler(server, &download_macros_uri);
-        httpd_register_uri_handler(server, &upload_macros_uri);
         httpd_register_uri_handler(server, &export_macro_txt_uri);
         httpd_register_uri_handler(server, &import_macro_txt_uri);
     }

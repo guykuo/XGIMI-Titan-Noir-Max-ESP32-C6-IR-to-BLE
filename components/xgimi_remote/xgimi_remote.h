@@ -18,7 +18,7 @@ class XgimiRemote : public Component {
   void set_keyboard_report(esp32_ble_server::BLECharacteristic *report) { this->keyboard_report_ = report; }
   void set_consumer_report(esp32_ble_server::BLECharacteristic *report) { this->consumer_report_ = report; }
   void set_wake_token(const std::vector<uint8_t> &token) { this->wake_token_ = token; }
-  void set_remote_name(const std::string &name) { this->remote_name_ = name; } // added Kuo
+  void set_remote_name(const std::string &name) { this->remote_name_ = name; } 
 
   void setup() override;
   void loop() override;
@@ -27,10 +27,17 @@ class XgimiRemote : public Component {
   void start_wake_burst();
   void request_power_off();
   void start_pairing_mode();
+  void clear_bonds();
+
+  // 🎹 SEPARATED KEYBOARD DRIVER ACTIONS
   void press_keyboard(uint8_t usage);
   void hold_keyboard(uint8_t usage);
+  void release_held_keyboard_();
+
+  // 📺 SEPARATED CONSUMER DRIVER ACTIONS
   void press_consumer(uint16_t usage);
-  void clear_bonds();
+  void hold_consumer(uint16_t usage);
+  void release_held_consumer_();
 
   bool is_connected() const { return this->connected_; }
   bool is_authenticated() const { return this->authenticated_; }
@@ -50,7 +57,6 @@ class XgimiRemote : public Component {
   void set_advertised_name_(const char *name);
   bool matches_peer_(const esp_bd_addr_t address) const;
   void restore_hid_subscriptions_();
-  void release_held_keyboard_();
   void notify_keyboard_(const uint8_t data[8]);
   void notify_consumer_(const uint8_t data[6]);
 
@@ -71,9 +77,15 @@ class XgimiRemote : public Component {
   uint16_t wake_counter_{0};
   std::vector<uint8_t> wake_token_{};
 
+  // Keyboard holds tracker
   bool held_keyboard_active_{false};
   uint8_t held_keyboard_usage_{0};
   uint32_t held_release_ms_{0};
+
+  // Consumer holds tracker
+  bool held_consumer_active_{false};
+  uint16_t held_consumer_usage_{0};
+  uint32_t held_consumer_release_ms_{0};
 };
 
 }  // namespace esphome::xgimi_remote
