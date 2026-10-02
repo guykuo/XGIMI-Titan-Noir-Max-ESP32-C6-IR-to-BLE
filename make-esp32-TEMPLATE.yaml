@@ -178,7 +178,6 @@ esphome:
     - ir-common-kuo/appkit/ir_profile.h
 
   build_flags: 
-    - "-Wl,--require-defined=cJSON_Parse"
     - '-DBLE_REMOTE_NAME_STR=\"${ble_remote_name}\"'
 
     # ============================================================
