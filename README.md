@@ -695,6 +695,8 @@ Keep the original remote paired as well.
 | token_clear | 5 | 0xEA15 |
 | token_recall | 6 | 0xE916 |
 | macro_record | netflix | 0xA956 |
+| macro_play | play | 0x4FB0 |
+
 
 ## JVC-VCR to Xgimi Titan Noir Mapping
 | Xgimi Remote Command | JVC VCR Btn | (0x03C2) + Command |
