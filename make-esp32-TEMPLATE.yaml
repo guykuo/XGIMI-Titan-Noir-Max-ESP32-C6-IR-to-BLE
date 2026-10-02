@@ -7,7 +7,7 @@
 
 substitutions:
   # 1 ======= ble_remote_name, Bluetooth Name for your IR remote ===========================
-  ble_remote_name: "IR Xgimi Kuo"  # (20 char max. No special characters. No underscore) 
+  ble_remote_name: "C6 Theater"  # (20 char max. No special characters. No underscore) 
  
   # may optionally change these other three names 
   ssid_name:     ${ble_remote_name} # Name of AP wifi network
@@ -484,54 +484,61 @@ binary_sensor:
           - button.press: token_sniff
           - logger.log: "Boot button short click. Starting token sniffing"
 
-      # 4. LONG HOLD (Wipes dynamic slots if in Learning Mode, otherwise toggles screen display)
+     # 4. LONG HOLD (Contextual dynamic erasure checks / fallback display toggler)
       - timing: 
           - ON for at least 5s
         then: 
           - if: 
               condition: 
                 lambda: |-
-                  return id(ir_receiver_mode) == 3;
+                  return id(macro_workflow_state) == 1;
               then: 
-                - script.stop: learn_mode_timeout_watcher
-                - script.execute: wipe_all_nvs_profiles
-                - lambda: |-
-                    id(ir_receiver_mode) = 1; // Safely re-engage normal active state
+                - script.stop: macro_record_timeout_watcher
+                - script.execute: wipe_nvs_profiles_or_macros
               else:
-                # FIXED: The nested condition must open as a distinct list element item
                 - if:
-                    condition: 
+                    condition:
                       lambda: |-
-                        return id(myDisplay_disabled);
+                        return id(ir_receiver_mode) == 3;
                     then:
-                      - globals.set:
-                          id: myDisplay_disabled
-                          value: 'false'
-                      - script.execute: 
-                          id: display_show
-                          small_text: false
-                          line1: 'Setting'
-                          line2: 'Display'
-                          line3: 'Enabled'
-                      - logger.log: "Display enabled via long hold."
+                      - script.stop: learn_mode_timeout_watcher
+                      - script.execute: wipe_nvs_profiles_or_macros
+                      - lambda: |-
+                          id(ir_receiver_mode) = 1; // Safely re-engage normal active state
                     else:
-                      - script.execute: 
-                          id: display_show
-                          small_text: false
-                          line1: 'Disabling Display'
-                          line2: 'To Re-enable'
-                          line3: 'Hold Boot Btn'
-                      - delay: 3s
-                      - globals.set:
-                          id: myDisplay_disabled
-                          value: 'true'
-                      - script.execute: 
-                          id: display_show
-                          small_text: false
-                          line1: ''
-                          line2: ''
-                          line3: ''
-                      - logger.log: "Display suppressed via long hold."
+                      - if:
+                          condition: 
+                            lambda: |-
+                              return id(myDisplay_disabled);
+                          then:
+                            - globals.set:
+                                id: myDisplay_disabled
+                                value: 'false'
+                            - script.execute: 
+                                id: display_show
+                                small_text: false
+                                line1: 'Setting'
+                                line2: 'Display'
+                                line3: 'Enabled'
+                            - logger.log: "Display enabled via long hold."
+                          else:
+                            - script.execute: 
+                                id: display_show
+                                small_text: false
+                                line1: 'Disabling Display'
+                                line2: 'To Re-enable'
+                                line3: 'Hold Boot Btn'
+                            - delay: 3s
+                            - globals.set:
+                                id: myDisplay_disabled
+                                value: 'true'
+                            - script.execute: 
+                                id: display_show
+                                small_text: false
+                                line1: ''
+                                line2: ''
+                                line3: ''
+                            - logger.log: "Display suppressed via long hold."
 
 # ============================================================
 button:

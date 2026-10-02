@@ -24,6 +24,7 @@ remote_receiver:
   #   - rc6
     
   # 1. Updates timestamp every single time ANY raw IR pulse or repeat packet burst hits the pin
+  # 1. Updates timestamp every single time ANY raw IR pulse or repeat packet burst hits the pin
   on_raw:
     - lambda: |-
         id(global_last_raw_packet_time) = millis();
@@ -89,12 +90,34 @@ remote_receiver:
         ESP_LOGD("IR_RECOGNIZER", "Detected Protocol: %s (Mark: %uus, Space: %uus, Pulses: %u)", 
          to_string(proto), (unsigned int)head_mark, (unsigned int)head_space, total_pulses);
 
+        // ============================================================
+        // UNIVERSAL PROTOCOL REPEAT INJECTION LAYER
+        // ============================================================
+        if (id(global_cached_command) != 0) {
+          uint8_t allowed = id(ir_receiver_allowed_protocol);
+          
+          // A: NEC / LG Repeat Detection (4 pulses, massive header mark)
+          if (total_pulses == 4 && head_mark >= 8500 && head_mark <= 9500) {
+            if (allowed == PROTO_NEC || allowed == PROTO_LG || allowed == 255) {
+              std::string p_str = (allowed == PROTO_LG) ? "LG" : "NEC";
+              id(general_IR_received_handler)->execute(p_str, id(learn_active_address), id(learned_best_command), 1);
+            }
+          }
+          // B: JVC Repeat Detection (Continuous 34-pulse sub-streams stripped of structural headers)
+          else if (total_pulses == 34 && (allowed == PROTO_JVC || allowed == 255)) {
+            id(general_IR_received_handler)->execute("JVC", id(learn_active_address), id(learned_best_command), 1);
+          }
+          // C: Panasonic Repeat Detection (Continuous 96 to 102-pulse arrays containing continuous hold metrics)
+          else if (total_pulses >= 96 && total_pulses <= 102 && (allowed == PROTO_PANASONIC || allowed == 255)) {
+            id(general_IR_received_handler)->execute("PANASONIC", id(learn_active_address), id(learned_best_command), 1);
+          }
+        }
+
   # ======= MULTI-PROTOCOL CONVERSION GATES =======
 
   on_nec:
     - lambda: |-
         if (id(ir_receiver_allowed_protocol) == PROTO_NEC || id(ir_receiver_allowed_protocol) == 255) {
-          // set up common format address, command, command_repeats
           std::string ir_protocolStr = "NEC";
           
           uint32_t ir_address = x.address;
@@ -103,21 +126,26 @@ remote_receiver:
   
           ESP_LOGD("main", "NEC Address:-- 0x%02X --, Command:---- 0x%02X ----", (unsigned int)ir_address, (unsigned int)ir_command);
           
+          // CRITICAL: Cache these variables so our repeat runner can use them when data-less repeats hit
+          id(learn_active_address) = ir_address;
+          id(learned_best_command) = ir_command;
+
           id(general_IR_received_handler)->execute(ir_protocolStr, ir_address, ir_command, ir_command_repeats);
         }
 
   on_jvc:
     - lambda: |-
         if (id(ir_receiver_allowed_protocol) == PROTO_JVC || id(ir_receiver_allowed_protocol) == 255) {
-          // set up common format address, command, command_repeats, etc
           std::string ir_protocolStr = "JVC";
-          
           uint32_t ir_address = (x.data >> 8) & 0xFF;
           uint32_t ir_command = x.data & 0xFF;
-          uint16_t ir_command_repeats = 0; // JVC protocol does not have have command_repeats 
+          uint16_t ir_command_repeats = 0; 
   
+          // Cache current fields for structural hold injections
+          id(learn_active_address) = ir_address;
+          id(learned_best_command) = ir_command;
+
           ESP_LOGD("main", "JVC Address:-- 0x%02X --, Command:---- 0x%02X ----", (unsigned int)ir_address, (unsigned int)ir_command);
-  
           id(general_IR_received_handler)->execute(ir_protocolStr, ir_address, ir_command, ir_command_repeats);
         }
 
@@ -131,8 +159,15 @@ remote_receiver:
           
           uint32_t ir_address = 0; // Sony does not have separate address. In Sony IRmaps we set target_address to zero.
           uint32_t ir_command = x.data;
-          uint16_t ir_command_repeats = 0; // Sony does not have command_repeats
+          
+          // Use local comparison instead of non-existent x.command_repeats property.
+          // If the incoming command matches our live running cache register, force it into repeat execution mode.
+          uint16_t ir_command_repeats = (id(global_cached_command) == ir_command) ? 1 : 0;
   
+          // Hydrate tracking cache registers cleanly
+          id(learn_active_address) = ir_address;
+          id(learned_best_command) = ir_command;
+
           ESP_LOGD("main", "Sony Command:---- 0x%04X ----", (unsigned int)ir_command);
   
           id(general_IR_received_handler)->execute(ir_protocolStr, ir_address, ir_command, ir_command_repeats);
@@ -141,35 +176,30 @@ remote_receiver:
   on_lg:
     - lambda: |-
         if (id(ir_receiver_allowed_protocol) == PROTO_LG || id(ir_receiver_allowed_protocol) == 255) {
-          // set up common format address, command, command_repeats
           std::string ir_protocolStr = "LG";
-          
-          // EXTRACT ADDRESS: Isolate the upper 16 bits (e.g., 0x20DF)
           uint32_t ir_address = (x.data >> 16) & 0xFFFF; 
-          
-          // EXTRACT COMMAND: Isolate the lower 16 bits
           uint32_t ir_command = x.data & 0xFFFF; 
+          uint16_t ir_command_repeats = 0; 
+  
+          id(learn_active_address) = ir_address;
+          id(learned_best_command) = ir_command;
 
-          uint16_t ir_command_repeats = 0; // LG does not have command_repeats
-  
           ESP_LOGD("main", "LG Command:---- 0x%04X ----", (unsigned int)ir_command);
-  
           id(general_IR_received_handler)->execute(ir_protocolStr, ir_address, ir_command, ir_command_repeats);
         }
-
 
   on_panasonic:
     - lambda: |-
         if (id(ir_receiver_allowed_protocol) == PROTO_PANASONIC || id(ir_receiver_allowed_protocol) == 255) {
-          // set up common format address, command, command_repeats
           std::string ir_protocolStr = "PANASONIC";
-          
           uint32_t ir_address = x.address;
           uint32_t ir_command = x.command;
-          uint16_t ir_command_repeats = 0; // RC5 does not have command_repeats
+          uint16_t ir_command_repeats = 0; 
   
+          id(learn_active_address) = ir_address;
+          id(learned_best_command) = ir_command;
+
           ESP_LOGD("main", "PANASONIC Address:-- 0x%02X --, Command:---- 0x%02X ----", (unsigned int)ir_address, (unsigned int)ir_command);
-  
           id(general_IR_received_handler)->execute(ir_protocolStr, ir_address, ir_command, ir_command_repeats);
         }
 
@@ -177,29 +207,40 @@ remote_receiver:
   on_rc5:
     - lambda: |-
         if (id(ir_receiver_allowed_protocol) == PROTO_RC5 || id(ir_receiver_allowed_protocol) == 255) {
-          // set up common format address, command, command_repeats
           std::string ir_protocolStr = "RC5";
           
           uint32_t ir_address = x.address;
           uint32_t ir_command = x.command;
-          uint16_t ir_command_repeats = 0; // RC5 does not have command_repeats
+          
+          // RC5 sends full frames repeatedly during a hold.
+          // If it matches our live running cache register, force it into repeat execution mode.
+          uint16_t ir_command_repeats = (id(global_cached_command) == ir_command) ? 1 : 0;
   
+          // Hydrate the global tracking cache cleanly
+          id(learn_active_address) = ir_address;
+          id(learned_best_command) = ir_command;
+
           ESP_LOGD("main", "RC5 Address:-- 0x%02X --, Command:---- 0x%02X ----", (unsigned int)ir_address, (unsigned int)ir_command);
   
           id(general_IR_received_handler)->execute(ir_protocolStr, ir_address, ir_command, ir_command_repeats);
         }
 
-
   on_rc6:
     - lambda: |-
         if (id(ir_receiver_allowed_protocol) == PROTO_RC6 || id(ir_receiver_allowed_protocol) == 255) {
-          // set up common format address, command, command_repeats
           std::string ir_protocolStr = "RC6";
           
           uint32_t ir_address = x.address;
           uint32_t ir_command = x.command;
-          uint16_t ir_command_repeats = 0; // RC5 does not have command_repeats
+          
+          // RC6 sends full frames repeatedly during a hold.
+          // If it matches our live running cache register, force it into repeat execution mode.
+          uint16_t ir_command_repeats = (id(global_cached_command) == ir_command) ? 1 : 0;
   
+          // Hydrate the global tracking cache cleanly
+          id(learn_active_address) = ir_address;
+          id(learned_best_command) = ir_command;
+
           ESP_LOGD("main", "RC6 Address:-- 0x%02X --, Command:---- 0x%02X ----", (unsigned int)ir_address, (unsigned int)ir_command);
   
           id(general_IR_received_handler)->execute(ir_protocolStr, ir_address, ir_command, ir_command_repeats);
@@ -378,18 +419,15 @@ script:
   # ====================================================================
   - id: hydrate_macro_bindings_from_flash
     mode: single
-    then:
-      - lambda: |-
-          // 1. Establish connection to your absolute identity binding registry partition key
+    then: 
+      - lambda: !lambda |-
           uint64_t binding_nvs_key = 3104711294ULL;
           auto pref_obj = esphome::global_preferences->make_preference<UniversalBindingRegistry>(binding_nvs_key);
           
-          // 2. Attempt to stream data from the physical memory block back into your runtime RAM registry
-          if (pref_obj.load(&global_binding_registry) && global_binding_registry.struct_version == 3) {
+          if (pref_obj.load(&global_binding_registry) && global_binding_registry.struct_version == 4) {
             ESP_LOGI("NVS_BIND", "🚀 Universal macro shortcut matrix recovered successfully. %d active bindings loaded.", 
                      global_binding_registry.total_bound_keys);
             
-            // Log the loaded associations out to your debug terminal line item paths for easy verification
             for (uint16_t i = 0; i < global_binding_registry.total_bound_keys; i++) {
               const char* action_name = decode_id_to_action_string(global_binding_registry.bindings[i].universal_action_id);
               ESP_LOGD("NVS_BIND", "   -> Bound Shortcut Key: '%s' (Type %d) maps to Universal Shared Macro Slot: %d", 
@@ -398,18 +436,19 @@ script:
                        global_binding_registry.bindings[i].shared_macro_slot);
             }
           } else {
-            // 3. DEFENSIVE SAFETY RESETS: Initial system installation initialization block pass
             std::memset(&global_binding_registry, 0, sizeof(global_binding_registry));
-            global_binding_registry.struct_version = 3;
+            // Force fallback structural defaults up to layout version 4
+            global_binding_registry.struct_version = 4;
             global_binding_registry.total_bound_keys = 0;
             
-            // Pre-seed all unassigned bindings to our designated sentinel value (255)
             for (int i = 0; i < MAX_BOUND_HOTKEYS; i++) {
                global_binding_registry.bindings[i].shared_macro_slot = 255;
             }
             
-            ESP_LOGW("NVS_BIND", "No matching macro binding file signature found. Initialized fresh, empty routing layout maps.");
+            ESP_LOGW("NVS_BIND", "No matching macro binding file signature found. Initialized fresh version 4 empty layouts.");
           }
+    parameters: {}
+
 
   # ====================================================================
   # STEP 1: Put system into Action Capture Recording State
@@ -426,10 +465,15 @@ script:
             return;
           }
 
+          id(turn_led_on_custom)->execute(0.3, 1.0, 0.2, 0.8); 
+
           // 2. Initialize tracking parameters and clear out our global RAM buffer workspace
           id(macro_assigned_shared_slot) = target_shared_slot;
           id(macro_step_counter) = 0;
-          id(macro_last_event_time) = millis(); // Initialize time anchor to track step delays cleanly
+          
+          // FIXED: Clear out the time anchor to 0 so the first recorded key never calculates a delta against pre-record clicks
+          id(macro_last_event_time) = 0; 
+          
           id(macro_recording_active) = true;    // Set active recording state flag
           
           std::memset(&active_recording_buffer, 0, sizeof(active_recording_buffer));
@@ -439,9 +483,10 @@ script:
           id(macro_workflow_state) = 1; 
           
           // 4. Update the visual panels and throw operational system status logs
-          id(display_show)->execute(false, "⏺️ Macro Record", "Press Buttons...", "Click End when Done");
+          id(display_show)->execute(false, "Macro Record", "Press Buttons...", "Stop w Macro Record");
           ESP_LOGI("MACRO_WORKFLOW", "Recording sequence initiated for Global Shared Slot: %d", target_shared_slot);
-
+      - script.execute: macro_record_timeout_watcher
+     
   # ====================================================================
   # STEP 2: Stop capturing clicks and transition to Hotkey Listen mode
   # ====================================================================
@@ -462,8 +507,8 @@ script:
             // Shift state machine to wait for the user to hold down their designated hotkey
             id(macro_workflow_state) = 2; 
             
-            id(display_show)->execute(false, "💾 Assign Hotkey", "HOLD desired button", "for 3 seconds...");
-            ESP_LOGW("MACRO_WORKFLOW", "Actions successfully cached (%d steps). Awaiting 3-second hold to bind.", id(macro_step_counter));
+            id(display_show)->execute(false, "Assign Hotkey", "Click desired button", "");
+            ESP_LOGW("MACRO_WORKFLOW", "Actions successfully cached (%d steps). Awaiting button to bind.", id(macro_step_counter));
           } else {
             ESP_LOGW("MACRO_WORKFLOW", "End command ignored: System is not actively recording a session.");
           }
@@ -500,7 +545,8 @@ script:
           uint64_t binding_nvs_key = 3104711294ULL;
           auto pref_obj = esphome::global_preferences->make_preference<UniversalBindingRegistry>(binding_nvs_key);
           
-          global_binding_registry.struct_version = 3;
+          // Force the persistent save signature block up to version 4
+          global_binding_registry.struct_version = 4;
           pref_obj.save(&global_binding_registry);
           esphome::global_preferences->sync();
           
@@ -508,7 +554,60 @@ script:
 
 
   # ====================================================================
-  # WATCHDOG-SAFE COOPERATIVE ASYNCHRONOUS PLAYBACK ENGINE (FIXED)
+  # Macro recording timeout watcher
+  # ====================================================================
+  - id: macro_record_timeout_watcher
+    mode: restart
+    then: 
+      - delay: 60s
+      - lambda: !lambda |-
+          // If the system is still stuck in recording mode after 60, abort it
+          if (id(macro_workflow_state) == 1) {
+            ESP_LOGW("MACRO_WORKFLOW", "Macro recording timed out due to inactivity. Reverting to idle.");
+            
+            // Reset state machine variables safely
+            id(macro_workflow_state) = 0;
+            id(macro_recording_active) = false;
+            id(macro_step_counter) = 0;
+            
+            // Clean up display panel status
+            id(showing_special_info) = true;
+            id(display_show)->execute(false, "Record Timeout", "Inactivity Abort", "Action Mode");
+            
+            // Securely kill the active light states
+            id(turn_led_on_custom)->stop();
+            id(turn_led_off_custom)->execute();
+          }
+
+  # ====================================================================
+  # Macro assignment timeout watcher
+  # ====================================================================
+  - id: macro_assignment_timeout_watcher
+    mode: restart
+    then:
+      - delay: 30s
+      - lambda: |-
+          // If the system is still stuck in Hotkey Listen Mode after 30s, abort it
+          if (id(macro_workflow_state) == 2) {
+            ESP_LOGW("MACRO_WORKFLOW", "Hotkey assignment timed out due to inactivity. Reverting to idle.");
+            
+            // Reset state machine variables safely
+            id(macro_workflow_state) = 0;
+            id(macro_recording_active) = false;
+            id(macro_step_counter) = 0;
+            
+            // Clean up display panel status
+            id(showing_special_info) = true;
+            id(display_show)->execute(false, "Assign Timeout", "Macro Canceled", "Action Mode");
+            
+            // Securely kill active light states
+            id(turn_led_on_custom)->stop();
+            id(turn_led_off_custom)->execute();
+          }
+
+
+  # ====================================================================
+  # WATCHDOG-SAFE COOPERATIVE ASYNCHRONOUS PLAYBACK ENGINE (VERSION 4)
   # ====================================================================
   - id: play_universal_shared_macro
     parameters:
@@ -521,13 +620,15 @@ script:
           auto pref_obj = esphome::global_preferences->make_preference<UniversalFlashMacro>(macro_nvs_key);
           
           static UniversalFlashMacro playback_buffer;
-          if (!pref_obj.load(&playback_buffer) || playback_buffer.total_steps == 0) {
-            ESP_LOGW("MACRO_PLAY", "Playback Aborted: Slot %d is empty.", shared_slot_id);
+          
+          // Upgraded validation gate to check for Version 4 String data structures
+          if (!pref_obj.load(&playback_buffer) || playback_buffer.struct_version != 4 || playback_buffer.total_steps == 0) {
+            ESP_LOGW("MACRO_PLAY", "Playback Aborted: Slot %d is empty, corrupt, or legacy version 3 data.", shared_slot_id);
             id(macro_playback_active) = false;
             return;
           }
           
-          ESP_LOGI("MACRO_PLAY", "▶️ Starting Asynchronous Playback for Slot %d (%d steps cached)...", shared_slot_id, playback_buffer.total_steps);
+          ESP_LOGI("MACRO_PLAY", "Starting Asynchronous Playback for Slot %d (%d steps cached)...", shared_slot_id, playback_buffer.total_steps);
           id(showing_special_info) = true;
           id(display_show)->execute(false, "Macro Playing...", std::to_string(shared_slot_id), "Please wait...");
 
@@ -542,7 +643,9 @@ script:
               pref_obj.load(&playback_buffer);
               return (id(macro_step_counter) < playback_buffer.total_steps);
           then:
-            # STEP A: Extract step delay data and handle pauses asynchronously
+            # ============================================================
+            # STEP A: TRUE-TO-LIFE PACING ENGINE (RAW UNCOMPRESSED PASSTHROUGH)
+            # ============================================================
             - lambda: |-
                 uint64_t macro_nvs_key = 384720194ULL + shared_slot_id;
                 auto pref_obj = esphome::global_preferences->make_preference<UniversalFlashMacro>(macro_nvs_key);
@@ -551,24 +654,14 @@ script:
                 
                 int idx = id(macro_step_counter);
                 uint32_t raw_delay = playback_buffer.steps[idx].delay_ms;
-                uint8_t current_state = playback_buffer.steps[idx].event_state;
 
-                // FIXED TIMING MODEL: If an UP (Release) step carries a standard quick-tap 
-                // duration tracking signature (< 350ms), compress its delay spacing down 
-                // to 0ms since the driver already completed the atomic tap on the DOWN pass!
-                if (current_state == 2 && raw_delay < 350) {
-                  id(macro_last_event_time) = 0; 
-                  ESP_LOGV("MACRO_PLAY", "   -> Step [%d]: Compressed redundant release lag (%dms -> 0ms)", idx, raw_delay);
-                } else {
-                  // Keep true pacing interval for long-press holds and spaces between keys
-                  id(macro_last_event_time) = raw_delay;
-                }
+                id(macro_last_event_time) = raw_delay;
+                ESP_LOGV("MACRO_PLAY", "   -> Step [%d]: Maintaining true recorded timing spacing (%dms)", idx, raw_delay);
 
-            
             - delay: !lambda "return id(macro_last_event_time);"
 
             # ============================================================
-            # STEP B: Fire low-level driver injections directly over the air
+            # STEP B: HYBRID SPLIT-EDGE DRIVER INJECTION PIPELINE
             # ============================================================
             - lambda: |-
                 uint64_t macro_nvs_key = 384720194ULL + shared_slot_id;
@@ -578,82 +671,114 @@ script:
                 
                 int idx = id(macro_step_counter);
                 const auto& step = playback_buffer.steps[idx];
-                const char* state_str = (step.event_state == 0) ? "DOWN" : ((step.event_state == 2) ? "UP" : "HOLD");
+                std::string payload_str(step.action_string);
 
-                // ============================================================
-                // 🚦 INTELLIGENT DUPLICATION-PREVENTION GATEWAY
-                // ============================================================
-                bool should_fire_hardware = false;
+                // ------------------------------------------------------------
+                // 🎹 PIPELINE A: KEYBOARD PAYLOADS (DISCRETE TRACKING)
+                // ------------------------------------------------------------
+                if (step.action_type == 0) {
+                  uint8_t raw_code = (uint8_t)std::strtoul(payload_str.c_str(), nullptr, 16);
+                  if (step.event_state == 0) {
+                    ESP_LOGI("MACRO_PLAY", "   Step [%d]: Keyboard DOWN -> Holding Key 0x%02X", idx, (unsigned int)raw_code);
+                    id(xgimi_remote_controller).hold_keyboard(raw_code);
+                  } 
+                  else if (step.event_state == 2) {
+                    ESP_LOGI("MACRO_PLAY", "   Step [%d]: Keyboard UP -> Releasing Key 0x%02X", idx, (unsigned int)raw_code);
+                    id(xgimi_remote_controller).release_held_keyboard_();
+                  }
+                }
 
-                if (step.event_state == 0) {
-                  // Always execute on a fresh key-down press event step entry
-                  should_fire_hardware = true;
-                } 
-                else if (step.event_state == 2) {
-                  // If this is an UP step, check if the previous step was a DOWN for the same key.
-                  // If it was, skip this step to prevent double-sending!
-                  if (idx > 0) {
-                    const auto& prev_step = playback_buffer.steps[idx - 1];
-                    if (prev_step.action_payload == step.action_payload && prev_step.event_state == 0) {
-                      should_fire_hardware = false;
-                    } else {
-                      should_fire_hardware = true; // Fallback for release-recorded standalone items
+                // ------------------------------------------------------------
+                // 📺 PIPELINE B: CONSUMER PAYLOADS (DISCRETE TRACKING)
+                // ------------------------------------------------------------
+                else if (step.action_type == 1) {
+                  uint16_t raw_code = (uint16_t)std::strtoul(payload_str.c_str(), nullptr, 16);
+                  if (step.event_state == 0) {
+                    ESP_LOGI("MACRO_PLAY", "   Step [%d]: Consumer DOWN -> Holding Key 0x%04X", idx, (unsigned int)raw_code);
+                    id(xgimi_remote_controller).hold_consumer(raw_code);
+                  } 
+                  else if (step.event_state == 2) {
+                    ESP_LOGI("MACRO_PLAY", "   ⏳ Step [%d]: Consumer UP -> Releasing Key 0x%04X", idx, (unsigned int)raw_code);
+                    id(xgimi_remote_controller).release_held_consumer_();
+                  }
+                }
+
+                // ------------------------------------------------------------
+                // PIPELINE C: NAMED TOKEN ACTIONS (STRING-BASED RESOLUTION)
+                // ------------------------------------------------------------
+                else if (step.action_type == 2) {
+                  if (step.event_state == 0) { // DOWN Press validation tracking loop
+                    ESP_LOGI("MACRO_PLAY", "   Step [%d]: Replaying String Action '%s'", idx, payload_str.c_str());
+                    
+                    // A: Parse and inject raw Bluetooth Keyboard actions directly from memory records
+                    if (payload_str.rfind("RKEY:", 0) == 0) {
+                      int code = std::stoi(payload_str.substr(5));
+                      id(xgimi_remote_controller).hold_keyboard((uint8_t)code);
+                      ESP_LOGD("MACRO_PLAY", "   -> Injected Keyboard Hold: 0x%02X", (unsigned int)code);
                     }
-                  } else {
-                    should_fire_hardware = true; 
+                    // B: Parse and inject raw Bluetooth Consumer actions directly from memory records
+                    else if (payload_str.rfind("RCON:", 0) == 0) {
+                      uint32_t code = std::stoul(payload_str.substr(5), nullptr, 16);
+                      id(xgimi_remote_controller).hold_consumer(code);
+                      ESP_LOGD("MACRO_PLAY", "   -> Injected Consumer Hold: 0x%04X", (unsigned int)code);
+                    }
+                    // C: Standard dynamic active layout profile workspace fallback tracker
+                    else {
+                      uint32_t active_ir_command = 0;
+                      bool found_in_workspace = false;
+                      
+                      for (const auto& kv_pair : active_profile_workspace.cmd_codes) {
+                        if (std::strcmp(kv_pair.second.name, payload_str.c_str()) == 0) {
+                          active_ir_command = kv_pair.first;
+                          found_in_workspace = true;
+                          break;
+                        }
+                      }
+
+                      if (found_in_workspace) {
+                        id(ir_map_processor).execute(active_ir_command, 0); // 0 = DOWN
+                      } else {
+                        auto* target_btn = resolve_button(payload_str.c_str());
+                        if (target_btn != nullptr) target_btn->press();
+                      }
+                    }
+                  }
+                  else if (step.event_state == 2) { // UP Release validation tracking loop
+                    // Lift the keys up cleanly using the flusher parameters
+                    if (payload_str.rfind("RKEY:", 0) == 0) {
+                      id(xgimi_remote_controller).release_held_keyboard_();
+                      ESP_LOGD("MACRO_PLAY", "   -> Released Keyboard Hold");
+                    }
+                    else if (payload_str.rfind("RCON:", 0) == 0) {
+                      id(xgimi_remote_controller).release_held_consumer_();
+                      ESP_LOGD("MACRO_PLAY", "   -> Released Consumer Hold");
+                    }
+                    else {
+                      uint32_t active_ir_command = 0;
+                      for (const auto& kv_pair : active_profile_workspace.cmd_codes) {
+                        if (std::strcmp(kv_pair.second.name, payload_str.c_str()) == 0) {
+                          active_ir_command = kv_pair.first;
+                          id(ir_map_processor).execute(active_ir_command, 2); // 2 = UP/Release
+                          break;
+                        }
+                      }
+                    }
                   }
                 }
                 
-                // ============================================================
-                // 📡 DRIVER TRANSMISSION PIPELINE
-                // ============================================================
-                if (should_fire_hardware) {
-                  if (step.action_type == 0) { // Keyboard Payload
-                    ESP_LOGI("MACRO_PLAY", "   🔥 Step [%d]: Executing Keyboard Payload 0x%02X [State: %s]", idx, step.action_payload, state_str);
-                    id(xgimi_remote_controller).press_keyboard((uint8_t)step.action_payload);
-                  } 
-                  else if (step.action_type == 1) { // Consumer Payload
-                    ESP_LOGI("MACRO_PLAY", "   🔥 Step [%d]: Executing Consumer Payload 0x%04X [State: %s]", idx, step.action_payload, state_str);
-                    id(xgimi_remote_controller).press_consumer(step.action_payload);
-                  }
-                  else if (step.action_type == 2) { // Named Token System Action
-                    const char* action_name = decode_id_to_action_string(step.action_payload);
-                    ESP_LOGI("MACRO_PLAY", "   🔥 Step [%d]: Executing Token System Action '%s' [State: %s]", idx, action_name, state_str);
-                    
-                    auto* target_btn = resolve_button(action_name);
-                    if (target_btn != nullptr) {
-                       target_btn->press(); 
-                    } else {
-                       uint8_t resolved_type = 2;
-                       uint16_t resolved_id = encode_action_to_id(action_name, resolved_type);
-                       if (resolved_id != 0xFFFF) {
-                         if (resolved_type == 0) {
-                           id(xgimi_remote_controller).press_keyboard((uint8_t)resolved_id);
-                         } else if (resolved_type == 1) {
-                           id(xgimi_remote_controller).press_consumer(resolved_id);
-                         }
-                       }
-                    }
-                  }
-                } else {
-                  // Log duplicate releases passively without spewing repetitive Bluetooth packets
-                  ESP_LOGD("MACRO_PLAY", "   ⏳ Step [%d]: Skipped duplicate trailing release [State: %s]", idx, state_str);
-                } 
-                
-                // Increment index position counter to move forward to the next step
                 id(macro_step_counter) = idx + 1;
 
       - lambda: |-
           id(macro_playback_active) = false;
-          ESP_LOGI("MACRO_PLAY", "✅ Asynchronous macro playback completed successfully.");
+          ESP_LOGI("MACRO_PLAY", "Asynchronous macro playback completed successfully.");
 
           // Update the display to indicate macro is fully finished
           id(showing_special_info) = true;
           id(display_show)->execute(true, "Macro Complete", "All steps executed", "Action Mode");
           
-          // Wakes up your existing 2-second timeout script block to cleanly 
-          // clear the text panel and drop back into normal layout displays
           id(showing_special_expiration_timer).execute();
+
+
 
   # ====================================================================
   # Automated 5-Second Expiration Timer for Prefix Playback
@@ -697,11 +822,60 @@ script:
 
   
   # ====================================================================
-  # Erase learned profiles from NVS Memory Slots (On-Demand Version)
+  # Erase learned profiles or macros from NVS Memory Slots (Dynamic On-Demand)
   # ====================================================================
-  - id: wipe_all_nvs_profiles
+  - id: wipe_nvs_profiles_or_macros
     then:
       - lambda: |-
+          // ------------------------------------------------------------
+          // BRANCH A: CLEAR ALL PERSISTENT MACROS IF SYSTEM IS RECORDING
+          // ------------------------------------------------------------
+          if (id(macro_workflow_state) == 1 || id(macro_recording_active) == true) {
+            ESP_LOGW("NVS Flash", "Macro wipe initiated. Clearing all 12 custom shortcut streams...");
+            
+            static UniversalFlashMacro blank_macro;
+            std::memset(&blank_macro, 0, sizeof(blank_macro));
+            blank_macro.struct_version = 4; // Target correct structure layout signatures
+            blank_macro.total_steps = 0;
+
+            // Clear all 12 independent preference databases sequentially
+            for (int slot = 0; slot < 12; slot++) {
+              uint64_t macro_nvs_key = 384720194ULL + slot;
+              auto pref_obj = esphome::global_preferences->make_preference<UniversalFlashMacro>(macro_nvs_key);
+              pref_obj.save(&blank_macro);
+            }
+
+            // Wipe out cross-profile assignment key binding matrices as well
+            uint64_t binding_nvs_key = 3104711294ULL;
+            auto bind_obj = esphome::global_preferences->make_preference<UniversalBindingRegistry>(binding_nvs_key);
+            std::memset(&global_binding_registry, 0, sizeof(global_binding_registry));
+            global_binding_registry.struct_version = 4;
+            global_binding_registry.total_bound_keys = 0;
+            for (int i = 0; i < MAX_BOUND_HOTKEYS; i++) {
+               global_binding_registry.bindings[i].shared_macro_slot = 255;
+            }
+            bind_obj.save(&global_binding_registry);
+
+            esphome::global_preferences->sync();
+
+            // Revert state machine back to standard operational idle parameters cleanly
+            id(macro_workflow_state) = 0;
+            id(macro_recording_active) = false;
+            id(macro_step_counter) = 0;
+            id(macro_last_event_time) = millis();
+
+            id(turn_led_on_custom)->stop();
+            id(turn_led_off_custom)->execute();
+
+            id(showing_special_info) = true;
+            id(display_show)->execute(true, "Macro Storage", "All Cleared", "Action Mode");
+            ESP_LOGI("NVS Flash", "All persistent macro buffer blocks wiped cleanly. Matrix restored to idle.");
+            return;
+          }
+
+          // ------------------------------------------------------------
+          // BRANCH B: CLEAR REMOTES IF IN LEARN/SETUP PROFILE MODE
+          // ------------------------------------------------------------
           ESP_LOGW("NVS Flash", "Factory wipe initiated. Clearing all custom profile tracks...");
           
           static FlashStoredProfile blank_profile;
@@ -739,7 +913,6 @@ script:
                                    "Memory Profiles",
                                    "All Cleared",
                                    "Using " + active_profile_workspace.profile_name);
-
 
 
   # ====================================================================
@@ -968,10 +1141,8 @@ script:
 
             case 1: { // action -----------------------------------------------
               // ============================================================
-              // 🚀 STEP A: PRE-LOOKUP EVALUATION (BYPASSES TIMING LOCKOUTS)
+              // STEP A: PRE-LOOKUP EVALUATION (BYPASSES TIMING LOCKOUTS)
               // ============================================================
-              // We locate the command name BEFORE filtering time so that our 
-              // critical system programming shortcuts are never dropped by sub-packet noise!
               const auto& active_profile = active_profile_workspace;
               const IRCommand* found_cmd = nullptr;
               for (const auto& kv_pair : active_profile.cmd_codes) {
@@ -990,22 +1161,19 @@ script:
               id(commandName).assign(found_cmd->name);
               std::string cmd_name = found_cmd->name;
 
-              // HARD BYPASS INTERCEPT: If the incoming button is one of our two core 
-              // programming workflow keys, ignore the 50ms debounce layer completely 
-              // and pass it straight down to the state machine loop!
-              bool is_system_key = (cmd_name == "macro_record" || cmd_name == "macro_play");
-
-              if (!is_system_key) {
-                // Apply the crisp 50ms tap filter ONLY to regular navigation and volume keys
-                uint32_t delta_press = now - id(last_ir_press);
-                if (delta_press < 50) return;
-              }
-              id(last_ir_press) = now;
-
               // ============================================================
-              // 🚀 STEP B: HIGH-SPEED INTERRUPT DISPATCH PIPELINE
+              // STEP B: HIGH-SPEED INTERRUPT DISPATCH PIPELINE
               // ============================================================
               if (id(global_cached_command) != ir_command) {
+                
+                // HARD BYPASS INTERCEPT: Apply 50ms debounce layer ONLY to fresh initial clicks
+                bool is_system_key = (cmd_name == "macro_record" || cmd_name == "macro_play");
+                if (!is_system_key) {
+                  uint32_t delta_press = now - id(last_ir_press);
+                  if (delta_press < 50) return;
+                }
+                id(last_ir_press) = now;
+
                 id(global_cached_command) = ir_command;
                 id(global_initial_press_time) = now;
                 id(global_last_processed_time) = now;
@@ -1014,11 +1182,19 @@ script:
                 id(ir_map_processor).execute(ir_command, 0); // 0 = DOWN
               } 
               else {
-                // Smooth Repeat Handler: Safely bridges the remote 110ms repeat packets
-                if (now - id(global_last_processed_time) >= 110) {
-                  id(global_is_holding) = true;
+                // FIXED: If we are recording a macro, bypass the 110ms throttle completely.
+                // This lets raw, unthrottled hardware repeats drop straight into the smart classifier.
+                if (id(macro_workflow_state) == 1) {
                   id(ir_map_processor).execute(ir_command, 1); // 1 = HOLDING / REPEAT
                   id(global_last_processed_time) = now;
+                }
+                else {
+                  // Standard smooth repeat handler for normal daily operation
+                  if (now - id(global_last_processed_time) >= 110) {
+                    id(global_is_holding) = true;
+                    id(ir_map_processor).execute(ir_command, 1); // 1 = HOLDING / REPEAT
+                    id(global_last_processed_time) = now;
+                  }
                 }
               }
 
@@ -1240,9 +1416,10 @@ script:
           }
 
           if (found_cmd == nullptr) {
-            ESP_LOGV("IR_HUB", "Command 0x%X not mapped in current layout profile workspace.", ir_command);
+            ESP_LOGV("IR_HUB", "Command 0x%X not mapped in current layout profile workspace.", (unsigned int)ir_command);
             return; 
           }
+
 
           uint32_t current_duration = now - id(global_initial_press_time);
           uint8_t current_action_type = 2;
@@ -1259,54 +1436,49 @@ script:
           // factory keys, allowing them to fire natively and record into the buffer flawlessly!
           bool has_bound_macro = (bound_macro_slot != 255) && (id(macro_workflow_state) == 0);
 
-
-          // ============================================================
-          // ⏺️ TOGGLE CODES: STATE 0 ENTRY (DOWN) OR STATE 1 EXIT (DOWN) VIA RECORD KEY
-          // ============================================================
-          // FIXED: Changed event_state filter to 0 (DOWN). This forces the recording engine
-          // to react instantly the exact microsecond you push the button, eliminating the 
-          // interval flusher overlap.
+          // ====================================================================
+          // TOGGLE CODES: STATE 0 ENTRY (DOWN) OR STATE 1 EXIT (DOWN) VIA RECORD KEY
+          // ====================================================================
           if (std::strcmp(found_cmd->name, "macro_record") == 0 && event_state == 0) {
             
             if (id(macro_workflow_state) == 0) {
-              // START CAPTURE: Initialize buffer registers instantly
-              id(macro_assigned_shared_slot) = 0; 
-              id(macro_step_counter) = 0;
-              id(macro_last_event_time) = millis();
-              id(macro_recording_active) = true;
-              id(macro_workflow_state) = 1;
-              
-              std::memset(&active_recording_buffer, 0, sizeof(active_recording_buffer));
-              active_recording_buffer.struct_version = 3;
-              
-              ESP_LOGW("MACRO_WORKFLOW", "Short press detected on macro_record. Entering Recording Mode!");
-              id(showing_special_info) = true;
-              id(display_show)->execute(false, "Macro Record:", "Press buttons...", "Click Record to Stop");
+              // Call the dedicated script block directly! 
+              // This fires the LED instantly and prepares the system buffer perfectly.
+              id(start_macro_mapping_session)->execute(0); // Pass slot 0 as target
               return; 
             } 
             
             else if (id(macro_workflow_state) == 1) {
               // END CAPTURE: Strip any accidental macro_record frames out of the buffer array
+              id(macro_record_timeout_watcher)->stop();
+              
               while (id(macro_step_counter) > 0) {
                 int check_idx = id(macro_step_counter) - 1;
-                uint16_t logged_id = active_recording_buffer.steps[check_idx].action_payload;
-                if (logged_id == current_action_id) {
+                
+                // Perform a clean string comparison using your new text array step column
+                if (std::strcmp(active_recording_buffer.steps[check_idx].action_string, found_cmd->name) == 0) {
                   id(macro_step_counter) = check_idx;
                 } else {
                   break;
                 }
               }
-              active_recording_buffer.total_steps = id(macro_step_counter);
 
+              active_recording_buffer.total_steps = id(macro_step_counter);
+          
               if (id(macro_step_counter) == 0) {
                 id(macro_workflow_state) = 0;
                 id(macro_recording_active) = false;
                 ESP_LOGW("MACRO_WORKFLOW", "Recording sequence empty. Aborting workflow.");
                 id(showing_special_info) = true;
                 id(display_show)->execute(false, "Record Canceled", "No steps cached", "Action Mode");
+                
+                // Turn off the LED on cancel
+                id(turn_led_off_custom)->execute();                
                 return;
               }
 
+              active_recording_buffer.struct_version = 4; // Shifted up from version 3 to protect storage maps
+            
               // Transition right into hotkey alignment assignment mode (State 2)
               id(macro_assignment_cooldown) = millis();
               id(macro_workflow_state) = 2;
@@ -1314,13 +1486,14 @@ script:
               ESP_LOGW("MACRO_WORKFLOW", "Recording stopped. Awaiting assignment click...");
               id(showing_special_info) = true;
               id(display_show)->execute(false, "Assign Hotkey:", "CLICK desired button", "to save macro...");
+              id(macro_assignment_timeout_watcher)->execute();
               return;
             }
           }
 
 
           // ============================================================
-          // 🚦 PREFIX INITIATION: SHORT TAP 'MACRO_PLAY' ARMS PREFIX PLAYBACK MODE
+          // PREFIX INITIATION: SHORT TAP 'MACRO_PLAY' ARMS PREFIX PLAYBACK MODE
           // ============================================================
           // This forces the prefix playback gate to arm instantly the microsecond 
           // you press the play prefix key.
@@ -1340,9 +1513,9 @@ script:
             }
           }
           
-          // ============================================================
-          // 🛑 WORKFLOW INTERCEPT: STEP 3 - FIXED HOTKEY ASSIGNMENT (STATE 2)
-          // ============================================================
+          // ====================================================================
+          // WORKFLOW INTERCEPT: STEP 3 - FIXED HOTKEY ASSIGNMENT (STATE 2)
+          // ====================================================================
           if (id(macro_workflow_state) == 2) {
             // Intercept hotkey selection instantly on the DOWN pass
             if (event_state == 0) {
@@ -1352,10 +1525,18 @@ script:
                 return;
               }
 
+              id(macro_assignment_timeout_watcher)->stop();
+
+              // Force-kill the active ON script thread to release hardware locks
+              id(turn_led_on_custom)->stop();
+              
+              // Execute your dedicated OFF script cleanly using pointer syntax
+              id(turn_led_off_custom)->execute();
+          
               // Validate that the hotkey is a valid assignment key inside our hardcoded list
               int target_shared_slot = -1;
               std::string key_name = found_cmd->name;
-
+          
               if (key_name == "cursor_enter")      target_shared_slot = 0;
               else if (key_name == "cursor_up")    target_shared_slot = 1;
               else if (key_name == "cursor_right") target_shared_slot = 2;
@@ -1365,26 +1546,28 @@ script:
               else if (key_name == "shortcut_2")   target_shared_slot = 6;
               else if (key_name == "shortcut_3")   target_shared_slot = 7;
               else if (key_name == "shortcut_4")   target_shared_slot = 8;
-
+          
               if (target_shared_slot == -1) {
                 ESP_LOGE("MACRO_WORKFLOW", "Binding Rejected! Key '%s' is not an authorized macro hotkey destination.", key_name.c_str());
                 id(showing_special_info) = true;
                 id(display_show)->execute(false, "Assignment Error", "Invalid Key Destination", "Action Mode");
+                
+                // Exit safely back to normal use on assignment failure
+                id(macro_recording_active) = false;
+                id(macro_workflow_state) = 0;
                 return; 
               }
-
+          
               id(macro_recording_active) = false;
               id(macro_workflow_state) = 0; // Return right back to normal use
-
+          
               // ============================================================
-              // 🛡️ REPAIRED MATRIX REGISTRY SCAN LOOP (ESPHOME-SAFE WHILE FORMAT)
+              // MATRIX REGISTRY SCAN LOOP
               // ============================================================
               int match_idx = -1;
               uint16_t current_loop_idx = 0;
               uint16_t bounds_limit = global_binding_registry.total_bound_keys;
-
-              // Uses inequality operator '!=' to safely check array bounds 
-              // without triggering the buggy YAML pre-compiler angle-bracket issue
+          
               while (current_loop_idx != bounds_limit) {
                 if (global_binding_registry.bindings[current_loop_idx].universal_action_id == current_action_id &&
                     global_binding_registry.bindings[current_loop_idx].action_type == current_action_type) {
@@ -1393,13 +1576,13 @@ script:
                 }
                 current_loop_idx += 1;
               }
-
+          
               // Create a brand new registry row if this key had not been linked before
               if (match_idx == -1 && global_binding_registry.total_bound_keys != MAX_BOUND_HOTKEYS) {
                 match_idx = (int)global_binding_registry.total_bound_keys;
                 global_binding_registry.total_bound_keys += 1;
               }
-
+          
               if (match_idx != -1) {
                 // Link the hotkey identity properties straight to our hardcoded target slot assignment
                 global_binding_registry.bindings[match_idx].universal_action_id = current_action_id;
@@ -1409,13 +1592,14 @@ script:
                 // Commit macro payload steps and binding slots natively to NVS flash partitions
                 id(commit_macro_to_flash_slot).execute(target_shared_slot);
                 id(save_binding_registry_to_nvs).execute();
-
+          
                 // Format isolated strings safely using clean object instantiations
                 std::string slot_msg = "Macro Bound Slot " + std::to_string(target_shared_slot);
                 std::string key_msg = "Key: " + key_name;
-
+          
                 id(showing_special_info) = true;
                 id(display_show)->execute(true, slot_msg.c_str(), key_msg.c_str(), "Action Mode");
+          
                 ESP_LOGW("MACRO_WORKFLOW", "Macro sequence committed to Fixed NVS Slot %d for button: %s", target_shared_slot, key_name.c_str());
               }
             }
@@ -1424,41 +1608,87 @@ script:
 
 
           // ============================================================
-          // ⏺️ WORKFLOW STATE: STEP 2 - ACTION STORAGE RECORDING PASS
+          // WORKFLOW STATE: STEP 2 - STREAMLINED PASS-THROUGH RECORDING
           // ============================================================
-          if (id(macro_workflow_state) == 1 && (event_state == 0 || event_state == 2)) {
+          if (id(macro_workflow_state) == 1) {
             
-            // Explicitly block macro_play from ever being captured 
-            // and written into your macro flash array steps!
-            if (std::strcmp(found_cmd->name, "macro_play") == 0) {
-              ESP_LOGD("MACRO_WORKFLOW", "Suppressed system key 'macro_play' from being recorded.");
-              return; // Silently drop this packet and exit the recording filter pass
-            }
+            // Kick the recording countdown watchdog on every button action to reset the 60-second clock
+            id(macro_record_timeout_watcher)->execute();
+            
+            // Explicitly block macro system keys from ever leaking into the capture buffer array
+            if (std::strcmp(found_cmd->name, "macro_play") == 0) return; 
+            if (std::strcmp(found_cmd->name, "macro_record") == 0) return; 
 
             int step_idx = id(macro_step_counter);
-            if (step_idx < MAX_MACRO_STEPS) {
+
+            // ------------------------------------------------------------
+            // AUTHENTIC LONG-HOLD PASS-THROUGH INTERCEPT
+            // ------------------------------------------------------------
+            if (event_state == 1) {
+              // Apply your proven 170ms reflection firewall to drop optical mirror noise
+              uint32_t ms_since_initial_touch = now - id(global_initial_press_time);
+              if (ms_since_initial_touch < 170) {
+                return;
+              }
+
+              // Update the time anchor to match your ongoing physical hold
+              id(macro_last_event_time) = now; 
               
-              // If this is the absolute first action step recorded in the array,
-              // force delta to 0 to completely eliminate the pre-press startup lag gap!
+              // Forward the hold frames to the active Bluetooth driver so keys stream live on-screen
+              if (current_action_type == 0) {
+                id(xgimi_remote_controller).hold_keyboard((uint8_t)current_action_id);
+              }
+              else if (current_action_type == 1) {
+                id(xgimi_remote_controller).hold_consumer(current_action_id);
+              }
+              return; // Exit seamlessly without adding split DOWN/UP entries into the matrix buffer
+            }
+            
+            // ------------------------------------------------------------
+            // DISCRETE CLICK HANDLING (TRUE DOWN AND UP RECORDING)
+            // ------------------------------------------------------------
+            if (step_idx < MAX_MACRO_STEPS && (event_state == 0 || event_state == 2)) {
+              
+              // Only drop successive UP states if they arrive within an impossible 30ms window (flusher loop noise)
+              if (event_state == 2 && step_idx > 0 && 
+                  active_recording_buffer.steps[step_idx - 1].event_state == 2 &&
+                  (now - id(macro_last_event_time) < 30)) {
+                return;
+              }
+
               uint32_t delta = 0;
               if (step_idx > 0) {
                 delta = now - id(macro_last_event_time);
                 if (delta > 65535) delta = 65535;
               }
 
+              std::memset(active_recording_buffer.steps[step_idx].action_string, 0, MAX_ACTION_STRING_LEN);
+              std::strncpy(active_recording_buffer.steps[step_idx].action_string, found_cmd->name, MAX_ACTION_STRING_LEN - 1);
+              
               active_recording_buffer.steps[step_idx].action_type = current_action_type;
-              active_recording_buffer.steps[step_idx].action_payload = current_action_id;
               active_recording_buffer.steps[step_idx].event_state = (uint8_t)event_state;
               active_recording_buffer.steps[step_idx].delay_ms = (uint16_t)delta;
               
               id(macro_last_event_time) = now;
               id(macro_step_counter) = step_idx + 1;
               active_recording_buffer.total_steps = id(macro_step_counter);
+              
+              ESP_LOGD("MACRO_REC", "Recorded Step [%d]: %s (State: %d, Delay: %u ms)", 
+                       step_idx, found_cmd->name, event_state, (unsigned int)delta);
+
+              // Clear out running global cached registers if a physical release is processed
+              if (event_state == 2) {
+                id(global_cached_command) = 0;
+                id(global_initial_press_time) = 0;
+                id(global_last_processed_time) = 0;
+                id(global_is_holding) = false;
+              }
             }
           }
 
+
           // ============================================================
-          // 🛡️ POPULATE DYNAMIC TRACKING Sensor Strings (STREAMLINED)
+          // POPULATE DYNAMIC TRACKING Sensor Strings (STREAMLINED)
           // ============================================================
           if (!id(global_token_clear_armed)) {
             // Because has_bound_macro forces itself to false inside programming loops,
@@ -1488,7 +1718,7 @@ script:
           }
 
           // ============================================================
-          // 🚦 INTERACTION GATEWAYS: PURE NATIVE INTERRUPT AUTOMATION
+          // NTERACTION GATEWAYS: PURE NATIVE INTERRUPT AUTOMATION
           // ============================================================
           bool should_execute_action = false;
 
@@ -1509,7 +1739,7 @@ script:
           
           else if (event_state == 2) {
             // ============================================================
-            // 🚀 PREFIX ROUTING INTERCEPT GATEWAY (Driven by short tap macro_play)
+            // PREFIX ROUTING INTERCEPT GATEWAY (Driven by short tap macro_play)
             // ============================================================
             if (id(macro_play_prefix_active)) {
               
@@ -1542,7 +1772,7 @@ script:
 
 
           // ============================================================
-          // 📡 ABSOLUTE HARDWARE DRIVER INJECTION PIPELINE
+          // ABSOLUTE HARDWARE DRIVER INJECTION PIPELINE
           // ============================================================
           if (std::strcmp(found_cmd->name, "token_sniff") == 0) {
             id(showing_special_info) = true;
@@ -1559,7 +1789,7 @@ script:
             return;
           }
           
-          // FIXED: Hard firewall prevents system macro programming keys from 
+          // Hard firewall prevents system macro programming keys from 
           // falling down into legacy Bluetooth pairing triggers!
           if (std::strcmp(found_cmd->name, "macro_record") == 0 || 
               std::strcmp(found_cmd->name, "macro_play") == 0) {
@@ -1598,7 +1828,7 @@ script:
           const auto& active_profile = remote_profiles[true_hardware_index];
           id(ir_receiver_mode) = 1; 
           
-          // FIXED: Fast byte copy handles validation permissions instantaneously with 0 allocations
+          // Fast byte copy handles validation permissions instantaneously with 0 allocations
           id(ir_receiver_allowed_protocol) = active_profile.protocol;
           
           ESP_LOGI("Profile Control", "Profile layout '%s' engaged via index %d.", 
@@ -1673,24 +1903,21 @@ script:
        
 interval:
   # ====================================================================
-  # NEW TIMER 1: HIGH-SPEED NON-BLOCKING STATE FLUSHER
+  # HIGH-VELOCITY NON-BLOCKING STATE FLUSHER
   # ====================================================================
-  # Replaces the heavy, context-switching hold task. It sleeps silently 
-  # until the remote stops broadcasting, cleanly closing state registers.
-  - interval: 180ms
+  - interval: 40ms
     then:
       - lambda: |-
           uint32_t now = millis();
           if (id(global_cached_command) != 0) {
-            // If more than 160ms has passed since the last raw packet landed,
-            // the user has physically let go of the remote key.
-            if (now - id(global_last_raw_packet_time) >= 220) {
+            // FIXED: Dropped from 220ms down to 80ms to instantly catch high-velocity finger lifts
+            if (now - id(global_last_raw_packet_time) >= 80) {
               
-              // If the system was actively recording, log the final release step cleanly
+              // Forward a single clean release pass if we are actively recording a macro session
               if (id(macro_workflow_state) == 1) {
                 id(ir_map_processor).execute(id(global_cached_command), 2); // 2 = UP/Release
               }
-              
+
               // Run the release intercept gate check natively for prefix plays
               if (id(macro_play_prefix_active)) {
                 id(ir_map_processor).execute(id(global_cached_command), 2);

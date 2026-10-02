@@ -73,28 +73,30 @@ inline constexpr const char* learn_button_names[] = {
 inline constexpr size_t TOTAL_SYSTEM_BUTTONS = sizeof(learn_button_names) / sizeof(learn_button_names[0]);
 
 // ====================================================================
-// 📦 UNIVERSAL IMMUTABLE STORAGE STRUCTS
+// UNIVERSAL IMMUTABLE STORAGE STRUCTS
 // ====================================================================
 #define MAX_MACRO_STEPS    48  
 #define MAX_BOUND_HOTKEYS  12  
 
+static const size_t MAX_ACTION_STRING_LEN = 32;
+
 struct UniversalMacroStep {
-    uint16_t action_payload; 
-    uint8_t  action_type;    // 0 = RKEY, 1 = RCON, 2 = Named Token
-    uint8_t  event_state;    // 0 = DOWN, 2 = UP
-    uint16_t delay_ms;       
+  char action_string[MAX_ACTION_STRING_LEN]; 
+  uint8_t action_type;                      
+  uint8_t event_state;                      
+  uint16_t delay_ms;                        
 };
 
 struct UniversalFlashMacro {
-    uint32_t struct_version;
-    uint16_t total_steps;
-    UniversalMacroStep steps[MAX_MACRO_STEPS];
-};
+  uint32_t struct_version;
+  uint16_t total_steps;
+  UniversalMacroStep steps[MAX_MACRO_STEPS]; 
+}; // Fixed orphaned brace syntax anomaly
 
 struct BindingPair {
     uint16_t universal_action_id; 
     uint8_t  action_type;         
-    uint8_t  shared_macro_slot;   // 255 = Unbound
+    uint8_t  shared_macro_slot;   
 };
 
 struct UniversalBindingRegistry {
@@ -102,6 +104,30 @@ struct UniversalBindingRegistry {
     uint16_t total_bound_keys;
     BindingPair bindings[MAX_BOUND_HOTKEYS];
 };
+
+// ====================================================================
+// ⚡ HIGH-SPEED MACRO CSV TRANSLATION STRINGS
+// ====================================================================
+inline const char* type_to_str(uint8_t type) {
+    if (type == 0) return "KEYBOARD";
+    if (type == 1) return "CONSUMER";
+    return "TOKEN";
+}
+
+inline uint8_t str_to_type(const std::string& str) {
+    if (str == "KEYBOARD") return 0;
+    if (str == "CONSUMER") return 1;
+    return 2;
+}
+
+inline const char* state_to_str(uint8_t state) {
+    return (state == 0) ? "DOWN" : "UP";
+}
+
+inline uint8_t str_to_state(const std::string& str) {
+    return (str == "DOWN") ? 0 : 2;
+}
+
 
 // ====================================================================
 // 💾 UNIFIED BINARY BACKUP PACKAGE STRUCTURE (Bit-Perfect Alignment)
@@ -182,6 +208,7 @@ inline uint8_t get_bound_macro_slot(uint16_t action_id, uint8_t action_type) {
     }
     return 255; 
 }
+
 
 
 typedef char XgimiBtnStr[32];   // Field 2: Visible Xgimi Token (e.g., "game_menu")
@@ -319,11 +346,10 @@ inline esphome::button::Button* resolve_button(const char* name) {
 inline void add_cmd(uint32_t irCommand, const char* xgimi_id, const char* comment) {
     IRCommand cmd;
     std::strncpy(cmd.name, xgimi_id, sizeof(cmd.name) - 1);
-    cmd.name[sizeof(cmd.name) - 1] = '\0'; // FIXED: Cleared literal space character loop tracker warning
+    cmd.name[sizeof(cmd.name) - 1] = '\0';
     
     std::strncpy(cmd.button_name, comment, sizeof(cmd.button_name) - 1);
-    cmd.button_name[sizeof(cmd.button_name) - 1] = '\0'; // FIXED: Cleared literal space character loop tracker warning
-
+    cmd.button_name[sizeof(cmd.button_name) - 1] = '\0';
     active_profile_workspace.cmd_codes.push_back({ irCommand, cmd });
 }
 
@@ -398,8 +424,8 @@ alignas(4) const FlashCommandRow AWOL_COMMANDS[] {
   { 0xE7, "token_sniff",    "HDMI 1" },
   { 0x17, "token_clear",    "HDMI 2" },
   { 0x97, "token_recall",   "HDMI 3" },
-  { 0x07, "macro_record",  "Back + Down" },
-  { 0xC7, "macro_play",  "Back + Home" }
+  { 0x07, "macro_record",   "Back + Down" },
+  { 0xC7, "macro_play",     "Back + Home" }
 };
 
 alignas(4) const FlashCommandRow BENQ_COMMANDS[] {
@@ -428,8 +454,8 @@ alignas(4) const FlashCommandRow BENQ_COMMANDS[] {
   { 0xC33C, "token_sniff",    "HDR" },
   { 0x629D, "token_clear",    "invert" },
   { 0x639C, "token_recall",   "3D" },
-  { 0xA05F, "macro_record",  "color temp" },
-  { 0xA45B, "macro_play",  "color manage" },
+  { 0xA05F, "macro_record",   "color temp" },
+  { 0xA45B, "macro_play",     "color manage" },
   { 0x6B94, "home",           "test pattern" }
 };
 
@@ -464,8 +490,8 @@ alignas(4) const FlashCommandRow EPSON_COMMANDS[]{
   { 0x7C83, "token_sniff",    "frame interp" },
   { 0xC23D, "token_clear",    "RGBCMY" },
   { 0x6996, "token_recall",   "pattern" },
-  { 0xC43B, "macro_record",  "3D format" },
-  { 0x758A, "macro_play",  "Aspect" },
+  { 0xC43B, "macro_record",   "3D format" },
+  { 0x758A, "macro_play",     "Aspect" },
   { 0x6A95, "home",           "Home" },
   { 0x8B74, "home",           "input LAN" },
   { 0x609F, "home",           "user" },
@@ -505,8 +531,8 @@ alignas(4) const FlashCommandRow HISENSE_COMMANDS[] {
   { 0xEB14, "token_sniff",    "4" },
   { 0xEA15, "token_clear",    "5" },
   { 0xE916, "token_recall",   "6" },
-  { 0xB847, "macro_record",  "Prime Video" },
-  { 0xB649, "macro_play",  "Youtube" }
+  { 0xB847, "macro_record",   "Prime Video" },
+  { 0xB649, "macro_play",     "Youtube" }
 };
 
 alignas(4) const FlashCommandRow JVC_VCR_COMMANDS[] {
@@ -541,38 +567,38 @@ alignas(4) const FlashCommandRow JVC_VCR_COMMANDS[] {
   { 0xC224, "token_sniff",    "4" },
   { 0xC2A4, "token_clear",    "5" },
   { 0xC264, "token_recall",   "6" },
-  { 0xC284, "macro_record",  "1" },
-  { 0xC244, "macro_play",  "2" }
+  { 0xC284, "macro_record",   "1" },
+  { 0xC244, "macro_play",     "2" }
 };
 
 alignas(4) const FlashCommandRow JVC_PROJ_A_COMMANDS[] {
-  { 0xA0,   "power_on",       "power on" },
-  { 0x60,   "power_off",      "power off" },
-  { 0x80,   "cursor_up",      "up arrow" },
-  { 0x40,   "cursor_down",    "down arrow" },
-  { 0x6C,   "cursor_left",    "left arrow" },
-  { 0x2C,   "cursor_right",   "right arrow" },
-  { 0xF4,   "cursor_enter",   "enter/ok" },
-  { 0x74,   "settings_menu",  "menu" },
-  { 0xC0,   "back",           "exit" },
-  { 0xB8,   "home",           "hide" },
-  { 0xD6,   "game_menu",      "dynamic" },
-  { 0xCE,   "game_menu",      "advanced menu" },
-  { 0x0E,   "input",          "input HDMI 1" },
-  { 0x8E,   "picture",        "input HDMI 2" },
-  { 0x2F,   "picture",        "picture mode" },
-  { 0xCC,   "focus_manual",   "focus -" },
-  { 0x8C,   "focus_auto",     "focus +" },
-  { 0x11,   "focus_manual",   "color profile" },
-  { 0xAF,   "focus_auto",     "gamma settings" },
-  { 0x36,   "shortcut_1",     "user 1" },
-  { 0xB6,   "shortcut_2",     "user 2" },
-  { 0x76,   "shortcut_3",     "user 3" },
-  { 0xEE,   "shortcut_4",     "aspect" },
-  { 0x1B,   "shortcut_1",     "mode 1" },
-  { 0x9B,   "shortcut_2",     "mode 2" },
-  { 0x5B,   "shortcut_3",     "mode 3" },
-  { 0x2E,   "shortcut_4",     "info" },
+  { 0xA0, "power_on",       "power on" },
+  { 0x60, "power_off",      "power off" },
+  { 0x80, "cursor_up",      "up arrow" },
+  { 0x40, "cursor_down",    "down arrow" },
+  { 0x6C, "cursor_left",    "left arrow" },
+  { 0x2C, "cursor_right",   "right arrow" },
+  { 0xF4, "cursor_enter",   "enter/ok" },
+  { 0x74, "settings_menu",  "menu" },
+  { 0xC0, "back",           "exit" },
+  { 0xB8, "home",           "hide" },
+  { 0xD6, "game_menu",      "dynamic" },
+  { 0xCE, "game_menu",      "advanced menu" },
+  { 0x0E, "input",          "input HDMI 1" },
+  { 0x8E, "picture",        "input HDMI 2" },
+  { 0x2F, "picture",        "picture mode" },
+  { 0xCC, "focus_manual",   "focus -" },
+  { 0x8C, "focus_auto",     "focus +" },
+  { 0x11, "focus_manual",   "color profile" },
+  { 0xAF, "focus_auto",     "gamma settings" },
+  { 0x36, "shortcut_1",     "user 1" },
+  { 0xB6, "shortcut_2",     "user 2" },
+  { 0x76, "shortcut_3",     "user 3" },
+  { 0xEE, "shortcut_4",     "aspect" },
+  { 0x1B, "shortcut_1",     "mode 1" },
+  { 0x9B, "shortcut_2",     "mode 2" },
+  { 0x5B, "shortcut_3",     "mode 3" },
+  { 0x2E, "shortcut_4",     "info" },
   { 0x5E, "volume_up",      "brightness up" },
   { 0xDE, "volume_down",    "brightness down" },
   { 0x6E, "mute",           "color temp" },
@@ -584,10 +610,10 @@ alignas(4) const FlashCommandRow JVC_PROJ_A_COMMANDS[] {
   { 0x56, "token_clear",    "natural" },
   { 0xAE, "token_recall",   "gamma" },
   { 0xB7, "token_recall",   "HDR" },
-  { 0xFE, "macro_record",  "sharp down" },
-  { 0x9A, "macro_play",  "sharp up" },
-  { 0x51, "macro_record",  "CMD" },
-  { 0x0F, "macro_play",  "mpc" },
+  { 0xFE, "macro_record",   "sharp down" },
+  { 0x9A, "macro_play",     "sharp up" },
+  { 0x51, "macro_record",   "CMD" },
+  { 0x0F, "macro_play",     "mpc" },
   { 0x3E, "home",           "color up" },
   { 0xBE, "home",           "color down" },
   { 0x1E, "home",           "contast up" },
@@ -600,33 +626,33 @@ alignas(4) const FlashCommandRow JVC_PROJ_A_COMMANDS[] {
 };
 
 alignas(4) const FlashCommandRow JVC_PROJ_B_COMMANDS[] {
-  { 0xA0,   "power_on",       "power on" },
-  { 0x60,   "power_off",      "power off" },
-  { 0x80,   "cursor_up",      "up arrow" },
-  { 0x40,   "cursor_down",    "down arrow" },
-  { 0x6C,   "cursor_left",    "left arrow" },
-  { 0x2C,   "cursor_right",   "right arrow" },
-  { 0xF4,   "cursor_enter",   "enter" },
-  { 0x74,   "settings_menu",  "menu" },
-  { 0xC0,   "back",           "exit" },
-  { 0xB8,   "home",           "hide" },
-  { 0xD6,   "game_menu",      "dynamic" },
-  { 0xCE,   "game_menu",      "advanced menu_" },
-  { 0x0E,   "input",          "input HDMI 1" },
-  { 0x8E,   "picture",        "input HDMI 2" },
-  { 0x2F,   "picture",        "picture mode_" },
-  { 0xCC,   "focus_manual",   "focus -" },
-  { 0x8C,   "focus_auto",     "focus +" },
-  { 0x11,   "focus_manual",   "color profile" },
-  { 0xAF,   "focus_auto",     "gamma settings" },
-  { 0x36,   "shortcut_1",     "user 1" },
-  { 0xB6,   "shortcut_2",     "user 2" },
-  { 0x76,   "shortcut_3",     "user 3" },
-  { 0xEE,   "shortcut_4",     "aspect" },
-  { 0x1B,   "shortcut_1",     "mode 1_" },
-  { 0x9B,   "shortcut_2",     "mode 2_" },
-  { 0x5B,   "shortcut_3",     "mode 3_" },
-  { 0x2E,   "shortcut_4",     "info" },
+  { 0xA0, "power_on",       "power on" },
+  { 0x60, "power_off",      "power off" },
+  { 0x80, "cursor_up",      "up arrow" },
+  { 0x40, "cursor_down",    "down arrow" },
+  { 0x6C, "cursor_left",    "left arrow" },
+  { 0x2C, "cursor_right",   "right arrow" },
+  { 0xF4, "cursor_enter",   "enter" },
+  { 0x74, "settings_menu",  "menu" },
+  { 0xC0, "back",           "exit" },
+  { 0xB8, "home",           "hide" },
+  { 0xD6, "game_menu",      "dynamic" },
+  { 0xCE, "game_menu",      "advanced menu_" },
+  { 0x0E, "input",          "input HDMI 1" },
+  { 0x8E, "picture",        "input HDMI 2" },
+  { 0x2F, "picture",        "picture mode_" },
+  { 0xCC, "focus_manual",   "focus -" },
+  { 0x8C, "focus_auto",     "focus +" },
+  { 0x11, "focus_manual",   "color profile" },
+  { 0xAF, "focus_auto",     "gamma settings" },
+  { 0x36, "shortcut_1",     "user 1" },
+  { 0xB6, "shortcut_2",     "user 2" },
+  { 0x76, "shortcut_3",     "user 3" },
+  { 0xEE, "shortcut_4",     "aspect" },
+  { 0x1B, "shortcut_1",     "mode 1_" },
+  { 0x9B, "shortcut_2",     "mode 2_" },
+  { 0x5B, "shortcut_3",     "mode 3_" },
+  { 0x2E, "shortcut_4",     "info" },
   { 0x5E, "volume_up",      "brightness up" },
   { 0xDE, "volume_down",    "brightness down" },
   { 0x6E, "mute",           "color temp" },
@@ -638,10 +664,10 @@ alignas(4) const FlashCommandRow JVC_PROJ_B_COMMANDS[] {
   { 0x56, "token_clear",    "natural" },
   { 0xAE, "token_recall",   "gamma" },
   { 0xB7, "token_recall",   "HDR" },
-  { 0xFE, "macro_record",  "sharp down" },
-  { 0x9A, "macro_play",  "sharp up" },
-  { 0x51, "macro_record",  "CMD" },
-  { 0x0F, "macro_play",  "mpc" },
+  { 0xFE, "macro_record",   "sharp down" },
+  { 0x9A, "macro_play",     "sharp up" },
+  { 0x51, "macro_record",   "CMD" },
+  { 0x0F, "macro_play",     "mpc" },
   { 0x3E, "home",           "color up" },
   { 0xBE, "home",           "color down" },
   { 0x1E, "home",           "contast up" },
@@ -655,8 +681,8 @@ alignas(4) const FlashCommandRow JVC_PROJ_B_COMMANDS[] {
 
 alignas(4) const FlashCommandRow LG_COMMANDS[] {
   { 0xF708, "power_on",       "power toggle" },
-  { 0x23DC, "power_on",       "Discrete Power On" },
-  { 0x2CC3, "power_off",      "Discrete Power Off" },
+  { 0x23DC, "power_on",       "Power On" },
+  { 0x2CC3, "power_off",      "Power Off" },
   { 0xEF10, "power_off",      "0" },
   { 0xD728, "back",           "Return" },
   { 0xF807, "cursor_left",    "cursor left" },
@@ -670,7 +696,7 @@ alignas(4) const FlashCommandRow LG_COMMANDS[] {
   { 0xFE01, "game_menu",      "channel down" },
   { 0xB24D, "picture",        "picture mode" },
   { 0x8679, "focus_manual",   "aspect ratio" },
-  { 0x4FB0, "focus_auto",     "play" },
+  { 0xA35C, "focus_auto",     "prime video" },
   { 0x8d72, "shortcut_1",     "red" },
   { 0x8e71, "shortcut_2",     "green" },
   { 0x9C63, "shortcut_3",     "yellow" },
@@ -681,8 +707,8 @@ alignas(4) const FlashCommandRow LG_COMMANDS[] {
   { 0xEB14, "token_sniff",    "4" },
   { 0xEA15, "token_clear",    "5" },
   { 0xE916, "token_recall",   "6" },
-  { 0xA956, "macro_record",  "Netflix" },
-  { 0xA35C, "macro_play",  "Prime video" },
+  { 0xA956, "macro_record",   "Netflix" },
+  { 0x4FB0, "macro_play",     "play" },
   { 0xEE11, "home",           "1" },
   { 0xED12, "home",           "2" },
   { 0xEC13, "home",           "3" },
@@ -722,8 +748,8 @@ alignas(4) const FlashCommandRow OPTOMA_COMMANDS[] {
   { 0xC936, "token_sniff",    "user 1" },
   { 0x9A65, "token_clear",    "user 2" },
   { 0x9966, "token_recall",   "user 3" },
-  { 0xBE41, "macro_record",  "brightness" },
-  { 0xBD42, "macro_play",  "contrast" }
+  { 0xBE41, "macro_record",   "brightness" },
+  { 0xBD42, "macro_play",     "contrast" }
 };
 
 alignas(4) const FlashCommandRow SONY_PROJ_COMMANDS[] {
@@ -753,8 +779,8 @@ alignas(4) const FlashCommandRow SONY_PROJ_COMMANDS[] {
   { 0x9AB54, "token_sniff",   "BRT Cinema" },
   { 0x8AB54, "token_clear",   "BRT TV" },
   { 0x2AB54, "token_recall",  "User" },
-  { 0x07C2A, "macro_record", "Brightness down" },
-  { 0x03C2A, "macro_play", "brightness up" },
+  { 0x07C2A, "macro_record",  "brightness down" },
+  { 0x03C2A, "macro_play",    "brightness up" },
   { 0x3AB54, "home",          "color temp" },
   { 0x0702A, "home",          "contrast enhancer" },
   { 0xCAB54, "home",          "film 1" },
@@ -809,8 +835,8 @@ alignas(4) const FlashCommandRow SONY_XBR_COMMANDS[] {
   { 0x0C10, "token_sniff",    "4" },
   { 0x0210, "token_clear",    "5" },
   { 0x0A10, "token_recall",   "6" },
-  { 0x2CE9, "macro_record",  "play" },
-  { 0x1CE9, "macro_play",  "fast forward" }
+  { 0x1CE9, "macro_record",   "fast forward" },
+  { 0x2CE9, "macro_play",     "play" }
 };
 
 alignas(4) const FlashCommandRow TIVO_COMMANDS[] {
@@ -823,7 +849,7 @@ alignas(4) const FlashCommandRow TIVO_COMMANDS[] {
   { 0xE015, "cursor_right",   "arrow right" },
   { 0xE019, "cursor_enter",   "select" },
   { 0xF00C, "settings_menu",  "tivo" },
-  { 0xF00D, "settings_menu",  "tivo (myHarmony version)" },
+  { 0xF00D, "settings_menu",  "tivo (myHarmony)" },
   { 0xB044, "back",           "zoom" },
   { 0xE01E, "home",           "channel up" },
   { 0xC036, "game_menu",      "guide" },
@@ -871,8 +897,8 @@ alignas(4) const FlashCommandRow PANASONIC_COMMANDS[] {
   { 0x100A8A9, "token_sniff",  "4" },
   { 0x1002829, "token_clear",  "5" },
   { 0x100C8C9, "token_recall", "6" },
-  { 0x1008889, "macro_record","2" },
-  { 0x1004849, "macro_play","3" },
+  { 0x1008889, "macro_record", "2" },
+  { 0x1004849, "macro_play",   "3" },
   { 0x1009899, "home",         "0" },
   { 0x1000809, "home",         "1" },
   { 0x1006869, "home",         "7" },
@@ -1311,60 +1337,29 @@ static const char dashboard_html[] PROGMEM = R"rawliteral(
   
   <h3>Backup & Recovery Operations</h3>
   <div style="margin-bottom:12px;">
-    <a id="export_link" href="#" class="btn sec" style="display:block;margin-bottom:12px;">Download CSV</a>
+    <a id="export_link" href="#" class="btn sec" style="display:block;margin-bottom:12px;">Download Profile CSV</a>
   </div>
 
   <form id="upload_form" method="POST" enctype="multipart/form-data" style="margin-top:12px">
     <label style="display:block;margin-bottom:6px;font-size:var(--fs-sm);color:#8b949e;">Choose Backup File:</label>
     <input type="file" id="file_picker" name="file" onchange="document.getElementById('ul_btn').disabled=false;">
-    <button type="submit" id="ul_btn" class="btn" style="width:100%;background:#238636;margin-top:12px;" disabled>Upload CSV</button>
+    <button type="submit" id="ul_btn" class="btn" style="width:100%;background:#238636;margin-top:12px;" disabled>Upload Profile CSV</button>
   </form>
 </div>
 <div class="box">
-  <h3>Macro Storage</h3>
+  <h3>Macro Storage Management</h3>
   <div class="stat-list" style="margin-bottom:15px">
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
-      <a href="/download_macros" class="btn" style="background:#238636; text-decoration:none;">Backup Macros (.bin)</a>
-      <button type="button" class="btn sec" onclick="document.getElementById('macro_file').click();">Restore Backup</button>
+    <div style="margin-bottom:12px;">
+      <a href="/export_macro" class="btn" style="display:block; background:#1f6feb; text-decoration:none;">Download Macros (.csv)</a>
     </div>
-    <input type="file" id="macro_file" accept=".bin" style="display:none;" onchange="handleMacroUpload(this)">
+    
+    <form action="/import_macro" method="POST" enctype="multipart/form-data" style="border-top:1px solid #21262d; padding-top:12px;">
+       <label style="display:block; margin-bottom:6px; font-size:var(--fs-sm); color:#8b949e;">Restore Text Backup:</label>
+       <input type="file" name="file" accept=".csv" style="margin-bottom:8px;">
+       <button type="submit" class="btn sec" style="width:100%">Upload Macros</button>
+    </form>
   </div>
-
-  <script>
-  function handleMacroUpload(input) {
-    if (!input.files || input.files.length === 0) return;
-    const file = input.files[0];
-    const reader = new FileReader();
-
-    // Wakes up when the browser completes reading the file bytes into local array memory
-    reader.onload = function(e) {
-      const rawBytes = e.target.result;
-      
-      // Inject the text status onto the button text directly to inform the user
-      input.disabled = true;
-      
-      // Transmit the bit-perfect stream straight over the air using a raw binary application payload
-      fetch('/upload_macros', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/octet-stream' },
-        body: rawBytes
-      })
-      .then(response => response.text())
-      .then(html => {
-        // Replace the viewport body layout with our clean reboot success screen
-        document.body.innerHTML = html;
-      })
-      .catch(err => {
-        alert('Restoration Failed: ' + err);
-        input.disabled = false;
-      });
-    };
-
-    // Initialize the binary data extraction pass
-    reader.readAsArrayBuffer(file);
-  }
-  </script>
-</div>  
+</div>
 <div class="box">
   <h3>System Diagnostics</h3>
   <div class="stat-list">
@@ -1500,7 +1495,7 @@ inline esp_err_t root_handler(httpd_req_t *req) {
     // Dynamic RAM Calculations
     multi_heap_info_t heap_info;
     heap_caps_get_info(&heap_info, MALLOC_CAP_8BIT);
-    snprintf(scratch, sizeof(scratch), "%u KB", (unsigned int)(heap_info.total_free_bytes + heap_info.total_allocated_bytes) / 1024);
+    snprintf(scratch, sizeof(scratch), "%u KB", (unsigned int)((heap_info.total_free_bytes + heap_info.total_allocated_bytes) / 1024));
     std::string total_ram_str(scratch);
 
     // Free Heap RAM
@@ -1523,9 +1518,9 @@ inline esp_err_t root_handler(httpd_req_t *req) {
     
     // Free Stack Space Room 
     unsigned int free_stack = (unsigned int)uxTaskGetStackHighWaterMark(NULL);
-    snprintf(scratch, sizeof(scratch), "%u Bytes", free_stack);
+    snprintf(scratch, sizeof(scratch), "%u Bytes", (unsigned int)free_stack);
     std::string stack_size_str(scratch); 
-    
+        
     // Reset Reason Code
     int reason_code = (int)esp_reset_reason();
     std::string reset_reason = "Code " + std::to_string(reason_code);
@@ -1696,11 +1691,12 @@ inline esp_err_t import_handler(httpd_req_t *req) {
 #include <esp_rom_crc.h>
 
 // ====================================================================
-// 📥 DOWNLOAD HANDLER: RAW STREAM CHUNKS PACKED INTO A SINGLE BINARY
+// DOWNLOAD HANDLER: RAW STREAM CHUNKS PACKED INTO A SINGLE BINARY
 // ====================================================================
 inline esp_err_t download_macros_handler(httpd_req_t *req) {
     ESP_LOGI("HTTP_SERVER", "Macro binary configurations backup requested via /download_macros");
 
+    // Allocate dynamically from heap caps with 8-bit/32-bit word safe alignments
     auto* package = (MacroBackupPackage*)heap_caps_malloc(sizeof(MacroBackupPackage), MALLOC_CAP_8BIT);
     if (package == nullptr) {
         httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Heap memory allocation failure.");
@@ -1709,7 +1705,8 @@ inline esp_err_t download_macros_handler(httpd_req_t *req) {
 
     // Hydrate header signatures and operational variables
     package->magic_header = 0x554D4250;
-    package->struct_version = 3;
+    // Bump backup validation signature up to version 4 to protect string boundaries
+    package->struct_version = 4;
     std::memcpy(&(package->registry), &global_binding_registry, sizeof(UniversalBindingRegistry));
 
     // Stream out each preference partition registry block sequentially
@@ -1729,12 +1726,14 @@ inline esp_err_t download_macros_handler(httpd_req_t *req) {
     httpd_resp_set_hdr(req, "Content-Disposition", "attachment; filename=esp32_xgimi_macros.bin");
 
     esp_err_t res = httpd_resp_send(req, (const char*)package, sizeof(MacroBackupPackage));
+    
+    // Always clean up the heap space instantly after socket transmission completes
     heap_caps_free(package);
     return res;
 }
 
 // ====================================================================
-// 📤 UPLOAD HANDLER: LOW-FOOTPRINT DATA RECOVERY BUFFER
+// UPLOAD HANDLER: LOW-FOOTPRINT DATA RECOVERY BUFFER
 // ====================================================================
 inline esp_err_t upload_macros_handler(httpd_req_t *req) {
     ESP_LOGW("HTTP_SERVER", "POST processing initiated for /upload_macros channel input stream.");
@@ -1745,6 +1744,7 @@ inline esp_err_t upload_macros_handler(httpd_req_t *req) {
         return ESP_FAIL;
     }
 
+    // Safe heap allocation prevents 21KB payload from smashing the task stack space
     auto* package = (MacroBackupPackage*)heap_caps_malloc(sizeof(MacroBackupPackage), MALLOC_CAP_8BIT);
     if (package == nullptr) {
         httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Heap exhaustion failure.");
@@ -1779,10 +1779,11 @@ inline esp_err_t upload_macros_handler(httpd_req_t *req) {
     uint32_t check_bytes = sizeof(MacroBackupPackage) - sizeof(uint32_t);
     uint32_t verified_crc = esp_rom_crc32_le(0, (uint8_t*)package, check_bytes);
 
-    if (package->magic_header != 0x554D4250 || package->crc32_checksum != verified_crc) {
-        ESP_LOGE("HTTP_SERVER", "Validation failed: Magic code header mismatch or corrupt transmission CRC.");
+    // Enforce clear structural version checks. Rejects corrupt files or old version 3 tables instantly
+    if (package->magic_header != 0x554D4250 || package->struct_version != 4 || package->crc32_checksum != verified_crc) {
+        ESP_LOGE("HTTP_SERVER", "Validation failed: Magic code header mismatch, old version 3 backup, or corrupt CRC.");
         heap_caps_free(package);
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Package validation signature mismatch.");
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Package validation signature or version mismatch.");
         return ESP_FAIL;
     }
 
@@ -1810,12 +1811,196 @@ inline esp_err_t upload_macros_handler(httpd_req_t *req) {
 
     httpd_resp_send(req, reboot_html, -1);
     
-    ESP_LOGE("HTTP_SERVER", "Macro deployment complete. Restarting ESP32 controller board layout...");
+    ESP_LOGI("HTTP_SERVER", "Macro deployment complete. Restarting ESP32 controller board layout...");
     delay(2000);
     esp_restart(); 
     return ESP_OK;
 }
 
+
+
+// ====================================================================
+// COMPACT CSV EXPORT GENERATOR FOR ALL MACRO SLOTS (UNIFIED)
+// ====================================================================
+inline std::string generate_macro_csv() {
+    std::string csv_out;
+    csv_out.reserve(4096); 
+    
+    char chunk[128];
+    bool found_any_data = false;
+
+    for (int slot_id = 0; slot_id < 12; slot_id++) {
+        uint64_t macro_nvs_key = 384720194ULL + slot_id;
+        auto pref_obj = esphome::global_preferences->make_preference<UniversalFlashMacro>(macro_nvs_key);
+        
+        static UniversalFlashMacro macro_buf;
+        if (!pref_obj.load(&macro_buf) || macro_buf.total_steps == 0) {
+            continue; 
+        }
+
+        found_any_data = true;
+        std::memset(chunk, 0, sizeof(chunk));
+        snprintf(chunk, sizeof(chunk), "MACRO,%d,Macro_Slot_%d\n", slot_id, slot_id);
+        csv_out += chunk;
+
+        for (uint16_t i = 0; i < macro_buf.total_steps; i++) {
+            const auto& step = macro_buf.steps[i];
+            std::memset(chunk, 0, sizeof(chunk));
+            
+            // Read the literal text action string natively instead of the dead integer action_payload field
+            if (step.action_type == 0) {
+                snprintf(chunk, sizeof(chunk), "STEP,KEYBOARD,%s,%s,%u\n", 
+                         step.action_string, state_to_str(step.event_state), step.delay_ms);
+            } else if (step.action_type == 1) {
+                snprintf(chunk, sizeof(chunk), "STEP,CONSUMER,%s,%s,%u\n", 
+                         step.action_string, state_to_str(step.event_state), step.delay_ms);
+            } else {
+                snprintf(chunk, sizeof(chunk), "STEP,TOKEN,%s,%s,%u\n", 
+                         step.action_string, state_to_str(step.event_state), step.delay_ms);
+            }
+            csv_out += chunk;
+        }
+    }
+
+    if (!found_any_data) {
+        snprintf(chunk, sizeof(chunk), "MACRO,0,Empty_Suite\n");
+        csv_out += chunk;
+    }
+
+    return csv_out;
+}
+
+// ====================================================================
+// HTTP GET CSV EXPORT HANDLER
+// ====================================================================
+inline esp_err_t export_macro_text_handler(httpd_req_t *req) {
+    std::string csv_data = generate_macro_csv(); 
+    httpd_resp_set_type(req, "text/csv");
+    httpd_resp_set_hdr(req, "Content-Disposition", "attachment; filename=esp32_xgimi_macros.csv");
+    return httpd_resp_send(req, csv_data.c_str(), csv_data.length());
+}
+
+// ====================================================================
+// COLD-STREAM ZERO-HEAP CSV MACRO DEPLOYMENT ENGINE (MULTI-SLOT)
+// ====================================================================
+inline bool import_macro_from_csv(const std::string& csv_data) {
+    std::stringstream ss(csv_data);
+    std::string line;
+    
+    static UniversalFlashMacro macro_build;
+    std::memset(&macro_build, 0, sizeof(macro_build));
+    // Initialize the import buffer mapping layers to structure version 4
+    macro_build.struct_version = 4;
+    
+    int active_slot = -1;
+
+    auto save_active_macro = [&]() {
+        if (active_slot >= 0 && active_slot < 12 && macro_build.total_steps > 0) {
+            uint64_t macro_nvs_key = 384720194ULL + active_slot;
+            auto pref_obj = esphome::global_preferences->make_preference<UniversalFlashMacro>(macro_nvs_key);
+            pref_obj.save(&macro_build);
+            ESP_LOGI("MACRO_CSV", "Committed slot %d structure registry (%d steps)", active_slot, macro_build.total_steps);
+        }
+    };
+
+    while (std::getline(ss, line)) {
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (line.empty()) continue;
+
+        std::stringstream line_ss(line);
+        std::string cell_type;
+        std::getline(line_ss, cell_type, ',');
+
+        if (cell_type == "MACRO") {
+            save_active_macro(); 
+            
+            std::string slot_str;
+            std::getline(line_ss, slot_str, ',');
+            active_slot = !slot_str.empty() ? std::atoi(slot_str.c_str()) : -1;
+            
+            std::memset(&macro_build, 0, sizeof(macro_build));
+            macro_build.struct_version = 4; // Target structure version 4 on reset loop passes
+        } 
+        else if (cell_type == "STEP") {
+            if (active_slot == -1 || macro_build.total_steps >= MAX_MACRO_STEPS) continue;
+            
+            std::string type_str, payload_str, state_str, delay_str;
+            std::getline(line_ss, type_str, ',');
+            std::getline(line_ss, payload_str, ',');
+            std::getline(line_ss, state_str, ',');
+            std::getline(line_ss, delay_str, ',');
+
+            auto& step = macro_build.steps[macro_build.total_steps];
+            step.action_type = str_to_type(type_str);
+            step.event_state = str_to_state(state_str);
+            step.delay_ms = std::strtoul(delay_str.c_str(), nullptr, 10);
+
+            std::memset(step.action_string, 0, MAX_ACTION_STRING_LEN);
+            std::strncpy(step.action_string, payload_str.c_str(), MAX_ACTION_STRING_LEN - 1);
+
+            macro_build.total_steps++;
+        }
+    }
+    
+    save_active_macro(); 
+    esphome::global_preferences->sync();
+    return true;
+}
+
+// ====================================================================
+// HTTP POST CSV IMPORT HANDLER (SAFE LONG STRING PARSING)
+// ====================================================================
+inline esp_err_t import_macro_text_handler(httpd_req_t *req) {
+    size_t total_bytes = req->content_len;
+    size_t remaining = total_bytes;
+    if (total_bytes == 0) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Payload Empty.");
+        return ESP_FAIL;
+    }
+
+    std::string accumulator;
+    accumulator.reserve(total_bytes);
+    char chunk_buf[512];
+    int received = 0;
+
+    while (remaining > 0) {
+        size_t target = (remaining < sizeof(chunk_buf)) ? remaining : sizeof(chunk_buf);
+        if ((received = httpd_req_recv(req, chunk_buf, target)) <= 0) {
+            if (received == HTTPD_SOCK_ERR_TIMEOUT) continue;
+            return ESP_FAIL;
+        }
+        accumulator.append(chunk_buf, received);
+        remaining -= received;
+    }
+
+    // Locate the start of the valid macro suite rows
+    size_t start_pos = accumulator.find("MACRO,");
+    if (start_pos == std::string::npos) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Malformed Macro Structure.");
+        return ESP_FAIL;
+    }
+
+    // Search for the exact browser multipart trailing boundary marker 
+    // instead of matching a loose single hyphen that could break custom key names
+    size_t end_pos = accumulator.find("\r\n------", start_pos);
+    if (end_pos == std::string::npos) {
+        end_pos = accumulator.find("\n------", start_pos);
+    }
+
+    std::string clean_csv = (end_pos != std::string::npos) ? 
+                             accumulator.substr(start_pos, end_pos - start_pos) : 
+                             accumulator.substr(start_pos);
+
+    if (import_macro_from_csv(clean_csv)) {
+        httpd_resp_set_status(req, "303 See Other");
+        httpd_resp_set_hdr(req, "Location", "/");
+        httpd_resp_send(req, NULL, 0);
+        return ESP_OK;
+    }
+
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Macro compilation breakdown.");
+    return ESP_FAIL;
+}
 
 
 //===================================
@@ -1869,6 +2054,22 @@ inline void start_custom_web_server() {
         .user_ctx  = NULL
     };
 
+    httpd_uri_t export_macro_txt_uri = {
+        .uri       = "/export_macro",
+        .method    = HTTP_GET,
+        .handler   = export_macro_text_handler,
+        .user_ctx  = NULL
+    };
+
+    httpd_uri_t import_macro_txt_uri = {
+        .uri       = "/import_macro",
+        .method    = HTTP_POST,
+        .handler   = import_macro_text_handler,
+        .user_ctx  = NULL
+    };
+
+
+
     if (httpd_start(&server, &config) == ESP_OK) {
         httpd_register_uri_handler(server, &root_uri);
         httpd_register_uri_handler(server, &select_uri);
@@ -1876,6 +2077,8 @@ inline void start_custom_web_server() {
         httpd_register_uri_handler(server, &import_uri); 
         httpd_register_uri_handler(server, &download_macros_uri);
         httpd_register_uri_handler(server, &upload_macros_uri);
+        httpd_register_uri_handler(server, &export_macro_txt_uri);
+        httpd_register_uri_handler(server, &import_macro_txt_uri);
     }
 }
 
