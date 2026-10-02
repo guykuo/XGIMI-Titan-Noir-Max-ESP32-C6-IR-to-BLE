@@ -24,7 +24,6 @@ remote_receiver:
   #   - rc6
     
   # 1. Updates timestamp every single time ANY raw IR pulse or repeat packet burst hits the pin
-  # 1. Updates timestamp every single time ANY raw IR pulse or repeat packet burst hits the pin
   on_raw:
     - lambda: |-
         id(global_last_raw_packet_time) = millis();
@@ -113,7 +112,10 @@ remote_receiver:
           }
         }
 
-  # ======= MULTI-PROTOCOL CONVERSION GATES =======
+
+  #====================================================================
+  #=======           MULTI-PROTOCOL CONVERSION GATES            =======
+  #====================================================================
 
   on_nec:
     - lambda: |-
@@ -337,12 +339,10 @@ globals:
     type: bool
     initial_value: 'false'
 
-    
-    
-  - id: commandName 
+  - id: action_string 
     type: std::string
     restore_value: no
-    initial_value: '"                                "'     
+    initial_value: '"                                "'  #spaces in initial_value are intentional
     
   # Remote profile learning globals. 
   - id: ir_window_active
@@ -409,9 +409,8 @@ globals:
     restore_value: no
 
 
-
-
-#====================================================================
+# ====================================================================
+#                   ==================================================
 script:
 
   # ====================================================================
@@ -429,7 +428,7 @@ script:
                      global_binding_registry.total_bound_keys);
             
             for (uint16_t i = 0; i < global_binding_registry.total_bound_keys; i++) {
-              const char* action_name = decode_id_to_action_string(global_binding_registry.bindings[i].universal_action_id);
+              const char* action_name = decode_idx_to_action_string(global_binding_registry.bindings[i].universal_action_idx);
               ESP_LOGD("NVS_BIND", "   -> Bound Shortcut Key: '%s' (Type %d) maps to Universal Shared Macro Slot: %d", 
                        action_name, 
                        global_binding_registry.bindings[i].action_type,
@@ -728,7 +727,7 @@ script:
                       bool found_in_workspace = false;
                       
                       for (const auto& kv_pair : active_profile_workspace.cmd_codes) {
-                        if (std::strcmp(kv_pair.second.name, payload_str.c_str()) == 0) {
+                        if (std::strcmp(kv_pair.second.action_string, payload_str.c_str()) == 0) {
                           active_ir_command = kv_pair.first;
                           found_in_workspace = true;
                           break;
@@ -756,7 +755,7 @@ script:
                     else {
                       uint32_t active_ir_command = 0;
                       for (const auto& kv_pair : active_profile_workspace.cmd_codes) {
-                        if (std::strcmp(kv_pair.second.name, payload_str.c_str()) == 0) {
+                        if (std::strcmp(kv_pair.second.action_string, payload_str.c_str()) == 0) {
                           active_ir_command = kv_pair.first;
                           id(ir_map_processor).execute(active_ir_command, 2); // 2 = UP/Release
                           break;
@@ -1158,8 +1157,8 @@ script:
               }
 
               // METADATA RUNTIME UPDATES
-              id(commandName).assign(found_cmd->name);
-              std::string cmd_name = found_cmd->name;
+              id(action_string).assign(found_cmd->action_string);
+              std::string cmd_name = found_cmd->action_string;
 
               // ============================================================
               // STEP B: HIGH-SPEED INTERRUPT DISPATCH PIPELINE
@@ -1339,8 +1338,8 @@ script:
                   
                   for (size_t i = 0; i < (int)TOTAL_SYSTEM_BUTTONS; i++) {
                     IRCommand cmd;
-                    std::strncpy(cmd.name, learn_button_names[i], sizeof(cmd.name) - 1);
-                    cmd.name[sizeof(cmd.name) - 1] = '\0'; 
+                    std::strncpy(cmd.action_string, learn_button_names[i], sizeof(cmd.action_string) - 1);
+                    cmd.action_string[sizeof(cmd.action_string) - 1] = '\0'; 
                     
                     // Hidden remote comment label maps cleanly directly out of our single truth name tables
                     std::strncpy(cmd.button_name, learn_button_names[i], sizeof(cmd.button_name) - 1);
@@ -1423,7 +1422,7 @@ script:
 
           uint32_t current_duration = now - id(global_initial_press_time);
           uint8_t current_action_type = 2;
-          uint16_t current_action_id = encode_action_to_id(found_cmd->name, current_action_type);
+          uint16_t current_action_id = encode_action_to_id(found_cmd->action_string, current_action_type);
           if (current_action_id == 0xFFFF) return; 
 
           // ============================================================
@@ -1439,7 +1438,7 @@ script:
           // ====================================================================
           // TOGGLE CODES: STATE 0 ENTRY (DOWN) OR STATE 1 EXIT (DOWN) VIA RECORD KEY
           // ====================================================================
-          if (std::strcmp(found_cmd->name, "macro_record") == 0 && event_state == 0) {
+          if (std::strcmp(found_cmd->action_string, "macro_record") == 0 && event_state == 0) {
             
             if (id(macro_workflow_state) == 0) {
               // Call the dedicated script block directly! 
@@ -1456,7 +1455,7 @@ script:
                 int check_idx = id(macro_step_counter) - 1;
                 
                 // Perform a clean string comparison using your new text array step column
-                if (std::strcmp(active_recording_buffer.steps[check_idx].action_string, found_cmd->name) == 0) {
+                if (std::strcmp(active_recording_buffer.steps[check_idx].action_string, found_cmd->action_string) == 0) {
                   id(macro_step_counter) = check_idx;
                 } else {
                   break;
@@ -1497,7 +1496,7 @@ script:
           // ============================================================
           // This forces the prefix playback gate to arm instantly the microsecond 
           // you press the play prefix key.
-          if (std::strcmp(found_cmd->name, "macro_play") == 0 && event_state == 0) {
+          if (std::strcmp(found_cmd->action_string, "macro_play") == 0 && event_state == 0) {
 
             if (id(macro_workflow_state) == 0) {
               id(macro_play_prefix_active) = true;
@@ -1535,7 +1534,7 @@ script:
           
               // Validate that the hotkey is a valid assignment key inside our hardcoded list
               int target_shared_slot = -1;
-              std::string key_name = found_cmd->name;
+              std::string key_name = found_cmd->action_string;
           
               if (key_name == "cursor_enter")      target_shared_slot = 0;
               else if (key_name == "cursor_up")    target_shared_slot = 1;
@@ -1569,7 +1568,7 @@ script:
               uint16_t bounds_limit = global_binding_registry.total_bound_keys;
           
               while (current_loop_idx != bounds_limit) {
-                if (global_binding_registry.bindings[current_loop_idx].universal_action_id == current_action_id &&
+                if (global_binding_registry.bindings[current_loop_idx].universal_action_idx == current_action_id &&
                     global_binding_registry.bindings[current_loop_idx].action_type == current_action_type) {
                   match_idx = (int)current_loop_idx;
                   break;
@@ -1585,7 +1584,7 @@ script:
           
               if (match_idx != -1) {
                 // Link the hotkey identity properties straight to our hardcoded target slot assignment
-                global_binding_registry.bindings[match_idx].universal_action_id = current_action_id;
+                global_binding_registry.bindings[match_idx].universal_action_idx = current_action_id;
                 global_binding_registry.bindings[match_idx].action_type = current_action_type;
                 global_binding_registry.bindings[match_idx].shared_macro_slot = target_shared_slot;
                 
@@ -1616,8 +1615,8 @@ script:
             id(macro_record_timeout_watcher)->execute();
             
             // Explicitly block macro system keys from ever leaking into the capture buffer array
-            if (std::strcmp(found_cmd->name, "macro_play") == 0) return; 
-            if (std::strcmp(found_cmd->name, "macro_record") == 0) return; 
+            if (std::strcmp(found_cmd->action_string, "macro_play") == 0) return; 
+            if (std::strcmp(found_cmd->action_string, "macro_record") == 0) return; 
 
             int step_idx = id(macro_step_counter);
 
@@ -1663,7 +1662,7 @@ script:
               }
 
               std::memset(active_recording_buffer.steps[step_idx].action_string, 0, MAX_ACTION_STRING_LEN);
-              std::strncpy(active_recording_buffer.steps[step_idx].action_string, found_cmd->name, MAX_ACTION_STRING_LEN - 1);
+              std::strncpy(active_recording_buffer.steps[step_idx].action_string, found_cmd->action_string, MAX_ACTION_STRING_LEN - 1);
               
               active_recording_buffer.steps[step_idx].action_type = current_action_type;
               active_recording_buffer.steps[step_idx].event_state = (uint8_t)event_state;
@@ -1674,7 +1673,7 @@ script:
               active_recording_buffer.total_steps = id(macro_step_counter);
               
               ESP_LOGD("MACRO_REC", "Recorded Step [%d]: %s (State: %d, Delay: %u ms)", 
-                       step_idx, found_cmd->name, event_state, (unsigned int)delta);
+                       step_idx, found_cmd->action_string, event_state, (unsigned int)delta);
 
               // Clear out running global cached registers if a physical release is processed
               if (event_state == 2) {
@@ -1692,15 +1691,16 @@ script:
           // ============================================================
           if (!id(global_token_clear_armed)) {
             // Because has_bound_macro forces itself to false inside programming loops,
-            // this [MACRO ARMED] string label will only print during regular daily operation!
+            // [MACRO ARMED] string label will only print during regular action operation!
+            
             if (has_bound_macro) {
-              id(commandName).assign(std::string(found_cmd->name) + " [MACRO ARMED]");
+              id(action_string).assign(std::string(found_cmd->action_string) + " [MACRO ARMED]");
             } else if (event_state == 1 && current_duration >= 5000) {
-              id(commandName).assign(std::string(found_cmd->name) + " [HOLD ACTION]");
+              id(action_string).assign(std::string(found_cmd->action_string) + " [HOLD ACTION]");
             } else if (event_state == 1) {
-              id(commandName).assign(std::string(found_cmd->name) + " (Repeat)");
+              id(action_string).assign(std::string(found_cmd->action_string) + " (Repeat)");
             } else {
-              id(commandName).assign(found_cmd->name);
+              id(action_string).assign(found_cmd->action_string);
             }
           }
 
@@ -1714,7 +1714,7 @@ script:
           if (id(showing_special_info) == true) {
             id(showing_special_expiration_timer).execute();
           } else {
-            id(display_show)->execute(false, id(commandName), addressStr, commandStr);
+            id(display_show)->execute(false, id(action_string), addressStr, commandStr);
           }
 
           // ============================================================
@@ -1732,7 +1732,7 @@ script:
             static const std::unordered_set<std::string> repeatable_keys = {
               "volume_up", "volume_down", "cursor_left", "cursor_right", "cursor_up", "cursor_down"
             };
-            if (repeatable_keys.count(found_cmd->name) > 0) {
+            if (repeatable_keys.count(found_cmd->action_string) > 0) {
               should_execute_action = true;
             }
           } 
@@ -1745,7 +1745,7 @@ script:
               
               // FIXED GUARD: If the button currently releasing is 'macro_play' itself,
               // ignore this release packet completely so it does not consume or abort its own prefix!
-              if (std::strcmp(found_cmd->name, "macro_play") == 0) {
+              if (std::strcmp(found_cmd->action_string, "macro_play") == 0) {
                 ESP_LOGD("MACRO_ROUTER", "Passively cleared macro_play release packet to protect armed prefix state.");
                 return; 
               }
@@ -1757,7 +1757,7 @@ script:
                 ESP_LOGI("MACRO_ROUTER", "Prefix match success! Launching macro slot %d", bound_macro_slot);
                 id(play_universal_shared_macro).execute(bound_macro_slot);
               } else {
-                ESP_LOGW("MACRO_ROUTER", "Prefix aborted: Pressed key '%s' has no bound macro.", found_cmd->name);
+                ESP_LOGW("MACRO_ROUTER", "Prefix aborted: Pressed key '%s' has no bound macro.", found_cmd->action_string);
                 id(showing_special_info) = true;
                 id(display_show)->execute(false, "Playback Aborted", "Key has no macro", "Action Mode");
               }
@@ -1774,26 +1774,26 @@ script:
           // ============================================================
           // ABSOLUTE HARDWARE DRIVER INJECTION PIPELINE
           // ============================================================
-          if (std::strcmp(found_cmd->name, "token_sniff") == 0) {
+          if (std::strcmp(found_cmd->action_string, "token_sniff") == 0) {
             id(showing_special_info) = true;
             id(sniffing_sequence).execute(); 
             return;
           } 
-          else if (std::strcmp(found_cmd->name, "token_recall") == 0) {
+          else if (std::strcmp(found_cmd->action_string, "token_recall") == 0) {
             id(showing_special_info) = true;
             id(execute_token_recall_routine).execute();
             return;
           } 
-          else if (std::strcmp(found_cmd->name, "token_clear") == 0) {
+          else if (std::strcmp(found_cmd->action_string, "token_clear") == 0) {
             id(run_token_clear_worker).execute();
             return;
           }
           
           // Hard firewall prevents system macro programming keys from 
           // falling down into legacy Bluetooth pairing triggers!
-          if (std::strcmp(found_cmd->name, "macro_record") == 0 || 
-              std::strcmp(found_cmd->name, "macro_play") == 0) {
-            ESP_LOGD("MACRO_WORKFLOW", "Safely consumed system configuration key pass without triggering BLE pairing.");
+          if (std::strcmp(found_cmd->action_string, "macro_record") == 0 || 
+              std::strcmp(found_cmd->action_string, "macro_play") == 0) {
+            ESP_LOGD("MACRO_WORKFLOW", "Safely consumed system configuration key pass without triggering macro recording.");
             return; // Exit cleanly before calling target->press()
           }
 
@@ -1804,7 +1804,7 @@ script:
             id(xgimi_remote_controller).press_consumer(current_action_id);
           }           
           else if (current_action_type == 2) {
-            auto* target = resolve_button(decode_id_to_action_string(current_action_id));
+            auto* target = resolve_button(decode_idx_to_action_string(current_action_id));
             if (target != nullptr) {
                target->press();
             }
@@ -1835,9 +1835,7 @@ script:
                    active_profile.profile_name.c_str(), (int)true_hardware_index); 
             
 
-    #----------------------------------------
-
-
+  # =================================================================
   # Automatic hardware lock release timer step
   - id: release_debounce_lock
     then:
@@ -1899,7 +1897,7 @@ script:
           }
 
 
-# ==================================================          
+  # ====================================================================
        
 interval:
   # ====================================================================

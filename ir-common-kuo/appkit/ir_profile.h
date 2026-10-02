@@ -53,9 +53,9 @@ inline size_t factory_count = 13;
 inline constexpr uint16_t MAX_LEARNED_PROFILES = 5;
 inline bool flash_hydration_complete = false;
 #ifdef ENABLE_EXTRA_BUTTONS
-  inline constexpr uint32_t CURRENT_STRUCT_VERSION = 59; // Power user footprint track
+  inline constexpr uint32_t CURRENT_STRUCT_VERSION = 1024; // Power user footprint track
 #else
-  inline constexpr uint32_t CURRENT_STRUCT_VERSION = 64; // <-- STEPPED TO 63 FOR Field swap fix
+  inline constexpr uint32_t CURRENT_STRUCT_VERSION = 65; // <-- bump up whenever change in NVRAM storage structures
 #endif
 
 // Single Source of Truth for Button Mapping Arrays
@@ -94,7 +94,7 @@ struct UniversalFlashMacro {
 }; // Fixed orphaned brace syntax anomaly
 
 struct BindingPair {
-    uint16_t universal_action_id; 
+    uint16_t universal_action_idx; 
     uint8_t  action_type;         
     uint8_t  shared_macro_slot;   
 };
@@ -130,7 +130,7 @@ inline uint8_t str_to_state(const std::string& str) {
 
 
 // ====================================================================
-// 💾 UNIFIED BINARY BACKUP PACKAGE STRUCTURE (Bit-Perfect Alignment)
+// UNIFIED BINARY BACKUP PACKAGE STRUCTURE (Bit-Perfect Alignment)
 // ====================================================================
 struct alignas(4) MacroBackupPackage {
     uint32_t magic_header;             // 0x554D4250 -> "UMBP"
@@ -152,7 +152,7 @@ inline UniversalBindingRegistry global_binding_registry{};
 #endif
 
 // ====================================================================
-// 🧮 DECODING AND ABSOLUTE CONVERSION ALGORITHMS
+// DECODING AND ABSOLUTE CONVERSION ALGORITHMS
 // ====================================================================
 inline uint16_t encode_action_to_id(const char* name, uint8_t& out_type) {
     if (name == nullptr) return 0xFFFF;
@@ -174,16 +174,16 @@ inline uint16_t encode_action_to_id(const char* name, uint8_t& out_type) {
     return 0xFFFF;
 }
 
-inline const char* decode_id_to_action_string(uint16_t action_id) {
-    if (action_id < TOTAL_SYSTEM_BUTTONS) {
-        return learn_button_names[action_id];
+inline const char* decode_idx_to_action_string(uint16_t action_idx) {
+    if (action_idx < TOTAL_SYSTEM_BUTTONS) {
+        return learn_button_names[action_idx];
     }
     return "unassigned";
 }
 
-inline bool is_action_allowed_as_macro_hotkey(uint16_t action_id, uint8_t action_type) {
+inline bool is_action_allowed_as_macro_hotkey(uint16_t action_idx, uint8_t action_type) {
     if (action_type == 0 || action_type == 1) return true; 
-    const char* action_name = decode_id_to_action_string(action_id);
+    const char* action_name = decode_idx_to_action_string(action_idx);
     
     // Hard Guard: Prevent macro storage and playback keys from carrying macros
     static const std::unordered_set<std::string> blocked_keys = {
@@ -192,16 +192,16 @@ inline bool is_action_allowed_as_macro_hotkey(uint16_t action_id, uint8_t action
     return (blocked_keys.count(action_name) == 0);
 }
 
-inline uint8_t get_bound_macro_slot(uint16_t action_id, uint8_t action_type) {
+inline uint8_t get_bound_macro_slot(uint16_t action_idx, uint8_t action_type) {
     // Explicitly block macro record and playback buttons from ever matching a slot registry item
     if (action_type == 2) {
-        if (!is_action_allowed_as_macro_hotkey(action_id, action_type)) {
+        if (!is_action_allowed_as_macro_hotkey(action_idx, action_type)) {
             return 255; // Secure fallback sentinel: Always return unassigned
         }
     }
 
     for (uint16_t i = 0; i < global_binding_registry.total_bound_keys; i++) {
-        if (global_binding_registry.bindings[i].universal_action_id == action_id &&
+        if (global_binding_registry.bindings[i].universal_action_idx == action_idx &&
             global_binding_registry.bindings[i].action_type == action_type) {
             return global_binding_registry.bindings[i].shared_macro_slot;
         }
@@ -211,17 +211,17 @@ inline uint8_t get_bound_macro_slot(uint16_t action_id, uint8_t action_type) {
 
 
 
-typedef char XgimiBtnStr[32];   // Field 2: Visible Xgimi Token (e.g., "game_menu")
-typedef char ButtonNameStr[32]; // Field 3: Hidden Physical Remote Comment (e.g., "Cinema Master")
-typedef char ProfileNameStr[32];
-typedef char ComponentBufferStr[128];
+typedef char action_stringType[32]; // Field 2: Visible Xgimi Token or RKEY RCON (e.g., "game_menu")
+typedef char button_nameType[32];   // Field 3: name of button on physical remote (e.g., "Cinema Master")
+typedef char profile_nameType[32];
+typedef char ComponentBufferStrType[128];
 
 // ====================================================================
 // 1. THE 3-FIELD ACTIVE RUNTIME ROW STRUCTURE
 // ====================================================================
 struct IRCommand {
-  XgimiBtnStr name;          // Field 2: Internal Xgimi action name / user-visible text (e.g., "power_on")
-  ButtonNameStr button_name; // Field 3: HIDDEN physical remote button comment (e.g., "Play")
+  action_stringType action_string;  // Field 2: Visible Xgimi Token or RKEY RCON (e.g., "game_menu")
+  button_nameType button_name;      // Field 3: name of button on physical remote (e.g., "Cinema Master")
 };
 
 struct IRProfile {
@@ -264,13 +264,13 @@ inline RemoteProfilesBridge remote_profiles;
 // ====================================================================
 struct FlashStoredKey {
   uint32_t irCommand; 
-  XgimiBtnStr target_button_id; // Maps straight to Field 2 (Xgimi Action)
-  ButtonNameStr button_name;    // Maps straight to Field 3 (Hidden Comment)
+  action_stringType action_string; // Maps straight to Field 2 (Xgimi Action)
+  button_nameType button_name;     // Maps straight to Field 3 (Hidden Comment)
 };
 
 struct FlashStoredProfile {
   uint32_t struct_version; 
-  ProfileNameStr profile_name;
+  profile_nameType profile_name;
   uint8_t protocol;              
   uint8_t reserved_padding[3];   // Padding to maintain strict 32-bit alignment structure
   uint32_t device_address;
@@ -321,7 +321,7 @@ inline esphome::button::Button* resolve_button(const char* name) {
 
   // --- STEP 3: SCAN AND MATCH COMPILED ENTITIES ---
   for (auto* btn : esphome::App.get_buttons()) {
-    ComponentBufferStr buffer = {0}; 
+    ComponentBufferStrType buffer = {0}; 
     std::span<char, 128> buf_span(buffer);
     esphome::StringRef id_ref = btn->get_object_id_to(buf_span);
     
@@ -345,8 +345,8 @@ inline esphome::button::Button* resolve_button(const char* name) {
 // ====================================================================
 inline void add_cmd(uint32_t irCommand, const char* xgimi_id, const char* comment) {
     IRCommand cmd;
-    std::strncpy(cmd.name, xgimi_id, sizeof(cmd.name) - 1);
-    cmd.name[sizeof(cmd.name) - 1] = '\0';
+    std::strncpy(cmd.action_string, xgimi_id, sizeof(cmd.action_string) - 1);
+    cmd.action_string[sizeof(cmd.action_string) - 1] = '\0';
     
     std::strncpy(cmd.button_name, comment, sizeof(cmd.button_name) - 1);
     cmd.button_name[sizeof(cmd.button_name) - 1] = '\0';
@@ -378,7 +378,7 @@ inline void commit_database_to_flash(uint16_t target_slot) {
   for (const auto& kv_pair : active_profile_workspace.cmd_codes) {
     if (k_idx >= 80) break; // increased to 80
     flash_p.keys[k_idx].irCommand = kv_pair.first;
-    std::strncpy(flash_p.keys[k_idx].target_button_id, kv_pair.second.name, sizeof(flash_p.keys[k_idx].target_button_id) - 1);
+    std::strncpy(flash_p.keys[k_idx].action_string, kv_pair.second.action_string, sizeof(flash_p.keys[k_idx].action_string) - 1);
     std::strncpy(flash_p.keys[k_idx].button_name, kv_pair.second.button_name, sizeof(flash_p.keys[k_idx].button_name) - 1);
     k_idx++;
   }
@@ -392,8 +392,8 @@ inline void commit_database_to_flash(uint16_t target_slot) {
 // Flash memory optimized layout item (12 bytes total per row)
 struct FlashCommandRow {
   uint32_t irCommand;
-  const char* name;         // 4-byte flash address pointer
-  const char* button_name;  // 4-byte flash address pointer
+  const char* action_string; // 4-byte flash address pointer
+  const char* button_name;   // 4-byte flash address pointer
 };
 
 // --- PROGMEM FACTORY DATA STORAGE TABLES (SINGLE-ITEM-PER-LINE) ---
@@ -1048,7 +1048,7 @@ inline void load_profile_to_workspace(int idx) {
         for (size_t i = 0; i < array_size; i++) {
             // Under ESP-IDF on ESP32, flash can be read directly like normal RAM!
             uint32_t code = flash_array[i].irCommand;
-            const char* name_flash_ptr = flash_array[i].name;
+            const char* name_flash_ptr = flash_array[i].action_string;
             const char* btn_flash_ptr  = flash_array[i].button_name;
             
             char name_ram_buf[32] = {0};
@@ -1092,9 +1092,9 @@ inline void load_profile_to_workspace(int idx) {
             auto& kv_pair = active_profile_workspace.cmd_codes[k];
             kv_pair.first = flash_p.keys[k].irCommand;
             
-            // Field 2 (Internal target token ID) maps to target_button_id
-            std::strncpy(kv_pair.second.name, flash_p.keys[k].target_button_id, sizeof(kv_pair.second.name) - 1);
-            kv_pair.second.name[sizeof(kv_pair.second.name) - 1] = '\0';
+            // Field 2 (Internal target token ID) maps to action_string
+            std::strncpy(kv_pair.second.action_string, flash_p.keys[k].action_string, sizeof(kv_pair.second.action_string) - 1);
+            kv_pair.second.action_string[sizeof(kv_pair.second.action_string) - 1] = '\0';
             
             // Field 3 (Visual/Comment Label Description) maps to button_name
             std::strncpy(kv_pair.second.button_name, flash_p.keys[k].button_name, sizeof(kv_pair.second.button_name) - 1);
@@ -1179,7 +1179,7 @@ inline std::string generate_profile_csv(int idx) {
       snprintf(irCommand_buf, sizeof(irCommand_buf), key_fmt, (unsigned int)p.cmd_codes[i].first);
       
       snprintf(chunk_buf, sizeof(chunk_buf), "KEY,%s,%s,%s\n",
-               irCommand_buf, p.cmd_codes[i].second.name, p.cmd_codes[i].second.button_name);
+               irCommand_buf, p.cmd_codes[i].second.action_string, p.cmd_codes[i].second.button_name);
       csv_out += chunk_buf;
   }
 
@@ -1303,15 +1303,15 @@ static const char dashboard_html[] PROGMEM = R"rawliteral(
     --fs-sm: 12px;
   }
   body{font-family:system-ui,-apple-system,sans-serif;margin:20px;background:#0d1117;color:#c9d1d9;font-size:var(--fs-md)}
-  .box{background:#161b22;padding:24px;border:1px solid #30363d;border-radius:6px;max-width:480px;margin:auto;margin-bottom:20px}
+  .box{background:#161b22;padding:24px;border:1px solid #30363d;border-radius:6px;max-width:480px;margin:auto;margin-bottom:15px}
   h3{margin-top:0;color:#58a6ff;border-bottom:1px solid #21262d;padding-bottom:10px;font-size:var(--fs-lg)}
   label{display:block;margin:14px 0 6px;font-size:var(--fs-md);font-weight:600}
   select,input[type="file"]{width:100%;padding:8px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#fff;box-sizing:border-box;font-size:var(--fs-md)}
   .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
-  .btn{padding:10px;background:#238636;color:#fff;border:0;border-radius:6px;font-weight:bold;text-align:center;text-decoration:none;cursor:pointer;font-size:var(--fs-md)}
-  .btn.sec{background:#21262d;border:1px solid #30363d;color:#c9d1d9}
+  .btn{padding:10px;background:#238636;color:#fff;border:2px;border-radius:6px;font-weight:bold;text-align:center;text-decoration:none;cursor:pointer;font-size:var(--fs-md)}
+  .btn.sec{background:#21262d;border:2px solid #30363d;color:#c9d1d9}
   .btn:hover{opacity:0.9}
-  .stat-list{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+  .stat-list{display:flex;flex-direction:column;gap:10px;margin-top:3px}
   .stat-row{display:flex;justify-content:space-between;align-items:center;background:#0d1117;padding:12px 16px;border-radius:6px;border:1px solid #21262d}
   .stat-lbl{color:#8b949e;font-size:var(--fs-sm);font-weight:600;text-transform:uppercase}
   .stat-val{font-family:monospace;font-weight:bold;color:#ff7b72;font-size:var(--fs-md)}
@@ -1326,37 +1326,37 @@ static const char dashboard_html[] PROGMEM = R"rawliteral(
 </script>
 </head><body>
 <div class="box">
-  <h3>%BLE_REMOTE_NAME%</h3>
+  <h3>Profile Management:  %BLE_REMOTE_NAME%</h3>
+
   <p style="font-size:var(--fs-sm);color:#8b949e;margin:0 0 15px">Active Profile: <span style="color:#58a6ff;font-weight:bold">%ACTIVE_NAME%</span></p>
   <form action="/select" method="GET">
-    <label for="profile_sel">Select Target Profile Slot:</label>
+    <label style="display:block;margin-bottom:6px;font-size:var(--fs-sm);color:#8b949e;">Select Target Profile Slot:</label>    
     <select id="profile_sel" name="slot" onchange="updateActionUrls()">%OPTIONS_MARKER%</select>
     
-    <button type="submit" class="btn" style="width:100%;margin-top:12px;background:#1f6feb">Activate Selected Profile</button>
+    <button type="submit" class="btn" style="width:100%;margin-top:12px;background:#403030">Activate Selected Profile</button>
   </form>
   
-  <h3>Backup & Recovery Operations</h3>
   <div style="margin-bottom:12px;">
-    <a id="export_link" href="#" class="btn sec" style="display:block;margin-bottom:12px;">Download Profile CSV</a>
+    <a id="export_link" href="#" class="btn sec" style="background:#1f6feb; display:block;margin-bottom:12px;">Download Selected Profile</a>
   </div>
 
   <form id="upload_form" method="POST" enctype="multipart/form-data" style="margin-top:12px">
-    <label style="display:block;margin-bottom:6px;font-size:var(--fs-sm);color:#8b949e;">Choose Backup File:</label>
+    <label style="display:block;margin-bottom:6px;font-size:var(--fs-sm);color:#8b949e;">Choose Profile CSV:</label>
     <input type="file" id="file_picker" name="file" onchange="document.getElementById('ul_btn').disabled=false;">
-    <button type="submit" id="ul_btn" class="btn" style="width:100%;background:#238636;margin-top:12px;" disabled>Upload Profile CSV</button>
+    <button type="submit" id="ul_btn" class="btn" style="width:100%;background:#238636;margin-top:12px;" disabled>Upload Profile to Slot</button>
   </form>
 </div>
 <div class="box">
   <h3>Macro Storage Management</h3>
   <div class="stat-list" style="margin-bottom:15px">
     <div style="margin-bottom:12px;">
-      <a href="/export_macro" class="btn" style="display:block; background:#1f6feb; text-decoration:none;">Download Macros (.csv)</a>
+      <a href="/export_macro" class="btn" style="display:block; background:#1f6feb; text-decoration:none;">Download Macros</a>
     </div>
     
     <form action="/import_macro" method="POST" enctype="multipart/form-data" style="border-top:1px solid #21262d; padding-top:12px;">
-       <label style="display:block; margin-bottom:6px; font-size:var(--fs-sm); color:#8b949e;">Restore Text Backup:</label>
+       <label style="display:block; margin-bottom:6px; font-size:var(--fs-sm); color:#8b949e;">Choose Macros CSV File:</label>
        <input type="file" name="file" accept=".csv" style="margin-bottom:8px;">
-       <button type="submit" class="btn sec" style="width:100%">Upload Macros</button>
+       <button type="submit" class="btn" style="width:100%;background:#238636;margin-top:12px;">Upload Macros</button>
     </form>
   </div>
 </div>
@@ -1395,7 +1395,6 @@ static const char dashboard_html[] PROGMEM = R"rawliteral(
   
   <div style="margin-top:15px; font-size:var(--fs-sm); border-top:1px solid #21262d; padding-top:12px">
     <div style="margin-bottom:6px"><span style="color:#8b949e">Reset Reason:</span> <span style="font-family:monospace;color:#79c0ff">%RESET_REASON%</span></div>
-    <div><span style="color:#8b949e">Hardware Info:</span> <span style="font-family:monospace;color:#79c0ff">%HW_INFO%</span></div>
   </div>
 </div>
 </body></html>
