@@ -7,7 +7,7 @@
 
 substitutions:
   # 1 ======= ble_remote_name, Bluetooth Name for your IR remote ===========================
-  ble_remote_name: "C6 Theater"  # (20 char max. No special characters. No underscore) 
+  ble_remote_name: "IR Xgimi Kuo"  # (20 char max. No special characters. No underscore) 
  
   # may optionally change these other three names 
   ssid_name:     ${ble_remote_name} # Name of AP wifi network
