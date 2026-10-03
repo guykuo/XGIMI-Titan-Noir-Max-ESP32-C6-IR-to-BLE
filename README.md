@@ -6,6 +6,8 @@
 
 Titan Noir projectors lack IR control capability and only accept bluetooth signals. This project works around that limitation by translating infrared signals into bluetooth commands the Titan Noir projectors accept. Typical use is to add an Xgimi Titan Noir to a universal IR remote. Depending on which IR code set you choose, you can add as a completely new projector or have the XTN projector masquerade as an existing projector already in your remote. This project runs on low cost ESP32 board.
 
+## NOTICE -- ESP32 board must be completely erased once before use with this project. This is needed to allow repartitioning of board --
+
 ## Requirements
 
 *   A BlueTooth BLE Capable ESP32 Board. Two boards detailed here are...
