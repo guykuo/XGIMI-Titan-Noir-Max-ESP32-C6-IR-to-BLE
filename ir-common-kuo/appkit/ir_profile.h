@@ -50,13 +50,13 @@ inline const char* to_string(uint8_t proto_id) {
 
 // Global tracking configuration variables
 inline size_t factory_count = 13; 
-inline constexpr uint16_t MAX_LEARNED_PROFILES = 5;
+inline constexpr uint16_t MAX_LEARNED_PROFILES = 3;
 inline bool flash_hydration_complete = false;
 
 #ifdef ENABLE_EXTRA_BUTTONS
   inline constexpr uint32_t CURRENT_PROFILE_VERSION = 1024; // Power user footprint track
 #else
-  inline constexpr uint32_t CURRENT_PROFILE_VERSION = 65; // <-- increment this change in NVRAM storage structures
+  inline constexpr uint32_t CURRENT_PROFILE_VERSION = 66; // <-- increment this change in NVRAM storage structures
 #endif
 
 
@@ -78,17 +78,16 @@ inline constexpr size_t TOTAL_SYSTEM_BUTTONS = sizeof(learn_button_names) / size
 // ====================================================================
 // Macro storage STRUCTS
 // ====================================================================
-#define MAX_MACRO_STEPS    64  
+#define MAX_MACRO_STEPS    32  
 #define MAX_BOUND_HOTKEYS  9  
-#define CURRENT_MACRO_VERSION  5 
+#define CURRENT_MACRO_VERSION  8
 
 static const size_t MAX_ACTION_STRING_LEN = 32;
 
 struct UniversalMacroStep {
   char action_string[MAX_ACTION_STRING_LEN]; 
-  uint8_t action_type;                      
-  uint8_t event_state;                      
-  uint16_t delay_ms;                        
+  uint8_t event_state;    // 0 = DOWN, 2 = UP                  
+  uint16_t delay_ms;      // Pacing interval                  };
 };
 
 struct UniversalFlashMacro {
@@ -98,9 +97,8 @@ struct UniversalFlashMacro {
 };
 
 struct BindingPair {
-    uint16_t universal_action_idx; 
-    uint8_t  action_type;         
-    uint8_t  shared_macro_slot;   
+    char action_string[MAX_ACTION_STRING_LEN]; // e.g., "shortcut_4" or "RKEY:51 down arrow"
+    uint8_t  shared_macro_slot;                // Associated Macro Storage Slot ID
 };
 
 struct UniversalBindingRegistry {
@@ -169,21 +167,29 @@ inline uint16_t resolve_action_to_true_hid(const char* name, uint8_t& out_type) 
     else if (action_name == "shortcut_4")   { out_type = 1; return 0x0222; }
     else if (action_name == "mute")         { out_type = 1; return 0x01BD; }
 
-    // WEB ESCAPE HATCH FOR CUSTOM INJECTED CODES
+    // WEB ESCAPE HATCH FOR CUSTOM INJECTED CODES (With Commentary Support)
     else if (action_name.rfind("RKEY:", 0) == 0) {
         out_type = 0;
-        return (uint16_t)std::strtoul(action_name.substr(5).c_str(), nullptr, 16);
+        std::string raw_hex = action_name.substr(5);
+        size_t space_pos = raw_hex.find(' ');
+        if (space_pos != std::string::npos) {
+            raw_hex = raw_hex.substr(0, space_pos);
+        }
+        return (uint16_t)std::strtoul(raw_hex.c_str(), nullptr, 16);
     }
     else if (action_name.rfind("RCON:", 0) == 0) {
         out_type = 1;
-        return (uint16_t)std::strtoul(action_name.substr(5).c_str(), nullptr, 16);
+        std::string raw_hex = action_name.substr(5);
+        size_t space_pos = raw_hex.find(' ');
+        if (space_pos != std::string::npos) {
+            raw_hex = raw_hex.substr(0, space_pos);
+        }
+        return (uint16_t)std::strtoul(raw_hex.c_str(), nullptr, 16);
     }
-
-    out_type = 2; // Default fallback to system/virtual button trigger
+    
+    out_type = 2; // Fallback if no string parameters match incoming inputs
     return 0xFFFF;
 }
-
-
 
 // Expose workspaces globally to fix compilation linkages
 inline UniversalFlashMacro active_recording_buffer{};
@@ -200,13 +206,24 @@ inline UniversalBindingRegistry global_binding_registry{};
 // ====================================================================
 inline uint16_t encode_action_to_id(const char* name, uint8_t& out_type) {
     if (name == nullptr) return 0xFFFF;
+    
     if (std::strncmp(name, "RKEY:", 5) == 0) {
         out_type = 0;
-        return (uint16_t)std::strtoul(name + 5, nullptr, 16);
+        std::string raw_hex(name + 5);
+        size_t space_pos = raw_hex.find(' ');
+        if (space_pos != std::string::npos) {
+            raw_hex = raw_hex.substr(0, space_pos);
+        }
+        return (uint16_t)std::strtoul(raw_hex.c_str(), nullptr, 16);
     }
     if (std::strncmp(name, "RCON:", 5) == 0) {
         out_type = 1;
-        return (uint16_t)std::strtoul(name + 5, nullptr, 16);
+        std::string raw_hex(name + 5);
+        size_t space_pos = raw_hex.find(' ');
+        if (space_pos != std::string::npos) {
+            raw_hex = raw_hex.substr(0, space_pos);
+        }
+        return (uint16_t)std::strtoul(raw_hex.c_str(), nullptr, 16);
     }
     
     out_type = 2; 
@@ -218,6 +235,8 @@ inline uint16_t encode_action_to_id(const char* name, uint8_t& out_type) {
     return 0xFFFF;
 }
 
+
+
 inline const char* decode_idx_to_action_string(uint16_t action_idx) {
     if (action_idx < TOTAL_SYSTEM_BUTTONS) {
         return learn_button_names[action_idx];
@@ -225,37 +244,39 @@ inline const char* decode_idx_to_action_string(uint16_t action_idx) {
     return "unassigned";
 }
 
-inline bool is_action_allowed_as_macro_hotkey(uint16_t action_idx, uint8_t action_type) {
-    if (action_type == 0 || action_type == 1) return true; 
-    const char* action_name = decode_idx_to_action_string(action_idx);
-    
-    // Hard Guard: Prevent macro storage and playback keys from carrying macros
-    static const std::unordered_set<std::string> blocked_keys = {
-        "macro_record", "macro_play"
-    };
-    return (blocked_keys.count(action_name) == 0);
+inline bool is_action_allowed_as_macro_hotkey(const char* action_name) {
+    if (action_name == nullptr) return false;
+
+    // Hard Guard: Block utility actions from carrying macros to prevent infinite loops
+    if (std::strcmp(action_name, "macro_record") == 0 || 
+        std::strcmp(action_name, "macro_play") == 0) {
+        return false;
+    }
+    return true;
 }
 
-inline uint8_t get_bound_macro_slot(uint16_t action_idx, uint8_t action_type) {
-    // Explicitly block macro record and playback buttons from ever matching a slot registry item
-    if (action_type == 2) {
-        if (!is_action_allowed_as_macro_hotkey(action_idx, action_type)) {
-            return 255; // Secure fallback sentinel: Always return unassigned
-        }
+inline uint8_t get_bound_macro_slot(const char* current_action_name) {
+    if (current_action_name == nullptr) return 255;
+
+    // 1. Run the guard first using the literal string
+    if (!is_action_allowed_as_macro_hotkey(current_action_name)) {
+        return 255; 
     }
 
+    // 2. Perform the quick profile-agnostic string scan
     for (uint16_t i = 0; i < global_binding_registry.total_bound_keys; i++) {
-        if (global_binding_registry.bindings[i].universal_action_idx == action_idx &&
-            global_binding_registry.bindings[i].action_type == action_type) {
+        if (std::strcmp(global_binding_registry.bindings[i].action_string, current_action_name) == 0) {
             return global_binding_registry.bindings[i].shared_macro_slot;
         }
     }
-    return 255; 
+    return 255; // Not a hotkey, let it pass through natively
 }
 
 
 
-typedef char action_stringType[32]; // Field 2: Visible Xgimi Token or RKEY RCON (e.g., "game_menu")
+
+
+typedef char action_stringType[MAX_ACTION_STRING_LEN]; // Field 2: Visible Xgimi Token or RKEY RCON (e.g., "game_menu")
 typedef char button_nameType[32];   // Field 3: name of button on physical remote (e.g., "Cinema Master")
 typedef char profile_nameType[32];
 typedef char ComponentBufferStrType[128];
@@ -1178,7 +1199,7 @@ inline std::string generate_profile_csv(int idx) {
   std::string csv_out;
   csv_out.reserve(reserved_size);
 
-  char chunk_buf[128];
+  char chunk_buf[256];
 
   // Determine the best padding width format string based on active protocol structure tracks
   // %02X -> Enforces 2 characters (e.g., 0xA7)
@@ -1454,21 +1475,39 @@ inline esp_err_t root_handler(httpd_req_t *req) {
     
     int active_idx = esphome::id(active_remote_layout).value();
 
+    // ====================================================================
+    // ⚡ ZERO-ALLOCATION STATIC NAME EXTPARATION LOOP FOR C3 RAM STABILITY
+    // ====================================================================
+    options.reserve(1536); // Pre-allocate the string storage completely once to prevent heap thrashing
+
+    // Mirror your PROGMEM definitions exactly to bypass loading layout structures to dynamic vectors
+    static const char* const factory_names[] = {
+      "AWOL Projector", "BenQ Projector", "Epson Projector", "Hisense", 
+      "JVC HR-S9600u VCR", "JVC Projector A", "JVC Projector B", "LG Projector", 
+      "Optoma Projector", "Sony Projector", "Sony XBR", "TiVo Roamio", "Panasonic Projector"
+    };
+
     for (int i = 0; i < total_slots; i++) {
-        char opt_buf[128];
+        char opt_buf[128] = {0};
         const char* kind = (i < static_cast<int>(factory_count)) ? "Factory" : "Custom";
         std::string label_str;
+        
         if (i < static_cast<int>(factory_count)) {
-            load_profile_to_workspace(i);
-            label_str = active_profile_workspace.profile_name;
+            // Read from static data pointer matrix safely with ZERO dynamic vector allocations
+            label_str = factory_names[i];
         } else {
+            // Memory slot tag formatting
             label_str = "Memory Slot " + std::to_string(i - static_cast<int>(factory_count));
         }
-        snprintf(opt_buf, sizeof(opt_buf), "<option value=\"%d\" %s>%s [%s]</option>", i, (i == active_idx) ? "selected" : "", label_str.c_str(), kind);
+        
+        snprintf(opt_buf, sizeof(opt_buf), "<option value=\"%d\" %s>%s [%s]</option>", 
+                 i, (i == active_idx) ? "selected" : "", label_str.c_str(), kind);
         options += opt_buf;
     }
     
-    load_profile_to_workspace(esphome::id(active_remote_layout).value());
+    // Explicitly restore the true operational profile once after generation wraps up
+    load_profile_to_workspace(active_idx);
+    // ====================================================================
     
     // FETCH DIAGNOSTIC DATA DIRECTLY FROM THE CORE KERNEL APPS
     char scratch[128];
@@ -1763,16 +1802,9 @@ inline std::string generate_macro_csv() {
             const auto& step = macro_buf.steps[i];
             std::memset(chunk, 0, sizeof(chunk));
             
-            if (step.action_type == 0) {
-                snprintf(chunk, sizeof(chunk), "STEP,KEYBOARD,%s,%s,%u\n", 
-                         step.action_string, state_to_str(step.event_state), step.delay_ms);
-            } else if (step.action_type == 1) {
-                snprintf(chunk, sizeof(chunk), "STEP,CONSUMER,%s,%s,%u\n", 
-                         step.action_string, state_to_str(step.event_state), step.delay_ms);
-            } else {
-                snprintf(chunk, sizeof(chunk), "STEP,TOKEN,%s,%s,%u\n", 
-                         step.action_string, state_to_str(step.event_state), step.delay_ms);
-            }
+            // STREAMLINED: Drops the old type column cell
+            snprintf(chunk, sizeof(chunk), "STEP,%s,%s,%u\n", 
+                     step.action_string, state_to_str(step.event_state), step.delay_ms);
             csv_out += chunk;
         }
     }
@@ -1838,22 +1870,21 @@ inline bool import_macro_from_csv(const std::string& csv_data) {
             macro_build.struct_version = CURRENT_MACRO_VERSION; 
         } 
         else if (cell_type == "STEP") {
-            // Adaptable limits verify your memory bounds automatically
             if (active_slot == -1 || macro_build.total_steps >= MAX_MACRO_STEPS) continue;
             
-            std::string type_str, payload_str, state_str, delay_str;
-            std::getline(line_ss, type_str, ',');
-            std::getline(line_ss, payload_str, ',');
+            std::string payload_str, state_str, delay_str;
+            std::getline(line_ss, payload_str, ','); // Directly grabs the action string name
             std::getline(line_ss, state_str, ',');
             std::getline(line_ss, delay_str, ',');
 
             auto& step = macro_build.steps[macro_build.total_steps];
-            step.action_type = str_to_type(type_str);
             step.event_state = str_to_state(state_str);
             step.delay_ms = std::strtoul(delay_str.c_str(), nullptr, 10);
 
+            // Populate the action string array
             std::memset(step.action_string, 0, MAX_ACTION_STRING_LEN);
             std::strncpy(step.action_string, payload_str.c_str(), MAX_ACTION_STRING_LEN - 1);
+            step.action_string[MAX_ACTION_STRING_LEN - 1] = '\0';
 
             macro_build.total_steps++;
         }

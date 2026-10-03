@@ -12,6 +12,8 @@ esp32:
   framework:
     type: esp-idf
   
+  
+  
 # i2c Display Pins
 i2c: 
   sda: GPIO5

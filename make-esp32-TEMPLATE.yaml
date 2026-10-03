@@ -97,13 +97,7 @@ wifi:
                          2,
                          current_ip);
 
-ota:
-  - platform: esphome
-    password: !secret ota_password
-
 captive_portal:
-
-      
       
 # ======================================
 api:
@@ -178,6 +172,7 @@ esphome:
     - ir-common-kuo/appkit/ir_profile.h
 
   build_flags: 
+ #   - "-Wl,--require-defined=cJSON_Parse"
     - '-DBLE_REMOTE_NAME_STR=\"${ble_remote_name}\"'
 
     # ============================================================
@@ -198,7 +193,6 @@ esphome:
         - lambda: !lambda |-
             extern void start_custom_web_server(); 
             start_custom_web_server(); 
-
 
     - priority: -50
       then:

@@ -13,7 +13,7 @@ esp32_ble:
   min_key_size: 7
   max_key_size: 16
   max_connections: 1
-
+  
 esp32_ble_server:
   id: esp32c6_ble_server
   appearance: 0x0180
