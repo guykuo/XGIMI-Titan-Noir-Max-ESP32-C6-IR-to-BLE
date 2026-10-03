@@ -695,6 +695,21 @@ script:
                 if (step.event_state == 0) { // DOWN/Press Sequence Block
                   ESP_LOGI("MACRO_PLAY", "   Step [%d]: DOWN -> Firing '%s'", idx, step.action_string);
                   
+                  // ============================================================
+                  // PLAYBACK INTERCEPT: Route power actions straight to native template buttons & EXIT
+                  // ============================================================
+                  if (std::strcmp(step.action_string, "power_on") == 0) {
+                    id(power_on).press();
+                    id(macro_step_counter) = idx + 1; // Advance step counter before exiting step
+                    return;
+                  }
+                  else if (std::strcmp(step.action_string, "power_off") == 0) {
+                    id(power_off).press();
+                    id(macro_step_counter) = idx + 1; // Advance step counter before exiting step
+                    return;
+                  }
+                  // ============================================================
+                                    
                   if (resolved_type == 0) {
                     id(xgimi_remote_controller).hold_keyboard((uint8_t)true_hid_code);
                   }
@@ -722,6 +737,15 @@ script:
                 }
                 else if (step.event_state == 2) { // UP/Release Sequence Block
                   ESP_LOGI("MACRO_PLAY", "   ⏳ Step [%d]: UP -> Releasing '%s'", idx, step.action_string);
+                  
+                  
+                  // intercept and ignore power_on and power_off UP events. Acton already happened during DOWN event.
+                  if (std::strcmp(step.action_string, "power_on") == 0 || std::strcmp(step.action_string, "power_off") == 0) {
+                    id(macro_step_counter) = idx + 1; // Advance past this release step
+                    return;
+                  }
+           
+                  
                   
                   if (resolved_type == 0) {
                     id(xgimi_remote_controller).release_held_keyboard_();
@@ -1842,6 +1866,24 @@ script:
 
           // ---------- STRATIFIED TRANSITION INJECTIONS ----------
           if (event_state == 0) {
+          
+            // ============================================================
+            // Speciall handling for power_on and power_off. Redirect directly to template buttons & EXIT
+            // ============================================================
+            if (std::strcmp(found_cmd->action_string, "power_on") == 0) {
+              ESP_LOGI("IR_SPECIAL", "Power On physical IR caught. Launching native button press.");
+              id(power_on).press();
+              id(global_cached_command) = 0; // Clear the cache state so it resets cleanly
+              return; // Exit the loop step immediately!
+            }
+
+            if (std::strcmp(found_cmd->action_string, "power_off") == 0) {
+              ESP_LOGI("IR_SPECIAL", "Power Off physical IR caught. Launching native button press.");
+              id(power_off).press();
+              id(global_cached_command) = 0; // Clear the cache state so it resets cleanly
+              return; // Exit the loop step immediately!
+            }
+            
             // PHASE A: INITIAL NATIVE DOWN PRESS -> LOCK LINE
             if (resolved_type == 0) {
               id(xgimi_remote_controller).hold_keyboard((uint8_t)true_hid_code);
@@ -1857,6 +1899,11 @@ script:
             }
           }
           else if (event_state == 1) {
+            // Ignore incoming physical IR hold repeats for power keys
+            if (std::strcmp(found_cmd->action_string, "power_on") == 0 || std::strcmp(found_cmd->action_string, "power_off") == 0) {
+              return; // Drop packet silently
+            }            
+            
             // PHASE B: REPETITIVE Packet Hits -> FEED WATCHDOG TIMERS
             if (resolved_type == 0) {
               id(xgimi_remote_controller).hold_keyboard((uint8_t)true_hid_code);
@@ -1866,6 +1913,11 @@ script:
             }
           }
           else if (event_state == 2) {
+             // Drop physical or flusher-generated liftoff frames for power keys
+            if (std::strcmp(found_cmd->action_string, "power_on") == 0 || std::strcmp(found_cmd->action_string, "power_off") == 0) {
+              return; // Drop packet silently
+            }
+
             // PHASE C: PHYSICAL LIFTOFF DETECTION -> OPEN GATES
             if (resolved_type == 0) {
               id(xgimi_remote_controller).release_held_keyboard_();
