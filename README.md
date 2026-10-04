@@ -895,6 +895,37 @@ This IRmap also works with other Epson projectors such as the 5050UB
 | macro_record | 3D format | 0xC43B |
 | macro_play | Aspect | 0x758A |
 
+ ## AWOL Vision Aetherion Max to Xgimi Titan Noir Mapping
+| Xgimi Command | AWOL Aetherion Btn | (0xCE00) + Command |
+| :--- | :--- | :--- |
+| power_on | power on | 0x1AE5 |
+| power_off | power off | 0x19E6 |
+| cursor_left | left arrow | 0xDB24 |
+| cursor_right | right arrow | 0xDA25 |
+| cursor_up | up arrow | 0xD926 |
+| cursor_down | down arrow | 0xD827 |
+| cursor_enter | ok | 0xD728 |
+| settings_menu | menu | 0xA55A |
+| back | back | 0xA35C |
+| home | home | 0xA45B |
+| game_menu | Netflix | 0x23DC |
+| input | input select | 0xED12 |
+| picture | Google Assist | 0x1EE1 |
+| focus_manual | AI Box | 0x25DA |
+| focus_auto | Prime Video | 0x22DD |
+| shortcut_1 | HDMI 1 | 0x18E7 |
+| shortcut_2 | HDMI 2 | 0x17E8 |
+| shortcut_3 | HDMI 3 | 0x16E9 |
+| shortcut_4 | Live TV | 0x1DE2 |
+| volume_up | vol up | 0xF50A |
+| volume_down | vol down | 0xF40B |
+| mute | mute | 0xE41B |
+| token_sniff | Disney | 0x21DE |
+| token_clear | none | 0x97 |
+| token_recall | none | 0x97 |
+| macro_record | select profile | 0x27D8 |
+| macro_play | Youtube | 0x24DB |
+
 ## BenQ W5800 Projector to Xgimi Titan Noir Mapping
 | Xgimi Command | BenQ Projector Btn | (0x3000) + Command |
 | :--- | :--- | :--- |
