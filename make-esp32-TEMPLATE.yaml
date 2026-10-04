@@ -46,10 +46,7 @@ packages:
   #hardware_package: !include ir-common-kuo/hardware-waveshare-c6-lcd-1.47.yaml
   #hardware_package: !include ir-common-kuo/hardware-waveshare-s3-touch-lcd-2.8.yaml
   #hardware_package: !include ir-common-kuo/hardware-waveshare-s3-lcd-1.47B.yaml # requires IR sensor WITHOUT LED like VS1838B
-                                                                                 # Otherwise 3Vcc load causes crash durng boot.
-  #hardware_package: !include ir-common-kuo/hardware-heltec-hiletgo-s3-0.96-OLED-v3.yaml # Works as translator, but needs special 
-                                                                                        # cable for serial logging
-
+  #hardware_package: !include ir-common-kuo/hardware-heltec-hiletgo-s3-0.96-OLED-v3.yaml # Needs special cable for serial logging
 
   #hardware_package: !include ir-common-kuo/HARDWARE.YAML # Or uncomment this line and replace HARDWARE.YAML with your file.
 

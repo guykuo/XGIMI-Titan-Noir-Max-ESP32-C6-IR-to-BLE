@@ -1643,6 +1643,8 @@ inline esp_err_t select_handler(httpd_req_t *req) {
                 int chosen_slot = atoi(param);
 
                 esphome::id(active_remote_layout).value() = chosen_slot;
+                esphome::id(profile_has_been_stored).value() = 1; // remember that profile has been set
+                
                 load_profile_to_workspace(chosen_slot);
                 esphome::id(setup_ir_receiver_for_current_profile).execute();
                 

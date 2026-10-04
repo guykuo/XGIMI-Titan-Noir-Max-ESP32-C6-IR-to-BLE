@@ -253,7 +253,11 @@ remote_receiver:
 
 
 globals:
-
+  - id: profile_has_been_stored
+    type: int
+    initial_value: '0'
+    restore_value: yes
+    
   - id: active_remote_layout
     type: int
     initial_value: ${def_profile}
@@ -1210,11 +1214,15 @@ script:
               if (match_found && matched_index != -1) {
                 id(set_profile_timeout_watcher).stop();
                 
+                
+
                 // Hydrate and lock the true winning layout completely into active RAM workspace
                 load_profile_to_workspace(matched_index);
                 
                 id(active_remote_layout) = matched_index;
                 id(setup_ir_receiver_for_current_profile).execute();
+                id(profile_has_been_stored) = 1; // remember that profile has been set
+                
                 id(ir_receiver_mode) = 1; // Securely revert right back to Action Mode
                 
                 id(flash_led_custom).execute(4, 50, 1.0, 0.0, 0.0);
@@ -1882,6 +1890,22 @@ interval:
           
           int boot_idx = id(active_remote_layout); 
           flash_hydration_complete = true; 
+
+          // --- FRESH NVRAM FOOTPRINT DETECTION ---
+          if (boot_idx == 0) {
+            if (id(profile_has_been_stored) == 0) {
+              // This is a fresh erase! Use the user's compile-time def_profile
+              ESP_LOGW("ir_hub", "Fresh uninitialized NVRAM detected! Using default profile: %d", ${def_profile});
+              boot_idx = ${def_profile};
+              id(active_remote_layout) = boot_idx;
+              
+            } else {
+              // The user explicitly stored index 0 (AWOL) in the past. Simply keep it.
+              ESP_LOGI("ir_hub", "Restoring explicitly saved AWOL layout (Index 0).");
+            }
+            // Mark profile as having been saved
+            id(profile_has_been_stored) = 1;
+          } //--- end FRESH NVRAM
 
           int total_valid_slots = static_cast<int>(factory_count) + MAX_LEARNED_PROFILES;
           if (boot_idx < 0 || boot_idx >= total_valid_slots) {
