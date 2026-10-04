@@ -304,26 +304,6 @@ struct IRProfile {
 inline IRProfile active_profile_workspace;
 
 
-
-// ====================================================================
-// COMPILER BRIDGING STRUCTURE FOR LEGACY YAMLS
-// ====================================================================
-struct RemoteProfilesBridge {
-    // Allows remote_profiles.size() to compile and return total layouts safely
-    size_t size() const { return factory_count + MAX_LEARNED_PROFILES; }
-    
-    // Safety Fallback Helpers: Catches both standard .empty() and `.empt` typos inside YAML files
-    bool empty() const { return false; }
-    bool empt() const { return false; }
-    
-    // Allows remote_profiles[idx] to compile and return the active workspace context
-    const IRProfile& operator[](size_t idx) const { return active_profile_workspace; }
-    IRProfile& operator[](size_t idx) { return active_profile_workspace; }
-};
-
-inline RemoteProfilesBridge remote_profiles;
-// ====================================================================
-
 // ====================================================================
 // 2. THE THREE-FIELD FLASH PERSISTENCE LAYER (NVS REGISTER SETS)
 // ====================================================================
@@ -974,6 +954,15 @@ alignas(4) const FlashCommandRow PANASONIC_COMMANDS[] {
   { 0x1006263, "home",         "computer" }
 };
 
+
+// Mirror your profile definitions exactly to bypass loading layout structures to dynamic vectors
+static const char* const factory_names[] = {
+  "AWOL Projector", "BenQ Projector", "Epson Projector", "Hisense", 
+  "JVC HR-S9600u VCR", "JVC Projector A", "JVC Projector B", "LG Projector", 
+  "Optoma Projector", "Sony Projector", "Sony XBR", "TiVo Roamio", "Panasonic Projector"
+};
+    
+    
 // THE UNIFIED ON-DEMAND DYNAMIC HYDRATION ENGINE
 inline void load_profile_to_workspace(int idx) {
   active_profile_workspace.cmd_codes.clear();
@@ -1352,6 +1341,10 @@ inline bool import_profile_from_csv(const std::string& csv_data) {
     return true;
 }
 
+
+
+
+
 // ====================================================================
 // ==== Custom Webserver ===
 // ====================================================================
@@ -1476,27 +1469,19 @@ inline esp_err_t root_handler(httpd_req_t *req) {
     int active_idx = esphome::id(active_remote_layout).value();
 
     // ====================================================================
-    // ⚡ ZERO-ALLOCATION STATIC NAME EXTPARATION LOOP FOR C3 RAM STABILITY
+    // ⚡ ZERO-ALLOCATION STATIC NAME EXTPARATION LOOP FOR RAM STABILITY
     // ====================================================================
-    options.reserve(1536); // Pre-allocate the string storage completely once to prevent heap thrashing
-
-    // Mirror your PROGMEM definitions exactly to bypass loading layout structures to dynamic vectors
-    static const char* const factory_names[] = {
-      "AWOL Projector", "BenQ Projector", "Epson Projector", "Hisense", 
-      "JVC HR-S9600u VCR", "JVC Projector A", "JVC Projector B", "LG Projector", 
-      "Optoma Projector", "Sony Projector", "Sony XBR", "TiVo Roamio", "Panasonic Projector"
-    };
+    options.reserve(1536); 
 
     for (int i = 0; i < total_slots; i++) {
-        char opt_buf[128] = {0};
+        char opt_buf[128] = {0}; // Clear stack allocation
         const char* kind = (i < static_cast<int>(factory_count)) ? "Factory" : "Custom";
         std::string label_str;
         
         if (i < static_cast<int>(factory_count)) {
-            // Read from static data pointer matrix safely with ZERO dynamic vector allocations
+            // Reads from the global flash pointer matrix cleanly
             label_str = factory_names[i];
         } else {
-            // Memory slot tag formatting
             label_str = "Memory Slot " + std::to_string(i - static_cast<int>(factory_count));
         }
         
@@ -1504,6 +1489,7 @@ inline esp_err_t root_handler(httpd_req_t *req) {
                  i, (i == active_idx) ? "selected" : "", label_str.c_str(), kind);
         options += opt_buf;
     }
+
     
     // Explicitly restore the true operational profile once after generation wraps up
     load_profile_to_workspace(active_idx);
@@ -1665,6 +1651,7 @@ inline esp_err_t select_handler(httpd_req_t *req) {
 }
 
 //----------
+// HEAP Efficient, Chunked Export Handler
 inline esp_err_t export_handler(httpd_req_t *req) {
     int target_slot = 0;
     
@@ -1680,17 +1667,70 @@ inline esp_err_t export_handler(httpd_req_t *req) {
         free(buf);
     }
 
-    std::string csv_data = generate_profile_csv(target_slot);
+    // Capture the currently running active remote layout to restore later
+    int current_active = esphome::id(active_remote_layout).value();
+    if (target_slot != current_active) {
+        load_profile_to_workspace(target_slot);
+    }
+
+    const auto& p = active_profile_workspace;
     httpd_resp_set_type(req, "text/csv");
     
     char header_buf[128];
     snprintf(header_buf, sizeof(header_buf), "attachment; filename=profile_slot_%d.csv", target_slot);
     httpd_resp_set_hdr(req, "Content-Disposition", header_buf);
 
-    httpd_resp_send(req, csv_data.c_str(), csv_data.length());
-    load_profile_to_workspace(esphome::id(active_remote_layout).value());
+    // Format strings based on protocol structures
+    const char* addr_fmt = "%04X";
+    const char* key_fmt  = "%X";
+
+    if (p.protocol == PROTO_NEC) {
+        addr_fmt = "%04X";
+        key_fmt  = "%02X";
+    } else if (p.protocol == PROTO_JVC) {
+        addr_fmt = "%04X";
+        key_fmt  = "%04X";
+    } else if (p.protocol == PROTO_SONY) {
+        addr_fmt = "%04X";
+        key_fmt  = "%05X";
+    } else if (p.protocol == PROTO_PANASONIC) {
+        addr_fmt = "%04X";
+        key_fmt  = "%07X";
+    }
+
+    char chunk_buf[256];
+
+    // 1. STREAM META ROW
+    char addr_buf[32], arm_buf[32], fire_buf[32];
+    snprintf(addr_buf, sizeof(addr_buf), addr_fmt, (unsigned int)p.device_address);
+    snprintf(arm_buf, sizeof(arm_buf), key_fmt, (unsigned int)p.cmd_clear_token_arm);
+    snprintf(fire_buf, sizeof(fire_buf), key_fmt, (unsigned int)p.cmd_clear_token_fire);
+    
+    snprintf(chunk_buf, sizeof(chunk_buf), "META,%d,%s,%s,%s,%s,%s\n", 
+             target_slot, p.profile_name.c_str(), to_string(p.protocol), addr_buf, arm_buf, fire_buf);
+    httpd_resp_send_chunk(req, chunk_buf, strlen(chunk_buf));
+
+    // 2. STREAM KEY ROWS INDIVIDUALLY (Zero heap string allocation overhead)
+    for (size_t i = 0; i < p.cmd_codes.size(); i++) {
+        char irCommand_buf[32];
+        snprintf(irCommand_buf, sizeof(irCommand_buf), key_fmt, (unsigned int)p.cmd_codes[i].first);
+        
+        snprintf(chunk_buf, sizeof(chunk_buf), "KEY,%s,%s,%s\n",
+                 irCommand_buf, p.cmd_codes[i].second.action_string, p.cmd_codes[i].second.button_name);
+        httpd_resp_send_chunk(req, chunk_buf, strlen(chunk_buf));
+    }
+
+    // 3. FINALIZE RESPONSE STREAM
+    httpd_resp_send_chunk(req, NULL, 0);
+
+    // Restore the system workspace layout cleanly back to the running profile
+    if (target_slot != current_active) {
+        load_profile_to_workspace(current_active);
+    }
+
     return ESP_OK;
 }
+
 
 // --------------------------------------------------------------------
 // HIGH-PERFORMANCE ZERO-HEAP STREAMING HTTP POST CSV IMPORT ENGINE
@@ -1822,12 +1862,44 @@ inline std::string generate_macro_csv() {
 // ====================================================================
 // HTTP GET CSV EXPORT HANDLER
 // ====================================================================
+// Heap Efficient, Chunked export_macro_text_handler
 inline esp_err_t export_macro_text_handler(httpd_req_t *req) {
-    std::string csv_data = generate_macro_csv(); 
     httpd_resp_set_type(req, "text/csv");
     httpd_resp_set_hdr(req, "Content-Disposition", "attachment; filename=esp32_xgimi_macros.csv");
-    return httpd_resp_send(req, csv_data.c_str(), csv_data.length());
+
+    char chunk_buf[256];
+    bool found_any_data = false;
+
+    for (int slot_id = 0; slot_id < MAX_BOUND_HOTKEYS; slot_id++) {
+        uint64_t macro_nvs_key = 384720194ULL + slot_id;
+        auto pref_obj = esphome::global_preferences->make_preference<UniversalFlashMacro>(macro_nvs_key);
+        
+        static UniversalFlashMacro macro_buf;
+        if (!pref_obj.load(&macro_buf) || macro_buf.total_steps == 0) {
+            continue; 
+        }
+
+        found_any_data = true;
+        snprintf(chunk_buf, sizeof(chunk_buf), "MACRO,%d,Macro_Slot_%d\n", slot_id, slot_id);
+        httpd_resp_send_chunk(req, chunk_buf, strlen(chunk_buf));
+
+        for (uint16_t i = 0; i < macro_buf.total_steps; i++) {
+            const auto& step = macro_buf.steps[i];
+            snprintf(chunk_buf, sizeof(chunk_buf), "STEP,%s,%s,%u\n", 
+                     step.action_string, state_to_str(step.event_state), step.delay_ms);
+            httpd_resp_send_chunk(req, chunk_buf, strlen(chunk_buf));
+        }
+    }
+
+    if (!found_any_data) {
+        snprintf(chunk_buf, sizeof(chunk_buf), "MACRO,0,Empty_Suite\n");
+        httpd_resp_send_chunk(req, chunk_buf, strlen(chunk_buf));
+    }
+
+    httpd_resp_send_chunk(req, NULL, 0); // Finalize response
+    return ESP_OK;
 }
+
 
 // ====================================================================
 // COLD-STREAM ZERO-HEAP CSV MACRO DEPLOYMENT ENGINE (ADAPTABLE)

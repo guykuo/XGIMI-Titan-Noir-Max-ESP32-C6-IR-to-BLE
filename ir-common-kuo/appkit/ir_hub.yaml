@@ -23,18 +23,21 @@ remote_receiver:
   #   - rc5
   #   - rc6
     
-  # 1. Updates timestamp every single time ANY raw IR pulse or repeat packet burst hits the pin
+  # 1. Updates timestamp every single time ANY raw IR pulse or repeat packet burst hits the pin    
   on_raw:
     - lambda: |-
         id(global_last_raw_packet_time) = millis();
 
     - lambda: |-
-        // Boundary Check: Ensure we have at least 2 elements before querying array indices
-        if (x.size() < 2) return;
-
-        uint32_t head_mark = x[0];
-        uint32_t head_space = std::abs(x[1]);
+        // 1. FAST BOUNDARY GUARD: Escape instantly if pulse stream array contains insufficient metrics
         size_t total_pulses = x.size();
+        if (total_pulses < 2) return;
+
+        // Re-added the explicit explicit array index brackets to satisfy the compiler and YAML parser
+        uint32_t head_mark = x[0];
+        
+        // OPTIMIZED: Bitwise/conditional inversion instead of triggering math standard library std::abs()
+        uint32_t head_space = (x[1] < 0) ? -x[1] : x[1];
 
         uint8_t proto = PROTO_UNKNOWN;
 
@@ -111,6 +114,7 @@ remote_receiver:
             id(general_IR_received_handler)->execute("PANASONIC", id(learn_active_address), id(learned_best_command), 1);
           }
         }
+
 
 
   #====================================================================
@@ -484,7 +488,7 @@ script:
           id(macro_assigned_shared_slot) = target_shared_slot;
           id(macro_step_counter) = 0;
           
-          // FIXED: Clear out the time anchor to 0 so the first recorded key never calculates a delta against pre-record clicks
+          // Clear out the time anchor to 0 so the first recorded key never calculates a delta against pre-record clicks
           id(macro_last_event_time) = 0; 
           
           id(macro_recording_active) = true;    // Set active recording state flag
@@ -620,7 +624,7 @@ script:
 
 
   # ====================================================================
-  # WATCHDOG-SAFE COOPERATIVE ASYNCHRONOUS PLAYBACK ENGINE (FIXED)
+  # WATCHDOG-SAFE COOPERATIVE ASYNCHRONOUS PLAYBACK ENGINE
   # ====================================================================
   - id: play_universal_shared_macro
     parameters:
@@ -1196,12 +1200,7 @@ script:
                 for (int i = 0; i < factory; i++) {
                   // Stream factory layout headers temporarily into the single RAM workspace container
                   load_profile_to_workspace(i);
-                  
-                  
-                  ESP_LOGD("IR HUB", "Checking against device address 0x%XXXX   command 0x%XXXX", (unsigned int)ir_address, (unsigned int)ir_command);
-
-
-                  
+                                    
                   if (active_profile_workspace.protocol == incoming_proto && active_profile_workspace.device_address == ir_address) {
                     for (const auto& kv_pair : active_profile_workspace.cmd_codes) {
                       if (kv_pair.first == ir_command) {
@@ -1358,7 +1357,7 @@ script:
           uint32_t now = millis();
           
           // ============================================================
-          // NEW FIXED GUARD: ELIMINATE RECURSIVE MACRO INTERCEPT LOOPS
+          // ELIMINATE RECURSIVE MACRO INTERCEPT LOOPS
           // ============================================================
           if (id(macro_playback_active) && (id(macro_workflow_state) != 0)) {
             ESP_LOGV("MACRO_PLAY", "Bypassing workflow gates to prevent self-interception.");
@@ -1445,20 +1444,22 @@ script:
               id(turn_led_off_custom)->execute();
           
               int target_shared_slot = -1;
-              std::string key_name(found_cmd->action_string);
-          
-              if (key_name == "cursor_enter")      target_shared_slot = 0; // macro assignment buttons
-              else if (key_name == "cursor_up")    target_shared_slot = 1;
-              else if (key_name == "cursor_right") target_shared_slot = 2;
-              else if (key_name == "cursor_down")  target_shared_slot = 3;
-              else if (key_name == "cursor_left")  target_shared_slot = 4;
-              else if (key_name == "shortcut_1")   target_shared_slot = 5;
-              else if (key_name == "shortcut_2")   target_shared_slot = 6;
-              else if (key_name == "shortcut_3")   target_shared_slot = 7;
-              else if (key_name == "shortcut_4")   target_shared_slot = 8;
+
+              // optimized string comparisons (zero-allocation)
+              const char* key_name = found_cmd->action_string;
+              if (std::strcmp(key_name, "cursor_enter") == 0)      target_shared_slot = 0;
+              else if (std::strcmp(key_name, "cursor_up") == 0)    target_shared_slot = 1;
+              else if (std::strcmp(key_name, "cursor_right") == 0) target_shared_slot = 2;
+              else if (std::strcmp(key_name, "cursor_down") == 0)  target_shared_slot = 3;
+              else if (std::strcmp(key_name, "cursor_left") == 0)  target_shared_slot = 4;
+              else if (std::strcmp(key_name, "shortcut_1") == 0)   target_shared_slot = 5;
+              else if (std::strcmp(key_name, "shortcut_2") == 0)   target_shared_slot = 6;
+              else if (std::strcmp(key_name, "shortcut_3") == 0)   target_shared_slot = 7;
+              else if (std::strcmp(key_name, "shortcut_4") == 0)   target_shared_slot = 8;
           
               if (target_shared_slot == -1) {
-                ESP_LOGE("MACRO_WORKFLOW", "Binding Rejected! Key '%s' is an invalid hotkey destination.", key_name.c_str());
+                // Removed key_name.c_str() since key_name is already a raw const char* pointer
+                ESP_LOGE("MACRO_WORKFLOW", "Binding Rejected! Key '%s' is an invalid hotkey destination.", key_name);
                 id(showing_special_info) = true;
                 id(display_show)->execute(false, "Assignment Error", "Invalid Key Destination", "Action Mode");
                 
@@ -1474,7 +1475,7 @@ script:
               uint16_t bounds_limit = global_binding_registry.total_bound_keys;
           
               while (current_loop_idx != bounds_limit) {
-                if (std::strcmp(global_binding_registry.bindings[current_loop_idx].action_string, key_name.c_str()) == 0) {
+                if (std::strcmp(global_binding_registry.bindings[current_loop_idx].action_string, key_name) == 0) {
                   match_idx = (int)current_loop_idx;
                   break;
                 }
@@ -1488,20 +1489,22 @@ script:
           
               if (match_idx != -1) {
                 std::memset(global_binding_registry.bindings[match_idx].action_string, 0, MAX_ACTION_STRING_LEN);
-                std::strncpy(global_binding_registry.bindings[match_idx].action_string, key_name.c_str(), MAX_ACTION_STRING_LEN - 1);
+                std::strncpy(global_binding_registry.bindings[match_idx].action_string, key_name, MAX_ACTION_STRING_LEN - 1);
                 global_binding_registry.bindings[match_idx].action_string[MAX_ACTION_STRING_LEN - 1] = '\0';
                 global_binding_registry.bindings[match_idx].shared_macro_slot = target_shared_slot;
                 
                 id(commit_macro_to_flash_slot).execute(target_shared_slot);
                 id(save_binding_registry_to_nvs).execute();
           
-                std::string slot_msg = "Macro Bound Slot " + std::to_string(target_shared_slot);
-                std::string key_msg = "Key: " + key_name;
+                char slot_msg[32];
+                char key_msg[48];
+                snprintf(slot_msg, sizeof(slot_msg), "Macro Bound Slot %d", target_shared_slot);
+                snprintf(key_msg, sizeof(key_msg), "Key: %s", key_name);
           
                 id(showing_special_info) = true;
-                id(display_show)->execute(true, slot_msg.c_str(), key_msg.c_str(), "Action Mode");
+                id(display_show)->execute(true, slot_msg, key_msg, "Action Mode");
           
-                ESP_LOGW("MACRO_WORKFLOW", "Macro sequence committed to Fixed NVS Slot %d for button: %s", target_shared_slot, key_name.c_str());
+                ESP_LOGW("MACRO_WORKFLOW", "Macro sequence committed to Fixed NVS Slot %d for button: %s", target_shared_slot, key_name);
               }
               
               id(macro_workflow_state) = 99; 
@@ -1770,25 +1773,35 @@ script:
 
   # Set up IR receiver to accept commands from current profile
 
+  # ====================================================================
+  # Point hardware setup directly to the loaded runtime workspace
+  # ====================================================================
   - id: setup_ir_receiver_for_current_profile
     then:
       - lambda: |-
           size_t true_hardware_index = id(active_remote_layout);
+          int total_valid_slots = static_cast<int>(factory_count) + MAX_LEARNED_PROFILES;
 
-          if (true_hardware_index >= remote_profiles.size()) {
+          if (true_hardware_index >= total_valid_slots) {
             ESP_LOGW("Profile Control", "Target index out of bounds! Overriding to safe default layout...");
             id(active_remote_layout) = id(default_profile); 
             true_hardware_index = id(default_profile);
+            load_profile_to_workspace(true_hardware_index);
           }
 
-          const auto& active_profile = remote_profiles[true_hardware_index];
+          // Read directly from the actual workspace container instead of the proxy bridge layout array
+          const auto& active_profile = active_profile_workspace;
           id(ir_receiver_mode) = 1; 
           
-          // Fast byte copy handles validation permissions instantaneously with 0 allocations
+          // Force apply the newly loaded protocol byte filter rules straight to the hardware layer
           id(ir_receiver_allowed_protocol) = active_profile.protocol;
           
-          ESP_LOGI("Profile Control", "Profile layout '%s' engaged via index %d.", 
-                   active_profile.profile_name.c_str(), (int)true_hardware_index); 
+          ESP_LOGI("Profile Control", "Profile layout '%s' engaged via index %d. Allowed Protocol ID: %d (%s)", 
+                   active_profile.profile_name.c_str(), 
+                   (int)true_hardware_index,
+                   (int)active_profile.protocol,
+                   to_string(active_profile.protocol)); 
+
             
 
   # =================================================================
@@ -1830,20 +1843,21 @@ script:
 
 
   - id: set_profile_timeout_watcher
-    mode: restart # Automatically restarts the 15s clock if double-clicked repeatedly
+    mode: restart
     then:
       - delay: 15s
       - lambda: |-
-          // If 15 seconds passed and the user is still stuck in setup profile mode, abort safely
           if (id(ir_receiver_mode) == 2) {
             id(ir_receiver_mode) = 1; // Return to action mode
-            ESP_LOGW("IR Hub", "Set Profile Mode timed out after 30 seconds. Reverting to action mode.");
+            ESP_LOGW("IR Hub", "Set Profile Mode timed out after 15 seconds. Reverting to action mode.");
             
-            // Restore active layout profile metadata on your display panel
+            // Explicitly declare variables inside this scope block
             int current_idx = id(active_remote_layout);
             std::string current_name = "Default";
-            if (0 <= current_idx && current_idx < remote_profiles.size()) {
-              current_name = remote_profiles[current_idx].profile_name;
+            
+            int total_valid_slots = static_cast<int>(factory_count) + MAX_LEARNED_PROFILES;
+            if (current_idx >= 0 && current_idx < total_valid_slots) {
+              current_name = active_profile_workspace.profile_name;
             }
 
             id(display_show)->execute(false,
@@ -1922,8 +1936,9 @@ interval:
           id(selected_profile_slot) = boot_idx;
 
           auto select_obj = id(ir_profile_slot_selector);
-          if (boot_idx >= 0 && boot_idx < (int)select_obj->traits.get_options().size()) {
-            select_obj->publish_state(select_obj->traits.get_options()[boot_idx]);
+          if (boot_idx >= 0 && boot_idx < total_valid_slots) {
+            // Note: The dropdown timer handles selector state population directly at boot
+            ESP_LOGD("boot_loader", "Workspace hydration complete for active index: %d", boot_idx);
           }
 
           static char boot_buf[128];

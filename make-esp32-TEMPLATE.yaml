@@ -48,6 +48,7 @@ packages:
   #hardware_package: !include ir-common-kuo/hardware-waveshare-s3-lcd-1.47B.yaml     # requires IR sensor WITHOUT LED like VS1838B
   #hardware_package: !include ir-common-kuo/hardware-heltec-hiletgo-s3-0.96-OLED-v3.yaml   # Needs specialcable for serial logging
 
+
   #hardware_package: !include ir-common-kuo/HARDWARE.YAML # Or uncomment this line and replace HARDWARE.YAML with your file.
 
 
@@ -109,7 +110,7 @@ api:
       then:
         - api.respond:
             data: !lambda |-
-              root["count"]         = (int) remote_profiles.size();
+              root["count"]         = static_cast<int>(factory_count) + MAX_LEARNED_PROFILES;
               root["factory_count"] = (int) factory_count;
 
 
@@ -394,20 +395,21 @@ text_sensor:
     # ...
     lambda: |-
       int idx = id(active_remote_layout);
-      static char buf[128]; // Use static duration array container to eliminate stack reallocation
+      int total_valid_slots = static_cast<int>(factory_count) + MAX_LEARNED_PROFILES;
+      static char buf[128]; // Stack allocation prevents heap reallocation
       
-      if (idx < 0 || idx >= (int) remote_profiles.size()) {
+      if (idx < 0 || idx >= total_valid_slots) {
         snprintf(buf, sizeof(buf), "idx=%d (profile not loaded)", idx);
-        return {buf}; // Zero heap overhead encapsulation return format footprint
+        return {buf};
       }
       
       const char* kind = (idx < (int) factory_count) ? "internal" : "custom";
       snprintf(buf, sizeof(buf), "idx=%d  %s  [%s]",
                idx,
-               remote_profiles[idx].profile_name.c_str(),
+               active_profile_workspace.profile_name.c_str(), // Reads directly from workspace
                kind);
                
-      return {buf}; // Eliminates std::string allocations on every execution pass
+      return {buf};
 
 
 
@@ -996,15 +998,19 @@ script:
           if (!token_hex_str.empty()) token_hex_str.pop_back();
           
           int current_idx = id(active_remote_layout);
+          
+          // FIXED: Check against pure integer math limits instead of proxy structure arrays
+          int total_valid_slots = static_cast<int>(factory_count) + MAX_LEARNED_PROFILES;
 
-          if (current_idx < 0 || current_idx >= (int)remote_profiles.size()) {
-            id(display_show).execute(true, "${ble_remote_name}", token_hex_str, "No profile");
+          if (current_idx < 0 || current_idx >= total_valid_slots) {
+            id(display_show)->execute(true, "${ble_remote_name}", token_hex_str, "No profile");
           } else {
-            id(display_show).execute(true,
+            id(display_show)->execute(true,
                                      token_hex_str,
                                      "${ble_remote_name}",
-                                     remote_profiles[current_idx].profile_name);
+                                     active_profile_workspace.profile_name); // FIXED: Reads directly from workspace memory
           }
+
 
 # ====================================
   - id: publish_selected_profile_csv
@@ -1113,7 +1119,7 @@ switch:
 #======================
 interval:
   # ====================================================================
-  # TIMER On-Demand Dynamic Select Dropdown Metadata Population
+  # FIXED: ZERO-ALLOCATION ON-DEMAND DROPDOWN METADATA HYDRATION
   # ====================================================================
   - interval: 2.0s
     id: dynamic_select_hydration_timer
@@ -1123,25 +1129,22 @@ interval:
             lambda: 'return flash_hydration_complete;'
           then:
             - lambda: |-
+                // Pre-allocated static storage block prevents heap fragmentation passes
                 static std::vector<std::string> string_cache;
                 string_cache.clear();
                 string_cache.reserve(factory_count + MAX_LEARNED_PROFILES);
           
-                char buf[128];
+                char buf[128]; // Sized array buffer
                 int factory = static_cast<int>(factory_count);
           
-                // 1. STREAM BUILT-IN DEVICE NAMES DYNAMICALLY ON-THE-FLY
+                // 1. CHIP RECOVERY PATH: Look up factory strings instantly from our global flash array
                 for (int i = 0; i < factory; i++) {
-                  load_profile_to_workspace(i);
-                  
                   std::memset(buf, 0, sizeof(buf));
-                  snprintf(buf, sizeof(buf), "%d  internal  (%s)", 
-                           i, 
-                           active_profile_workspace.profile_name.c_str());
+                  snprintf(buf, sizeof(buf), "%d  internal  (%s)", i, factory_names[i]);
                   string_cache.push_back(std::string(buf));
                 }
           
-                // 2. CHECK PERSISTENT CUSTOM NVS DATA FOR MEMORY SLOTS
+                // 2. NVS PROFILE PATH: Inspect user-learned tracks via localized storage references
                 for (uint16_t k = 0; k < MAX_LEARNED_PROFILES; k++) {
                   size_t custom_idx = factory + k;
                   uint64_t slot_nvs_key = 1948204712ULL + k;
@@ -1152,24 +1155,21 @@ interval:
                   
                   std::memset(buf, 0, sizeof(buf));
                   if (pref_obj.load(&flash_p) && flash_p.total_keys > 0 && std::strlen(flash_p.profile_name) > 0) {
-                    snprintf(buf, sizeof(buf), "%d  custom    (%s)", 
-                             (int)custom_idx, 
-                             flash_p.profile_name);
+                    snprintf(buf, sizeof(buf), "%d  custom    (%s)", (int)custom_idx, flash_p.profile_name);
                   } else {
-                    snprintf(buf, sizeof(buf), "%d  custom    (slot %d)", 
-                             (int)custom_idx, 
-                             (int)k);
+                    snprintf(buf, sizeof(buf), "%d  custom    (slot %d)", (int)custom_idx, (int)k);
                   }
                   string_cache.push_back(std::string(buf));
                 }
           
-                // FIXED: Using localized explicit initialization to completely protect scope access rules
+                // Restore runtime workspace configuration cleanly for the active layout index
                 int current_boot_layout_idx = id(active_remote_layout);
                 load_profile_to_workspace(current_boot_layout_idx);
           
-                static const char* permanent_pointer_matrix[95];
+                // Reconstruct native pointer tables array smoothly
+                static const char* permanent_pointer_matrix[32]; // Fixed size boundary explicit declaration
                 size_t total_items = string_cache.size();
-                if (total_items > 95) total_items = 95;
+                if (total_items > 32) total_items = 32;
           
                 for (size_t i = 0; i < total_items; i++) {
                   permanent_pointer_matrix[i] = string_cache[i].c_str();
@@ -1196,8 +1196,8 @@ interval:
                   id(ir_profile_slot_selector).publish_state(string_cache[0]);
                 }
 
-                // set text sensor value
-                static char dropdown_sync_buf[128];
+                // Push initial text sensor telemetry state cleanly
+                static char dropdown_sync_buf[128]; // Sized array buffer
                 const char* final_kind = (current_boot_layout_idx < factory) ? "internal" : "custom";
                 snprintf(dropdown_sync_buf, sizeof(dropdown_sync_buf), "idx=%d  %s  [%s]",
                          current_boot_layout_idx,
@@ -1209,13 +1209,15 @@ interval:
                 id(selectRepopulated) = true;
                 
             - component.suspend: dynamic_select_hydration_timer
-    
+
+
   - interval: 2.3s # Avalones ---------------
     id: publish_when_profiles_ready
     then:
       - if:
           condition:
-            lambda: 'return !remote_profiles.empty() && id(selectRepopulated);'
+            # Checks flash hydration completeness directly instead of querying the removed proxy structure object
+            lambda: 'return flash_hydration_complete && id(selectRepopulated);'
           then:
             - logger.log: "Profiles fully loaded (factory + custom); publishing selected JSON."
             - script.execute: publish_selected_profile_csv
