@@ -464,33 +464,33 @@ struct FlashCommandRow {
 // --- PROGMEM FACTORY DATA STORAGE TABLES (SINGLE-ITEM-PER-LINE) ---
 
 alignas(4) const FlashCommandRow AWOL_COMMANDS[] {
-  { 0xA7, "power_on",       "power on" },
-  { 0x67, "power_off",      "power off" },
-  { 0x24, "cursor_left",    "left arrow" },
-  { 0xA4, "cursor_right",   "right arrow" },
-  { 0x64, "cursor_up",      "up arrow" },
-  { 0xE4, "cursor_down",    "down arrow" },
-  { 0x14, "cursor_enter",   "ok" },
-  { 0x5A, "settings_menu",  "menu" },
-  { 0x3A, "back",           "back" },
-  { 0xDA, "home",           "home" },
-  { 0x1B, "game_menu",      "profile" },
-  { 0x48, "input",          "input" },
-  { 0xCA, "picture",        "picture mode" },
-  { 0x9B, "focus_manual",   "focus" },
-  { 0x47, "focus_auto",     "live guide" },
-  { 0xBB, "shortcut_1",     "Prime Video" },
-  { 0x3B, "shortcut_2",     "Netflix" },
-  { 0x7B, "shortcut_3",     "Disney" },
-  { 0xDB, "shortcut_4",     "YouTube" },
-  { 0x50, "volume_up",      "volume up" },
-  { 0xD0, "volume_down",    "volume down" },
-  { 0xD8, "mute",           "mute" },
-  { 0xE7, "token_sniff",    "HDMI 1" },
-  { 0x17, "token_clear",    "HDMI 2" },
-  { 0x97, "token_recall",   "HDMI 3" },
-  { 0x07, "macro_record",   "Back + Down" },
-  { 0xC7, "macro_play",     "Back + Home" }
+  { 0x1AE5, "power_on",       "power on" },
+  { 0x19E6, "power_off",      "power off" },
+  { 0xDB24, "cursor_left",    "left arrow" },
+  { 0xDA25, "cursor_right",   "right arrow" },
+  { 0xD926, "cursor_up",      "up arrow" },
+  { 0xD827, "cursor_down",    "down arrow" },
+  { 0xD728, "cursor_enter",   "ok" },
+  { 0xA55A, "settings_menu",  "menu" },
+  { 0xA35C, "back",           "back" },
+  { 0xA45B, "home",           "home" },
+  { 0x23DC, "game_menu",      "Netflix" },
+  { 0xED12, "input",          "input select" },
+  { 0x1EE1, "picture",        "Google Assist" },
+  { 0x25DA, "focus_manual",   "AI Box" },
+  { 0x22DD, "focus_auto",     "Prime Video" },
+  { 0x18E7, "shortcut_1",     "HDMI 1" },
+  { 0x17E8, "shortcut_2",     "HDMI 2" },
+  { 0x16E9, "shortcut_3",     "HDMI 3" },
+  { 0x1DE2, "shortcut_4",     "Live TV" },
+  { 0xF50A, "volume_up",      "vol up" },
+  { 0xF40B, "volume_down",    "vol down" },
+  { 0xE41B, "mute",           "mute" },
+  { 0x21DE, "token_sniff",    "Disney" },
+  { 0xE51A, "token_clear",    "power" },
+  { 0x97,   "token_recall",   "none" },
+  { 0x27D8, "macro_record",   "select profile" },
+  { 0x24DB, "macro_play",     "Youtube" }
 };
 
 alignas(4) const FlashCommandRow BENQ_COMMANDS[] {
@@ -989,9 +989,9 @@ inline void load_profile_to_workspace(int idx) {
     if (idx == 0) {
         active_profile_workspace.profile_name = "AWOL Projector";
         active_profile_workspace.protocol = PROTO_NEC;
-        active_profile_workspace.device_address = 0x7300;
-        active_profile_workspace.cmd_clear_token_arm = 0x17;
-        active_profile_workspace.cmd_clear_token_fire = 0x14;
+        active_profile_workspace.device_address = 0xCE00;
+        active_profile_workspace.cmd_clear_token_arm = 0xE51A;
+        active_profile_workspace.cmd_clear_token_fire = 0xD728;
         flash_array = AWOL_COMMANDS;
         array_size = sizeof(AWOL_COMMANDS) / sizeof(FlashCommandRow);
     }

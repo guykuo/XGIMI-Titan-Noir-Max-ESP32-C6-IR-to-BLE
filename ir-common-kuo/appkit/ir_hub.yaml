@@ -1197,6 +1197,11 @@ script:
                   // Stream factory layout headers temporarily into the single RAM workspace container
                   load_profile_to_workspace(i);
                   
+                  
+                  ESP_LOGD("IR HUB", "Checking against device address 0x%XXXX   command 0x%XXXX", (unsigned int)ir_address, (unsigned int)ir_command);
+
+
+                  
                   if (active_profile_workspace.protocol == incoming_proto && active_profile_workspace.device_address == ir_address) {
                     for (const auto& kv_pair : active_profile_workspace.cmd_codes) {
                       if (kv_pair.first == ir_command) {
