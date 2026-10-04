@@ -487,7 +487,7 @@ alignas(4) const FlashCommandRow AWOL_COMMANDS[] {
   { 0xF40B, "volume_down",    "vol down" },
   { 0xE41B, "mute",           "mute" },
   { 0x21DE, "token_sniff",    "Disney" },
-  { 0xE51A, "token_clear",    "power" },
+  { 0x97,   "token_clear",    "none" },
   { 0x97,   "token_recall",   "none" },
   { 0x27D8, "macro_record",   "select profile" },
   { 0x24DB, "macro_play",     "Youtube" }
