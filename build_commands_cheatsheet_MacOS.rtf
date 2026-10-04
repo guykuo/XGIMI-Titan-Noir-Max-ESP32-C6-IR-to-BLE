@@ -1,69 +1,102 @@
 {\rtf1\ansi\ansicpg1252\cocoartf2907
-\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\froman\fcharset0 Times-Roman;}
-{\colortbl;\red255\green255\blue255;\red253\green139\blue9;\red34\green255\blue6;\red255\green255\blue11;
-\red57\green192\blue38;\red0\green0\blue0;\red255\green255\blue255;\red118\green118\blue118;}
-{\*\expandedcolortbl;;\cssrgb\c100000\c61456\c0;\cssrgb\c0\c100000\c0;\cssrgb\c100000\c100000\c0;
-\cssrgb\c25706\c77963\c19557;\cssrgb\c0\c1\c1;\cssrgb\c100000\c100000\c100000;\cssrgb\c53691\c53693\c53692;}
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fswiss\fcharset0 Helvetica-Bold;\f2\froman\fcharset0 Times-Roman;
+}
+{\colortbl;\red255\green255\blue255;\red253\green139\blue9;\red251\green0\blue255;\red34\green255\blue6;
+\red255\green255\blue11;\red0\green0\blue0;\red253\green139\blue9;\red255\green255\blue255;\red118\green118\blue118;
+}
+{\*\expandedcolortbl;;\cssrgb\c100000\c61456\c0;\cssrgb\c100000\c7248\c100000;\cssrgb\c0\c100000\c0;
+\cssrgb\c100000\c100000\c0;\cssrgb\c0\c1\c1;\cssrgb\c100000\c61456\c0;\cssrgb\c100000\c100000\c100000;\cssrgb\c53691\c53693\c53692;
+}
 \margl1440\margr1440\vieww20480\viewh19860\viewkind0
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
-\f0\fs36 \cf0 \
+\f0\fs36 \cf0 ========================================================================\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f1\b \cf0          Build and Flash IR to Bluetooth Translater Under MacOS Using Terminal\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\b0 \cf0 ========================================================================\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 \
 cd to repository directory wherein YAML resides.\
-\
-create build environment\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf2 cd\cf0  \cf3 <drag your repository folder here and press return>\cf0 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 \
+Create build environment and install python executable \
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 \cf2 python3 -m venv .venv\
 .venv/bin/python -m pip install -r requirements.txt\
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 \cf0 \
+Create secrets.yaml\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf4 .venv/bin/python scripts/create_secrets.py --token "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88"\cf0 \
 \
-create secrets.yaml\
+Compile and flash to ESP32 board\
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
-\cf3 .venv/bin/python scripts/create_secrets.py --token "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88"\cf0 \
-\
-\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
-\cf2 \
-\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
-\cf0 compile and flash to ESP32 board\
-\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
-\cf2 .venv/bin/esphome run \cf4 makemine.yaml\cf0 \
+\cf2 .venv/bin/esphome run \cf5 makemine.yaml\cf0 \
 \
 \
+\
+\
+\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 ========================================================================\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f1\b \cf0                                         To Erase ESP32 Flash Memory in MacOS\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\b0 \cf0 ========================================================================\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 Find device port on Mac. In Terminal type....\
+\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf4 ls /dev/cu.*\cf0 \
 \
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
-\cf5 \CocoaLigature0 ===============================================================\
-\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
-\cf0 \CocoaLigature1 To Erase ESP32 flash memory \
-\
-Find device port on Mac. In Terminal type....\
-\
-\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
-\cf3 ls /dev/cu.*\cf0 \
-\
-\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
-\cf6 \CocoaLigature0 Once device is found in listing, substitute it for text in yellow in one of the below commands.\
-The command you use depends on ESP32 processor (c3, c6, s3, classsic)\cf0 \CocoaLigature1 \
+\cf6 \CocoaLigature0 Once device is found in listing, substitute it for \cf5 port\cf6  in one of the below commands.\
+The command you run depends on ESP32 processor (c3, c6, s3, classsic)\cf0 \CocoaLigature1 \
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 \cf0 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 For ESP32-C3\
 \pard\pardeftab720\partightenfactor0
-\cf0 .venv/bin/esptool --chip esp32\cf3 c3\cf0  --port \cf4 /dev/cu.usbmodem1101\cf0  erase-flash\
+\cf7 .venv/bin/esptool --chip esp32\cf4 c3\cf0  --port \cf5 /dev/cu.usbmodem1101\cf0  \cf7 erase-flash\cf0 \
 \
-.venv/bin/esptool --chip esp32\cf3 c6\cf0  --port \cf4 /dev/cu.usbmodem1101\cf0  erase-flash\
-\
-.venv/bin/esptool --chip esp32\cf3 s3 \cf0 --port \cf4 /dev/cu.usbmodem1101\cf0  erase-flash\
-\
-.venv/bin/esptool --chip esp32 --port \cf4 /dev/cu.usbmodem1101\cf0  erase-flash\
-\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 For ESP32-C6\
+\pard\pardeftab720\partightenfactor0
+\cf2 .venv/bin/esptool --chip esp32\cf4 c6\cf0  --port \cf5 /dev/cu.usbmodem1101\cf0  \cf2 erase-flash\cf0 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 For ESP32-S3\
+\pard\pardeftab720\partightenfactor0
+\cf2 .venv/bin/esptool --chip esp32\cf4 s3 \cf0 --port \cf5 /dev/cu.usbmodem1101\cf0  \cf2 erase-flash\cf0 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 For Classic ESP32\
+\pard\pardeftab720\partightenfactor0
+\cf2 .venv/bin/esptool --chip esp32\cf0  --port \cf5 /dev/cu.usbmodem1101\cf0  \cf2 erase-flash\cf0 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \
 \pard\pardeftab720\partightenfactor0
 
-\f1\fs24 \cf7 \expnd0\expndtw0\kerning0
+\f2\fs24 \cf8 \expnd0\expndtw0\kerning0
 .venv/bin/esptool --chip esp32 --port /dev/cu.usbmodem1101 erase-flash
 \f0\fs36 \cf0 \kerning1\expnd0\expndtw0 \
 Execute that command in terminal to erase ESP32 board.\
 \
-\pard\pardeftab720\partightenfactor0
-\cf8 NB: On some boards like classic ESP32, you may need to put board into flashing mode. Hold down the physical "BOOT" button and continue holding it while clicking the "RESET" button. After clicking "RESET"  release "BOOT".\cf0 \
 \
-\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
-\cf5 \CocoaLigature0 ===============================================================\
+\
+\pard\pardeftab720\partightenfactor0
+\cf9 NB: On some boards like classic ESP32, you may need to put board into flashing mode. \
+Hold down the physical "BOOT" button and continue holding it while clicking the "RESET" button. \
+After clicking "RESET"  release "BOOT".\cf0 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 ========================================================================\
 }
