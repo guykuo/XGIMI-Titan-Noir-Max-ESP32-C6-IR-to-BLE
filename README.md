@@ -83,7 +83,7 @@ These "factory" IR profiles have known working IR code sets ...
 | **sony-VPL-XW600ES** | Sony VPL-XW600ES projector |
 | **sony-XBR-77A9G** | Sony XBR-77A9G TV |
 | **tivo-roamio-TCD846500** | TiVo Roamio |
-| **AWOL-projector** | Valerion using Hisense IR codes. WIP and may have incomplete or incorrect IR mapping |
+| **AWOL-projector** | AWOL Aetherion Max |
 | **Panasonic** | Panasonic projectors. WIP IR mapping |
 
 
@@ -410,8 +410,7 @@ ESP32 board is set by uncommenting one and only one line. Here it is *hardware-c
 
 substitutions:
   # 1 ======= ble_remote_name, Bluetooth Name for your IR remote ===========================
-
-  ble_remote_name: "Xgimi IR Kuo"  # (20 char max. No special characters. No underscore) 
+  ble_remote_name: "IR Xgimi Kuo"  # (20 char max. No special characters. No underscore) 
  
   # may optionally change these other three names 
   ssid_name:     ${ble_remote_name} # Name of AP wifi network
@@ -421,8 +420,8 @@ substitutions:
 
 
   # 2 ======= Default IR profile. Uncomment one (and only one) ============================
-  
-  #def_profile: "0"  # AWOL-projector (untested, Hisense IR codes)
+
+  #def_profile: "0"  # AWOL vision aetherion max
   #def_profile: "1"  # benq-w5800
   def_profile: "2"  # epson-pro-cinema-LS12000
   #def_profile: "3"  # hisense-50u6g
@@ -441,22 +440,21 @@ substitutions:
 packages: 
   # 3 =======  ESP32 board, Uncomment one (and only one) to specify board ===================
   
-  hardware_package: !include ir-common-kuo/hardware-esp32-c3-0.42-OLED.yaml      # supports built-in 0.42 inch OLED display
-  #hardware_package: !include ir-common-kuo/hardware-esp32-c6-wroom-1.yaml        # supports external 0.9 inch i2c OLED display
+  hardware_package: !include ir-common-kuo/hardware-esp32-c3-0.42-OLED.yaml         # supports built-in 0.42 inch OLED display
+  #hardware_package: !include ir-common-kuo/hardware-esp32-c6-wroom-1.yaml           # supports external 0.9 inch i2c OLED display
+  #hardware_package: !include ir-common-kuo/hardware-ideaspark-esp32-classic-OLED.yaml
   #hardware_package: !include ir-common-kuo/hardware-lafvintech-c6-lcd-1.47.yaml
   #hardware_package: !include ir-common-kuo/hardware-m5stack-pico-d4-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
   #hardware_package: !include ir-common-kuo/hardware-hosyond-s3-lcd-3.5-touch.yaml
   #hardware_package: !include ir-common-kuo/hardware-waveshare-c6-lcd-1.47.yaml
   #hardware_package: !include ir-common-kuo/hardware-waveshare-s3-touch-lcd-2.8.yaml
-  #hardware_package: !include ir-common-kuo/hardware-waveshare-s3-lcd-1.47B.yaml # this board requires IR sensor WITHOUT LED like VS1838B
-                                                                                 # Otherwise 3Vcc load causes crash durng boot.
-                                                                                
+  #hardware_package: !include ir-common-kuo/hardware-waveshare-s3-lcd-1.47B.yaml     # requires IR sensor WITHOUT LED like VS1838B
+  #hardware_package: !include ir-common-kuo/hardware-heltec-hiletgo-s3-0.96-OLED-v3.yaml   # Needs specialcable for serial logging
+
   #hardware_package: !include ir-common-kuo/HARDWARE.YAML # Or uncomment this line and replace HARDWARE.YAML with your file.
 
 
-
 # === END Configuration Options KUO =========================================================================
-
 
 ```  
 ### 5a Build and Flash the Firmware
@@ -521,6 +519,10 @@ A light will come on to indicate sniffing mode. Sniffing remains active for 20 s
 
 Three buttons on your remote are assigned to control wake token. The actual buttons depend on which IR profile you are using.
 |IR Profile | Token Action | Button |
+| ---- | ---- | ---- |
+| AWOL Aetherion | Sniff | Disney |
+| AWOL Aetherion | Clear | -none- |
+| AWOL Aetherion | Recall | -none- |
 | ---- | ---- | ---- |
 | BenQ W5800 | Sniff | info |
 | BenQ W5800 | Clear | invert |
