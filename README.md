@@ -989,7 +989,10 @@ This IRmap also works with other Epson projectors such as the 5050UB
 
 
 # Recent Changes:
-WIP Macro record and playback
+Macro record and playback
+Bluetooth raw code support (BKEY, BCON) via CSV download/upload
+AWOL Aethrion profile verified 
+
 
 #Webserver
 This project includes a webserver which can be reached at your ESP32 board's IP address after it has been provisioned onto your local network via the usual Home Assistant device captive AP setup.
