@@ -56,7 +56,7 @@ inline bool flash_hydration_complete = false;
 #ifdef ENABLE_EXTRA_BUTTONS
   inline constexpr uint32_t CURRENT_PROFILE_VERSION = 1024; // Power user footprint track
 #else
-  inline constexpr uint32_t CURRENT_PROFILE_VERSION = 66; // <-- increment this change in NVRAM storage structures
+  inline constexpr uint32_t CURRENT_PROFILE_VERSION = 68; // <-- increment this change in NVRAM storage structures
 #endif
 
 
@@ -277,7 +277,7 @@ inline uint8_t get_bound_macro_slot(const char* current_action_name) {
 
 
 typedef char action_stringType[MAX_ACTION_STRING_LEN]; // Field 2: Visible Xgimi Token or RKEY RCON (e.g., "game_menu")
-typedef char button_nameType[32];   // Field 3: name of button on physical remote (e.g., "Cinema Master")
+typedef char button_nameType[24];   // Fits up to 23 characters + 1 null terminator
 typedef char profile_nameType[32];
 typedef char ComponentBufferStrType[128];
 
@@ -322,7 +322,7 @@ struct FlashStoredProfile {
   uint32_t cmd_clear_token_arm;  
   uint32_t cmd_clear_token_fire; 
   uint16_t total_keys;
-  FlashStoredKey keys[80];       // Centralized configuration ceiling cap
+  FlashStoredKey keys[55];       // Centralized configuration ceiling cap
 };
 
 
@@ -835,8 +835,8 @@ alignas(4) const FlashCommandRow SONY_PROJ_COMMANDS[] {
   { 0x01A2A, "home",          "input HDMI 2" },
   { 0x04BE4, "home",          "position 1.85" },
   { 0x84BE4, "home",          "position 2.35" },
-  { 0xC4BE4, "home",          "position Custom 2" },
-  { 0x24BE4, "home",          "position Custom 3" },
+  { 0xC4BE4, "home",          "pos custom 2" },
+  { 0x24BE4, "home",          "pos custom 3" },
   { 0x32B54, "home",          "reality creation" },
   { 0xAAB54, "home",          "REF" },
   { 0x0622A, "home",          "sharpness down" },
@@ -849,7 +849,7 @@ alignas(4) const FlashCommandRow SONY_PROJ_COMMANDS[] {
   { 0x82BE4, "home",          "wide mode normal" },
   { 0x7CBE4, "home",          "wide mode WZoom" },
   { 0xC2BE4, "home",          "wide mode zoom" },
-  { 0x22BE4, "home",          "wide mode anamorphic zoom" }
+  { 0x22BE4, "home",          "wide mode anamorph" }
 };
 
 alignas(4) const FlashCommandRow SONY_XBR_COMMANDS[] {

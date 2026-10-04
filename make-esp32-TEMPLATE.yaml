@@ -71,10 +71,25 @@ external_components:
 
 esp32:
   partitions: ir-common-kuo/appkit/partitions.csv  #larger app partition needed 
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_BT_BLUEDROID_ENABLED: "y"
+      CONFIG_BT_NIMBLE_ENABLED: "n"
+      CONFIG_BT_CLASSIC_ENABLED: "n"
+      
+      # --- Restores Core Handshake Functions for Xgimi Authentications ---
+      CONFIG_BT_BLE_SMP_ENABLE: "y"
+      
+      # --- Deep Resource Table Trimming (Highly Effective for Heap Reclaims) ---
+      CONFIG_BT_BLE_EST_LINK_CONN_NUM: "1"      # Cuts max simultaneous connections to 1
+      CONFIG_BT_BLE_MAX_ACT_PARAMS: "3"         # Drops parallel background scan parameter caches
+      CONFIG_BT_ACL_CONNECTIONS: "1"            # Restricts master hardware link arrays to 1 profile
+      CONFIG_GATTS_NOTIFY_QUEUE_NUM: "2"        # Shrinks internal BLE notification queue block buffers
 
 logger:
- # level: DEBUG
-  level: INFO
+ level: DEBUG
+  # level: INFO
 
 
 wifi:
@@ -338,9 +353,9 @@ globals:
     initial_value: '{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}'
                  
   - id: sniffer_candidate_token # used for token sniffing
-    type: std::string
+    type: std::array<char, 64>
     restore_value: no
-    initial_value: '"None"'
+    initial_value: '{"None"}' # Initializes raw array indices cleanly with zero heap impact
 
   - id: sniffer_hit_counter # used for token sniffing
     type: int
@@ -682,11 +697,11 @@ script:
   - id: sniffing_sequence
     mode: restart
     then:
-      - logger.log: "Preparing Bluedroid token sniffing..."
+      - logger.log: "Preparing NimBLE token sniffing..."
 
       # Prep globals for sniffing
       - lambda: |-
-          id(sniffer_candidate_token) = "None";
+          std::strcpy(id(sniffer_candidate_token).data(), "None");
           id(sniffer_hit_counter) = 0;
 
       - script.execute:
@@ -725,15 +740,15 @@ script:
 
                               if (offset < 30) continue;
                               
-                              // Zero-allocation masking comparison using basic pointer logic
+                              // Zero-allocation masking comparison using safe C string utilities
                               bool is_match = false;
-                              if (id(sniffer_candidate_token) != "None") {
-                                  std::string cand_str = id(sniffer_candidate_token);
-                                  if (cand_str.length() == offset) {
+                              if (std::strcmp(id(sniffer_candidate_token).data(), "None") != 0) {
+                                  size_t cand_len = std::strlen(id(sniffer_candidate_token).data());
+                                  if (cand_len == offset) {
                                       is_match = true;
                                       for(size_t m = 0; m < offset; m++) {
                                           if (offset >= 4 && m >= (offset - 4) && m < (offset - 2)) continue;
-                                          if (cand_str[m] != token_hex[m]) {
+                                          if (id(sniffer_candidate_token).at(m) != token_hex[m]) {
                                               is_match = false;
                                               break;
                                           }
@@ -798,7 +813,9 @@ script:
                                       }
                                   }
                               } else {
-                                  id(sniffer_candidate_token) = std::string(token_hex);
+                                  std::strncpy(id(sniffer_candidate_token).data(), token_hex, id(sniffer_candidate_token).size() - 1);
+                                  id(sniffer_candidate_token).at(id(sniffer_candidate_token).size() - 1) = '\0';
+                                  
                                   id(sniffer_hit_counter) = 1;
                                   ESP_LOGI("xgimi_bluedroid", "New unique signature target: %s", token_hex);
                               }

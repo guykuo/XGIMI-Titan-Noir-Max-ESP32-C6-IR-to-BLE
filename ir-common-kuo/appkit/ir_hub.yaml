@@ -636,10 +636,10 @@ script:
           uint64_t macro_nvs_key = 384720194ULL + shared_slot_id;
           auto pref_obj = esphome::global_preferences->make_preference<UniversalFlashMacro>(macro_nvs_key);
           
-          // Move this buffer to global tracking to avoid static parsing failures inside the condition block
-          static UniversalFlashMacro playback_buffer;
+          // Cache the target macro data directly into your global RAM buffer once
+          pref_obj.load(&active_recording_buffer);
           
-          if (!pref_obj.load(&playback_buffer) || playback_buffer.struct_version != CURRENT_MACRO_VERSION || playback_buffer.total_steps == 0) {
+          if (active_recording_buffer.struct_version != CURRENT_MACRO_VERSION || active_recording_buffer.total_steps == 0) {
             ESP_LOGW("MACRO_PLAY", "Playback Aborted: Slot %d is empty, corrupt, or structural version mismatch.", shared_slot_id);
             
             id(macro_playback_active) = false;
@@ -648,8 +648,8 @@ script:
             id(showing_special_expiration_timer).execute(); 
             return;
           }
-          
-          ESP_LOGI("MACRO_PLAY", "Starting Asynchronous Playback for Slot %d (%d steps cached)...", shared_slot_id, playback_buffer.total_steps);
+
+          ESP_LOGI("MACRO_PLAY", "Starting Asynchronous Playback for Slot %d (%d steps cached)...", shared_slot_id, active_recording_buffer.total_steps);          
           id(showing_special_info) = true;
           id(display_show)->execute(false, "Macro Playing...", std::to_string(shared_slot_id), "Please wait...");
 
@@ -658,43 +658,31 @@ script:
       - while:
           condition:
             lambda: |-
-              // Read the count directly out of the validated RAM structure instead of re-hitting flash every 40ms loop cycle
-              uint64_t macro_nvs_key = 384720194ULL + shared_slot_id;
-              auto pref_obj = esphome::global_preferences->make_preference<UniversalFlashMacro>(macro_nvs_key);
-              static UniversalFlashMacro playback_buffer;
-              pref_obj.load(&playback_buffer);
-              
-              if (playback_buffer.total_steps > MAX_MACRO_STEPS) return false;
-              return (id(macro_step_counter) < playback_buffer.total_steps);
+              // Read using a single global tracking handle instead of a dynamic preference object loop
+              extern UniversalFlashMacro active_recording_buffer; 
+              return (id(macro_step_counter) < active_recording_buffer.total_steps);
           then:
             # ============================================================
             # STEP A: TRUE-TO-LIFE PACING ENGINE
             # ============================================================
             - lambda: |-
-                uint64_t macro_nvs_key = 384720194ULL + shared_slot_id;
-                auto pref_obj = esphome::global_preferences->make_preference<UniversalFlashMacro>(macro_nvs_key);
-                static UniversalFlashMacro playback_buffer;
-                pref_obj.load(&playback_buffer);
-                
+                extern UniversalFlashMacro active_recording_buffer;
                 int idx = id(macro_step_counter);
-                uint32_t raw_delay = playback_buffer.steps[idx].delay_ms;
+                uint32_t raw_delay = active_recording_buffer.steps[idx].delay_ms;
 
                 id(macro_last_event_time) = raw_delay;
                 ESP_LOGD("MACRO_PLAY", "   -> Step [%d]: Pacing delay spacing: %dms", (int)idx, (int)raw_delay);
 
             - delay: !lambda "return id(macro_last_event_time);"
 
+
             # ============================================================
             # STEP B: UNIFIED HYBRID DRIVER INJECTION PIPELINE (PLAYBACK)
             # ============================================================
             - lambda: |-
-                uint64_t macro_nvs_key = 384720194ULL + shared_slot_id;
-                auto pref_obj = esphome::global_preferences->make_preference<UniversalFlashMacro>(macro_nvs_key);
-                static UniversalFlashMacro playback_buffer;
-                pref_obj.load(&playback_buffer);
-                
+                extern UniversalFlashMacro active_recording_buffer;
                 int idx = id(macro_step_counter);
-                const auto& step = playback_buffer.steps[idx];
+                const auto& step = active_recording_buffer.steps[idx];
                 std::string payload_str(step.action_string);
 
                 uint8_t resolved_type = 2;
@@ -1283,6 +1271,7 @@ script:
                 
                 // Inspecting the captured codes inside your local workspace arrays
                 // to determine which profile slot to store within
+                // number of option selection buttons here must match with MAX_LEARNED_PROFILES 
                 if (ir_command == id(session_captured_codes).at(6))       selected_slot = 0; // enter
                 else if (ir_command == id(session_captured_codes).at(4))  selected_slot = 1; // up
                 else if (ir_command == id(session_captured_codes).at(5))  selected_slot = 2; // down
