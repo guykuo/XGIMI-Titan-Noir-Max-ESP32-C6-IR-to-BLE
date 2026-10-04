@@ -46,7 +46,7 @@ packages:
   #hardware_package: !include ir-common-kuo/hardware-waveshare-c6-lcd-1.47.yaml
   #hardware_package: !include ir-common-kuo/hardware-waveshare-s3-touch-lcd-2.8.yaml
   #hardware_package: !include ir-common-kuo/hardware-waveshare-s3-lcd-1.47B.yaml     # requires IR sensor WITHOUT LED like VS1838B
-  #hardware_package: !include ir-common-kuo/hardware-heltec-hiletgo-s3-0.96-OLED-v3.yaml   # Needs specialcable for serial logging
+  #hardware_package: !include ir-common-kuo/hardware-heltec-hiletgo-s3-0.96-OLED-v3.yaml   # Needs special cable for serial logging
 
 
   #hardware_package: !include ir-common-kuo/HARDWARE.YAML # Or uncomment this line and replace HARDWARE.YAML with your file.
@@ -69,27 +69,9 @@ external_components:
     path: components
   components: [esp32_ble_server, xgimi_remote]
 
-esp32:
-  partitions: ir-common-kuo/appkit/partitions.csv  #larger app partition needed 
-  framework:
-    type: esp-idf
-    sdkconfig_options:
-      CONFIG_BT_BLUEDROID_ENABLED: "y"
-      CONFIG_BT_NIMBLE_ENABLED: "n"
-      CONFIG_BT_CLASSIC_ENABLED: "n"
-      
-      # --- Restores Core Handshake Functions for Xgimi Authentications ---
-      CONFIG_BT_BLE_SMP_ENABLE: "y"
-      
-      # --- Deep Resource Table Trimming (Highly Effective for Heap Reclaims) ---
-      CONFIG_BT_BLE_EST_LINK_CONN_NUM: "1"      # Cuts max simultaneous connections to 1
-      CONFIG_BT_BLE_MAX_ACT_PARAMS: "3"         # Drops parallel background scan parameter caches
-      CONFIG_BT_ACL_CONNECTIONS: "1"            # Restricts master hardware link arrays to 1 profile
-      CONFIG_GATTS_NOTIFY_QUEUE_NUM: "2"        # Shrinks internal BLE notification queue block buffers
-
 logger:
- level: DEBUG
-  # level: INFO
+ # level: DEBUG
+  level: INFO
 
 
 wifi:
@@ -111,6 +93,25 @@ wifi:
                          current_ip);
 
 captive_portal:
+
+esp32:
+  partitions: ir-common-kuo/appkit/partitions.csv
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      # ... Keep your existing lines intact ...
+      CONFIG_BT_BLE_EST_LINK_CONN_NUM: "1"
+      CONFIG_BT_ACL_CONNECTIONS: "1"
+      
+      # ====== NEW HIGH-UTILITY MEMORY RECLAIMS ======
+      CONFIG_BT_ALLOCATION_FROM_SPIRAM_FIRST: "n"  # Forces internal ultra-fast RAM mapping
+      CONFIG_BT_BLE_DYNAMIC_ENV_MEMORY: "y"       # Dynamically releases pairing context blocks to heap
+      CONFIG_BT_SMP_ENABLE: "y"                    # Required for your secure key exchange pairs
+      CONFIG_BT_BLE_SMP_ENABLE: "y"                # Keep this active for Xgimi handshake lines
+      
+      # ====== REMOVE ALL MULTI-DEVICE OVERHEAD ======
+      CONFIG_BT_BLE_MAX_ACT_PARAMS: "1"            # Drops background parallel device tracking down to 1
+
       
 # ======================================
 api:

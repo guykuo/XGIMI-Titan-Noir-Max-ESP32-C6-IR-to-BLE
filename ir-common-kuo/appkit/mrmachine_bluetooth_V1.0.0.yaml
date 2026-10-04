@@ -13,7 +13,7 @@ esp32_ble:
   min_key_size: 7
   max_key_size: 16
   max_connections: 1
-  
+    
 esp32_ble_server:
   id: esp32c6_ble_server
   appearance: 0x0180
@@ -29,12 +29,12 @@ esp32_ble_server:
         - uuid: 0x2A24
           read: true
           value: "${ble_remote_name}" # remote name
-        - uuid: 0x2A25
-          read: true
-          value: "20260205"
-        - uuid: 0x2A26
-          read: true
-          value: "V1.0.0"
+        # - uuid: 0x2A25
+        #   read: true
+        #   value: "20260205"
+        # - uuid: 0x2A26
+        #   read: true
+        #   value: "V1.0.0"
         - uuid: 0x2A50
           read: true
           # USB VID source, VID 000D, PID 3843, version 0003 (little-endian).
