@@ -6,7 +6,7 @@
 
 Titan Noir projectors lack IR control capability and only accept bluetooth signals. This project works around that limitation by translating infrared signals into bluetooth commands the Titan Noir projectors accept. Typical use is to add an Xgimi Titan Noir to a universal IR remote. Depending on which IR code set you choose, you can add as a completely new projector or have the XTN projector masquerade as an existing projector already in your remote. This project runs on low cost ESP32 board.
 
-## NOTICE -- ESP32 board must be completely erased once before use with latest version of project. This is needed to allow repartitioning of board and clearing out NVRAM. The project is too larage to safely fit without increasing APP and NVRAM allocation. This will also preclude Over The Air updates --
+# NOTICE -- ESP32 board must be completely erased once before use with latest version of project. This is needed to allow repartitioning of board and clearing out NVRAM. The project is too larage to safely fit without increasing APP and NVRAM allocation. This will also preclude Over The Air updates --
 
 ## Requirements
 
@@ -22,7 +22,7 @@ Titan Noir projectors lack IR control capability and only accept bluetooth signa
     
 *   Data capable USB cable
 
-This fork concentrates on IR translation to Xgimi Titan Noir bluetooth. The parent fork used Home Assistant HID connectivity which is not documented here. However, _Home Assistant_ integration capability has been preserved. See mrmachine's original github for _Home Assistant_ related information.
+This project implements IR translation to Xgimi Titan Noir bluetooth. The parent fork used Home Assistant HID connectivity, but Home Assistant is _not_ supported in this project. See mrmachine's original github if you need _Home Assistant_ usage information.
 
 Turning on the Xgimi Titan Noir projector requires use of the original Xgimi remote wake token. This translator can acquire that token by sniffing your original remote with the ESP32. 
 
@@ -577,9 +577,7 @@ In case none of the "factory" profiles are suitable for you system, you can also
 <br><br>
   OK = memory 0<br>
   Up = memory 1<br>
-  Rt = memory 2<br>
-  Down = memory 3<br>
-  Left = memory 4<br>
+  Down = memory 2<br>
 
 ### Learning IR Profile without Display or Log
 It is possible, but more prone to error, to press the 27 button sequence of learing an IR profile. LED flashes help users keep track of where they are in sequence.
@@ -590,13 +588,25 @@ Diagram of button sequence and LED flashes. You can interpet the flashes as happ
 <img width="700" height="925" alt="IR learn profile LED flash sequence" src="https://github.com/user-attachments/assets/f1b95d5b-0937-49a0-b9fc-011d91130de1" />
 
 
-
 ## 8\. Add Your ESP32 Remote as to Projector as Additional Bluetooth Device
 Turn on your projector with its original remote control. Within settings add your new IR translator as another Bluetooth remote.
 <br><br>
 Keep the original remote paired as well.
 <br>
 <br>
+
+
+## 9\. Macro Recording and Playback
+You can record up to 9 macros (sequences of button presses and holds) for later playback. Unlike recording and playback on most universal remotes that use a fixed inter-button delay during playback, this IR project records your cadence and attempts to play back actions with approximately the same speed and pauses you make during recording. This lets you naturally pace macro sequencess to match projector response speed. If you pause to let the projector open a menu or complete an action, the playback will simiarly pause.
+
+To record a macro, press the "macro_record" button of your remote once. Then, press your sequence of buttons. Once done recording, press the "macro_record" button ONCE.
+The next button you press will be assigned the just recorded macro. The buttons that can accept a macro are the D-Pad buttons (up, down, left, right, enter) and the four shortcut buttons. Macros can be up to 16 buttons presses in length
+
+To play back a macro, press the "macro_play" button of your remote once. Then, press the button to which your macro was previously assigned. You macro sequence will play back.
+
+To erase all macros, _while you have macro recording mode on_, press and hold the BOOT button at least five seconds. 
+
+
 
 
 # Xgimi Command and IR Remote Button Tables
