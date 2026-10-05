@@ -18,6 +18,7 @@
 #include "esp_ota_ops.h"
 #include "esp_image_format.h"
 #include <unordered_set>
+#include <string_view>
 
 #define STRINGIFY_MACRO(x) #x
 #define TOSTRING_MACRO(x) STRINGIFY_MACRO(x)
@@ -1247,7 +1248,7 @@ inline std::string generate_profile_csv(int idx) {
 
 
 // ====================================================================
-// 10. HIGH-EFFICIENCY ZERO-ALLOCATION COLD-STREAM CSV PARSING IMPORT ENGINE
+// ZERO-HEAP IN-PLACE TEXT TOKENIZATION CSV PROFILE PARSING ENGINE
 // ====================================================================
 inline bool import_profile_from_csv(const std::string& csv_data) {
     if (csv_data.empty()) {
@@ -1255,58 +1256,81 @@ inline bool import_profile_from_csv(const std::string& csv_data) {
         return false;
     }
 
-    std::stringstream ss(csv_data);
-    std::string line;
     bool meta_parsed = false;
     size_t keys_imported = 0;
 
-    // Clear runtime dynamic vector memory structures before starting hydration pass
     active_profile_workspace.cmd_codes.clear();
 
-    while (std::getline(ss, line)) {
-        // Strip trailing carriage returns if data originated from a Windows host file
-        if (!line.empty() && line.back() == '\r') {
-            line.pop_back();
-        }
-        if (line.empty()) continue;
+    size_t line_start = 0;
+    while (line_start < csv_data.size()) {
+        size_t line_end = csv_data.find('\n', line_start);
+        if (line_end == std::string::npos) line_end = csv_data.size();
 
-        std::stringstream line_ss(line);
-        std::string cell_type;
-        std::getline(line_ss, cell_type, ',');
+        std::string_view line_view(&csv_data[line_start], line_end - line_start);
+        line_start = line_end + 1;
+
+        if (!line_view.empty() && line_view.back() == '\r') {
+            line_view.remove_suffix(1);
+        }
+        if (line_view.empty()) continue;
+
+        // In-place zero-allocation token extractor
+        auto get_next_cell = [](std::string_view& src) -> std::string_view {
+            if (src.empty()) return std::string_view{};
+            size_t comma_pos = src.find(',');
+            if (comma_pos == std::string::npos) {
+                std::string_view ret = src;
+                src = std::string_view{};
+                return ret;
+            }
+            std::string_view ret = src.substr(0, comma_pos);
+            src.remove_prefix(comma_pos + 1);
+            return ret;
+        };
+
+        std::string_view cell_type = get_next_cell(line_view);
 
         // -----------------------------------------------------------
         // METADATA CONFIGURATION LINE PASS
         // -----------------------------------------------------------
         if (cell_type == "META") {
-            std::string idx_str, name_str, proto_str, addr_str, arm_str, fire_str;
-            
-            std::getline(line_ss, idx_str, ','); // Read past the index string cell (ignored)
-            std::getline(line_ss, name_str, ',');
-            std::getline(line_ss, proto_str, ',');
-            std::getline(line_ss, addr_str, ',');
-            std::getline(line_ss, arm_str, ',');
-            std::getline(line_ss, fire_str, ',');
+            get_next_cell(line_view); // Discard incoming structural column indexing cell
+            std::string_view name_view  = get_next_cell(line_view);
+            std::string_view proto_view = get_next_cell(line_view);
+            std::string_view addr_view  = get_next_cell(line_view);
+            std::string_view arm_view   = get_next_cell(line_view);
+            std::string_view fire_view  = get_next_cell(line_view);
 
-            active_profile_workspace.profile_name = name_str;
+            // Assign profile title pointer content directly
+            active_profile_workspace.profile_name.assign(name_view.data(), name_view.size());
 
-            // Resolve human-readable protocol string back into integer definitions
-            if (proto_str == "NEC")        active_profile_workspace.protocol = PROTO_NEC;
-            else if (proto_str == "JVC")   active_profile_workspace.protocol = PROTO_JVC;
-            else if (proto_str == "SONY")  active_profile_workspace.protocol = PROTO_SONY;
-            else if (proto_str == "LG")    active_profile_workspace.protocol = PROTO_LG;
-            else if (proto_str == "PANASONIC") active_profile_workspace.protocol = PROTO_PANASONIC;
-            else if (proto_str == "RC5")   active_profile_workspace.protocol = PROTO_RC5;
-            else if (proto_str == "RC6")   active_profile_workspace.protocol = PROTO_RC6;
+            // Resolve raw slices against identity mappings safely
+            if (proto_view == "NEC")        active_profile_workspace.protocol = PROTO_NEC;
+            else if (proto_view == "JVC")   active_profile_workspace.protocol = PROTO_JVC;
+            else if (proto_view == "SONY")  active_profile_workspace.protocol = PROTO_SONY;
+            else if (proto_view == "LG")    active_profile_workspace.protocol = PROTO_LG;
+            else if (proto_view == "PANASONIC") active_profile_workspace.protocol = PROTO_PANASONIC;
+            else if (proto_view == "RC5")   active_profile_workspace.protocol = PROTO_RC5;
+            else if (proto_view == "RC6")   active_profile_workspace.protocol = PROTO_RC6;
             else                           active_profile_workspace.protocol = PROTO_UNKNOWN;
 
-            // Extract core configuration hex properties from raw text streams
-            active_profile_workspace.device_address = std::strtoul(addr_str.c_str(), nullptr, 16);
-            active_profile_workspace.cmd_clear_token_arm = std::strtoul(arm_str.c_str(), nullptr, 16);
-            active_profile_workspace.cmd_clear_token_fire = std::strtoul(fire_str.c_str(), nullptr, 16);
+            // Zero heap dynamic memory cell extraction parsing conversions
+            char tmp[32] = {0};
+            
+            std::memcpy(tmp, addr_view.data(), std::min(addr_view.size(), sizeof(tmp) - 1));
+            active_profile_workspace.device_address = std::strtoul(tmp, nullptr, 16);
+
+            std::memset(tmp, 0, sizeof(tmp));
+            std::memcpy(tmp, arm_view.data(), std::min(arm_view.size(), sizeof(tmp) - 1));
+            active_profile_workspace.cmd_clear_token_arm = std::strtoul(tmp, nullptr, 16);
+
+            std::memset(tmp, 0, sizeof(tmp));
+            std::memcpy(tmp, fire_view.data(), std::min(fire_view.size(), sizeof(tmp) - 1));
+            active_profile_workspace.cmd_clear_token_fire = std::strtoul(tmp, nullptr, 16);
 
             meta_parsed = true;
-            ESP_LOGI("CSV Import", "Metadata locked. Profile: %s, Protocol: %s, Address: 0x%X",
-                     name_str.c_str(), proto_str.c_str(), (unsigned int)active_profile_workspace.device_address);
+            ESP_LOGI("CSV Import", "Metadata locked. Profile: %s, Address: 0x%X",
+                     active_profile_workspace.profile_name.c_str(), (unsigned int)active_profile_workspace.device_address);
         }
         
         // -----------------------------------------------------------
@@ -1318,15 +1342,22 @@ inline bool import_profile_from_csv(const std::string& csv_data) {
                 return false;
             }
 
-            std::string code_str, token_str, label_str;
-            std::getline(line_ss, code_str, ',');
-            std::getline(line_ss, token_str, ',');
-            std::getline(line_ss, label_str, ',');
+            std::string_view code_view  = get_next_cell(line_view);
+            std::string_view token_view = get_next_cell(line_view);
+            std::string_view label_view = get_next_cell(line_view);
 
-            uint32_t command_code = std::strtoul(code_str.c_str(), nullptr, 16);
+            char tmp_code[32] = {0};
+            std::memcpy(tmp_code, code_view.data(), std::min(code_view.size(), sizeof(tmp_code) - 1));
+            uint32_t command_code = std::strtoul(tmp_code, nullptr, 16);
             
-            // Build and load directly using your lightweight row constructor function
-            add_cmd(command_code, token_str.c_str(), label_str.c_str());
+            // Build stack boundaries for string inputs to avoid trailing trash
+            char token_buf[32] = {0};
+            char label_buf[32] = {0};
+            std::memcpy(token_buf, token_view.data(), std::min(token_view.size(), sizeof(token_buf) - 1));
+            std::memcpy(label_buf, label_view.data(), std::min(label_view.size(), sizeof(label_buf) - 1));
+
+            // Load directly into runtime RAM vectors via your lightweight constructor
+            add_cmd(command_code, token_buf, label_buf);
             keys_imported++;
         }
     }
@@ -1337,7 +1368,7 @@ inline bool import_profile_from_csv(const std::string& csv_data) {
     }
 
     active_profile_workspace.cmd_codes.shrink_to_fit();
-    ESP_LOGI("CSV Import", "Successfully recovered %d layout items via cold-stream parsing.", (int)keys_imported);
+    ESP_LOGI("CSV Import", "Successfully recovered %d layout items via cold-stream string_view parsing.", (int)keys_imported);
     return true;
 }
 
@@ -1369,10 +1400,40 @@ static const char dashboard_html[] PROGMEM = R"rawliteral(
   .btn{padding:10px;background:#238636;color:#fff;border:2px;border-radius:6px;font-weight:bold;text-align:center;text-decoration:none;cursor:pointer;font-size:var(--fs-md)}
   .btn.sec{background:#21262d;border:2px solid #30363d;color:#c9d1d9}
   .btn:hover{opacity:0.9}
-  .stat-list{display:flex;flex-direction:column;gap:10px;margin-top:3px}
-  .stat-row{display:flex;justify-content:space-between;align-items:center;background:#0d1117;padding:12px 16px;border-radius:6px;border:1px solid #21262d}
-  .stat-lbl{color:#8b949e;font-size:var(--fs-sm);font-weight:600;text-transform:uppercase}
-  .stat-val{font-family:monospace;font-weight:bold;color:#ff7b72;font-size:var(--fs-md)}
+  
+  /* Unified single enclosing container for diagnostics */
+  .stat-grid-box {
+    background: #0d1117;
+    border: 1px solid #21262d;
+    border-radius: 6px;
+    padding: 16px;
+    margin-top: 3px;
+  }
+
+  /* Two-column layout grid */
+  .diag-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    column-gap: 24px;
+    row-gap: 12px;
+  }
+
+  /* Individual item containing a label and right-justified datum */
+  .diag-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #21262d;
+    padding-bottom: 6px;
+  }
+
+  /* Structural adjustment to handle the multi-value row layout cleanly */
+  .diag-item.span-2 {
+    grid-column: span 2;
+  }
+
+  .stat-lbl{color:#8b949e;font-size:var(--fs-sm);font-weight:600;text-transform:uppercase;margin-right:8px;white-space:nowrap}
+  .stat-val{font-family:monospace;font-weight:bold;color:#ff7b72;font-size:var(--fs-md);text-align:right}
 </style>
 <script>
   function updateActionUrls(){
@@ -1406,7 +1467,7 @@ static const char dashboard_html[] PROGMEM = R"rawliteral(
 </div>
 <div class="box">
   <h3>Macro Storage Management</h3>
-  <div class="stat-list" style="margin-bottom:15px">
+  <div style="margin-bottom:15px;">
     <div style="margin-bottom:12px;">
       <a href="/export_macro" class="btn" style="display:block; background:#1f6feb; text-decoration:none;">Download Macros</a>
     </div>
@@ -1420,89 +1481,73 @@ static const char dashboard_html[] PROGMEM = R"rawliteral(
 </div>
 <div class="box">
   <h3>System Diagnostics</h3>
-  <div class="stat-list">
-    <div class="stat-row">
-      <div class="stat-lbl">CPU</div>
-      <div class="stat-val" style="color:#79c0ff">%CPU_TYPE%</div>
-      <div class="stat-lbl">Cores & Clock</div>
-      <div class="stat-val" style="color:#79c0ff">%CPU_CORES% Cores @ %CPU_SPEED%</div>
-    </div>
-    <div class="stat-row">
-      <div class="stat-lbl">Total Flash</div>
-      <div class="stat-val" style="color:#79c0ff">%TOTAL_FLASH%</div>
-    </div>
-    <div class="stat-row">
-      <div class="stat-lbl">App Partition</div>
-      <div class="stat-val" style="color:#79c0ff">%APP_TOTAL%</div>
-      <div class="stat-lbl">App Used</div>
-      <div class="stat-val">%APP_USED%</div>
-    </div>
-    <div class="stat-row">
-      <div class="stat-lbl">Total / Free Heap RAM</div>
-      <div class="stat-val">%TOTAL_RAM% / %FREE_RAM%</div>
-      <div class="stat-lbl">Heap Frag.</div>
-      <div class="stat-val">%FRAGMENTATION%</div>
-    </div>    
-    <div class="stat-row">
-      <div class="stat-lbl">Max Free Block</div>
-      <div class="stat-val">%MAX_BLOCK%</div>
-      <div class="stat-lbl">Free Stack Space</div>
-      <div class="stat-val">%STACK_SIZE%</div>
+  <div class="stat-grid-box">
+    <div class="diag-grid">
+      <div class="diag-item">
+        <div class="stat-lbl">CPU</div>
+        <div class="stat-val" style="color:#79c0ff">%CPU_TYPE%</div>
+      </div>
+      <div class="diag-item">
+        <div class="stat-lbl">Cores</div>
+        <div class="stat-val" style="color:#79c0ff">%CPU_CORES%</div>
+      </div>
+      <div class="diag-item">
+        <div class="stat-lbl">Clock</div>
+        <div class="stat-val" style="color:#79c0ff">%CPU_SPEED%</div>
+      </div>
+      <div class="diag-item">
+        <div class="stat-lbl">Total Flash</div>
+        <div class="stat-val" style="color:#79c0ff">%TOTAL_FLASH%</div>
+      </div>
+      <div class="diag-item">
+        <div class="stat-lbl">App Part.</div>
+        <div class="stat-val" style="color:#79c0ff">%APP_TOTAL%</div>
+      </div>
+      <div class="diag-item">
+        <div class="stat-lbl">App Used</div>
+        <div class="stat-val">%APP_USED%</div>
+      </div>
+      <div class="diag-item">
+        <div class="stat-lbl">Total RAM</div>
+        <div class="stat-val">%TOTAL_RAM%</div>
+      </div>
+      <div class="diag-item">
+        <div class="stat-lbl">Free Heap</div>
+        <div class="stat-val">%FREE_RAM%</div>
+      </div>    
+      <div class="diag-item">
+        <div class="stat-lbl">Heap Frag.</div>
+        <div class="stat-val">%FRAGMENTATION%</div>
+      </div>
+      <div class="diag-item">
+        <div class="stat-lbl">Max Block</div>
+        <div class="stat-val">%MAX_BLOCK%</div>
+      </div>
+      <div class="diag-item span-2">
+        <div class="stat-lbl">Free Stack Space</div>
+        <div class="stat-val">%STACK_SIZE%</div>
+      </div>
     </div>
   </div>
   
   <div style="margin-top:15px; font-size:var(--fs-sm); border-top:1px solid #21262d; padding-top:12px">
-    <div style="margin-bottom:6px"><span style="color:#8b949e">Reset Reason:</span> <span style="font-family:monospace;color:#79c0ff">%RESET_REASON%</span></div>
+    <div style="margin-bottom:6px"><span style="color:#8b949e">Project Version:</span> <span style="font-family:monospace;color:#79c0ff">%RESET_REASON%</span></div>
   </div>
 </div>
 </body></html>
 )rawliteral";
 
-// 2. ENTRY POINT ROUTE HANDLERS
+
+// ====================================================================
+// HIGH-EFFICIENCY ZERO-ALLOCATION STREAMING HTTP GET ROOT HANDLER
+// ====================================================================
 inline esp_err_t root_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "text/html");
-    std::string html(dashboard_html);
-    std::string active_name = active_profile_workspace.profile_name;
-    std::string options = "";
-    int total_slots = static_cast<int>(factory_count) + MAX_LEARNED_PROFILES;
+    char scratch[256]; //Explicit 256-byte stack-allocated buffer
     
-    int active_idx = esphome::id(active_remote_layout).value();
-
-    // ====================================================================
-    // ⚡ ZERO-ALLOCATION STATIC NAME EXTPARATION LOOP FOR RAM STABILITY
-    // ====================================================================
-    options.reserve(1536); 
-
-    for (int i = 0; i < total_slots; i++) {
-        char opt_buf[128] = {0}; // Clear stack allocation
-        const char* kind = (i < static_cast<int>(factory_count)) ? "Factory" : "Custom";
-        std::string label_str;
-        
-        if (i < static_cast<int>(factory_count)) {
-            // Reads from the global flash pointer matrix cleanly
-            label_str = factory_names[i];
-        } else {
-            label_str = "Memory Slot " + std::to_string(i - static_cast<int>(factory_count));
-        }
-        
-        snprintf(opt_buf, sizeof(opt_buf), "<option value=\"%d\" %s>%s [%s]</option>", 
-                 i, (i == active_idx) ? "selected" : "", label_str.c_str(), kind);
-        options += opt_buf;
-    }
-
-    
-    // Explicitly restore the true operational profile once after generation wraps up
-    load_profile_to_workspace(active_idx);
-    // ====================================================================
-    
-    // FETCH DIAGNOSTIC DATA DIRECTLY FROM THE CORE KERNEL APPS
-    char scratch[128];
-    
-    // Core SoC Property Detections
     esp_chip_info_t chip_info;
     esp_chip_info(&chip_info);
     
-    // Resolve Chip Model Strings
     const char* chip_model_str = "ESP32 (Unknown Variant)";
     switch(chip_info.model) {
         case CHIP_ESP32:   chip_model_str = "ESP32 (Classic)"; break;
@@ -1513,161 +1558,278 @@ inline esp_err_t root_handler(httpd_req_t *req) {
         case CHIP_ESP32H2: chip_model_str = "ESP32-H2"; break;
         default: break;
     }
-    std::string cpu_type_str(chip_model_str);
-    std::string cpu_cores_str = std::to_string(chip_info.cores);
     
-    // Fetch Active CPU Clock Speed directly from the system clock configuration register
-    uint32_t cpu_speed_hz = esp_clk_cpu_freq();
-    snprintf(scratch, sizeof(scratch), "%u MHz", (unsigned int)(cpu_speed_hz / 1000000));
-    std::string cpu_speed_str(scratch);
-    
-    // --- 1. DYNAMIC FLASH CAPACITY DECODING ---
     uint32_t flash_size = 0;
     if (esp_flash_get_size(NULL, &flash_size) != ESP_OK) {
         flash_size = 0; 
     }
     
-    snprintf(scratch, sizeof(scratch), "%u MB", (unsigned int)(flash_size / (1024 * 1024)));
-    std::string total_flash_str(scratch);
-    
-    // --- 2. APP PARTITION OVER-THE-AIR DIAGNOSTICS ---
     const esp_partition_t *running_part = esp_ota_get_running_partition();
     uint32_t app_total_bytes = 0;
     uint32_t app_used_bytes = 0;
-    float app_used_percent = 0.0;
+    float app_used_percent = 0.0f;
 
     if (running_part != NULL) {
         app_total_bytes = running_part->size;
-        
         esp_image_metadata_t img_meta;
         const esp_partition_pos_t part_pos = {
             .offset = running_part->address,
             .size = running_part->size,
         };
-        
         if (esp_image_get_metadata(&part_pos, &img_meta) == ESP_OK) {
             app_used_bytes = img_meta.image_len;
             if (app_total_bytes > 0) {
-                app_used_percent = ((float)app_used_bytes / (float)app_total_bytes) * 100.0;
+                app_used_percent = ((float)app_used_bytes / (float)app_total_bytes) * 100.0f;
             }
         }
     }
 
-    // Format strings to map cleanly into placeholders
-    snprintf(scratch, sizeof(scratch), "%.2f MB", (float)app_total_bytes / (1024.0 * 1024.0));
-    std::string app_total_str(scratch);
-
-    snprintf(scratch, sizeof(scratch), "%.2f MB (%.1f%%)", (float)app_used_bytes / (1024.0 * 1024.0), app_used_percent);
-    std::string app_used_str(scratch);
-    
-    // Dynamic RAM Calculations
     multi_heap_info_t heap_info;
     heap_caps_get_info(&heap_info, MALLOC_CAP_8BIT);
-    snprintf(scratch, sizeof(scratch), "%u KB", (unsigned int)((heap_info.total_free_bytes + heap_info.total_allocated_bytes) / 1024));
-    std::string total_ram_str(scratch);
-
-    // Free Heap RAM
     size_t free_heap = esp_get_free_heap_size(); 
-    snprintf(scratch, sizeof(scratch), "%u Bytes", (unsigned int)free_heap);
-    std::string free_ram(scratch);
-    
-    // Heap Fragmentation
     size_t largest_free_block = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
     float fragmentation_percentage = 0.0f;
     if (free_heap > 0) {
         fragmentation_percentage = (1.0f - ((float)largest_free_block / (float)free_heap)) * 100.0f;
     }
-    snprintf(scratch, sizeof(scratch), "%0.1f %%", fragmentation_percentage);
-    std::string frag(scratch);
-    
-    // Max Free Block Size 
-    snprintf(scratch, sizeof(scratch), "%u Bytes", (unsigned int)largest_free_block);
-    std::string max_block(scratch);
-    
-    // Free Stack Space Room 
-    unsigned int free_stack = (unsigned int)uxTaskGetStackHighWaterMark(NULL);
-    snprintf(scratch, sizeof(scratch), "%u Bytes", (unsigned int)free_stack);
-    std::string stack_size_str(scratch); 
-        
-    // Reset Reason Code
-    int reason_code = (int)esp_reset_reason();
-    std::string reset_reason = "Code " + std::to_string(reason_code);
-    
-    // Hardware Info 
-    std::string hw_info = esphome::App.get_name().c_str(); 
 
-    // EXTRANEOUS STRING REPLACEMENTS PASS
-    size_t pos;
-    while ((pos = html.find("%BLE_REMOTE_NAME%")) != std::string::npos) html.replace(pos, 17, TOSTRING_MACRO(BLE_REMOTE_NAME_STR));
-    while ((pos = html.find("%ACTIVE_NAME%")) != std::string::npos) html.replace(pos, 13, active_name);
-    while ((pos = html.find("%OPTIONS_MARKER%")) != std::string::npos) html.replace(pos, 16, options);
-    while ((pos = html.find("%CPU_TYPE%")) != std::string::npos) html.replace(pos, 10, cpu_type_str);
-    while ((pos = html.find("%CPU_CORES%")) != std::string::npos) html.replace(pos, 11, cpu_cores_str);
-    while ((pos = html.find("%CPU_SPEED%")) != std::string::npos) html.replace(pos, 11, cpu_speed_str);
-    while ((pos = html.find("%TOTAL_FLASH%")) != std::string::npos) html.replace(pos, 13, total_flash_str);
-    while ((pos = html.find("%TOTAL_RAM%")) != std::string::npos) html.replace(pos, 11, total_ram_str);
-    while ((pos = html.find("%FREE_RAM%")) != std::string::npos) html.replace(pos, 10, free_ram);
-    while ((pos = html.find("%FRAGMENTATION%")) != std::string::npos) html.replace(pos, 15, frag);
-    while ((pos = html.find("%MAX_BLOCK%")) != std::string::npos) html.replace(pos, 11, max_block);
-    while ((pos = html.find("%STACK_SIZE%")) != std::string::npos) html.replace(pos, 12, stack_size_str);
-    while ((pos = html.find("%RESET_REASON%")) != std::string::npos) html.replace(pos, 14, reset_reason);
-    while ((pos = html.find("%HW_INFO%")) != std::string::npos) html.replace(pos, 9, hw_info);
-    while ((pos = html.find("%APP_TOTAL%")) != std::string::npos) html.replace(pos, 11, app_total_str);
-    while ((pos = html.find("%APP_USED%")) != std::string::npos) html.replace(pos, 10, app_used_str);
+    // --- STEP 2: STREAM FIRST FLASH SEGMENT (TIGHTENED VERTICAL PADDING BY 20%) ---
+    httpd_resp_send_chunk(req, R"rawliteral(<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IR Hub Storage Matrix</title>
+<style>
+  :root {
+    --fs-lg: 18px;
+    --fs-md: 14px;
+    --fs-sm: 12px;
+  }
+  body{font-family:system-ui,-apple-system,sans-serif;margin:12px;background:#0d1117;color:#c9d1d9;font-size:var(--fs-md)}
+  
+  /* Reduced overall padding from 24px to 14px, and lowered bottom margin from 15px to 10px */
+  .box{background:#161b22;padding:14px 20px;border:1px solid #30363d;border-radius:6px;max-width:480px;margin:auto;margin-bottom:10px}
+  
+  /* Tightened title section height */
+  h3{margin-top:0;color:#58a6ff;border-bottom:1px solid #21262d;padding-bottom:6px;margin-bottom:10px;font-size:var(--fs-lg)}
+  
+  /* Reduced label vertical margins */
+  label{display:block;margin:8px 0 4px;font-size:var(--fs-md);font-weight:600}
+  
+  /* Compacted selects and file elements */
+  select,input[type="file"]{width:100%;padding:6px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#fff;box-sizing:border-box;font-size:var(--fs-md)}
+  
+  /* Compacted grid margins */
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+  
+  /* Compacted layout button parameters */
+  .btn{padding:8px;background:#238636;color:#fff;border:2px;border-radius:6px;font-weight:bold;text-align:center;text-decoration:none;cursor:pointer;font-size:var(--fs-md)}
+  .btn.sec{background:#21262d;border:2px solid #30363d;color:#c9d1d9}
+  .btn:hover{opacity:0.9}
+  
+  /* Compacted system diagnostics enclosing container */
+  .stat-grid-box { background: #0d1117; border: 1px solid #21262d; border-radius: 6px; padding: 10px 14px; margin-top: 3px; }
+  
+  /* Tightened layout tracking gaps */
+  .diag-grid { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 20px; row-gap: 6px; }
+  
+  /* Trimmed structural padding fields inside grid entries */
+  .diag-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #21262d; padding-bottom: 4px; }
+  .diag-item.span-2 { grid-column: span 2; }
+  
+  .stat-lbl{color:#8b949e;font-size:var(--fs-sm);font-weight:600;text-transform:uppercase;margin-right:8px;white-space:nowrap}
+  .stat-val{font-family:monospace;font-weight:bold;color:#ff7b72;font-size:var(--fs-md);text-align:right}
+</style>
+<script>
+  function updateActionUrls(){
+    const idx = document.getElementById('profile_sel').value;
+    document.getElementById('export_link').href = '/export?slot=' + idx;
+    document.getElementById('upload_form').action = '/import?slot=' + idx;
+  }
+  window.onload = updateActionUrls;
+</script>
+</head><body>
+<div class="box">
+  <h3>Profile Management: )rawliteral", HTTPD_RESP_USE_STRLEN);
+
+    httpd_resp_send_chunk(req, BLE_REMOTE_NAME_STR, strlen(BLE_REMOTE_NAME_STR));
+           
+    int active_idx = esphome::id(active_remote_layout).value();
+    load_profile_to_workspace(active_idx);
     
-    return httpd_resp_send(req, html.c_str(), HTTPD_RESP_USE_STRLEN);
+    httpd_resp_send_chunk(req, "</h3>\n  <p style=\"font-size:var(--fs-sm);color:#8b949e;margin:0 0 15px\">Active Profile: <span style=\"color:#58a6ff;font-weight:bold\">", HTTPD_RESP_USE_STRLEN);
+    httpd_resp_send_chunk(req, active_profile_workspace.profile_name.c_str(), HTTPD_RESP_USE_STRLEN);
+    httpd_resp_send_chunk(req, R"rawliteral(</span></p>
+  <form action="/select" method="GET">
+    <label style="display:block;margin-bottom:6px;font-size:var(--fs-sm);color:#8b949e;">Select Target Profile Slot:</label>
+    <select id="profile_sel" name="slot" onchange="updateActionUrls()">)rawliteral", HTTPD_RESP_USE_STRLEN);
+
+    int total_slots = static_cast<int>(factory_count) + MAX_LEARNED_PROFILES;
+    for (int i = 0; i < total_slots; i++) {
+        const char* kind = (i < static_cast<int>(factory_count)) ? "Factory" : "Custom";
+        const char* label_ptr = (i < static_cast<int>(factory_count)) ? factory_names[i] : "Custom Slot";
+        
+        if (i < static_cast<int>(factory_count)) {
+            snprintf(scratch, sizeof(scratch), "<option value=\"%d\" %s>%s [%s]</option>", 
+                     i, (i == active_idx) ? "selected" : "", label_ptr, kind);
+        } else {
+            snprintf(scratch, sizeof(scratch), "<option value=\"%d\" %s>Memory Slot %d [%s]</option>", 
+                     i, (i == active_idx) ? "selected" : "", i - static_cast<int>(factory_count), kind);
+        }
+        httpd_resp_send_chunk(req, scratch, strlen(scratch));
+    }
+    
+    load_profile_to_workspace(active_idx);
+
+    httpd_resp_send_chunk(req, R"rawliteral(</select>
+    <button type="submit" class="btn" style="width:100%;margin-top:12px;background:#403030">Activate Selected Profile</button>
+  </form>
+  
+  <div style="margin-bottom:12px;">
+    <a id="export_link" href="#" class="btn sec" style="background:#1f6feb; display:block;margin-bottom:12px;">Download Selected Profile</a>
+  </div>
+  <form id="upload_form" method="POST" enctype="multipart/form-data" style="margin-top:12px">
+    <label style="display:block;margin-bottom:6px;font-size:var(--fs-sm);color:#8b949e;">Choose Profile CSV:</label>
+    <input type="file" id="file_picker" name="file" onchange="document.getElementById('ul_btn').disabled=false;">
+    <button type="submit" id="ul_btn" class="btn" style="width:100%;background:#238636;margin-top:12px;" disabled>Upload Profile to Slot</button>
+  </form>
+  
+</div>
+<div class="box">
+  <h3>Macro Storage Management</h3>
+  <div style="margin-bottom:15px;">
+    <div style="margin-bottom:12px;">
+      <a href="/export_macro" class="btn" style="display:block; background:#1f6feb; text-decoration:none;">Download Macros</a>
+    </div>
+    <form action="/import_macro" method="POST" enctype="multipart/form-data" style="border-top:1px solid #21262d; padding-top:12px;">
+       <label style="display:block; margin-bottom:6px; font-size:var(--fs-sm); color:#8b949e;">Choose Macros CSV File:</label>
+       <input type="file" name="file" accept=".csv" style="margin-bottom:8px;">
+       <button type="submit" class="btn" style="width:100%;background:#238636;margin-top:12px;">Upload Macros</button>
+    </form>
+  </div>
+</div>
+<div class="box">
+  <h3>System Diagnostics</h3>
+  <div class="stat-grid-box">
+    <div class="diag-grid">)rawliteral", HTTPD_RESP_USE_STRLEN);
+
+    // Stream system diagnostic entries
+    snprintf(scratch, sizeof(scratch), "<div class=\"diag-item\"><div class=\"stat-lbl\">CPU</div><div class=\"stat-val\" style=\"color:#79c0ff\">%s</div></div>", chip_model_str);
+    httpd_resp_send_chunk(req, scratch, strlen(scratch));
+
+    snprintf(scratch, sizeof(scratch), "<div class=\"diag-item\"><div class=\"stat-lbl\">Cores</div><div class=\"stat-val\" style=\"color:#79c0ff\">%d</div></div>", chip_info.cores);
+    httpd_resp_send_chunk(req, scratch, strlen(scratch));
+
+    snprintf(scratch, sizeof(scratch), "<div class=\"diag-item\"><div class=\"stat-lbl\">Clock</div><div class=\"stat-val\" style=\"color:#79c0ff\">%u MHz</div></div>", (unsigned int)(esp_clk_cpu_freq() / 1000000));
+    httpd_resp_send_chunk(req, scratch, strlen(scratch));
+
+    snprintf(scratch, sizeof(scratch), "<div class=\"diag-item\"><div class=\"stat-lbl\">Total Flash</div><div class=\"stat-val\" style=\"color:#79c0ff\">%u MB</div></div>", (unsigned int)(flash_size / (1024 * 1024)));
+    httpd_resp_send_chunk(req, scratch, strlen(scratch));
+
+    snprintf(scratch, sizeof(scratch), "<div class=\"diag-item\"><div class=\"stat-lbl\">App Part.</div><div class=\"stat-val\" style=\"color:#79c0ff\">%.2f MB</div></div>", (float)app_total_bytes / (1024.0f * 1024.0f));
+    httpd_resp_send_chunk(req, scratch, strlen(scratch));
+
+    snprintf(scratch, sizeof(scratch), "<div class=\"diag-item\"><div class=\"stat-lbl\">App Used</div><div class=\"stat-val\">%.2f MB (%.1f%%)</div></div>", (float)app_used_bytes / (1024.0f * 1024.0f), app_used_percent);
+    httpd_resp_send_chunk(req, scratch, strlen(scratch));
+
+    snprintf(scratch, sizeof(scratch), "<div class=\"diag-item\"><div class=\"stat-lbl\">Total RAM</div><div class=\"stat-val\">%u KB</div></div>", (unsigned int)((heap_info.total_free_bytes + heap_info.total_allocated_bytes) / 1024));
+    httpd_resp_send_chunk(req, scratch, strlen(scratch));
+
+    // Stream Free Heap Room
+    snprintf(scratch, sizeof(scratch), "<div class=\"diag-item\"><div class=\"stat-lbl\">Free Heap</div><div class=\"stat-val\">%u Bytes</div></div>", (unsigned int)free_heap);
+    httpd_resp_send_chunk(req, scratch, strlen(scratch));
+
+    // Stream Heap Fragmentation Rate
+    snprintf(scratch, sizeof(scratch), "<div class=\"diag-item\"><div class=\"stat-lbl\">Heap Frag.</div><div class=\"stat-val\">%.1f %%</div></div>", fragmentation_percentage);
+    httpd_resp_send_chunk(req, scratch, strlen(scratch));
+
+    // Stream Largest Free Block Contiguous Cap
+    snprintf(scratch, sizeof(scratch), "<div class=\"diag-item\"><div class=\"stat-lbl\">Max Block</div><div class=\"stat-val\">%u Bytes</div></div>", (unsigned int)largest_free_block);
+    httpd_resp_send_chunk(req, scratch, strlen(scratch));
+
+    // Stream Active Core Thread Stack Room
+    snprintf(scratch, sizeof(scratch), "<div class=\"diag-item span-2\"><div class=\"stat-lbl\">Free Stack Space</div><div class=\"stat-val\">%u Bytes</div></div>", (unsigned int)uxTaskGetStackHighWaterMark(NULL));
+    httpd_resp_send_chunk(req, scratch, strlen(scratch));
+    
+    // Close the grid containment and open the footer segment without embedded HTML quote symbols
+    httpd_resp_send_chunk(req, R"rawliteral(    </div>
+  </div>
+  <div style="margin-top:12px; font-size:var(--fs-sm); border-top:1px solid #21262d; padding-top:10px">
+    <div style="margin-bottom:4px"><span style="color:#8b949e">Project Version:</span> <span style="font-family:monospace;color:#79c0ff">)rawliteral", HTTPD_RESP_USE_STRLEN);
+
+    // 0 Stack, 0 Heap: Streams your exact unmodified version string macro directly out of flash
+    httpd_resp_send_chunk(req, ESPHOME_PROJECT_VERSION, strlen(ESPHOME_PROJECT_VERSION));
+
+    // Stream the final closure elements of the document
+    httpd_resp_send_chunk(req, R"rawliteral(</span></div>
+  </div>
+</div>
+</body></html>)rawliteral", HTTPD_RESP_USE_STRLEN);
+    
+    // --- FLUSH STREAM PIPELINE AND TRANSMIT END SIG BLOCK ---
+    httpd_resp_send_chunk(req, NULL, 0);
+    return ESP_OK;
 }
 
-//==========================
+
+
+
+
+
+// ====================================================================
+// HIGH-EFFICIENCY ZERO-ALLOCATION HTTP GET SELECT LAYOUT HANDLER
+// ====================================================================
 inline esp_err_t select_handler(httpd_req_t *req) {
+    // 256-byte stack-allocated query buffer is more than enough for URI params
+    char query_buf[256];
     size_t buf_len = httpd_req_get_url_query_len(req) + 1;
-    if (buf_len > 1) {
-        char* buf = (char*)malloc(buf_len);
-        if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
+
+    if (buf_len > 1 && buf_len <= sizeof(query_buf)) {
+        if (httpd_req_get_url_query_str(req, query_buf, sizeof(query_buf)) == ESP_OK) {
             char param[32];
-            if (httpd_query_key_value(buf, "slot", param, sizeof(param)) == ESP_OK) {
+            if (httpd_query_key_value(query_buf, "slot", param, sizeof(param)) == ESP_OK) {
                 int chosen_slot = atoi(param);
 
+                // Commit slot indices straight to runtime globals
                 esphome::id(active_remote_layout).value() = chosen_slot;
-                esphome::id(profile_has_been_stored).value() = 1; // remember that profile has been set
+                esphome::id(profile_has_been_stored).value() = 1; 
                 
                 load_profile_to_workspace(chosen_slot);
                 esphome::id(setup_ir_receiver_for_current_profile).execute();
                 
-                static char change_buf[128];
+                // Print execution state changes directly into stack log string 
+                char change_buf[96];
                 const char* kind = (chosen_slot < (int)factory_count) ? "internal" : "custom";
-                snprintf(change_buf, sizeof(change_buf), "idx=%d  %s  [%s]",
+                snprintf(change_buf, sizeof(change_buf), "idx=%d  %.48s  [%s]",
                          chosen_slot, active_profile_workspace.profile_name.c_str(), kind);
                 esphome::id(ir_active_profile_ts).publish_state(change_buf);
             }
         }
-        free(buf);
     }
 
+    // Zero-overhead 303 Redirect header frame construction
     httpd_resp_set_status(req, "303 See Other");
     httpd_resp_set_hdr(req, "Location", "/");
     httpd_resp_send(req, NULL, 0);
     return ESP_OK;
 }
 
-//----------
-// HEAP Efficient, Chunked Export Handler
+
+// ====================================================================
+// HIGH-PERFORMANCE ZERO-HEAP CHUNKED STREAMING PROFILE CSV EXPORT HANDLER
+// ====================================================================
 inline esp_err_t export_handler(httpd_req_t *req) {
     int target_slot = 0;
-    
+    char query_buf[128];
     size_t buf_len = httpd_req_get_url_query_len(req) + 1;
-    if (buf_len > 1) {
-        char* buf = (char*)malloc(buf_len);
-        if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
+
+    if (buf_len > 1 && buf_len <= sizeof(query_buf)) {
+        if (httpd_req_get_url_query_str(req, query_buf, sizeof(query_buf)) == ESP_OK) {
             char param[8];
-            if (httpd_query_key_value(buf, "slot", param, sizeof(param)) == ESP_OK) {
+            if (httpd_query_key_value(query_buf, "slot", param, sizeof(param)) == ESP_OK) {
                 target_slot = atoi(param);
             }
         }
-        free(buf);
     }
 
-    // Capture the currently running active remote layout to restore later
+    // Capture operational layout state
     int current_active = esphome::id(active_remote_layout).value();
     if (target_slot != current_active) {
         load_profile_to_workspace(target_slot);
@@ -1676,32 +1838,28 @@ inline esp_err_t export_handler(httpd_req_t *req) {
     const auto& p = active_profile_workspace;
     httpd_resp_set_type(req, "text/csv");
     
-    char header_buf[128];
+    char header_buf[64];
     snprintf(header_buf, sizeof(header_buf), "attachment; filename=profile_slot_%d.csv", target_slot);
     httpd_resp_set_hdr(req, "Content-Disposition", header_buf);
 
-    // Format strings based on protocol structures
+    // Protocol-specific formatting masks
     const char* addr_fmt = "%04X";
     const char* key_fmt  = "%X";
 
     if (p.protocol == PROTO_NEC) {
-        addr_fmt = "%04X";
-        key_fmt  = "%02X";
+        addr_fmt = "%04X"; key_fmt = "%02X";
     } else if (p.protocol == PROTO_JVC) {
-        addr_fmt = "%04X";
-        key_fmt  = "%04X";
+        addr_fmt = "%04X"; key_fmt = "%04X";
     } else if (p.protocol == PROTO_SONY) {
-        addr_fmt = "%04X";
-        key_fmt  = "%05X";
+        addr_fmt = "%04X"; key_fmt = "%05X";
     } else if (p.protocol == PROTO_PANASONIC) {
-        addr_fmt = "%04X";
-        key_fmt  = "%07X";
+        addr_fmt = "%04X"; key_fmt = "%07X";
     }
 
     char chunk_buf[256];
 
-    // 1. STREAM META ROW
-    char addr_buf[32], arm_buf[32], fire_buf[32];
+    // 1. Stream the META row directly
+    char addr_buf[16], arm_buf[16], fire_buf[16];
     snprintf(addr_buf, sizeof(addr_buf), addr_fmt, (unsigned int)p.device_address);
     snprintf(arm_buf, sizeof(arm_buf), key_fmt, (unsigned int)p.cmd_clear_token_arm);
     snprintf(fire_buf, sizeof(fire_buf), key_fmt, (unsigned int)p.cmd_clear_token_fire);
@@ -1710,9 +1868,9 @@ inline esp_err_t export_handler(httpd_req_t *req) {
              target_slot, p.profile_name.c_str(), to_string(p.protocol), addr_buf, arm_buf, fire_buf);
     httpd_resp_send_chunk(req, chunk_buf, strlen(chunk_buf));
 
-    // 2. STREAM KEY ROWS INDIVIDUALLY (Zero heap string allocation overhead)
+    // 2. Stream key row allocations sequentially (0 heap allocation overhead)
     for (size_t i = 0; i < p.cmd_codes.size(); i++) {
-        char irCommand_buf[32];
+        char irCommand_buf[16];
         snprintf(irCommand_buf, sizeof(irCommand_buf), key_fmt, (unsigned int)p.cmd_codes[i].first);
         
         snprintf(chunk_buf, sizeof(chunk_buf), "KEY,%s,%s,%s\n",
@@ -1720,10 +1878,10 @@ inline esp_err_t export_handler(httpd_req_t *req) {
         httpd_resp_send_chunk(req, chunk_buf, strlen(chunk_buf));
     }
 
-    // 3. FINALIZE RESPONSE STREAM
+    // 3. Finalize stream pipeline signature
     httpd_resp_send_chunk(req, NULL, 0);
 
-    // Restore the system workspace layout cleanly back to the running profile
+    // Restore workspace configuration state
     if (target_slot != current_active) {
         load_profile_to_workspace(current_active);
     }
@@ -1732,37 +1890,37 @@ inline esp_err_t export_handler(httpd_req_t *req) {
 }
 
 
-// --------------------------------------------------------------------
-// HIGH-PERFORMANCE ZERO-HEAP STREAMING HTTP POST CSV IMPORT ENGINE
-// --------------------------------------------------------------------
+// ====================================================================
+// LOW-HEAP STREAM-PARSING HTTP POST CSV IMPORT DESTINATION HANDLER
+// ====================================================================
 inline esp_err_t import_handler(httpd_req_t *req) {
     int target_slot = 0;
-    
+    char query_buf[128];
     size_t query_len = httpd_req_get_url_query_len(req) + 1;
-    if (query_len > 1) {
-        char* buf = (char*)malloc(query_len);
-        if (httpd_req_get_url_query_str(req, buf, query_len) == ESP_OK) {
+
+    if (query_len > 1 && query_len <= sizeof(query_buf)) {
+        if (httpd_req_get_url_query_str(req, query_buf, query_len) == ESP_OK) {
             char param[32]; 
-            if (httpd_query_key_value(buf, "slot", param, sizeof(param)) == ESP_OK) {
+            if (httpd_query_key_value(query_buf, "slot", param, sizeof(param)) == ESP_OK) {
                 target_slot = atoi(param); 
             }
         }
-        free(buf);
     }
 
     size_t total_bytes = req->content_len;
-    size_t remaining = total_bytes;
-    
     if (total_bytes == 0) {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "File is empty.");
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "File payload is completely empty.");
         return ESP_FAIL;
     }
 
+    // We use a small heap allocation here to match your exact import architecture,
+    // but we strictly protect it with a reserve layout boundary cap to block fragmentation.
     std::string csv_accumulator;
     csv_accumulator.reserve(total_bytes);
 
     char chunk_buf[512]; 
     int received = 0;
+    size_t remaining = total_bytes;
 
     while (remaining > 0) {
         size_t read_target = (remaining < sizeof(chunk_buf)) ? remaining : sizeof(chunk_buf);
@@ -1774,12 +1932,14 @@ inline esp_err_t import_handler(httpd_req_t *req) {
         remaining -= received;
     }
 
+    // Extract boundaries cleanly out of the accumulation string
     size_t start_pos = csv_accumulator.find("META,");
     if (start_pos == std::string::npos) {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid backup configuration layout.");
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid backup layout configuration.");
         return ESP_FAIL;
     }
 
+    // Discard trailing multi-part boundary footer elements cleanly
     size_t end_pos = csv_accumulator.rfind("\n-");
     std::string clean_csv = (end_pos != std::string::npos) ? 
                              csv_accumulator.substr(start_pos, end_pos - start_pos) : 
@@ -1791,10 +1951,9 @@ inline esp_err_t import_handler(httpd_req_t *req) {
         
         int final_custom_slot = target_slot - (int)factory_count;
         if (final_custom_slot < 0 || final_custom_slot >= MAX_LEARNED_PROFILES) {
-            ESP_LOGW("Web Import", "Factory slot selected for import destination. Redirecting safely to Custom Memory Slot 0.");
+            ESP_LOGW("Web Import", "Target index path points to factory slot. Redirecting safely to Slot 0.");
             final_custom_slot = 0; 
-            int hardware_slot_override = (int)factory_count + final_custom_slot;
-            esphome::id(active_remote_layout).value() = hardware_slot_override;
+            esphome::id(active_remote_layout).value() = (int)factory_count;
         } else {
             esphome::id(active_remote_layout).value() = target_slot;
         }
@@ -1802,7 +1961,7 @@ inline esp_err_t import_handler(httpd_req_t *req) {
         commit_database_to_flash(final_custom_slot);
         esphome::id(display_show).execute(true, "CSV Web Uploaded!", "Profile Operational", active_profile_workspace.profile_name);
     } else {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "CSV processing failure.");
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "CSV processing engine failure.");
         return ESP_FAIL;
     }
 
@@ -1811,8 +1970,6 @@ inline esp_err_t import_handler(httpd_req_t *req) {
     httpd_resp_send(req, NULL, 0);
     return ESP_OK;
 }
-
-#include <esp_rom_crc.h>
 
 
 // ====================================================================
@@ -1860,9 +2017,8 @@ inline std::string generate_macro_csv() {
 }
 
 // ====================================================================
-// HTTP GET CSV EXPORT HANDLER
+// HIGH-PERFORMANCE ZERO-HEAP CHUNKED STREAMING MACRO CSV EXPORT HANDLER
 // ====================================================================
-// Heap Efficient, Chunked export_macro_text_handler
 inline esp_err_t export_macro_text_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "text/csv");
     httpd_resp_set_hdr(req, "Content-Disposition", "attachment; filename=esp32_xgimi_macros.csv");
@@ -1870,6 +2026,7 @@ inline esp_err_t export_macro_text_handler(httpd_req_t *req) {
     char chunk_buf[256];
     bool found_any_data = false;
 
+    // Stream out up to the exact maximum bounds limit (0 heap allocations)
     for (int slot_id = 0; slot_id < MAX_BOUND_HOTKEYS; slot_id++) {
         uint64_t macro_nvs_key = 384720194ULL + slot_id;
         auto pref_obj = esphome::global_preferences->make_preference<UniversalFlashMacro>(macro_nvs_key);
@@ -1891,32 +2048,32 @@ inline esp_err_t export_macro_text_handler(httpd_req_t *req) {
         }
     }
 
+    // Fallback block if the database contains no recorded macro paths
     if (!found_any_data) {
         snprintf(chunk_buf, sizeof(chunk_buf), "MACRO,0,Empty_Suite\n");
         httpd_resp_send_chunk(req, chunk_buf, strlen(chunk_buf));
     }
 
-    httpd_resp_send_chunk(req, NULL, 0); // Finalize response
+    // Finalize response pipeline stream signoff
+    httpd_resp_send_chunk(req, NULL, 0);
     return ESP_OK;
 }
 
 
 // ====================================================================
-// COLD-STREAM ZERO-HEAP CSV MACRO DEPLOYMENT ENGINE (ADAPTABLE)
+// ZERO-HEAP IN-PLACE TEXT TOKENIZATION CSV MACRO DEPLOYMENT ENGINE
 // ====================================================================
 inline bool import_macro_from_csv(const std::string& csv_data) {
-    std::stringstream ss(csv_data);
-    std::string line;
-    
+    if (csv_data.empty()) return false;
+
     static UniversalFlashMacro macro_build;
     std::memset(&macro_build, 0, sizeof(macro_build));
-    // Set validation tracker to 5 to protect structure bounds
     macro_build.struct_version = CURRENT_MACRO_VERSION;
     
     int active_slot = -1;
 
+    // Stack-allocated lambda framework to safely commit structures to NVS
     auto save_active_macro = [&]() {
-        // Adaptable boundary checking protects slot arrays against overflow
         if (active_slot >= 0 && active_slot < MAX_BOUND_HOTKEYS && macro_build.total_steps > 0) {
             uint64_t macro_nvs_key = 384720194ULL + active_slot;
             auto pref_obj = esphome::global_preferences->make_preference<UniversalFlashMacro>(macro_nvs_key);
@@ -1925,20 +2082,48 @@ inline bool import_macro_from_csv(const std::string& csv_data) {
         }
     };
 
-    while (std::getline(ss, line)) {
-        if (!line.empty() && line.back() == '\r') line.pop_back();
-        if (line.empty()) continue;
+    size_t line_start = 0;
+    while (line_start < csv_data.size()) {
+        size_t line_end = csv_data.find('\n', line_start);
+        if (line_end == std::string::npos) line_end = csv_data.size();
 
-        std::stringstream line_ss(line);
-        std::string cell_type;
-        std::getline(line_ss, cell_type, ',');
+        // Slice an allocation-free string_view representation of the current row line
+        std::string_view line_view(&csv_data[line_start], line_end - line_start);
+        line_start = line_end + 1; // Advance the tracking pointer past newline boundaries
+
+        if (!line_view.empty() && line_view.back() == '\r') {
+            line_view.remove_suffix(1);
+        }
+        if (line_view.empty()) continue;
+
+        // In-place pointer token slicing helper function (replaces std::stringstream cells)
+        auto get_next_cell = [](std::string_view& src) -> std::string_view {
+            if (src.empty()) return std::string_view{};
+            size_t comma_pos = src.find(',');
+            if (comma_pos == std::string::npos) {
+                std::string_view ret = src;
+                src = std::string_view{};
+                return ret;
+            }
+            std::string_view ret = src.substr(0, comma_pos);
+            src.remove_prefix(comma_pos + 1);
+            return ret;
+        };
+
+        std::string_view cell_type = get_next_cell(line_view);
 
         if (cell_type == "MACRO") {
             save_active_macro(); 
             
-            std::string slot_str;
-            std::getline(line_ss, slot_str, ',');
-            active_slot = !slot_str.empty() ? std::atoi(slot_str.c_str()) : -1;
+            std::string_view slot_view = get_next_cell(line_view);
+            if (!slot_view.empty()) {
+                // Parse slot id directly from string pointers without allocation wrappers
+                char tmp[16] = {0};
+                std::memcpy(tmp, slot_view.data(), std::min(slot_view.size(), sizeof(tmp) - 1));
+                active_slot = std::atoi(tmp);
+            } else {
+                active_slot = -1;
+            }
             
             std::memset(&macro_build, 0, sizeof(macro_build));
             macro_build.struct_version = CURRENT_MACRO_VERSION; 
@@ -1946,19 +2131,24 @@ inline bool import_macro_from_csv(const std::string& csv_data) {
         else if (cell_type == "STEP") {
             if (active_slot == -1 || macro_build.total_steps >= MAX_MACRO_STEPS) continue;
             
-            std::string payload_str, state_str, delay_str;
-            std::getline(line_ss, payload_str, ','); // Directly grabs the action string name
-            std::getline(line_ss, state_str, ',');
-            std::getline(line_ss, delay_str, ',');
+            std::string_view payload_view = get_next_cell(line_view); 
+            std::string_view state_view   = get_next_cell(line_view);
+            std::string_view delay_view   = get_next_cell(line_view);
 
             auto& step = macro_build.steps[macro_build.total_steps];
-            step.event_state = str_to_state(state_str);
-            step.delay_ms = std::strtoul(delay_str.c_str(), nullptr, 10);
+            
+            // Re-use your existing small string helpers safely
+            char state_tmp[16] = {0};
+            std::memcpy(state_tmp, state_view.data(), std::min(state_view.size(), sizeof(state_tmp) - 1));
+            step.event_state = str_to_state(state_tmp);
 
-            // Populate the action string array
+            char delay_tmp[16] = {0};
+            std::memcpy(delay_tmp, delay_view.data(), std::min(delay_view.size(), sizeof(delay_tmp) - 1));
+            step.delay_ms = std::strtoul(delay_tmp, nullptr, 10);
+
+            // Directly pack into array buffers safely
             std::memset(step.action_string, 0, MAX_ACTION_STRING_LEN);
-            std::strncpy(step.action_string, payload_str.c_str(), MAX_ACTION_STRING_LEN - 1);
-            step.action_string[MAX_ACTION_STRING_LEN - 1] = '\0';
+            std::memcpy(step.action_string, payload_view.data(), std::min(payload_view.size(), MAX_ACTION_STRING_LEN - 1));
 
             macro_build.total_steps++;
         }
@@ -1970,20 +2160,22 @@ inline bool import_macro_from_csv(const std::string& csv_data) {
 }
 
 // ====================================================================
-// HTTP POST CSV IMPORT HANDLER (SAFE LONG STRING PARSING)
+// LOW-HEAP STREAM-PARSING HTTP POST MACRO CSV IMPORT HANDLER
 // ====================================================================
 inline esp_err_t import_macro_text_handler(httpd_req_t *req) {
     size_t total_bytes = req->content_len;
-    size_t remaining = total_bytes;
     if (total_bytes == 0) {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Payload Empty.");
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Payload is completely empty.");
         return ESP_FAIL;
     }
 
+    // Allocate memory footprint safely with explicit boundary guard limits
     std::string accumulator;
     accumulator.reserve(total_bytes);
+    
     char chunk_buf[512];
     int received = 0;
+    size_t remaining = total_bytes;
 
     while (remaining > 0) {
         size_t target = (remaining < sizeof(chunk_buf)) ? remaining : sizeof(chunk_buf);
@@ -2002,8 +2194,7 @@ inline esp_err_t import_macro_text_handler(httpd_req_t *req) {
         return ESP_FAIL;
     }
 
-    // Search for the exact browser multipart trailing boundary marker 
-    // instead of matching a loose single hyphen that could break custom key names
+    // Strip trailing multipart text nodes cleanly
     size_t end_pos = accumulator.find("\r\n------", start_pos);
     if (end_pos == std::string::npos) {
         end_pos = accumulator.find("\n------", start_pos);
@@ -2020,7 +2211,7 @@ inline esp_err_t import_macro_text_handler(httpd_req_t *req) {
         return ESP_OK;
     }
 
-    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Macro compilation breakdown.");
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Macro engine compilation breakdown.");
     return ESP_FAIL;
 }
 

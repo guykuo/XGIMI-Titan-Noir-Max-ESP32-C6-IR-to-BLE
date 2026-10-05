@@ -197,7 +197,7 @@ esphome:
 
   project:
     name: xgimi.titan-noir-esp32-ir-kuo
-    version: 26.09.25.001
+    version: 26.10.04.2150
 
 
   on_boot:
