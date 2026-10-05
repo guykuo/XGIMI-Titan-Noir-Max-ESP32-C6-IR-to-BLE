@@ -22,7 +22,7 @@ Titan Noir projectors lack IR control capability and only accept bluetooth signa
     
 *   Data capable USB cable
 
-This project implements IR translation to Xgimi Titan Noir bluetooth. The parent fork used Home Assistant HID connectivity, but Home Assistant is _not_ supported in this project. See mrmachine's original github if you need _Home Assistant_ usage information.
+This project implements IR translation to Xgimi Titan Noir bluetooth. The parent fork uses Home Assistant HID connectivity. Although Home Assistant has been retained in this project, it is not discussed here. Please see mrmachine's original github if you need _Home Assistant_ usage information.
 
 Turning on the Xgimi Titan Noir projector requires use of the original Xgimi remote wake token. This translator can acquire that token by sniffing your original remote with the ESP32. 
 
