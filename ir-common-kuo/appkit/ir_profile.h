@@ -1829,17 +1829,27 @@ inline esp_err_t export_handler(httpd_req_t *req) {
         }
     }
 
-    // Capture operational layout state
+    // Capture operational layout state and load requested data targets
     int current_active = esphome::id(active_remote_layout).value();
-    if (target_slot != current_active) {
-        load_profile_to_workspace(target_slot);
-    }
+    load_profile_to_workspace(target_slot);
 
     const auto& p = active_profile_workspace;
     httpd_resp_set_type(req, "text/csv");
     
-    char header_buf[64];
-    snprintf(header_buf, sizeof(header_buf), "attachment; filename=profile_slot_%d.csv", target_slot);
+    // SANITIZATION WORKER: Clean up spaces from the profile name for web transmission
+    char sanitized_name[32] = {0};
+    std::strncpy(sanitized_name, p.profile_name.c_str(), sizeof(sanitized_name) - 1);
+    for (size_t i = 0; i < std::strlen(sanitized_name); i++) {
+        if (sanitized_name[i] == ' ') {
+            sanitized_name[i] = '_';
+        }
+    }
+
+    // Format the clean customized profile filename package (0 heap churn)
+    char header_buf[128];
+    snprintf(header_buf, sizeof(header_buf), 
+             "attachment; filename=profile_slot_%d_%s.csv", 
+             target_slot, sanitized_name);
     httpd_resp_set_hdr(req, "Content-Disposition", header_buf);
 
     // Protocol-specific formatting masks
@@ -1881,7 +1891,7 @@ inline esp_err_t export_handler(httpd_req_t *req) {
     // 3. Finalize stream pipeline signature
     httpd_resp_send_chunk(req, NULL, 0);
 
-    // Restore workspace configuration state
+    // Restore workspace configuration state back to normal
     if (target_slot != current_active) {
         load_profile_to_workspace(current_active);
     }
@@ -1891,7 +1901,7 @@ inline esp_err_t export_handler(httpd_req_t *req) {
 
 
 // ====================================================================
-// LOW-HEAP STREAM-PARSING HTTP POST CSV IMPORT DESTINATION HANDLER
+// LOW-HEAP PRE-FILTERED STREAM-ACCUMULATING PROFILE CSV IMPORT HANDLER
 // ====================================================================
 inline esp_err_t import_handler(httpd_req_t *req) {
     int target_slot = 0;
@@ -1913,14 +1923,14 @@ inline esp_err_t import_handler(httpd_req_t *req) {
         return ESP_FAIL;
     }
 
-    // We use a small heap allocation here to match your exact import architecture,
-    // but we strictly protect it with a reserve layout boundary cap to block fragmentation.
-    std::string csv_accumulator;
-    csv_accumulator.reserve(total_bytes);
+    std::string clean_csv;
+    // Pre-allocate exactly what we expect for a maximum layout spec block
+    clean_csv.reserve(total_bytes > 3072 ? 3072 : total_bytes);
 
     char chunk_buf[512]; 
     int received = 0;
     size_t remaining = total_bytes;
+    bool inside_payload = false;
 
     while (remaining > 0) {
         size_t read_target = (remaining < sizeof(chunk_buf)) ? remaining : sizeof(chunk_buf);
@@ -1928,22 +1938,31 @@ inline esp_err_t import_handler(httpd_req_t *req) {
             if (received == HTTPD_SOCK_ERR_TIMEOUT) continue;
             return ESP_FAIL;
         }
-        csv_accumulator.append(chunk_buf, received);
         remaining -= received;
+
+        // Process incoming bytes sequentially to strip multipart components
+        for (int i = 0; i < received; i++) {
+            char c = chunk_buf[i];
+            if (!inside_payload) {
+                clean_csv.push_back(c);
+                if (clean_csv.size() >= 5) {
+                    if (clean_csv.rfind("META,", clean_csv.size() - 5) != std::string::npos) {
+                        // Isolate the start index and clear out any leading browser junk
+                        clean_csv = "META,";
+                        inside_payload = true;
+                    }
+                }
+            } else {
+                clean_csv.push_back(c);
+            }
+        }
     }
 
-    // Extract boundaries cleanly out of the accumulation string
-    size_t start_pos = csv_accumulator.find("META,");
-    if (start_pos == std::string::npos) {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid backup layout configuration.");
-        return ESP_FAIL;
+    // Strip out the multi-part trailing browser footer boundaries cleanly
+    size_t end_pos = clean_csv.rfind("\n-");
+    if (end_pos != std::string::npos) {
+        clean_csv.resize(end_pos);
     }
-
-    // Discard trailing multi-part boundary footer elements cleanly
-    size_t end_pos = csv_accumulator.rfind("\n-");
-    std::string clean_csv = (end_pos != std::string::npos) ? 
-                             csv_accumulator.substr(start_pos, end_pos - start_pos) : 
-                             csv_accumulator.substr(start_pos);
 
     if (import_profile_from_csv(clean_csv)) {
         link_hardware_buttons();
@@ -1951,7 +1970,6 @@ inline esp_err_t import_handler(httpd_req_t *req) {
         
         int final_custom_slot = target_slot - (int)factory_count;
         if (final_custom_slot < 0 || final_custom_slot >= MAX_LEARNED_PROFILES) {
-            ESP_LOGW("Web Import", "Target index path points to factory slot. Redirecting safely to Slot 0.");
             final_custom_slot = 0; 
             esphome::id(active_remote_layout).value() = (int)factory_count;
         } else {
@@ -1970,7 +1988,6 @@ inline esp_err_t import_handler(httpd_req_t *req) {
     httpd_resp_send(req, NULL, 0);
     return ESP_OK;
 }
-
 
 // ====================================================================
 // COMPACT CSV EXPORT GENERATOR FOR ALL MACRO SLOTS (ADAPTABLE)
@@ -2160,7 +2177,7 @@ inline bool import_macro_from_csv(const std::string& csv_data) {
 }
 
 // ====================================================================
-// LOW-HEAP STREAM-PARSING HTTP POST MACRO CSV IMPORT HANDLER
+// LOW-HEAP PRE-FILTERED STREAM-ACCUMULATING MACRO IMPORT HANDLER
 // ====================================================================
 inline esp_err_t import_macro_text_handler(httpd_req_t *req) {
     size_t total_bytes = req->content_len;
@@ -2169,13 +2186,13 @@ inline esp_err_t import_macro_text_handler(httpd_req_t *req) {
         return ESP_FAIL;
     }
 
-    // Allocate memory footprint safely with explicit boundary guard limits
-    std::string accumulator;
-    accumulator.reserve(total_bytes);
-    
+    std::string clean_macro_csv;
+    clean_macro_csv.reserve(total_bytes > 4096 ? 4096 : total_bytes);
+
     char chunk_buf[512];
     int received = 0;
     size_t remaining = total_bytes;
+    bool inside_payload = false;
 
     while (remaining > 0) {
         size_t target = (remaining < sizeof(chunk_buf)) ? remaining : sizeof(chunk_buf);
@@ -2183,28 +2200,33 @@ inline esp_err_t import_macro_text_handler(httpd_req_t *req) {
             if (received == HTTPD_SOCK_ERR_TIMEOUT) continue;
             return ESP_FAIL;
         }
-        accumulator.append(chunk_buf, received);
         remaining -= received;
+
+        for (int i = 0; i < received; i++) {
+            char c = chunk_buf[i];
+            if (!inside_payload) {
+                clean_macro_csv.push_back(c);
+                if (clean_macro_csv.size() >= 6) {
+                    if (clean_macro_csv.rfind("MACRO,", clean_macro_csv.size() - 6) != std::string::npos) {
+                        clean_macro_csv = "MACRO,";
+                        inside_payload = true;
+                    }
+                }
+            } else {
+                clean_macro_csv.push_back(c);
+            }
+        }
     }
 
-    // Locate the start of the valid macro suite rows
-    size_t start_pos = accumulator.find("MACRO,");
-    if (start_pos == std::string::npos) {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Malformed Macro Structure.");
-        return ESP_FAIL;
-    }
-
-    // Strip trailing multipart text nodes cleanly
-    size_t end_pos = accumulator.find("\r\n------", start_pos);
+    size_t end_pos = clean_macro_csv.find("\r\n------");
     if (end_pos == std::string::npos) {
-        end_pos = accumulator.find("\n------", start_pos);
+        end_pos = clean_macro_csv.find("\n------");
+    }
+    if (end_pos != std::string::npos) {
+        clean_macro_csv.resize(end_pos);
     }
 
-    std::string clean_csv = (end_pos != std::string::npos) ? 
-                             accumulator.substr(start_pos, end_pos - start_pos) : 
-                             accumulator.substr(start_pos);
-
-    if (import_macro_from_csv(clean_csv)) {
+    if (import_macro_from_csv(clean_macro_csv)) {
         httpd_resp_set_status(req, "303 See Other");
         httpd_resp_set_hdr(req, "Location", "/");
         httpd_resp_send(req, NULL, 0);
@@ -2214,8 +2236,6 @@ inline esp_err_t import_macro_text_handler(httpd_req_t *req) {
     httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Macro engine compilation breakdown.");
     return ESP_FAIL;
 }
-
-
 //===================================
 
 

@@ -99,13 +99,13 @@ esp32:
   framework:
     type: esp-idf
     sdkconfig_options:
-      # ... Keep your existing lines intact ...
+      
       CONFIG_BT_BLE_EST_LINK_CONN_NUM: "1"
       CONFIG_BT_ACL_CONNECTIONS: "1"
       
       # ====== NEW HIGH-UTILITY MEMORY RECLAIMS ======
       CONFIG_BT_ALLOCATION_FROM_SPIRAM_FIRST: "n"  # Forces internal ultra-fast RAM mapping
-      CONFIG_BT_BLE_DYNAMIC_ENV_MEMORY: "y"       # Dynamically releases pairing context blocks to heap
+      CONFIG_BT_BLE_DYNAMIC_ENV_MEMORY: "y"        # Dynamically releases pairing context blocks to heap
       CONFIG_BT_SMP_ENABLE: "y"                    # Required for your secure key exchange pairs
       CONFIG_BT_BLE_SMP_ENABLE: "y"                # Keep this active for Xgimi handshake lines
       
@@ -1017,7 +1017,7 @@ script:
           
           int current_idx = id(active_remote_layout);
           
-          // FIXED: Check against pure integer math limits instead of proxy structure arrays
+          // Check against pure integer math limits instead of proxy structure arrays
           int total_valid_slots = static_cast<int>(factory_count) + MAX_LEARNED_PROFILES;
 
           if (current_idx < 0 || current_idx >= total_valid_slots) {
@@ -1026,7 +1026,7 @@ script:
             id(display_show)->execute(true,
                                      token_hex_str,
                                      "${ble_remote_name}",
-                                     active_profile_workspace.profile_name); // FIXED: Reads directly from workspace memory
+                                     active_profile_workspace.profile_name); // Reads directly from workspace memory
           }
 
 
@@ -1137,7 +1137,7 @@ switch:
 #======================
 interval:
   # ====================================================================
-  # FIXED: ZERO-ALLOCATION ON-DEMAND DROPDOWN METADATA HYDRATION
+  # ZERO-ALLOCATION ON-DEMAND DROPDOWN METADATA HYDRATION
   # ====================================================================
   - interval: 2.0s
     id: dynamic_select_hydration_timer
