@@ -23,7 +23,7 @@
 #define STRINGIFY_MACRO(x) #x
 #define TOSTRING_MACRO(x) STRINGIFY_MACRO(x)
 
-// --- HUMAN-READABLE PROTOCOL FOOTPRINTS ---
+// =================== HUMAN-READABILITY DEFINES ==========================
 #define PROTO_UNKNOWN   0
 #define PROTO_NEC       1
 #define PROTO_JVC       2
@@ -34,6 +34,26 @@
 #define PROTO_RC6       7
 
 static const char *const TAG_MAPS = "universal_hid_maps";
+
+// --- IR RECEIVER WORKSPACE MODES  ---
+#define IR_MODE_DEACTIVATED         0   // Safety arrest state / boot protection
+#define IR_MODE_ACTION              1   // Default operational long-press layer
+#define IR_MODE_SET_PROFILE         2   // Double-click profile capture scanner
+#define IR_MODE_LEARN               3   // Triple-click sequential remote sniffer
+
+// --- KEY EVENT STATES ---
+#define KEY_EVENT_DOWN    0  // Initial button press edge
+#define KEY_EVENT_HOLDING 1  // Continuous hold frame updates
+#define KEY_EVENT_UP      2  // Physical button liftoff/release edge
+
+// -- MACRO WORKFLOW STATES ---
+#define MACRO_STATE_IDLE            0   // Standard operational state
+#define MACRO_STATE_RECORDING       1   // Actively caching IR codes to buffer
+#define MACRO_STATE_AWAITING_HOTKEY  2   // Capture stopped; waiting for destination button
+#define MACRO_STATE_LIFTOFF_SHIELD  99  // Trapper guard to absorb release packet
+// ====================================================================
+
+
 
 // Zero-heap translation helper function for logging statements
 inline const char* to_string(uint8_t proto_id) {
@@ -328,9 +348,6 @@ struct FlashStoredProfile {
 
 
 
-
-
-
 // ====================================================================
 // 3. INTERNAL LINKER EXTRACTION HELPER (ROBUST SANITIZATION ENGINE)
 // ====================================================================
@@ -432,6 +449,65 @@ inline void commit_database_to_flash(uint16_t target_slot) {
   pref_obj.save(&flash_p);
   esphome::global_preferences->sync();
 }
+
+
+// ====================================================================
+// ⚡ UNIFIED DIRECT BLUETOOTH HID INJECTION LAYER - SYSTEM GATES
+// ====================================================================
+inline void fire_bluetooth_hid_action(const char* action_name, int event_state) {
+    if (action_name == nullptr) return;
+
+    // Handle instant virtual action press redirects for power_on hardware lines
+    if (std::strcmp(action_name, "power_on") == 0) {
+        if (event_state == 0) {
+            esphome::id(power_on).press();
+        }
+        if (event_state == 0 || event_state == 1) {
+            return;
+        }
+    }
+
+    // Resolve the incoming token to true HID report profiles
+    uint8_t resolved_type = 2; // 0 = Keyboard, 1 = Consumer, 2 = Token/None
+    uint16_t true_hid_code = resolve_action_to_true_hid(action_name, resolved_type);
+
+    if (true_hid_code == 0xFFFF && resolved_type != 2) return;
+
+    // CLEAN STREAMLINED INJECTION PASS-THROUGH
+    if (event_state == 0 || event_state == 1) { // DOWN or HOLDING states
+        if (resolved_type == 0) {
+            esphome::id(xgimi_remote_controller).hold_keyboard((uint8_t)true_hid_code);
+        }
+        else if (resolved_type == 1) {
+            esphome::id(xgimi_remote_controller).hold_consumer(true_hid_code);
+        }
+    }
+    else if (event_state == 2) { // UP / Release state
+        if (resolved_type == 0) {
+            esphome::id(xgimi_remote_controller).release_held_keyboard_();
+        }
+        else if (resolved_type == 1) {
+            esphome::id(xgimi_remote_controller).release_held_consumer_();
+        }
+    }
+}
+
+
+// ====================================================================
+// DYNAMIC PROFILE LOOKUP FOR PHYSICAL OVERRIDE ROUTES
+// ====================================================================
+inline uint32_t find_active_command_by_name(const char* action_name) {
+    if (action_name == nullptr) return 0;
+    
+    // Look up within our primary active RAM workspace cache container
+    for (const auto& kv_pair : active_profile_workspace.cmd_codes) {
+        if (std::strcmp(kv_pair.second.action_string, action_name) == 0) {
+            return kv_pair.first; // Found matching hex command mapping code!
+        }
+    }
+    return 0; // Token not explicitly mapped in current profile configuration
+}
+
 
 // ====================================================================
 
@@ -1386,52 +1462,27 @@ static const char dashboard_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>IR Hub Storage Matrix</title>
 <style>
-  :root {
-    --fs-lg: 18px;
-    --fs-md: 14px;
-    --fs-sm: 12px;
-  }
-  body{font-family:system-ui,-apple-system,sans-serif;margin:20px;background:#0d1117;color:#c9d1d9;font-size:var(--fs-md)}
-  .box{background:#161b22;padding:24px;border:1px solid #30363d;border-radius:6px;max-width:480px;margin:auto;margin-bottom:15px}
-  h3{margin-top:0;color:#58a6ff;border-bottom:1px solid #21262d;padding-bottom:10px;font-size:var(--fs-lg)}
-  label{display:block;margin:14px 0 6px;font-size:var(--fs-md);font-weight:600}
-  select,input[type="file"]{width:100%;padding:8px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#fff;box-sizing:border-box;font-size:var(--fs-md)}
-  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
-  .btn{padding:10px;background:#238636;color:#fff;border:2px;border-radius:6px;font-weight:bold;text-align:center;text-decoration:none;cursor:pointer;font-size:var(--fs-md)}
-  .btn.sec{background:#21262d;border:2px solid #30363d;color:#c9d1d9}
+  :root { --fs-lg: 18px; --fs-md: 14px; --fs-sm: 12px; }
+  body{font-family:system-ui,-apple-system,sans-serif;margin:12px;background:#0d1117;color:#c9d1d9;font-size:var(--fs-md)}
+  .box{background:#161b22;padding:14px 20px;border:1px solid #30363d;border-radius:6px;max-width:480px;margin:auto;margin-bottom:10px}
+  h3{margin-top:0;color:#58a6ff;border-bottom:1px solid #21262d;padding-bottom:6px;margin-bottom:10px;font-size:var(--fs-lg)}
+  label{display:block;margin:8px 0 4px;font-size:var(--fs-md);font-weight:600}
+  select,input[type="file"]{width:100%;padding:6px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#fff;box-sizing:border-box;font-size:var(--fs-md)}
+  .btn{padding:8px;background:#238636;color:#fff;border:none;border-radius:6px;font-weight:bold;text-align:center;text-decoration:none;cursor:pointer;font-size:var(--fs-md)}
+  .btn.sec{background:#21262d;border:1px solid #30363d;color:#c9d1d9}
   .btn:hover{opacity:0.9}
   
-  /* Unified single enclosing container for diagnostics */
-  .stat-grid-box {
-    background: #0d1117;
-    border: 1px solid #21262d;
-    border-radius: 6px;
-    padding: 16px;
-    margin-top: 3px;
-  }
+  /* Testing Grid Console Layout Styles */
+  .grid-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+  .btn-test { padding: 12px 6px; background: #1f6feb; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: var(--fs-sm); text-align: center; }
+  .btn-test:active { background: #388bfd; }
+  .btn-test.pwr { background: #da3637; }
+  .btn-test.pwr:active { background: #f85149; }
 
-  /* Two-column layout grid */
-  .diag-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    column-gap: 24px;
-    row-gap: 12px;
-  }
-
-  /* Individual item containing a label and right-justified datum */
-  .diag-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #21262d;
-    padding-bottom: 6px;
-  }
-
-  /* Structural adjustment to handle the multi-value row layout cleanly */
-  .diag-item.span-2 {
-    grid-column: span 2;
-  }
-
+  .stat-grid-box { background: #0d1117; border: 1px solid #21262d; border-radius: 6px; padding: 10px 14px; margin-top: 3px; }
+  .diag-grid { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 20px; row-gap: 6px; }
+  .diag-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #21262d; padding-bottom: 4px; }
+  .diag-item.span-2 { grid-column: span 2; }
   .stat-lbl{color:#8b949e;font-size:var(--fs-sm);font-weight:600;text-transform:uppercase;margin-right:8px;white-space:nowrap}
   .stat-val{font-family:monospace;font-weight:bold;color:#ff7b72;font-size:var(--fs-md);text-align:right}
 </style>
@@ -1441,97 +1492,75 @@ static const char dashboard_html[] PROGMEM = R"rawliteral(
     document.getElementById('export_link').href = '/export?slot=' + idx;
     document.getElementById('upload_form').action = '/import?slot=' + idx;
   }
+  function sendClick(actionName) {
+    fetch('/button_inject?action=' + actionName);
+  }
   window.onload = updateActionUrls;
 </script>
 </head><body>
 <div class="box">
-  <h3>Profile Management:  %BLE_REMOTE_NAME%</h3>
-
+  <h3>Profile Management: %BLE_REMOTE_NAME%</h3>
   <p style="font-size:var(--fs-sm);color:#8b949e;margin:0 0 15px">Active Profile: <span style="color:#58a6ff;font-weight:bold">%ACTIVE_NAME%</span></p>
   <form action="/select" method="GET">
-    <label style="display:block;margin-bottom:6px;font-size:var(--fs-sm);color:#8b949e;">Select Target Profile Slot:</label>    
     <select id="profile_sel" name="slot" onchange="updateActionUrls()">%OPTIONS_MARKER%</select>
-    
     <button type="submit" class="btn" style="width:100%;margin-top:12px;background:#403030">Activate Selected Profile</button>
   </form>
-  
-  <div style="margin-bottom:12px;">
-    <a id="export_link" href="#" class="btn sec" style="background:#1f6feb; display:block;margin-bottom:12px;">Download Selected Profile</a>
+  <div style="margin-top:12px; margin-bottom:12px;">
+    <a id="export_link" href="#" class="btn sec" style="background:#1f6feb; display:block; text-align:center;">Download Selected Profile</a>
   </div>
-
-  <form id="upload_form" method="POST" enctype="multipart/form-data" style="margin-top:12px">
-    <label style="display:block;margin-bottom:6px;font-size:var(--fs-sm);color:#8b949e;">Choose Profile CSV:</label>
+  <form id="upload_form" method="POST" enctype="multipart/form-data">
     <input type="file" id="file_picker" name="file" onchange="document.getElementById('ul_btn').disabled=false;">
     <button type="submit" id="ul_btn" class="btn" style="width:100%;background:#238636;margin-top:12px;" disabled>Upload Profile to Slot</button>
   </form>
 </div>
+
+<div class="box">
+  <h3>Remote Interaction Testing Console</h3>
+  <div class="grid-container">
+    <button class="btn-test pwr" onclick="sendClick('power_on')">POWER ON</button>
+    <button class="btn-test" onclick="sendClick('cursor_up')">▲ UP</button>
+    <button class="btn-test pwr" onclick="sendClick('power_off')">POWER OFF</button>
+    <button class="btn-test" onclick="sendClick('cursor_left')">◀ LEFT</button>
+    <button class="btn-test" onclick="sendClick('cursor_enter')">● ENTER</button>
+    <button class="btn-test" onclick="sendClick('cursor_right')">▶ RIGHT</button>
+    <button class="btn-test" onclick="sendClick('back')">↩ BACK</button>
+    <button class="btn-test" onclick="sendClick('cursor_down')">▼ DOWN</button>
+    <button class="btn-test" onclick="sendClick('home')">⌂ HOME</button>
+    <button class="btn-test" onclick="sendClick('volume_up')">🔊 VOL +</button>
+    <button class="btn-test" onclick="sendClick('mute')">🔇 MUTE</button>
+    <button class="btn-test" onclick="sendClick('volume_down')">🔉 VOL -</button>
+  </div>
+</div>
+
 <div class="box">
   <h3>Macro Storage Management</h3>
   <div style="margin-bottom:15px;">
     <div style="margin-bottom:12px;">
       <a href="/export_macro" class="btn" style="display:block; background:#1f6feb; text-decoration:none;">Download Macros</a>
     </div>
-    
     <form action="/import_macro" method="POST" enctype="multipart/form-data" style="border-top:1px solid #21262d; padding-top:12px;">
-       <label style="display:block; margin-bottom:6px; font-size:var(--fs-sm); color:#8b949e;">Choose Macros CSV File:</label>
        <input type="file" name="file" accept=".csv" style="margin-bottom:8px;">
        <button type="submit" class="btn" style="width:100%;background:#238636;margin-top:12px;">Upload Macros</button>
     </form>
   </div>
 </div>
+
 <div class="box">
   <h3>System Diagnostics</h3>
   <div class="stat-grid-box">
     <div class="diag-grid">
-      <div class="diag-item">
-        <div class="stat-lbl">CPU</div>
-        <div class="stat-val" style="color:#79c0ff">%CPU_TYPE%</div>
-      </div>
-      <div class="diag-item">
-        <div class="stat-lbl">Cores</div>
-        <div class="stat-val" style="color:#79c0ff">%CPU_CORES%</div>
-      </div>
-      <div class="diag-item">
-        <div class="stat-lbl">Clock</div>
-        <div class="stat-val" style="color:#79c0ff">%CPU_SPEED%</div>
-      </div>
-      <div class="diag-item">
-        <div class="stat-lbl">Total Flash</div>
-        <div class="stat-val" style="color:#79c0ff">%TOTAL_FLASH%</div>
-      </div>
-      <div class="diag-item">
-        <div class="stat-lbl">App Part.</div>
-        <div class="stat-val" style="color:#79c0ff">%APP_TOTAL%</div>
-      </div>
-      <div class="diag-item">
-        <div class="stat-lbl">App Used</div>
-        <div class="stat-val">%APP_USED%</div>
-      </div>
-      <div class="diag-item">
-        <div class="stat-lbl">Total RAM</div>
-        <div class="stat-val">%TOTAL_RAM%</div>
-      </div>
-      <div class="diag-item">
-        <div class="stat-lbl">Free Heap</div>
-        <div class="stat-val">%FREE_RAM%</div>
-      </div>    
-      <div class="diag-item">
-        <div class="stat-lbl">Heap Frag.</div>
-        <div class="stat-val">%FRAGMENTATION%</div>
-      </div>
-      <div class="diag-item">
-        <div class="stat-lbl">Max Block</div>
-        <div class="stat-val">%MAX_BLOCK%</div>
-      </div>
-      <div class="diag-item span-2">
-        <div class="stat-lbl">Free Stack Space</div>
-        <div class="stat-val">%STACK_SIZE%</div>
-      </div>
+      <div class="diag-item"><div class="stat-lbl">CPU</div><div class="stat-val" style="color:#79c0ff">%CPU_TYPE%</div></div>
+      <div class="diag-item"><div class="stat-lbl">Cores</div><div class="stat-val" style="color:#79c0ff">%CPU_CORES%</div></div>
+      <div class="diag-item"><div class="stat-lbl">Clock</div><div class="stat-val" style="color:#79c0ff">%CPU_SPEED%</div></div>
+      <div class="diag-item"><div class="stat-lbl">Total Flash</div><div class="stat-val" style="color:#79c0ff">%TOTAL_FLASH%</div></div>
+      <div class="diag-item"><div class="stat-lbl">App Part.</div><div class="stat-val" style="color:#79c0ff">%APP_TOTAL%</div></div>
+      <div class="diag-item"><div class="stat-lbl">App Used</div><div class="stat-val">%APP_USED%</div></div>
+      <div class="diag-item"><div class="stat-lbl">Total RAM</div><div class="stat-val">%TOTAL_RAM%</div></div>
+      <div class="diag-item"><div class="stat-lbl">Free Heap</div><div class="stat-val">%FREE_RAM%</div></div>    
+      <div class="diag-item"><div class="stat-lbl">Heap Frag.</div><div class="stat-val">%FRAGMENTATION%</div></div>
+      <div class="diag-item"><div class="stat-lbl">Max Block</div><div class="stat-val">%MAX_BLOCK%</div></div>
+      <div class="diag-item span-2"><div class="stat-lbl">Free Stack Space</div><div class="stat-val">%STACK_SIZE%</div></div>
     </div>
-  </div>
-  
-  <div style="margin-top:15px; font-size:var(--fs-sm); border-top:1px solid #21262d; padding-top:12px">
-    <div style="margin-bottom:6px"><span style="color:#8b949e">Project Version:</span> <span style="font-family:monospace;color:#79c0ff">%RESET_REASON%</span></div>
   </div>
 </div>
 </body></html>
@@ -1543,12 +1572,14 @@ static const char dashboard_html[] PROGMEM = R"rawliteral(
 // ====================================================================
 inline esp_err_t root_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "text/html");
-    char scratch[256]; //Explicit 256-byte stack-allocated buffer
+    
+    char scratch[256] = {0}; 
+    char scratch_option[256] = {0};
     
     esp_chip_info_t chip_info;
     esp_chip_info(&chip_info);
     
-    const char* chip_model_str = "ESP32 (Unknown Variant)";
+    const char* chip_model_str = "ESP32 (Classic)";
     switch(chip_info.model) {
         case CHIP_ESP32:   chip_model_str = "ESP32 (Classic)"; break;
         case CHIP_ESP32S2: chip_model_str = "ESP32-S2"; break;
@@ -1593,47 +1624,30 @@ inline esp_err_t root_handler(httpd_req_t *req) {
         fragmentation_percentage = (1.0f - ((float)largest_free_block / (float)free_heap)) * 100.0f;
     }
 
-    // --- STEP 2: STREAM FIRST FLASH SEGMENT (TIGHTENED VERTICAL PADDING BY 20%) ---
+    // CHUNK 1: Document head, CSS formatting styles, and Profile Selection Form
     httpd_resp_send_chunk(req, R"rawliteral(<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>IR Hub Storage Matrix</title>
 <style>
-  :root {
-    --fs-lg: 18px;
-    --fs-md: 14px;
-    --fs-sm: 12px;
-  }
+  :root { --fs-lg: 18px; --fs-md: 14px; --fs-sm: 12px; }
   body{font-family:system-ui,-apple-system,sans-serif;margin:12px;background:#0d1117;color:#c9d1d9;font-size:var(--fs-md)}
-  
-  /* Reduced overall padding from 24px to 14px, and lowered bottom margin from 15px to 10px */
   .box{background:#161b22;padding:14px 20px;border:1px solid #30363d;border-radius:6px;max-width:480px;margin:auto;margin-bottom:10px}
-  
-  /* Tightened title section height */
   h3{margin-top:0;color:#58a6ff;border-bottom:1px solid #21262d;padding-bottom:6px;margin-bottom:10px;font-size:var(--fs-lg)}
-  
-  /* Reduced label vertical margins */
   label{display:block;margin:8px 0 4px;font-size:var(--fs-md);font-weight:600}
-  
-  /* Compacted selects and file elements */
   select,input[type="file"]{width:100%;padding:6px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#fff;box-sizing:border-box;font-size:var(--fs-md)}
-  
-  /* Compacted grid margins */
-  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
-  
-  /* Compacted layout button parameters */
-  .btn{padding:8px;background:#238636;color:#fff;border:2px;border-radius:6px;font-weight:bold;text-align:center;text-decoration:none;cursor:pointer;font-size:var(--fs-md)}
-  .btn.sec{background:#21262d;border:2px solid #30363d;color:#c9d1d9}
+  .btn{padding:8px;background:#238636;color:#fff;border:none;border-radius:6px;font-weight:bold;text-align:center;text-decoration:none;cursor:pointer;font-size:var(--fs-md)}
+  .btn.sec{background:#21262d;border:1px solid #30363d;color:#c9d1d9}
   .btn:hover{opacity:0.9}
-  
-  /* Compacted system diagnostics enclosing container */
+  .grid-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+  .btn-test { padding: 12px 6px; background: #1f6feb; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: var(--fs-sm); text-align: center; }
+  .btn-test:active { background: #388bfd; }
+  .btn-test.pwr { background: #da3637; }
+  .btn-test.pwr:active { background: #f85149; }
+  .btn-test.util { background: #21262d; border: 1px solid #30363d; color: #c9d1d9; }
+  .btn-test.util:active { background: #30363d; }
   .stat-grid-box { background: #0d1117; border: 1px solid #21262d; border-radius: 6px; padding: 10px 14px; margin-top: 3px; }
-  
-  /* Tightened layout tracking gaps */
   .diag-grid { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 20px; row-gap: 6px; }
-  
-  /* Trimmed structural padding fields inside grid entries */
   .diag-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #21262d; padding-bottom: 4px; }
   .diag-item.span-2 { grid-column: span 2; }
-  
   .stat-lbl{color:#8b949e;font-size:var(--fs-sm);font-weight:600;text-transform:uppercase;margin-right:8px;white-space:nowrap}
   .stat-val{font-family:monospace;font-weight:bold;color:#ff7b72;font-size:var(--fs-md);text-align:right}
 </style>
@@ -1642,6 +1656,9 @@ inline esp_err_t root_handler(httpd_req_t *req) {
     const idx = document.getElementById('profile_sel').value;
     document.getElementById('export_link').href = '/export?slot=' + idx;
     document.getElementById('upload_form').action = '/import?slot=' + idx;
+  }
+  function sendClick(actionName) {
+    fetch('/button_inject?action=' + actionName);
   }
   window.onload = updateActionUrls;
 </script>
@@ -1667,31 +1684,75 @@ inline esp_err_t root_handler(httpd_req_t *req) {
         const char* label_ptr = (i < static_cast<int>(factory_count)) ? factory_names[i] : "Custom Slot";
         
         if (i < static_cast<int>(factory_count)) {
-            snprintf(scratch, sizeof(scratch), "<option value=\"%d\" %s>%s [%s]</option>", 
+            snprintf(scratch_option, sizeof(scratch_option), "<option value=\"%d\" %s>%s [%s]</option>", 
                      i, (i == active_idx) ? "selected" : "", label_ptr, kind);
         } else {
-            snprintf(scratch, sizeof(scratch), "<option value=\"%d\" %s>Memory Slot %d [%s]</option>", 
+            snprintf(scratch_option, sizeof(scratch_option), "<option value=\"%d\" %s>Memory Slot %d [%s]</option>", 
                      i, (i == active_idx) ? "selected" : "", i - static_cast<int>(factory_count), kind);
         }
-        httpd_resp_send_chunk(req, scratch, strlen(scratch));
+        httpd_resp_send_chunk(req, scratch_option, strlen(scratch_option));
     }
     
     load_profile_to_workspace(active_idx);
 
+    // --------------------------------------------------------------------
+    // CHUNK 2: INTERACTION TESTING CONSOLE (7-ROW DESIGN)
+    // --------------------------------------------------------------------
     httpd_resp_send_chunk(req, R"rawliteral(</select>
     <button type="submit" class="btn" style="width:100%;margin-top:12px;background:#403030">Activate Selected Profile</button>
   </form>
   
-  <div style="margin-bottom:12px;">
-    <a id="export_link" href="#" class="btn sec" style="background:#1f6feb; display:block;margin-bottom:12px;">Download Selected Profile</a>
+  <div style="margin-bottom:12px; margin-top:12px;">
+    <a id="export_link" href="#" class="btn sec" style="background:#1f6feb; display:block; text-align:center;">Download Selected Profile</a>
   </div>
-  <form id="upload_form" method="POST" enctype="multipart/form-data" style="margin-top:12px">
-    <label style="display:block;margin-bottom:6px;font-size:var(--fs-sm);color:#8b949e;">Choose Profile CSV:</label>
+  <form id="upload_form" method="POST" enctype="multipart/form-data">
     <input type="file" id="file_picker" name="file" onchange="document.getElementById('ul_btn').disabled=false;">
     <button type="submit" id="ul_btn" class="btn" style="width:100%;background:#238636;margin-top:12px;" disabled>Upload Profile to Slot</button>
   </form>
   
 </div>
+
+<div class="box">
+  <h3>Remote Interaction Testing Console</h3>
+  <div class="grid-container">
+    <!-- Row 1: power_on, <empty>, power_off -->
+    <button class="btn-test pwr" onclick="sendClick('power_on')">POWER ON</button>
+    <button class="btn-test util" style="visibility:hidden;"></button>
+    <button class="btn-test pwr" onclick="sendClick('power_off')">POWER OFF</button>
+    
+    <!-- Row 2: <empty>, up, <empty> -->
+    <button class="btn-test util" style="visibility:hidden;"></button>
+    <button class="btn-test" onclick="sendClick('cursor_up')">UP</button>
+    <button class="btn-test util" style="visibility:hidden;"></button>
+    
+    <!-- Row 3: left, enter, right -->
+    <button class="btn-test" onclick="sendClick('cursor_left')">LEFT</button>
+    <button class="btn-test" onclick="sendClick('cursor_enter')">ENTER</button>
+    <button class="btn-test" onclick="sendClick('cursor_right')">RIGHT</button>
+    
+    <!-- Row 4: back, down, menu -->
+    <button class="btn-test" onclick="sendClick('back')">BACK</button>
+    <button class="btn-test" onclick="sendClick('cursor_down')">DOWN</button>
+    <button class="btn-test" onclick="sendClick('settings_menu')">MENU</button>
+    
+    <!-- Row 5: home, short 1, short 2 -->
+    <button class="btn-test" onclick="sendClick('home')">HOME</button>
+    <button class="btn-test util" onclick="sendClick('shortcut_1')">SHORT 1</button>
+    <button class="btn-test util" onclick="sendClick('shortcut_2')">SHORT 2</button>
+
+    <!-- Row 6: <empty>, short 3, short 4 -->
+    <button class="btn-test util" style="visibility:hidden;"></button>
+    <button class="btn-test util" onclick="sendClick('shortcut_3')">SHORT 3</button>
+    <button class="btn-test util" onclick="sendClick('shortcut_4')">SHORT 4</button>
+
+    <!-- Row 7: focus auto, macro play, focus manual -->
+    <button class="btn-test util" onclick="sendClick('macro_play')">MACRO PLAY</button>
+    <button class="btn-test util" onclick="sendClick('focus_manual')">FOCUS MANUAL</button>
+    <button class="btn-test util" onclick="sendClick('focus_auto')">FOCUS AUTO</button>
+
+  </div>
+</div>
+
 <div class="box">
   <h3>Macro Storage Management</h3>
   <div style="margin-bottom:15px;">
@@ -1699,7 +1760,6 @@ inline esp_err_t root_handler(httpd_req_t *req) {
       <a href="/export_macro" class="btn" style="display:block; background:#1f6feb; text-decoration:none;">Download Macros</a>
     </div>
     <form action="/import_macro" method="POST" enctype="multipart/form-data" style="border-top:1px solid #21262d; padding-top:12px;">
-       <label style="display:block; margin-bottom:6px; font-size:var(--fs-sm); color:#8b949e;">Choose Macros CSV File:</label>
        <input type="file" name="file" accept=".csv" style="margin-bottom:8px;">
        <button type="submit" class="btn" style="width:100%;background:#238636;margin-top:12px;">Upload Macros</button>
     </form>
@@ -1710,7 +1770,9 @@ inline esp_err_t root_handler(httpd_req_t *req) {
   <div class="stat-grid-box">
     <div class="diag-grid">)rawliteral", HTTPD_RESP_USE_STRLEN);
 
-    // Stream system diagnostic entries
+    // --------------------------------------------------------------------
+    // CHUNK 3: RUNTIME METRICS TELEMETRY
+    // --------------------------------------------------------------------
     snprintf(scratch, sizeof(scratch), "<div class=\"diag-item\"><div class=\"stat-lbl\">CPU</div><div class=\"stat-val\" style=\"color:#79c0ff\">%s</div></div>", chip_model_str);
     httpd_resp_send_chunk(req, scratch, strlen(scratch));
 
@@ -1732,38 +1794,30 @@ inline esp_err_t root_handler(httpd_req_t *req) {
     snprintf(scratch, sizeof(scratch), "<div class=\"diag-item\"><div class=\"stat-lbl\">Total RAM</div><div class=\"stat-val\">%u KB</div></div>", (unsigned int)((heap_info.total_free_bytes + heap_info.total_allocated_bytes) / 1024));
     httpd_resp_send_chunk(req, scratch, strlen(scratch));
 
-    // Stream Free Heap Room
     snprintf(scratch, sizeof(scratch), "<div class=\"diag-item\"><div class=\"stat-lbl\">Free Heap</div><div class=\"stat-val\">%u Bytes</div></div>", (unsigned int)free_heap);
     httpd_resp_send_chunk(req, scratch, strlen(scratch));
 
-    // Stream Heap Fragmentation Rate
     snprintf(scratch, sizeof(scratch), "<div class=\"diag-item\"><div class=\"stat-lbl\">Heap Frag.</div><div class=\"stat-val\">%.1f %%</div></div>", fragmentation_percentage);
     httpd_resp_send_chunk(req, scratch, strlen(scratch));
 
-    // Stream Largest Free Block Contiguous Cap
     snprintf(scratch, sizeof(scratch), "<div class=\"diag-item\"><div class=\"stat-lbl\">Max Block</div><div class=\"stat-val\">%u Bytes</div></div>", (unsigned int)largest_free_block);
     httpd_resp_send_chunk(req, scratch, strlen(scratch));
 
-    // Stream Active Core Thread Stack Room
     snprintf(scratch, sizeof(scratch), "<div class=\"diag-item span-2\"><div class=\"stat-lbl\">Free Stack Space</div><div class=\"stat-val\">%u Bytes</div></div>", (unsigned int)uxTaskGetStackHighWaterMark(NULL));
     httpd_resp_send_chunk(req, scratch, strlen(scratch));
     
-    // Close the grid containment and open the footer segment without embedded HTML quote symbols
     httpd_resp_send_chunk(req, R"rawliteral(    </div>
   </div>
   <div style="margin-top:12px; font-size:var(--fs-sm); border-top:1px solid #21262d; padding-top:10px">
     <div style="margin-bottom:4px"><span style="color:#8b949e">Project Version:</span> <span style="font-family:monospace;color:#79c0ff">)rawliteral", HTTPD_RESP_USE_STRLEN);
 
-    // 0 Stack, 0 Heap: Streams your exact unmodified version string macro directly out of flash
     httpd_resp_send_chunk(req, ESPHOME_PROJECT_VERSION, strlen(ESPHOME_PROJECT_VERSION));
 
-    // Stream the final closure elements of the document
     httpd_resp_send_chunk(req, R"rawliteral(</span></div>
   </div>
 </div>
 </body></html>)rawliteral", HTTPD_RESP_USE_STRLEN);
     
-    // --- FLUSH STREAM PIPELINE AND TRANSMIT END SIG BLOCK ---
     httpd_resp_send_chunk(req, NULL, 0);
     return ESP_OK;
 }
@@ -2236,6 +2290,79 @@ inline esp_err_t import_macro_text_handler(httpd_req_t *req) {
     httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Macro engine compilation breakdown.");
     return ESP_FAIL;
 }
+
+inline esp_err_t button_inject_handler(httpd_req_t *req) {
+    char query_buf[128] = {0};    
+    size_t query_len = httpd_req_get_url_query_len(req) + 1;
+
+    if (query_len > 1 && query_len <= sizeof(query_buf)) {
+        if (httpd_req_get_url_query_str(req, query_buf, sizeof(query_buf)) == ESP_OK) {
+            char action_param[32] = {0};
+            if (httpd_query_key_value(query_buf, "action", action_param, sizeof(action_param)) == ESP_OK) {
+                ESP_LOGI("WEB_CONSOLE", "Web Console Intercept: Firing Action Token '%s'", action_param);
+                
+                bool is_prefix_listening = esphome::id(macro_play_prefix_active).value();
+                uint32_t workflow_state = esphome::id(macro_workflow_state).value();
+                
+                bool route_to_state_machine = is_prefix_listening || 
+                                              (workflow_state == MACRO_STATE_RECORDING) || 
+                                              (workflow_state == MACRO_STATE_AWAITING_HOTKEY);
+
+                if (route_to_state_machine) {
+                    // ... (Keep your existing state machine routing block exactly as-is) ...
+                    return ESP_OK;
+                }
+
+                std::string resolved_display_str = std::string(action_param); 
+                for (const auto& kv_pair : active_profile_workspace.cmd_codes) {
+                    if (std::strcmp(kv_pair.second.action_string, action_param) == 0) {
+                        resolved_display_str = kv_pair.second.action_string;
+                        break;
+                    }
+                }
+                resolved_display_str += " [web]";
+                esphome::id(display_show).execute(false, resolved_display_str, active_profile_workspace.profile_name, "BLE Web Command");
+
+                // ⚡ AUDITED & UNIFIED MONOSTABLE WEB INTERCEPT GATE
+                bool is_monostable_web_key = (std::strcmp(action_param, "power_off") == 0 || 
+                                              std::strcmp(action_param, "focus_manual") == 0 ||
+                                              std::strcmp(action_param, "focus_auto") == 0);
+
+                if (is_monostable_web_key) {
+                    auto* target_btn = resolve_button(action_param);
+                    if (target_btn != nullptr) {
+                        target_btn->press(); 
+                        ESP_LOGI("WEB_CONSOLE", "Web redirected straight to native programmatic button for: %s", action_param);
+                    }
+                    httpd_resp_set_status(req, "204 No Content");
+                    httpd_resp_send(req, NULL, 0);
+                    return ESP_OK;
+                }
+                else if (std::strcmp(action_param, "macro_play") == 0) {
+                    ESP_LOGI("WEB_CONSOLE", "Web redirected straight to state machine prefix loop for macro_play");
+                    uint32_t simulated_hex = find_active_command_by_name("macro_play");
+                    esphome::id(ir_map_processor).execute(simulated_hex, 0); 
+                    httpd_resp_set_status(req, "204 No Content");
+                    httpd_resp_send(req, NULL, 0);
+                    return ESP_OK;
+                }
+
+                // Standard pass-through pipeline for stateless keys ONLY
+                if (std::strcmp(action_param, "power_off") != 0 && 
+                    std::strcmp(action_param, "focus_manual") != 0 && 
+                    std::strcmp(action_param, "focus_auto") != 0) {
+                    fire_bluetooth_hid_action(action_param, 0); 
+                    vTaskDelay(pdMS_TO_TICKS(60));              
+                    fire_bluetooth_hid_action(action_param, 2); 
+                }
+            }
+        }
+    }
+    httpd_resp_set_status(req, "204 No Content");
+    httpd_resp_send(req, NULL, 0);
+    return ESP_OK;
+}
+
 //===================================
 
 
@@ -2287,6 +2414,13 @@ inline void start_custom_web_server() {
         .user_ctx  = NULL
     };
 
+    httpd_uri_t button_inject_uri = {
+        .uri       = "/button_inject",
+        .method    = HTTP_GET,
+        .handler   = button_inject_handler,
+        .user_ctx  = NULL
+    };
+
 
 
     if (httpd_start(&server, &config) == ESP_OK) {
@@ -2296,6 +2430,7 @@ inline void start_custom_web_server() {
         httpd_register_uri_handler(server, &import_uri); 
         httpd_register_uri_handler(server, &export_macro_txt_uri);
         httpd_register_uri_handler(server, &import_macro_txt_uri);
+        httpd_register_uri_handler(server, &button_inject_uri); // Added registration hook
     }
 }
 

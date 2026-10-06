@@ -29,12 +29,12 @@ class XgimiRemote : public Component {
   void start_pairing_mode();
   void clear_bonds();
 
-  // 🎹 SEPARATED KEYBOARD DRIVER ACTIONS
+  // 🎹 KEYBOARD DRIVER ACTIONS
   void press_keyboard(uint8_t usage);
   void hold_keyboard(uint8_t usage);
   void release_held_keyboard_();
 
-  // 📺 SEPARATED CONSUMER DRIVER ACTIONS
+  // 📺 CONSUMER DRIVER ACTIONS
   void press_consumer(uint16_t usage);
   void hold_consumer(uint16_t usage);
   void release_held_consumer_();
@@ -77,15 +77,15 @@ class XgimiRemote : public Component {
   uint16_t wake_counter_{0};
   std::vector<uint8_t> wake_token_{};
 
-  // Keyboard holds tracker
+  // 🎹 Unified Keyboard Cyclic Hold Engine Metrics
   bool held_keyboard_active_{false};
   uint8_t held_keyboard_usage_{0};
-  uint32_t held_release_ms_{0};
+  uint32_t held_keyboard_last_tx_{0};
 
-  // Consumer holds tracker
+  // 📺 Unified Consumer Cyclic Hold Engine Metrics
   bool held_consumer_active_{false};
   uint16_t held_consumer_usage_{0};
-  uint32_t held_consumer_release_ms_{0};
+  uint32_t held_consumer_last_tx_{0};
 };
 
 }  // namespace esphome::xgimi_remote

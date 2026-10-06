@@ -14,8 +14,6 @@ namespace esphome::xgimi_remote {
 static const char *const TAG = "xgimi_remote";
 static const char *const WAKE_NAME = "ESP32 xgimi remote";
 static constexpr uint16_t IMMEDIATE_POWER_OFF_HOLD_MS = 1500;
-// standalone 20-second watchdog limit for other button holds
-static constexpr uint16_t STANDARD_HOLD_TIMEOUT_MS = 20000; 
 
 void XgimiRemote::setup() {
   ESP_LOGI(TAG, "Initialising captured XGIMI remote emulation");
@@ -27,16 +25,29 @@ void XgimiRemote::loop() {
     this->set_advertised_name_(this->remote_name_.c_str());
   }
 
-  // Keyboard auto-release watchdog
-  if (this->held_keyboard_active_ &&
-      static_cast<int32_t>(millis() - this->held_release_ms_) >= 0) {
-    this->release_held_keyboard_();
+  uint32_t now = millis();
+
+  // 🎹 LIVE INJECTION: Continuous Keyboard report repeat generator (Every 15ms)
+  if (this->held_keyboard_active_) {
+    if (now - this->held_keyboard_last_tx_ >= 15) {
+      uint8_t report[8] = {0x00, 0x00, this->held_keyboard_usage_, 0x00, 0x00, 0x00, 0x00, 0x00};
+      this->notify_keyboard_(report);
+      this->held_keyboard_last_tx_ = now;
+    }
   }
 
-  // Consumer auto-release watchdog
-  if (this->held_consumer_active_ &&
-      static_cast<int32_t>(millis() - this->held_consumer_release_ms_) >= 0) {
-    this->release_held_consumer_();
+  // 📺 LIVE INJECTION: Continuous Consumer report repeat generator (Every 15ms)
+  if (this->held_consumer_active_) {
+    if (now - this->held_consumer_last_tx_ >= 15) {
+      uint16_t usage = this->held_consumer_usage_;
+      uint8_t report[6] = {
+        static_cast<uint8_t>(usage & 0xFF), 
+        static_cast<uint8_t>((usage >> 8) & 0xFF), 
+        0x00, 0x00, 0x00, 0x00
+      };
+      this->notify_consumer_(report);
+      this->held_consumer_last_tx_ = now;
+    }
   }
 
   if (!this->wake_active_ || this->server_ == nullptr)
@@ -115,7 +126,7 @@ void XgimiRemote::start_pairing_mode() {
 void XgimiRemote::notify_keyboard_(const uint8_t data[8]) {
   if (this->server_ == nullptr || this->keyboard_report_ == nullptr ||
       this->server_->get_connected_client_count() == 0) {
-    ESP_LOGW(TAG, "Keyboard command ignored: projector HID link is not connected");
+    // Suppress spam logs during active programmatic bursts
     return;
   }
   this->keyboard_report_->set_value(std::vector<uint8_t>(data, data + 8));
@@ -125,16 +136,12 @@ void XgimiRemote::notify_keyboard_(const uint8_t data[8]) {
 void XgimiRemote::notify_consumer_(const uint8_t data[6]) {
   if (this->server_ == nullptr || this->consumer_report_ == nullptr ||
       this->server_->get_connected_client_count() == 0) {
-    ESP_LOGW(TAG, "Consumer command ignored: projector HID link is not connected");
     return;
   }
   this->consumer_report_->set_value(std::vector<uint8_t>(data, data + 6));
   this->consumer_report_->notify();
 }
 
-// ============================================================================
-// 🎹 KEYBOARD PATHWAY CONTROLS
-// ============================================================================
 void XgimiRemote::press_keyboard(uint8_t usage) {
   if (this->held_keyboard_active_) return;
   uint8_t press[8] = {0x00, 0x00, usage, 0x00, 0x00, 0x00, 0x00, 0x00};
@@ -145,15 +152,14 @@ void XgimiRemote::press_keyboard(uint8_t usage) {
 
 void XgimiRemote::hold_keyboard(uint8_t usage) {
   if (!this->connected_ || !this->authenticated_ || !this->is_keyboard_subscribed()) return;
-  if (this->held_keyboard_active_) return;
+  if (this->held_keyboard_active_ && this->held_keyboard_usage_ == usage) return;
+
+  this->held_keyboard_usage_ = usage;
+  this->held_keyboard_last_tx_ = millis();
+  this->held_keyboard_active_ = true;
 
   uint8_t press[8] = {0x00, 0x00, usage, 0x00, 0x00, 0x00, 0x00, 0x00};
   this->notify_keyboard_(press);
-  this->held_keyboard_usage_ = usage;
-  this->held_keyboard_active_ = true;
-  // separate from power-off timing. Uses standard 10-second limit.
-  this->held_release_ms_ = millis() + STANDARD_HOLD_TIMEOUT_MS;
-  ESP_LOGD(TAG, "Holding keyboard usage 0x%02X", usage);
 }
 
 void XgimiRemote::release_held_keyboard_() {
@@ -165,9 +171,6 @@ void XgimiRemote::release_held_keyboard_() {
   this->held_keyboard_usage_ = 0;
 }
 
-// ============================================================================
-// 📺 CONSUMER PATHWAY CONTROLS
-// ============================================================================
 void XgimiRemote::press_consumer(uint16_t usage) {
   if (this->held_consumer_active_) return;
   uint8_t press[6] = {static_cast<uint8_t>(usage & 0xFF), static_cast<uint8_t>((usage >> 8) & 0xFF), 0x00, 0x00, 0x00, 0x00};
@@ -178,15 +181,14 @@ void XgimiRemote::press_consumer(uint16_t usage) {
 
 void XgimiRemote::hold_consumer(uint16_t usage) {
   if (!this->connected_ || !this->authenticated_ || !this->is_consumer_subscribed()) return;
-  if (this->held_consumer_active_) return;
+  if (this->held_consumer_active_ && this->held_consumer_usage_ == usage) return;
+
+  this->held_consumer_usage_ = usage;
+  this->held_consumer_last_tx_ = millis();
+  this->held_consumer_active_ = true;
 
   uint8_t press[6] = {static_cast<uint8_t>(usage & 0xFF), static_cast<uint8_t>((usage >> 8) & 0xFF), 0x00, 0x00, 0x00, 0x00};
   this->notify_consumer_(press);
-  this->held_consumer_usage_ = usage;
-  this->held_consumer_active_ = true;
-  // separated from power-off timing. Uses standard 10-second limit
-  this->held_consumer_release_ms_ = millis() + STANDARD_HOLD_TIMEOUT_MS;
-  ESP_LOGD(TAG, "Holding consumer usage 0x%04X", usage);
 }
 
 void XgimiRemote::release_held_consumer_() {
@@ -198,9 +200,6 @@ void XgimiRemote::release_held_consumer_() {
   this->held_consumer_usage_ = 0;
 }
 
-// ============================================================================
-// 🛰️ GAP & GATTS INFRASTRUCTURE LABELS
-// ============================================================================
 void XgimiRemote::set_advertised_name_(const char *name) {
   const esp_err_t err = esp_ble_gap_set_device_name(name);
   if (err != ESP_OK) {
@@ -267,7 +266,6 @@ void XgimiRemote::gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t 
     case ESP_GATTS_DISCONNECT_EVT:
       if (this->matches_peer_(param->disconnect.remote_bda)) {
         if (this->keyboard_report_ != nullptr)
-        if (this->keyboard_report_ != nullptr)
           this->keyboard_report_->set_notify_for_client(param->disconnect.conn_id, false);
         if (this->consumer_report_ != nullptr)
           this->consumer_report_->set_notify_for_client(param->disconnect.conn_id, false);
@@ -299,20 +297,17 @@ void XgimiRemote::gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb
         if (this->authenticated_) {
           this->restore_hid_subscriptions_();
           
-          // ============================================================
-          // ⚡ HIGH-VELOCITY LINK LAYER TUNING FOR HID MACRO PACKETS
-          // ============================================================
           esp_ble_conn_update_params_t conn_params;
           std::memcpy(conn_params.bda, this->peer_address_, sizeof(esp_bd_addr_t));
           
-          conn_params.min_int = 0x06;      // Min Interval: 7.5ms (Spec Absolute Floor)
-          conn_params.max_int = 0x0C;      // Max Interval: 15.0ms (Tight bounds for latency stability)
-          conn_params.latency = 0x00;      // 0 Skippable slave events ensures instant transmission
-          conn_params.timeout = 0x0190;    // 400 * 10ms = 4-second link loss supervision timeout
+          conn_params.min_int = 0x06;      // Min Interval: 7.5ms
+          conn_params.max_int = 0x0C;      // Max Interval: 15.0ms
+          conn_params.latency = 0x00;      
+          conn_params.timeout = 0x0190;    // 4-second link loss supervision timeout
           
           esp_err_t param_err = esp_ble_gap_update_conn_params(&conn_params);
           if (param_err == ESP_OK) {
-            ESP_LOGI(TAG, "⚡ Hyper-speed low-latency BLE connection parameter constraints loaded successfully.");
+            ESP_LOGI(TAG, "Hyper-speed low-latency BLE connection parameters loaded successfully.");
           } else {
             ESP_LOGW(TAG, "Could not update connection parameters: %s", esp_err_to_name(param_err));
           }

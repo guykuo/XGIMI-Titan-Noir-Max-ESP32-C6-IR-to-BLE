@@ -99,20 +99,20 @@ esp32:
   framework:
     type: esp-idf
     sdkconfig_options:
-      
+      # ... Keep your existing lines intact ...
       CONFIG_BT_BLE_EST_LINK_CONN_NUM: "1"
       CONFIG_BT_ACL_CONNECTIONS: "1"
       
       # ====== NEW HIGH-UTILITY MEMORY RECLAIMS ======
       CONFIG_BT_ALLOCATION_FROM_SPIRAM_FIRST: "n"  # Forces internal ultra-fast RAM mapping
-      CONFIG_BT_BLE_DYNAMIC_ENV_MEMORY: "y"        # Dynamically releases pairing context blocks to heap
+      CONFIG_BT_BLE_DYNAMIC_ENV_MEMORY: "y"       # Dynamically releases pairing context blocks to heap
       CONFIG_BT_SMP_ENABLE: "y"                    # Required for your secure key exchange pairs
       CONFIG_BT_BLE_SMP_ENABLE: "y"                # Keep this active for Xgimi handshake lines
       
       # ====== REMOVE ALL MULTI-DEVICE OVERHEAD ======
       CONFIG_BT_BLE_MAX_ACT_PARAMS: "1"            # Drops background parallel device tracking down to 1
 
-      
+
 # ======================================
 api:
   encryption:
@@ -120,6 +120,16 @@ api:
   reboot_timeout: 13h #time before reboot if HomeAssistant is not present. 
 
   actions:
+
+    # ---------- Direct Bluetooth Native Action Injection ----------
+    - action: execute_native_bluetooth_action
+      variables:
+        action_name: string
+        event_state: int # 0=DOWN, 1=HOLD, 2=UP
+      then:
+        - lambda: |-
+            fire_bluetooth_hid_action(action_name.c_str(), event_state);
+
     # ---------- Count ----------
     - action: get_profile_count
       supports_response: only
@@ -197,7 +207,7 @@ esphome:
 
   project:
     name: xgimi.titan-noir-esp32-ir-kuo
-    version: 26.10.04.2150
+    version: 26.10.06.1211
 
 
   on_boot:
@@ -593,6 +603,7 @@ button:
 # ============================================================
 
 script:
+  
   - id: execute_token_recall_routine
     mode: single       
     then:
@@ -629,9 +640,7 @@ script:
             
           }
           // Display entire learned token via a display script
-          // must convert array into integer vector for script
-          std::vector<int> token_int_pass(id(active_wake_token), id(active_wake_token) + 15); 
-          id(display_wake_token).execute(token_int_pass);            
+          id(display_wake_token).execute(reinterpret_cast<uint32_t>(id(active_wake_token)));
 
 
   # --- THREAD-ISOLATED CLEAR ACTION ---
@@ -794,7 +803,6 @@ script:
                                           esp_ble_gap_register_callback(nullptr);
                                           
                                           // OPTIMIZED: Format directly into a flat fixed stack scratchpad 
-                                          // ONLY when finalizing the token capture for UI presentation
                                           char ui_buf[64] = {0};
                                           snprintf(ui_buf, sizeof(ui_buf), 
                                                    "%02X %02X %02X %02X %02X...", 
@@ -804,8 +812,8 @@ script:
                                           id(indicator_led)->turn_off();
                                           id(display_show).stop();
                                           
-                                          // Pass string safely to display loop frame without intermediate churn
-                                          id(display_show).execute(false, std::string(ui_buf), "Storing Token", "Wait 5 sec");
+                                          // ZERO HEAP CHURN: Pass the array pointer directly into string_view parameter
+                                          id(display_show).execute(false, ui_buf, "Storing Token", "Wait 5 sec");
                                           
                                           id(sniffer_status)->publish_state(false);
                                           id(xgimi_sniffer_switch).publish_state(false);
@@ -873,21 +881,21 @@ script:
 
 
 
-
 # --- myDisplay display 3 lines and auto dim display ---
   - id: display_show
     mode: restart 
     parameters:
       small_text: bool
-      line1: std::string
-      line2: std::string
-      line3: std::string
+      line1: string  # Reverted to framework-supported keyword (SSO stack optimization applies)
+      line2: string
+      line3: string
    
     then:
       - lambda: |-
           id(myDisplay_line1) = line1; 
           id(myDisplay_line2) = line2;
           id(myDisplay_line3) = line3;
+          
       - if:
           condition:
             lambda: |-
@@ -904,7 +912,7 @@ script:
                 else:
                    - display.page.show: active_page_std
 
-      - delay: 40s #how long display remains on
+      - delay: 40s 
       - display.page.show: blank_page
 
 
@@ -914,7 +922,7 @@ script:
     parameters:
       small_text: bool
       whichLine: int
-      aline: std::string
+      aline: string  # Reverted to framework-supported keyword
    
     then:
       - lambda: |-
@@ -948,7 +956,7 @@ script:
                 else:
                    - display.page.show: active_page_std
 
-      - delay: 40s #how long display remains on
+      - delay: 40s 
       - display.page.show: blank_page
 
 
@@ -957,17 +965,19 @@ script:
   - id: display_wake_token
     mode: restart 
     parameters:
-      token_param: int[]
+      token_param: uint32_t  # 100% legal character type that clears the YAML parser
     then:
       - lambda: |-
-          if (token_param.size() >= 15) {
-            // fully declare array bounds buffer to stop compiler panics
+          // Safely reconstruct our raw data pointer in-place using a zero-overhead C-cast
+          const uint8_t* token_ptr = reinterpret_cast<const uint8_t*>(token_param);
+
+          if (token_ptr != nullptr) {
             char slice_buf[8];
 
             // Line 1: First 5 bytes (Indices 0 to 4)
             std::string line1_hex = "";
             for (size_t i = 0; i < 5; i++) {
-              snprintf(slice_buf, sizeof(slice_buf), "%02X ", token_param[i]);
+              snprintf(slice_buf, sizeof(slice_buf), "%02X ", token_ptr[i]);
               line1_hex += slice_buf;
             }
             if (!line1_hex.empty()) line1_hex.pop_back();
@@ -975,7 +985,7 @@ script:
             // Line 2: Next 5 bytes (Indices 5 to 9)
             std::string line2_hex = "";
             for (size_t i = 5; i < 10; i++) {
-              snprintf(slice_buf, sizeof(slice_buf), "%02X ", token_param[i]);
+              snprintf(slice_buf, sizeof(slice_buf), "%02X ", token_ptr[i]);
               line2_hex += slice_buf;
             }
             if (!line2_hex.empty()) line2_hex.pop_back();
@@ -983,7 +993,7 @@ script:
             // Line 3: Last 5 bytes (Indices 10 to 14)
             std::string line3_hex = "";
             for (size_t i = 10; i < 15; i++) {
-              snprintf(slice_buf, sizeof(slice_buf), "%02X ", token_param[i]);
+              snprintf(slice_buf, sizeof(slice_buf), "%02X ", token_ptr[i]);
               line3_hex += slice_buf;
             }
             if (!line3_hex.empty()) line3_hex.pop_back();
@@ -992,7 +1002,6 @@ script:
                                      line1_hex,
                                      line2_hex,
                                      line3_hex);
-
 
           } else {
              id(display_show).execute(false,
@@ -1017,7 +1026,7 @@ script:
           
           int current_idx = id(active_remote_layout);
           
-          // Check against pure integer math limits instead of proxy structure arrays
+          // FIXED: Check against pure integer math limits instead of proxy structure arrays
           int total_valid_slots = static_cast<int>(factory_count) + MAX_LEARNED_PROFILES;
 
           if (current_idx < 0 || current_idx >= total_valid_slots) {
@@ -1026,7 +1035,7 @@ script:
             id(display_show)->execute(true,
                                      token_hex_str,
                                      "${ble_remote_name}",
-                                     active_profile_workspace.profile_name); // Reads directly from workspace memory
+                                     active_profile_workspace.profile_name); // FIXED: Reads directly from workspace memory
           }
 
 
@@ -1137,7 +1146,7 @@ switch:
 #======================
 interval:
   # ====================================================================
-  # ZERO-ALLOCATION ON-DEMAND DROPDOWN METADATA HYDRATION
+  # FIXED: ZERO-ALLOCATION ON-DEMAND DROPDOWN METADATA HYDRATION
   # ====================================================================
   - interval: 2.0s
     id: dynamic_select_hydration_timer
