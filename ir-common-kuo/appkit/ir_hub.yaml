@@ -714,15 +714,8 @@ script:
                 extern UniversalFlashMacro active_recording_buffer;
                 int idx = id(macro_step_counter);
                 const auto& step = active_recording_buffer.steps[idx];
-                std::string payload_str(step.action_string);
 
-                uint8_t resolved_type = 2;
-                if (payload_str.rfind("RKEY:", 0) == 0)      resolved_type = 0;
-                else if (payload_str.rfind("RCON:", 0) == 0) resolved_type = 1;
-
-                uint16_t true_hid_code = resolve_action_to_true_hid(step.action_string, resolved_type);
-
-                if (step.event_state == KEY_EVENT_DOWN) { // DOWN/Press Sequence Block
+                if (step.event_state == KEY_EVENT_DOWN) {
                   ESP_LOGI("MACRO_PLAY", "Firing Step [%d]: DOWN -> '%s'", idx, step.action_string);
                   
                   if (std::strcmp(step.action_string, "power_on") == 0) {
@@ -736,18 +729,10 @@ script:
                     return;
                   }
                                     
-                  if (resolved_type == 0) {
-                    id(xgimi_remote_controller).hold_keyboard((uint8_t)true_hid_code);
-                  }
-                  else if (resolved_type == 1) {
-                    id(xgimi_remote_controller).hold_consumer(true_hid_code);
-                  }
-                  else if (resolved_type == 2) {
-                    auto* target_btn = resolve_button(step.action_string);
-                    if (target_btn != nullptr) target_btn->press();
-                  }
+                  // 🛠️ FIX: Direct pass-through to your existing, unified injection engine!
+                  fire_bluetooth_hid_action(step.action_string, 0); // 0 = DOWN
                 }
-                else if (step.event_state == KEY_EVENT_UP) { // UP/Release Sequence Block
+                else if (step.event_state == KEY_EVENT_UP) {
                   ESP_LOGI("MACRO_PLAY", "Firing Step [%d]: UP -> Releasing '%s'", idx, step.action_string);
                   
                   if (std::strcmp(step.action_string, "power_on") == 0 || std::strcmp(step.action_string, "power_off") == 0) {
@@ -755,12 +740,8 @@ script:
                     return;
                   }
            
-                  if (resolved_type == 0) {
-                    id(xgimi_remote_controller).release_held_keyboard_();
-                  }
-                  else if (resolved_type == 1) {
-                    id(xgimi_remote_controller).release_held_consumer_();
-                  }
+                  // 🛠️ FIX: Direct pass-through to your existing, unified injection engine!
+                  fire_bluetooth_hid_action(step.action_string, 2); // 2 = UP
                 }
                 
                 id(macro_step_counter) = idx + 1;
@@ -1450,18 +1431,29 @@ script:
           // ============================================================
           if (id(macro_play_prefix_active) && event_state == KEY_EVENT_DOWN) {
             uint8_t prefix_slot = get_bound_macro_slot(found_cmd->action_string);
+            
+            // Turn off the tracking latch and clear the prefix window instantly 
+            // before evaluation so no trailing frames can re-trigger this block.
+            id(macro_play_prefix_active) = false;
+            id(macro_play_prefix_timeout_watcher)->stop();
+
             if (prefix_slot != 255) {
-              // Turn off the tracking latch immediately so subsequent 
-              // steps can clean up correctly and release the web server context
-              id(macro_play_prefix_active) = false;
-              id(macro_play_prefix_timeout_watcher)->stop();
-              
-              // Lock out trailing frames from leaking duplicate raw bluetooth events
+              // Engage the hard safety debounce lock to swallow this physical button frame completely
               id(debounce_safety_lock) = true;
-              id(release_debounce_lock)->execute(); 
+              id(release_debounce_lock)->execute(); // Arms the 110ms automatic release timer
               
               ESP_LOGI("MACRO_WORKFLOW", "Playback Hotkey Matched! Launching Macro Slot Sequence: %d", prefix_slot);
               id(play_universal_shared_macro)->execute(prefix_slot);
+              return; // CRITICAL: Short-circuit here to swallow the physical IR signal!
+            } else {
+              // If they pressed a button that has no macro bound to it, clean up the display 
+              // and let the system know the macro request was canceled.
+              id(showing_special_info) = true;
+              id(display_show)->execute(false, "Playback Canceled", "No Macro Bound", "Action Mode");
+              id(showing_special_expiration_timer).execute();
+              
+              // CRITICAL: Also return here so the unbound button does not accidentally 
+              // fire its native action while the user was trying to trigger a macro!
               return; 
             }
           }
