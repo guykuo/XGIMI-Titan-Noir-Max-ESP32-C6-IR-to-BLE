@@ -147,26 +147,6 @@ script:
           fire_bluetooth_hid_action("power_off", 2); 
       - delay: 200ms
 
-
-  - id: async_focus_manual_hold
-    mode: single
-    then:
-      - lambda: |-
-          ESP_LOGI("FOCUS_CAL", "Engaging Manual Lens calibration edge...");
-          fire_bluetooth_hid_action("focus_manual", 0); // Firing INITIAL DOWN
-          
-      # OPTIMIZED HOLD WINDOW: Emulates human muscle latency to anchor the Android TV UI context
-      - delay: 1350ms                              
-      
-      - lambda: |-
-          fire_bluetooth_hid_action("focus_manual", 2); // Firing EXPLICIT RELEASE
-          ESP_LOGD("FOCUS_CAL", "Manual Focus command disengaged. Holding stabilization window...");
-          
-      # 🛡️ UI STABILIZATION GATE: Holds the input pipeline clear for a fraction of a second
-      # to guarantee the projector locks the manual adjustment display frame completely open.
-      - delay: 200ms
-
-
 # ====================================================================
 # ====================================================================
 
@@ -190,24 +170,6 @@ button:
     icon: mdi:power-off
     on_press:
       - script.execute: async_power_off_hold
-
-  - platform: template
-    name: "Focus Manual"
-    id: focus_manual
-    icon: mdi:image-filter-center-focus
-    on_press:
-      - script.execute: async_focus_manual_hold
-
-  - platform: template
-    name: "Focus Auto"
-    id: focus_auto
-    icon: mdi:focus-auto
-    on_press:
-      - lambda: |-
-          fire_bluetooth_hid_action("focus_auto", 0); 
-      - delay: 50ms                                
-      - lambda: |-
-          fire_bluetooth_hid_action("focus_auto", 2);
 
   # --- STANDARD PASS-THROUGH KEYBOARD INTERACTION LOOPS ---
   - platform: template
@@ -330,6 +292,28 @@ button:
       - delay: 50ms                                
       - lambda: |-
           fire_bluetooth_hid_action("picture", 2);
+
+  - platform: template
+    name: "Focus Manual"
+    id: focus_manual
+    icon: mdi:image-filter-center-focus
+    on_press:
+      - lambda: |-
+          fire_bluetooth_hid_action("focus_manual", 0); 
+      - delay: 50ms                                
+      - lambda: |-
+          fire_bluetooth_hid_action("focus_manual", 2);
+
+  - platform: template
+    name: "Focus Auto"
+    id: focus_auto
+    icon: mdi:focus-auto
+    on_press:
+      - lambda: |-
+          fire_bluetooth_hid_action("focus_auto", 0); 
+      - delay: 50ms                                
+      - lambda: |-
+          fire_bluetooth_hid_action("focus_auto", 2);
 
   - platform: template
     name: "Shortcut 1"

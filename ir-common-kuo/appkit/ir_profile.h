@@ -53,8 +53,6 @@ static const char *const TAG_MAPS = "universal_hid_maps";
 #define MACRO_STATE_LIFTOFF_SHIELD  99  // Trapper guard to absorb release packet
 // ====================================================================
 
-
-
 // Zero-heap translation helper function for logging statements
 inline const char* to_string(uint8_t proto_id) {
   switch (proto_id) {
@@ -81,6 +79,20 @@ inline bool flash_hydration_complete = false;
 #endif
 
 
+// ====================================================================
+// OPTIMIZED MEMORY ALLOCATION CEILING SPECS
+// ====================================================================
+static const size_t MAX_ACTION_STRING_LEN = 16; // Perfectly fits up to 15 chars + null
+static const size_t MAX_BUTTON_NAME_LEN   = 32; // Provides roomy headroom for RKEY/RCON strings
+#define MAX_MACRO_STEPS    32  
+#define MAX_BOUND_HOTKEYS  9  
+#define CURRENT_MACRO_VERSION  8
+
+typedef char action_stringType[MAX_ACTION_STRING_LEN]; // Standardized short Xgimi Tokens
+typedef char button_nameType[MAX_BUTTON_NAME_LEN];     // Dynamic payload cell (RKEY/RCON data)
+typedef char profile_nameType[32];
+typedef char ComponentBufferStrType[128];
+
 
 // Single Source of Truth for Button Mapping Arrays
 inline constexpr const char* learn_button_names[] = {
@@ -90,7 +102,7 @@ inline constexpr const char* learn_button_names[] = {
   "volume_up", "volume_down", "mute", "token_sniff", "token_clear", "token_recall",
   "macro_record", "macro_play"
   #ifdef ENABLE_EXTRA_BUTTONS
-  ,"custom_1", "custom_2", "custom_3", "custom_4", "custom_5"
+  ,"custom_1", "custom_2", "custom_3", "custom_4", "custom_5", "custom_6", "custom_7", "custom_8"
   #endif
 };
 
@@ -103,12 +115,11 @@ inline constexpr size_t TOTAL_SYSTEM_BUTTONS = sizeof(learn_button_names) / size
 #define MAX_BOUND_HOTKEYS  9  
 #define CURRENT_MACRO_VERSION  8
 
-static const size_t MAX_ACTION_STRING_LEN = 32;
 
 struct UniversalMacroStep {
   char action_string[MAX_ACTION_STRING_LEN]; 
   uint8_t event_state;    // 0 = DOWN, 2 = UP                  
-  uint16_t delay_ms;      // Pacing interval                  };
+  uint16_t delay_ms;      // Pacing interval
 };
 
 struct UniversalFlashMacro {
@@ -127,9 +138,6 @@ struct UniversalBindingRegistry {
     uint16_t total_bound_keys;
     BindingPair bindings[MAX_BOUND_HOTKEYS];
 };
-
-
-
 
 // ====================================================================
 // ⚡ HIGH-SPEED MACRO CSV TRANSLATION STRINGS
@@ -154,10 +162,8 @@ inline uint8_t str_to_state(const std::string& str) {
     return (str == "DOWN") ? 0 : 2;
 }
 
-
-
 // ====================================================================
-// ⚡ UNIFIED XGIMI BLUETOOTH HID USE-MAPPING TRANSLATION ENGINE
+// STATIC HARDCODED FALLBACK XGIMI HID TRANSLATION MAP
 // ====================================================================
 inline uint16_t resolve_action_to_true_hid(const char* name, uint8_t& out_type) {
     if (name == nullptr) return 0xFFFF;
@@ -179,6 +185,16 @@ inline uint16_t resolve_action_to_true_hid(const char* name, uint8_t& out_type) 
     else if (action_name == "volume_up")    { out_type = 0; return 0x80; }
     else if (action_name == "volume_down")  { out_type = 0; return 0x81; }
 
+    // ⚡ NEW ADDITION: DUMMY FALLBACK ROUTES EQUIVALENT TO "HOME" (KEYBOARD 0x4A)
+    else if (action_name == "custom_1" || 
+             action_name == "custom_2" || 
+             action_name == "custom_3" || 
+             action_name == "custom_4" || 
+             action_name == "custom_5" || 
+             action_name == "custom_6" || 
+             action_name == "custom_7" || 
+             action_name == "custom_8")      { out_type = 0; return 0x4A; }
+
     // CONSUMER RESOLUTION PATH (REPORT TYPE 1)
     else if (action_name == "input")        { out_type = 1; return 0x01BC; }
     else if (action_name == "picture")      { out_type = 1; return 0x0223; }
@@ -187,26 +203,6 @@ inline uint16_t resolve_action_to_true_hid(const char* name, uint8_t& out_type) 
     else if (action_name == "shortcut_3")   { out_type = 1; return 0x0221; }
     else if (action_name == "shortcut_4")   { out_type = 1; return 0x0222; }
     else if (action_name == "mute")         { out_type = 1; return 0x01BD; }
-
-    // WEB ESCAPE HATCH FOR CUSTOM INJECTED CODES (With Commentary Support)
-    else if (action_name.rfind("RKEY:", 0) == 0) {
-        out_type = 0;
-        std::string raw_hex = action_name.substr(5);
-        size_t space_pos = raw_hex.find(' ');
-        if (space_pos != std::string::npos) {
-            raw_hex = raw_hex.substr(0, space_pos);
-        }
-        return (uint16_t)std::strtoul(raw_hex.c_str(), nullptr, 16);
-    }
-    else if (action_name.rfind("RCON:", 0) == 0) {
-        out_type = 1;
-        std::string raw_hex = action_name.substr(5);
-        size_t space_pos = raw_hex.find(' ');
-        if (space_pos != std::string::npos) {
-            raw_hex = raw_hex.substr(0, space_pos);
-        }
-        return (uint16_t)std::strtoul(raw_hex.c_str(), nullptr, 16);
-    }
     
     out_type = 2; // Fallback if no string parameters match incoming inputs
     return 0xFFFF;
@@ -256,8 +252,6 @@ inline uint16_t encode_action_to_id(const char* name, uint8_t& out_type) {
     return 0xFFFF;
 }
 
-
-
 inline const char* decode_idx_to_action_string(uint16_t action_idx) {
     if (action_idx < TOTAL_SYSTEM_BUTTONS) {
         return learn_button_names[action_idx];
@@ -267,6 +261,7 @@ inline const char* decode_idx_to_action_string(uint16_t action_idx) {
 
 inline bool is_action_allowed_as_macro_hotkey(const char* action_name) {
     if (action_name == nullptr) return false;
+
 
     // Hard Guard: Block utility actions from carrying macros to prevent infinite loops
     if (std::strcmp(action_name, "macro_record") == 0 || 
@@ -295,12 +290,6 @@ inline uint8_t get_bound_macro_slot(const char* current_action_name) {
 
 
 
-
-
-typedef char action_stringType[MAX_ACTION_STRING_LEN]; // Field 2: Visible Xgimi Token or RKEY RCON (e.g., "game_menu")
-typedef char button_nameType[24];   // Fits up to 23 characters + 1 null terminator
-typedef char profile_nameType[32];
-typedef char ComponentBufferStrType[128];
 
 // ====================================================================
 // 1. THE 3-FIELD ACTIVE RUNTIME ROW STRUCTURE
@@ -452,43 +441,62 @@ inline void commit_database_to_flash(uint16_t target_slot) {
 
 
 // ====================================================================
-// ⚡ UNIFIED DIRECT BLUETOOTH HID INJECTION LAYER - SYSTEM GATES
+// METADATA-DECOUPLED BLUETOOTH HID INJECTION ENGINE
 // ====================================================================
 inline void fire_bluetooth_hid_action(const char* action_name, int event_state) {
     if (action_name == nullptr) return;
 
     // Handle instant virtual action press redirects for power_on hardware lines
     if (std::strcmp(action_name, "power_on") == 0) {
-        if (event_state == 0) {
+        if (event_state == KEY_EVENT_DOWN) {
             esphome::id(power_on).press();
         }
-        if (event_state == 0 || event_state == 1) {
-            return;
+        return;
+    }
+
+    uint8_t resolved_type = 2; // 0 = Keyboard, 1 = Consumer, 2 = Token/None
+    uint16_t true_hid_code = 0xFFFF;
+
+    // ⚡ HIGH-SPEED LOOKUP SCAN:
+    // Isolate the single matching entry row from your workspace container vector
+    const IRCommand* runtime_cmd = nullptr;
+    for (const auto& kv_pair : active_profile_workspace.cmd_codes) {
+        if (std::strcmp(kv_pair.second.action_string, action_name) == 0) {
+            runtime_cmd = &kv_pair.second;
+            break; // Row isolated, exit loop instantly
         }
     }
 
-    // Resolve the incoming token to true HID report profiles
-    uint8_t resolved_type = 2; // 0 = Keyboard, 1 = Consumer, 2 = Token/None
-    uint16_t true_hid_code = resolve_action_to_true_hid(action_name, resolved_type);
+    bool dynamic_payload_found = false;
+    if (runtime_cmd != nullptr) {
+        // High-speed, zero-allocation prefix comparison checks on the button_name cell string
+        if (std::strncmp(runtime_cmd->button_name, "RKEY:", 5) == 0) {
+            resolved_type = 0; // Force Keyboard Report Profile
+            true_hid_code = (uint16_t)std::strtoul(runtime_cmd->button_name + 5, nullptr, 16);
+            dynamic_payload_found = true;
+        }
+        else if (std::strncmp(runtime_cmd->button_name, "RCON:", 5) == 0) {
+            resolved_type = 1; // Force Consumer Report Profile
+            true_hid_code = (uint16_t)std::strtoul(runtime_cmd->button_name + 5, nullptr, 16);
+            dynamic_payload_found = true;
+        }
+    }
+
+    // Fallback: If no metadata protocol payload is registered, look up standard hardcoded Xgimi tables
+    if (!dynamic_payload_found) {
+        true_hid_code = resolve_action_to_true_hid(action_name, resolved_type);
+    }
 
     if (true_hid_code == 0xFFFF && resolved_type != 2) return;
 
-    // CLEAN STREAMLINED INJECTION PASS-THROUGH
-    if (event_state == 0 || event_state == 1) { // DOWN or HOLDING states
-        if (resolved_type == 0) {
-            esphome::id(xgimi_remote_controller).hold_keyboard((uint8_t)true_hid_code);
-        }
-        else if (resolved_type == 1) {
-            esphome::id(xgimi_remote_controller).hold_consumer(true_hid_code);
-        }
+    // Streamlined low-overhead driver execution pipeline
+    if (event_state == KEY_EVENT_DOWN || event_state == KEY_EVENT_HOLDING) {
+        if (resolved_type == 0)      esphome::id(xgimi_remote_controller).hold_keyboard((uint8_t)true_hid_code);
+        else if (resolved_type == 1) esphome::id(xgimi_remote_controller).hold_consumer(true_hid_code);
     }
-    else if (event_state == 2) { // UP / Release state
-        if (resolved_type == 0) {
-            esphome::id(xgimi_remote_controller).release_held_keyboard_();
-        }
-        else if (resolved_type == 1) {
-            esphome::id(xgimi_remote_controller).release_held_consumer_();
-        }
+    else if (event_state == KEY_EVENT_UP) {
+        if (resolved_type == 0)      esphome::id(xgimi_remote_controller).release_held_keyboard_();
+        else if (resolved_type == 1) esphome::id(xgimi_remote_controller).release_held_consumer_();
     }
 }
 
@@ -1350,7 +1358,6 @@ inline bool import_profile_from_csv(const std::string& csv_data) {
         }
         if (line_view.empty()) continue;
 
-        // In-place zero-allocation token extractor
         auto get_next_cell = [](std::string_view& src) -> std::string_view {
             if (src.empty()) return std::string_view{};
             size_t comma_pos = src.find(',');
@@ -1370,29 +1377,25 @@ inline bool import_profile_from_csv(const std::string& csv_data) {
         // METADATA CONFIGURATION LINE PASS
         // -----------------------------------------------------------
         if (cell_type == "META") {
-            get_next_cell(line_view); // Discard incoming structural column indexing cell
+            get_next_cell(line_view); 
             std::string_view name_view  = get_next_cell(line_view);
             std::string_view proto_view = get_next_cell(line_view);
             std::string_view addr_view  = get_next_cell(line_view);
             std::string_view arm_view   = get_next_cell(line_view);
             std::string_view fire_view  = get_next_cell(line_view);
 
-            // Assign profile title pointer content directly
             active_profile_workspace.profile_name.assign(name_view.data(), name_view.size());
 
-            // Resolve raw slices against identity mappings safely
-            if (proto_view == "NEC")        active_profile_workspace.protocol = PROTO_NEC;
-            else if (proto_view == "JVC")   active_profile_workspace.protocol = PROTO_JVC;
-            else if (proto_view == "SONY")  active_profile_workspace.protocol = PROTO_SONY;
-            else if (proto_view == "LG")    active_profile_workspace.protocol = PROTO_LG;
+            if (proto_view == "NEC")            active_profile_workspace.protocol = PROTO_NEC;
+            else if (proto_view == "JVC")       active_profile_workspace.protocol = PROTO_JVC;
+            else if (proto_view == "SONY")      active_profile_workspace.protocol = PROTO_SONY;
+            else if (proto_view == "LG")        active_profile_workspace.protocol = PROTO_LG;
             else if (proto_view == "PANASONIC") active_profile_workspace.protocol = PROTO_PANASONIC;
-            else if (proto_view == "RC5")   active_profile_workspace.protocol = PROTO_RC5;
-            else if (proto_view == "RC6")   active_profile_workspace.protocol = PROTO_RC6;
-            else                           active_profile_workspace.protocol = PROTO_UNKNOWN;
+            else if (proto_view == "RC5")       active_profile_workspace.protocol = PROTO_RC5;
+            else if (proto_view == "RC6")       active_profile_workspace.protocol = PROTO_RC6;
+            else                                active_profile_workspace.protocol = PROTO_UNKNOWN;
 
-            // Zero heap dynamic memory cell extraction parsing conversions
             char tmp[32] = {0};
-            
             std::memcpy(tmp, addr_view.data(), std::min(addr_view.size(), sizeof(tmp) - 1));
             active_profile_workspace.device_address = std::strtoul(tmp, nullptr, 16);
 
@@ -1419,24 +1422,23 @@ inline bool import_profile_from_csv(const std::string& csv_data) {
             }
 
             std::string_view code_view  = get_next_cell(line_view);
-            std::string_view token_view = get_next_cell(line_view);
-            std::string_view label_view = get_next_cell(line_view);
+            std::string_view token_view = get_next_cell(line_view); 
+            std::string_view label_view = get_next_cell(line_view); 
 
             char tmp_code[32] = {0};
             std::memcpy(tmp_code, code_view.data(), std::min(code_view.size(), sizeof(tmp_code) - 1));
             uint32_t command_code = std::strtoul(tmp_code, nullptr, 16);
             
-            // Build stack boundaries for string inputs to avoid trailing trash
-            char token_buf[32] = {0};
-            char label_buf[32] = {0};
+            char token_buf[MAX_ACTION_STRING_LEN] = {0}; 
+            char label_buf[MAX_BUTTON_NAME_LEN]   = {0}; 
+            
             std::memcpy(token_buf, token_view.data(), std::min(token_view.size(), sizeof(token_buf) - 1));
             std::memcpy(label_buf, label_view.data(), std::min(label_view.size(), sizeof(label_buf) - 1));
 
-            // Load directly into runtime RAM vectors via your lightweight constructor
             add_cmd(command_code, token_buf, label_buf);
             keys_imported++;
         }
-    }
+    } // <-- Closes the while loop
 
     if (!meta_parsed || keys_imported == 0) {
         ESP_LOGE("CSV Import", "Parsing failed: Meta missing or zero keys processed.");
@@ -1444,10 +1446,9 @@ inline bool import_profile_from_csv(const std::string& csv_data) {
     }
 
     active_profile_workspace.cmd_codes.shrink_to_fit();
-    ESP_LOGI("CSV Import", "Successfully recovered %d layout items via cold-stream string_view parsing.", (int)keys_imported);
+    ESP_LOGI("CSV Import", "Successfully recovered %d layout items.", (int)keys_imported);
     return true;
-}
-
+} 
 
 
 
@@ -1457,114 +1458,6 @@ inline bool import_profile_from_csv(const std::string& csv_data) {
 // ====================================================================
 #include "esp_http_server.h"
 
-// 1. FLASH-BOUND USER INTERFACE HTML DEFINITION (UPDATED TO EXACTLY THREE FONT SIZES)
-static const char dashboard_html[] PROGMEM = R"rawliteral(
-<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>IR Hub Storage Matrix</title>
-<style>
-  :root { --fs-lg: 18px; --fs-md: 14px; --fs-sm: 12px; }
-  body{font-family:system-ui,-apple-system,sans-serif;margin:12px;background:#0d1117;color:#c9d1d9;font-size:var(--fs-md)}
-  .box{background:#161b22;padding:14px 20px;border:1px solid #30363d;border-radius:6px;max-width:480px;margin:auto;margin-bottom:10px}
-  h3{margin-top:0;color:#58a6ff;border-bottom:1px solid #21262d;padding-bottom:6px;margin-bottom:10px;font-size:var(--fs-lg)}
-  label{display:block;margin:8px 0 4px;font-size:var(--fs-md);font-weight:600}
-  select,input[type="file"]{width:100%;padding:6px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#fff;box-sizing:border-box;font-size:var(--fs-md)}
-  .btn{padding:8px;background:#238636;color:#fff;border:none;border-radius:6px;font-weight:bold;text-align:center;text-decoration:none;cursor:pointer;font-size:var(--fs-md)}
-  .btn.sec{background:#21262d;border:1px solid #30363d;color:#c9d1d9}
-  .btn:hover{opacity:0.9}
-  
-  /* Testing Grid Console Layout Styles */
-  .grid-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
-  .btn-test { padding: 12px 6px; background: #1f6feb; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: var(--fs-sm); text-align: center; }
-  .btn-test:active { background: #388bfd; }
-  .btn-test.pwr { background: #da3637; }
-  .btn-test.pwr:active { background: #f85149; }
-
-  .stat-grid-box { background: #0d1117; border: 1px solid #21262d; border-radius: 6px; padding: 10px 14px; margin-top: 3px; }
-  .diag-grid { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 20px; row-gap: 6px; }
-  .diag-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #21262d; padding-bottom: 4px; }
-  .diag-item.span-2 { grid-column: span 2; }
-  .stat-lbl{color:#8b949e;font-size:var(--fs-sm);font-weight:600;text-transform:uppercase;margin-right:8px;white-space:nowrap}
-  .stat-val{font-family:monospace;font-weight:bold;color:#ff7b72;font-size:var(--fs-md);text-align:right}
-</style>
-<script>
-  function updateActionUrls(){
-    const idx = document.getElementById('profile_sel').value;
-    document.getElementById('export_link').href = '/export?slot=' + idx;
-    document.getElementById('upload_form').action = '/import?slot=' + idx;
-  }
-  function sendClick(actionName) {
-    fetch('/button_inject?action=' + actionName);
-  }
-  window.onload = updateActionUrls;
-</script>
-</head><body>
-<div class="box">
-  <h3>Profile Management: %BLE_REMOTE_NAME%</h3>
-  <p style="font-size:var(--fs-sm);color:#8b949e;margin:0 0 15px">Active Profile: <span style="color:#58a6ff;font-weight:bold">%ACTIVE_NAME%</span></p>
-  <form action="/select" method="GET">
-    <select id="profile_sel" name="slot" onchange="updateActionUrls()">%OPTIONS_MARKER%</select>
-    <button type="submit" class="btn" style="width:100%;margin-top:12px;background:#403030">Activate Selected Profile</button>
-  </form>
-  <div style="margin-top:12px; margin-bottom:12px;">
-    <a id="export_link" href="#" class="btn sec" style="background:#1f6feb; display:block; text-align:center;">Download Selected Profile</a>
-  </div>
-  <form id="upload_form" method="POST" enctype="multipart/form-data">
-    <input type="file" id="file_picker" name="file" onchange="document.getElementById('ul_btn').disabled=false;">
-    <button type="submit" id="ul_btn" class="btn" style="width:100%;background:#238636;margin-top:12px;" disabled>Upload Profile to Slot</button>
-  </form>
-</div>
-
-<div class="box">
-  <h3>Remote Interaction Testing Console</h3>
-  <div class="grid-container">
-    <button class="btn-test pwr" onclick="sendClick('power_on')">POWER ON</button>
-    <button class="btn-test" onclick="sendClick('cursor_up')">▲ UP</button>
-    <button class="btn-test pwr" onclick="sendClick('power_off')">POWER OFF</button>
-    <button class="btn-test" onclick="sendClick('cursor_left')">◀ LEFT</button>
-    <button class="btn-test" onclick="sendClick('cursor_enter')">● ENTER</button>
-    <button class="btn-test" onclick="sendClick('cursor_right')">▶ RIGHT</button>
-    <button class="btn-test" onclick="sendClick('back')">↩ BACK</button>
-    <button class="btn-test" onclick="sendClick('cursor_down')">▼ DOWN</button>
-    <button class="btn-test" onclick="sendClick('home')">⌂ HOME</button>
-    <button class="btn-test" onclick="sendClick('volume_up')">🔊 VOL +</button>
-    <button class="btn-test" onclick="sendClick('mute')">🔇 MUTE</button>
-    <button class="btn-test" onclick="sendClick('volume_down')">🔉 VOL -</button>
-  </div>
-</div>
-
-<div class="box">
-  <h3>Macro Storage Management</h3>
-  <div style="margin-bottom:15px;">
-    <div style="margin-bottom:12px;">
-      <a href="/export_macro" class="btn" style="display:block; background:#1f6feb; text-decoration:none;">Download Macros</a>
-    </div>
-    <form action="/import_macro" method="POST" enctype="multipart/form-data" style="border-top:1px solid #21262d; padding-top:12px;">
-       <input type="file" name="file" accept=".csv" style="margin-bottom:8px;">
-       <button type="submit" class="btn" style="width:100%;background:#238636;margin-top:12px;">Upload Macros</button>
-    </form>
-  </div>
-</div>
-
-<div class="box">
-  <h3>System Diagnostics</h3>
-  <div class="stat-grid-box">
-    <div class="diag-grid">
-      <div class="diag-item"><div class="stat-lbl">CPU</div><div class="stat-val" style="color:#79c0ff">%CPU_TYPE%</div></div>
-      <div class="diag-item"><div class="stat-lbl">Cores</div><div class="stat-val" style="color:#79c0ff">%CPU_CORES%</div></div>
-      <div class="diag-item"><div class="stat-lbl">Clock</div><div class="stat-val" style="color:#79c0ff">%CPU_SPEED%</div></div>
-      <div class="diag-item"><div class="stat-lbl">Total Flash</div><div class="stat-val" style="color:#79c0ff">%TOTAL_FLASH%</div></div>
-      <div class="diag-item"><div class="stat-lbl">App Part.</div><div class="stat-val" style="color:#79c0ff">%APP_TOTAL%</div></div>
-      <div class="diag-item"><div class="stat-lbl">App Used</div><div class="stat-val">%APP_USED%</div></div>
-      <div class="diag-item"><div class="stat-lbl">Total RAM</div><div class="stat-val">%TOTAL_RAM%</div></div>
-      <div class="diag-item"><div class="stat-lbl">Free Heap</div><div class="stat-val">%FREE_RAM%</div></div>    
-      <div class="diag-item"><div class="stat-lbl">Heap Frag.</div><div class="stat-val">%FRAGMENTATION%</div></div>
-      <div class="diag-item"><div class="stat-lbl">Max Block</div><div class="stat-val">%MAX_BLOCK%</div></div>
-      <div class="diag-item span-2"><div class="stat-lbl">Free Stack Space</div><div class="stat-val">%STACK_SIZE%</div></div>
-    </div>
-  </div>
-</div>
-</body></html>
-)rawliteral";
 
 
 // ====================================================================
@@ -1630,20 +1523,37 @@ inline esp_err_t root_handler(httpd_req_t *req) {
 <style>
   :root { --fs-lg: 18px; --fs-md: 14px; --fs-sm: 12px; }
   body{font-family:system-ui,-apple-system,sans-serif;margin:12px;background:#0d1117;color:#c9d1d9;font-size:var(--fs-md)}
-  .box{background:#161b22;padding:14px 20px;border:1px solid #30363d;border-radius:6px;max-width:480px;margin:auto;margin-bottom:10px}
+  .box{background:#161b22;padding:14px 20px;border:1px solid #30363d;border-radius:6px;max-width:640px;margin:auto;margin-bottom:10px}
   h3{margin-top:0;color:#58a6ff;border-bottom:1px solid #21262d;padding-bottom:6px;margin-bottom:10px;font-size:var(--fs-lg)}
   label{display:block;margin:8px 0 4px;font-size:var(--fs-md);font-weight:600}
   select,input[type="file"]{width:100%;padding:6px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#fff;box-sizing:border-box;font-size:var(--fs-md)}
-  .btn{padding:8px;background:#238636;color:#fff;border:none;border-radius:6px;font-weight:bold;text-align:center;text-decoration:none;cursor:pointer;font-size:var(--fs-md)}
+  .btn{padding:8px;background:#238636;color:#fff;border:none;border-radius:6px;font-weight:bold;text-align:center;text-decoration:none;cursor:pointer;font-size:var(--fs-lg)}
   .btn.sec{background:#21262d;border:1px solid #30363d;color:#c9d1d9}
   .btn:hover{opacity:0.9}
-  .grid-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
-  .btn-test { padding: 12px 6px; background: #1f6feb; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: var(--fs-sm); text-align: center; }
+  
+  /* Adjusted 4-Column Grid Layout Engine */
+  .grid-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+  .btn-test { padding: 12px 6px; background: #1f6feb; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: var(--fs-md); text-align: center; }
   .btn-test:active { background: #388bfd; }
-  .btn-test.pwr { background: #da3637; }
+  .btn-test.pwr { grid-column: span 2; background: #da3637; }
   .btn-test.pwr:active { background: #f85149; }
   .btn-test.util { background: #21262d; border: 1px solid #30363d; color: #c9d1d9; }
   .btn-test.util:active { background: #30363d; }
+  .btn-test.focus { background: #41562d; border: 1px solid #30363d; color: #c9d1d9; }
+  .btn-test.focus:active { background: #50663d; }
+  .btn-test.dmenu { background: #76752D; border: 1px solid #30363d; color: #c9d1d9; }
+  .btn-test.dmenu:active { background: #76752D; }
+
+  .btn-test.span-2 { grid-column: span 2; }
+
+  /* Mobile Responsive Fallback (Flips to 2 columns on small mobile devices) */
+  @media(max-width: 480px) {
+    .box { max-width: 100%; }
+    .grid-container { grid-template-columns: repeat(2, 1fr); }
+    .btn-test.pwr { grid-column: span 1; }
+    .btn-test.span-2 { grid-column: span 1; }
+  }
+  
   .stat-grid-box { background: #0d1117; border: 1px solid #21262d; border-radius: 6px; padding: 10px 14px; margin-top: 3px; }
   .diag-grid { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 20px; row-gap: 6px; }
   .diag-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #21262d; padding-bottom: 4px; }
@@ -1664,14 +1574,13 @@ inline esp_err_t root_handler(httpd_req_t *req) {
 </script>
 </head><body>
 <div class="box">
-  <h3>Profile Management: )rawliteral", HTTPD_RESP_USE_STRLEN);
-
-    httpd_resp_send_chunk(req, BLE_REMOTE_NAME_STR, strlen(BLE_REMOTE_NAME_STR));
+  <h3>Profile Management: ESP32 IR Hub Target</h3>
+)rawliteral", HTTPD_RESP_USE_STRLEN);
            
     int active_idx = esphome::id(active_remote_layout).value();
     load_profile_to_workspace(active_idx);
     
-    httpd_resp_send_chunk(req, "</h3>\n  <p style=\"font-size:var(--fs-sm);color:#8b949e;margin:0 0 15px\">Active Profile: <span style=\"color:#58a6ff;font-weight:bold\">", HTTPD_RESP_USE_STRLEN);
+    httpd_resp_send_chunk(req, "  <p style=\"font-size:var(--fs-sm);color:#8b949e;margin:0 0 15px\">Active Profile: <span style=\"color:#58a6ff;font-weight:bold\">", HTTPD_RESP_USE_STRLEN);
     httpd_resp_send_chunk(req, active_profile_workspace.profile_name.c_str(), HTTPD_RESP_USE_STRLEN);
     httpd_resp_send_chunk(req, R"rawliteral(</span></p>
   <form action="/select" method="GET">
@@ -1696,7 +1605,7 @@ inline esp_err_t root_handler(httpd_req_t *req) {
     load_profile_to_workspace(active_idx);
 
     // --------------------------------------------------------------------
-    // CHUNK 2: INTERACTION TESTING CONSOLE (7-ROW DESIGN)
+    // CHUNK 2: INTERACTION TESTING CONSOLE (COMPACTED TO 4-COLUMNS GRID)
     // --------------------------------------------------------------------
     httpd_resp_send_chunk(req, R"rawliteral(</select>
     <button type="submit" class="btn" style="width:100%;margin-top:12px;background:#403030">Activate Selected Profile</button>
@@ -1715,44 +1624,88 @@ inline esp_err_t root_handler(httpd_req_t *req) {
 <div class="box">
   <h3>Remote Interaction Testing Console</h3>
   <div class="grid-container">
-    <!-- Row 1: power_on, <empty>, power_off -->
+    <!-- Row 1: System Power Management Keys (Using Span-2 for alignment in 4 columns) -->
     <button class="btn-test pwr" onclick="sendClick('power_on')">POWER ON</button>
-    <button class="btn-test util" style="visibility:hidden;"></button>
     <button class="btn-test pwr" onclick="sendClick('power_off')">POWER OFF</button>
     
-    <!-- Row 2: <empty>, up, <empty> -->
-    <button class="btn-test util" style="visibility:hidden;"></button>
+    <!-- Row 2: Directional Controls Up Direction -->
+    <button class="btn-test dmenu" onclick="sendClick('home')">HOME</button>
     <button class="btn-test" onclick="sendClick('cursor_up')">UP</button>
     <button class="btn-test util" style="visibility:hidden;"></button>
+    <button class="btn-test util" style="visibility:hidden;"></button>
     
-    <!-- Row 3: left, enter, right -->
+    <!-- Row 3: Navigation Mid Track Row -->
     <button class="btn-test" onclick="sendClick('cursor_left')">LEFT</button>
     <button class="btn-test" onclick="sendClick('cursor_enter')">ENTER</button>
     <button class="btn-test" onclick="sendClick('cursor_right')">RIGHT</button>
+    <button class="btn-test dmenu" onclick="sendClick('game_menu')">GAME</button>
     
-    <!-- Row 4: back, down, menu -->
-    <button class="btn-test" onclick="sendClick('back')">BACK</button>
+    <!-- Row 4: Directional Controls Down Direction -->
+    <button class="btn-test dmenu" onclick="sendClick('back')">BACK</button>
     <button class="btn-test" onclick="sendClick('cursor_down')">DOWN</button>
-    <button class="btn-test" onclick="sendClick('settings_menu')">MENU</button>
-    
-    <!-- Row 5: home, short 1, short 2 -->
-    <button class="btn-test" onclick="sendClick('home')">HOME</button>
-    <button class="btn-test util" onclick="sendClick('shortcut_1')">SHORT 1</button>
-    <button class="btn-test util" onclick="sendClick('shortcut_2')">SHORT 2</button>
-
-    <!-- Row 6: <empty>, short 3, short 4 -->
+    <button class="btn-test dmenu" onclick="sendClick('settings_menu')">MENU</button>
     <button class="btn-test util" style="visibility:hidden;"></button>
-    <button class="btn-test util" onclick="sendClick('shortcut_3')">SHORT 3</button>
-    <button class="btn-test util" onclick="sendClick('shortcut_4')">SHORT 4</button>
+    
+    <!-- Row 5: Hardware Audio Controls -->
+    <button class="btn-test util" onclick="sendClick('volume_down')">VOL -</button>
+    <button class="btn-test util" onclick="sendClick('mute')">MUTE</button>
+    <button class="btn-test util" onclick="sendClick('volume_up')">VOL +</button>
+    <button class="btn-test util" onclick="sendClick('input')">INPUT</button>
+    
+    <!-- Row 6: Hardware Video/Gaming Controls -->
+    <button class="btn-test focus" onclick="sendClick('focus_manual')">Focus MANUAL</button>
+    <button class="btn-test focus" onclick="sendClick('focus_auto')">Focus AUTO</button>
+    <button class="btn-test util" onclick="sendClick('picture')">Picture</button>
+    <button class="btn-test util" style="visibility:hidden;"></button>
+    
+    <!-- Row 7: Programmable App Shortcuts -->
+    <button class="btn-test" onclick="sendClick('shortcut_1')">Short 1</button>
+    <button class="btn-test" onclick="sendClick('shortcut_2')">Short 2</button>
+    <button class="btn-test" onclick="sendClick('shortcut_3')">Short 3</button>
+    <button class="btn-test" onclick="sendClick('shortcut_4')">Short 4</button>
 
-    <!-- Row 7: focus auto, macro play, focus manual -->
-    <button class="btn-test util" onclick="sendClick('macro_play')">MACRO PLAY</button>
-    <button class="btn-test util" onclick="sendClick('focus_manual')">FOCUS MANUAL</button>
-    <button class="btn-test util" onclick="sendClick('focus_auto')">FOCUS AUTO</button>
-
+    <!-- Row 8: Automation Macro Engines -->
+    <button class="btn-test util" onclick="sendClick('macro_record')">Macro RECORD</button>
+    <button class="btn-test util" onclick="sendClick('macro_play')">Macro PLAY</button>
+    <button class="btn-test util" style="visibility:hidden;"></button>
+    <button class="btn-test util" style="visibility:hidden;"></button>
+    
+    <!-- Row 9: Bluetooth Token Diagnostic Layer -->
+    <button class="btn-test util" onclick="sendClick('token_sniff')">Token SNIFF</button>
+    <button class="btn-test util" onclick="sendClick('token_recall')">Token RECALL</button>
+    <button class="btn-test util" style="visibility:hidden;"></button>
+    <button class="btn-test util" onclick="sendClick('token_clear')">Token CLEAR</button>
   </div>
 </div>
+)rawliteral", HTTPD_RESP_USE_STRLEN); // <-- This safely closes Chunk 2
 
+#ifdef ENABLE_EXTRA_BUTTONS
+    // ⚡ CLEAN EXTRA CHUNK: Opens its own distinct R"rawliteral( block safely
+    httpd_resp_send_chunk(req, R"rawliteral(
+<div class="box">
+  <h3>Extended Function Matrix</h3>
+  <div class="grid-container">
+    <!-- Row 10: Custom 1 to 4 -->
+    <button class="btn-test util" onclick="sendClick('custom_1')">Custom 1</button>
+    <button class="btn-test util" onclick="sendClick('custom_2')">Custom 2</button>
+    <button class="btn-test util" onclick="sendClick('custom_3')">Custom 3</button>
+    <button class="btn-test util" onclick="sendClick('custom_4')">Custom 4</button>
+    <!-- Row 11: Custom 5 to 8 -->
+    <button class="btn-test util" onclick="sendClick('custom_5')">Custom 5</button>
+    <button class="btn-test util" onclick="sendClick('custom_6')">Custom 6</button>
+    <button class="btn-test util" onclick="sendClick('custom_7')">Custom 7</button>
+    <button class="btn-test util" onclick="sendClick('custom_8')">Custom 8</button>
+    <button class="btn-test util" style="visibility:hidden;"></button>
+  </div>
+</div>
+)rawliteral", HTTPD_RESP_USE_STRLEN); // <-- Safely closes the extra chunk
+#endif
+
+
+    // --------------------------------------------------------------------
+    // CHUNK 3: MACRO STORAGE MANAGEMENT & DIAGNOSTICS CONTAINER STARTS
+    // --------------------------------------------------------------------
+    httpd_resp_send_chunk(req, R"rawliteral(
 <div class="box">
   <h3>Macro Storage Management</h3>
   <div style="margin-bottom:15px;">
@@ -1765,13 +1718,14 @@ inline esp_err_t root_handler(httpd_req_t *req) {
     </form>
   </div>
 </div>
+
 <div class="box">
   <h3>System Diagnostics</h3>
   <div class="stat-grid-box">
     <div class="diag-grid">)rawliteral", HTTPD_RESP_USE_STRLEN);
 
     // --------------------------------------------------------------------
-    // CHUNK 3: RUNTIME METRICS TELEMETRY
+    // CHUNK 4: LIVE HARDWARE METRICS POOL TELEMETRY
     // --------------------------------------------------------------------
     snprintf(scratch, sizeof(scratch), "<div class=\"diag-item\"><div class=\"stat-lbl\">CPU</div><div class=\"stat-val\" style=\"color:#79c0ff\">%s</div></div>", chip_model_str);
     httpd_resp_send_chunk(req, scratch, strlen(scratch));
@@ -1784,7 +1738,6 @@ inline esp_err_t root_handler(httpd_req_t *req) {
 
     snprintf(scratch, sizeof(scratch), "<div class=\"diag-item\"><div class=\"stat-lbl\">Total Flash</div><div class=\"stat-val\" style=\"color:#79c0ff\">%u MB</div></div>", (unsigned int)(flash_size / (1024 * 1024)));
     httpd_resp_send_chunk(req, scratch, strlen(scratch));
-
     snprintf(scratch, sizeof(scratch), "<div class=\"diag-item\"><div class=\"stat-lbl\">App Part.</div><div class=\"stat-val\" style=\"color:#79c0ff\">%.2f MB</div></div>", (float)app_total_bytes / (1024.0f * 1024.0f));
     httpd_resp_send_chunk(req, scratch, strlen(scratch));
 
@@ -1806,6 +1759,9 @@ inline esp_err_t root_handler(httpd_req_t *req) {
     snprintf(scratch, sizeof(scratch), "<div class=\"diag-item span-2\"><div class=\"stat-lbl\">Free Stack Space</div><div class=\"stat-val\">%u Bytes</div></div>", (unsigned int)uxTaskGetStackHighWaterMark(NULL));
     httpd_resp_send_chunk(req, scratch, strlen(scratch));
     
+    // --------------------------------------------------------------------
+    // CHUNK 5: FOOTER CLOSE & PIPELINE SIGNOFF
+    // --------------------------------------------------------------------
     httpd_resp_send_chunk(req, R"rawliteral(    </div>
   </div>
   <div style="margin-top:12px; font-size:var(--fs-sm); border-top:1px solid #21262d; padding-top:10px">
@@ -1818,12 +1774,10 @@ inline esp_err_t root_handler(httpd_req_t *req) {
 </div>
 </body></html>)rawliteral", HTTPD_RESP_USE_STRLEN);
     
+    // Finalize response pipeline stream signoff with a trailing NULL block
     httpd_resp_send_chunk(req, NULL, 0);
     return ESP_OK;
 }
-
-
-
 
 
 
@@ -1937,6 +1891,7 @@ inline esp_err_t export_handler(httpd_req_t *req) {
         char irCommand_buf[16];
         snprintf(irCommand_buf, sizeof(irCommand_buf), key_fmt, (unsigned int)p.cmd_codes[i].first);
         
+        // Symmetrically aligned to export Field 2 (action_string) and Field 3 (button_name)
         snprintf(chunk_buf, sizeof(chunk_buf), "KEY,%s,%s,%s\n",
                  irCommand_buf, p.cmd_codes[i].second.action_string, p.cmd_codes[i].second.button_name);
         httpd_resp_send_chunk(req, chunk_buf, strlen(chunk_buf));
@@ -2208,7 +2163,6 @@ inline bool import_macro_from_csv(const std::string& csv_data) {
 
             auto& step = macro_build.steps[macro_build.total_steps];
             
-            // Re-use your existing small string helpers safely
             char state_tmp[16] = {0};
             std::memcpy(state_tmp, state_view.data(), std::min(state_view.size(), sizeof(state_tmp) - 1));
             step.event_state = str_to_state(state_tmp);
@@ -2217,7 +2171,7 @@ inline bool import_macro_from_csv(const std::string& csv_data) {
             std::memcpy(delay_tmp, delay_view.data(), std::min(delay_view.size(), sizeof(delay_tmp) - 1));
             step.delay_ms = std::strtoul(delay_tmp, nullptr, 10);
 
-            // Directly pack into array buffers safely
+            // CRITICAL: Safe copy limited to MAX_ACTION_STRING_LEN (16 bytes)
             std::memset(step.action_string, 0, MAX_ACTION_STRING_LEN);
             std::memcpy(step.action_string, payload_view.data(), std::min(payload_view.size(), MAX_ACTION_STRING_LEN - 1));
 
@@ -2291,6 +2245,9 @@ inline esp_err_t import_macro_text_handler(httpd_req_t *req) {
     return ESP_FAIL;
 }
 
+// ====================================================================
+// HIGH-PERFORMANCE WEB CONSOLE ACTION INTERCEPTOR & INJECTION GATE
+// ====================================================================
 inline esp_err_t button_inject_handler(httpd_req_t *req) {
     char query_buf[128] = {0};    
     size_t query_len = httpd_req_get_url_query_len(req) + 1;
@@ -2309,10 +2266,34 @@ inline esp_err_t button_inject_handler(httpd_req_t *req) {
                                               (workflow_state == MACRO_STATE_AWAITING_HOTKEY);
 
                 if (route_to_state_machine) {
-                    // ... (Keep your existing state machine routing block exactly as-is) ...
+                    // Route inbound web clicks directly as KEY_EVENT_DOWN actions to the state engine 
+                    // when an automation session is actively listening for payload keys or binding assignments.
+                    uint32_t current_hex_mapping = find_active_command_by_name(action_param);
+                    esphome::id(ir_map_processor).execute(current_hex_mapping, 0); // 0 = DOWN / Edge Press
+                    
+                    // ====================================================================
+                    // NEW CORRECTION: ANTI-LOCKUP WEB CLEARING GATE (C++ TYPED EDITION)
+                    // If the macro engine just finished assigning a button via the web console,
+                    // it will land in state 99 waiting for a physical button release.
+                    // We forcibly break out back to IDLE via .value() to ensure immediate availability.
+                    // ====================================================================
+                    if (esphome::id(macro_workflow_state).value() == MACRO_STATE_LIFTOFF_SHIELD) {
+                        ESP_LOGI("WEB_CONSOLE", "Web assignment completed. Simulating lifting edge to release state lock.");
+                        esphome::id(macro_workflow_state).value() = MACRO_STATE_IDLE;
+                        
+                        // Corrected syntax using .value() to satisfy the compiler
+                        esphome::id(global_cached_command).value() = 0;
+                        esphome::id(global_initial_press_time).value() = 0;
+                        esphome::id(global_last_processed_time).value() = 0;
+                        esphome::id(global_is_holding).value() = false;
+                    }
+                
+                    httpd_resp_set_status(req, "204 No Content");
+                    httpd_resp_send(req, NULL, 0);
                     return ESP_OK;
                 }
 
+                // Update physical screen details to log the incoming command transaction
                 std::string resolved_display_str = std::string(action_param); 
                 for (const auto& kv_pair : active_profile_workspace.cmd_codes) {
                     if (std::strcmp(kv_pair.second.action_string, action_param) == 0) {
@@ -2323,37 +2304,95 @@ inline esp_err_t button_inject_handler(httpd_req_t *req) {
                 resolved_display_str += " [web]";
                 esphome::id(display_show).execute(false, resolved_display_str, active_profile_workspace.profile_name, "BLE Web Command");
 
-                // ⚡ AUDITED & UNIFIED MONOSTABLE WEB INTERCEPT GATE
+                // ====================================================================
+                // AUTOMATION STATE ENGINES REDIRECT ROUTINES
+                // ====================================================================
+                if (std::strcmp(action_param, "macro_play") == 0) {
+                    ESP_LOGI("WEB_CONSOLE", "Web Redirect: Engaging Macro Playback Sequence Tracker");
+                    uint32_t simulated_hex = find_active_command_by_name("macro_play");
+                    esphome::id(ir_map_processor).execute(simulated_hex, 0); // 0 = DOWN (Opens prefix window)
+                    
+                    httpd_resp_set_status(req, "204 No Content");
+                    httpd_resp_send(req, NULL, 0);
+                    return ESP_OK;
+                }
+                else if (std::strcmp(action_param, "macro_record") == 0) {
+                    ESP_LOGI("WEB_CONSOLE", "Web Redirect: Toggling Macro Recording State Machine");
+                    uint32_t simulated_hex = find_active_command_by_name("macro_record");
+                    esphome::id(ir_map_processor).execute(simulated_hex, 0); // 0 = DOWN (Starts or steps to assignment)
+                    
+                    httpd_resp_set_status(req, "204 No Content");
+                    httpd_resp_send(req, NULL, 0);
+                    return ESP_OK;
+                }
+
+
+                // ====================================================================
+                // WEB BUTTON BLUETOOTH TOKEN DIAGNOSTIC INTERCEPT LAYER
+                // ====================================================================
+                if (std::strcmp(action_param, "token_sniff") == 0) {
+                    ESP_LOGI("WEB_CONSOLE", "Web Intercept: Arming Token Sniffer Stack");
+                    esphome::id(showing_special_info).value() = true; // Lock display text protection
+                    esphome::id(sniffing_sequence).execute(); 
+                    
+                    httpd_resp_set_status(req, "204 No Content");
+                    httpd_resp_send(req, NULL, 0);
+                    return ESP_OK;
+                } 
+                else if (std::strcmp(action_param, "token_recall") == 0) {
+                    ESP_LOGI("WEB_CONSOLE", "Web Intercept: Executing Wake Token Recall");
+                    esphome::id(showing_special_info).value() = true; // Lock display text protection
+                    esphome::id(execute_token_recall_routine).execute();
+                    
+                    httpd_resp_set_status(req, "204 No Content");
+                    httpd_resp_send(req, NULL, 0);
+                    return ESP_OK;
+                } 
+                else if (std::strcmp(action_param, "token_clear") == 0) {
+                    ESP_LOGI("WEB_CONSOLE", "Web Intercept: Initiating Wake Token Wipe");
+                    esphome::id(run_token_clear_worker).execute();
+                    
+                    httpd_resp_set_status(req, "204 No Content");
+                    httpd_resp_send(req, NULL, 0);
+                    return ESP_OK;
+                }
+
+                // ====================================================================
+                // MONOSTABLE PROGRAMMATIC ACTIONS INTERCEPT GATE
+                // ====================================================================
                 bool is_monostable_web_key = (std::strcmp(action_param, "power_off") == 0 || 
                                               std::strcmp(action_param, "focus_manual") == 0 ||
-                                              std::strcmp(action_param, "focus_auto") == 0);
+                                              std::strcmp(action_param, "focus_auto") == 0 ||
+                                              std::strcmp(action_param, "power_on") == 0);
 
                 if (is_monostable_web_key) {
                     auto* target_btn = resolve_button(action_param);
                     if (target_btn != nullptr) {
                         target_btn->press(); 
                         ESP_LOGI("WEB_CONSOLE", "Web redirected straight to native programmatic button for: %s", action_param);
+                    } else {
+                        // Fallback handling if native platform component entity reference is missing
+                        fire_bluetooth_hid_action(action_param, 0);
                     }
-                    httpd_resp_set_status(req, "204 No Content");
-                    httpd_resp_send(req, NULL, 0);
-                    return ESP_OK;
-                }
-                else if (std::strcmp(action_param, "macro_play") == 0) {
-                    ESP_LOGI("WEB_CONSOLE", "Web redirected straight to state machine prefix loop for macro_play");
-                    uint32_t simulated_hex = find_active_command_by_name("macro_play");
-                    esphome::id(ir_map_processor).execute(simulated_hex, 0); 
+                    
                     httpd_resp_set_status(req, "204 No Content");
                     httpd_resp_send(req, NULL, 0);
                     return ESP_OK;
                 }
 
-                // Standard pass-through pipeline for stateless keys ONLY
+                // ====================================================================
+                // STANDARD PASS-THROUGH PIPELINE FOR STATELESS KEYS ONLY
+                // ====================================================================
                 if (std::strcmp(action_param, "power_off") != 0 && 
                     std::strcmp(action_param, "focus_manual") != 0 && 
-                    std::strcmp(action_param, "focus_auto") != 0) {
-                    fire_bluetooth_hid_action(action_param, 0); 
+                    std::strcmp(action_param, "focus_auto") != 0 &&
+                    std::strcmp(action_param, "power_on") != 0 &&
+                    std::strcmp(action_param, "macro_play") != 0 &&
+                    std::strcmp(action_param, "macro_record") != 0) {
+                    
+                    fire_bluetooth_hid_action(action_param, 0); // DOWN / Press edge
                     vTaskDelay(pdMS_TO_TICKS(60));              
-                    fire_bluetooth_hid_action(action_param, 2); 
+                    fire_bluetooth_hid_action(action_param, 2); // UP / Release edge
                 }
             }
         }

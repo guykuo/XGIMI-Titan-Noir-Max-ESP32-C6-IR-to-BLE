@@ -407,10 +407,11 @@ globals:
     initial_value: '-1'
     restore_value: no   
 
-  - id: session_captured_codes #command codes are stored here during learning
-    type: std::array<uint32_t, 32> #27 + 5 when ENABLE_EXTRA_BUTTONS
+  - id: session_captured_codes # command codes are stored here during learning
+    type: std::array<uint32_t, 40> # Expanded from 32 to 40 to safely accommodate extra custom buttons
     initial_value: '{0}'
     restore_value: no
+    
   - id: learn_current_button_idx
     type: int
     initial_value: '0'
@@ -624,7 +625,7 @@ script:
 
 
   # ====================================================================
-  # WATCHDOG-SAFE COOPERATIVE ASYNCHRONOUS PLAYBACK ENGINE
+  # WATCHDOG-SAFE COOPERATIVE ASYNCHRONOUS PLAYBACK ENGINE (LONG-HOLD EDITIONS)
   # ====================================================================
   - id: play_universal_shared_macro
     parameters:
@@ -660,7 +661,7 @@ script:
               return (id(macro_step_counter) < active_recording_buffer.total_steps);
           then:
             # ============================================================
-            # STEP A: TRUE-TO-LIFE PRE-EXECUTION PACING TIMING
+            # STEP A: DYNAMIC PACING & KEEP-ALIVE COMPILER HOLD LOGIC
             # ============================================================
             - lambda: |-
                 extern UniversalFlashMacro active_recording_buffer;
@@ -668,12 +669,42 @@ script:
                 uint32_t raw_delay = active_recording_buffer.steps[idx].delay_ms;
 
                 id(macro_last_event_time) = raw_delay;
-                ESP_LOGD("MACRO_PLAY", "   -> Step [%d]: Holding pace interval for: %ums", idx, (unsigned int)raw_delay);
+                ESP_LOGD("MACRO_PLAY", "   -> Step [%d]: Total delay budget: %ums", idx, (unsigned int)raw_delay);
 
-            # ⚡ CRITICAL PACING COUPLER: 
-            # If the upcoming step is an UP event, this delay holds the key DOWN 
-            # for the exact duration captured during your recording session.
-            - delay: !lambda "return id(macro_last_event_time);"
+            # If the current step is a release (UP) edge following a press (DOWN) edge,
+            # we evaluate if the duration qualifies as a sustained hold (> 300 ms).
+            - if:
+                condition:
+                  lambda: |-
+                    extern UniversalFlashMacro active_recording_buffer;
+                    int idx = id(macro_step_counter);
+                    // Check if this step is a release edge meant to hold down an active key
+                    return (active_recording_buffer.steps[idx].event_state == KEY_EVENT_UP && id(macro_last_event_time) > 500);
+                then:
+                  # --- SUSTAINED HOLD STREAMING GATES (> 300ms) ---
+                  - while:
+                      condition:
+                        lambda: 'return (id(macro_last_event_time) > 40);'
+                      then:
+                        - delay: 40ms
+                        - lambda: |-
+                            extern UniversalFlashMacro active_recording_buffer;
+                            int idx = id(macro_step_counter);
+                            const auto& step = active_recording_buffer.steps[idx];
+
+                            // Issue continuous keep-alive updates using the HOLDING state (1)
+                            ESP_LOGV("MACRO_PLAY", "Sending Keep-Alive frame for: %s", step.action_string);
+                            fire_bluetooth_hid_action(step.action_string, 1); 
+
+                            // Deduct the elapsed interval from our pacing tracking cache
+                            id(macro_last_event_time) -= 40;
+                  
+                  # Consume any small remaining remainder window under 40ms cleanly
+                  - delay: !lambda "return id(macro_last_event_time);"
+
+                else:
+                  # --- STANDARD TAP DELAY PATH (<= 300ms) ---
+                  - delay: !lambda "return id(macro_last_event_time);"
 
 
             # ============================================================
@@ -1388,10 +1419,8 @@ script:
           
           std::string cmd_name = found_cmd->action_string;
           
-          // ⚡ SYSTEM GUARD: If an automated script is already running its programmatic delays, 
-          // drop subsequent incoming IR repeat frames immediately to protect the script timing!
-          bool is_automated_script = (cmd_name == "power_off" || cmd_name == "focus_manual" || 
-                                      cmd_name == "focus_auto" || cmd_name == "power_on");
+          // ⚡ SYSTEM GUARD REMAINING: ONLY Power states enforce script delay loops
+          bool is_automated_script = (cmd_name == "power_off" || cmd_name == "power_on");
           
           if (is_automated_script && event_state == KEY_EVENT_HOLDING) {
             return; // Instantly drop trailing IR repeat spam during long presses!
@@ -1615,11 +1644,12 @@ script:
 
             int step_idx = id(macro_step_counter);
 
-            // ⚡ CONDUNDRUM SOLVER: Evaluate if this specific button requires long-hold behavior
+            // CONDUNDRUM SOLVER: Evaluate if this specific button requires long-hold behavior
             // Add any custom buttons here that need long-press access to hidden menus.
             bool is_hold_critical = (std::strcmp(found_cmd->action_string, "settings_menu") == 0 || 
                                      std::strcmp(found_cmd->action_string, "shortcut_1") == 0 ||
-                                     std::strcmp(found_cmd->action_string, "power_off") == 0);
+                                     std::strcmp(found_cmd->action_string, "power_off") == 0 ||
+                                     std::strcmp(found_cmd->action_string, "cursor_enter") == 0);
 
             // 🛑 1. CONDITIONAL HARDWARE HOLD BLOCKER
             if (event_state == KEY_EVENT_HOLDING) {
@@ -1627,11 +1657,13 @@ script:
                 // For standard navigation keys, completely drop and swallow repeat frames
                 return; 
               }
-              // For engineering shortcuts, let the hold pass through to advance real-time duration
-              id(macro_last_event_time) = now;
+              // ⚡ ARCHITECTURAL AMENDMENT:
+              // For critical holds, we swallow the repeat frame to clear the input queue
+              // but we DO NOT overwrite id(macro_last_event_time) = now;
+              // This leaves the time anchor locked at the original KEY_EVENT_DOWN timestamp!
               return;
             }
-            
+
             if (step_idx < MAX_MACRO_STEPS && (event_state == KEY_EVENT_DOWN || event_state == KEY_EVENT_UP)) {
               
               // Defensive structural guard against contact bounce noise
@@ -1732,11 +1764,9 @@ script:
 
 
           // ============================================================
-          // PROGRAMMATIC INTERCEPT GROUP (POWER + TIMED FOCUS TRACKS)
+          // PROGRAMMATIC INTERCEPT GROUP
           // ============================================================
           bool is_automated_script_action = (std::strcmp(found_cmd->action_string, "power_off") == 0 || 
-                                             std::strcmp(found_cmd->action_string, "focus_manual") == 0 ||
-                                             std::strcmp(found_cmd->action_string, "focus_auto") == 0 ||
                                              std::strcmp(found_cmd->action_string, "power_on") == 0);
           
           if (is_automated_script_action) {
@@ -1750,7 +1780,7 @@ script:
                 fire_bluetooth_hid_action(found_cmd->action_string, event_state);
               }
               
-              // Clear caches so background flusher intervals don't issue an overlapping release frame
+              // Clear caches so background flusher intervals do not issue an overlapping release frame
               id(global_cached_command) = 0;
               id(global_initial_press_time) = 0;
               id(global_last_processed_time) = 0;
@@ -1758,7 +1788,6 @@ script:
             }
             return; // Stop processing and swallow the IR packet here!
           }
-
 
           // ============================================================
           // UNIFIED ACTION DRIVER INJECTION PIPELINE (FULLY RESTORED)

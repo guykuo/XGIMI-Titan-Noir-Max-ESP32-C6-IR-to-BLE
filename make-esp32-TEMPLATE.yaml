@@ -70,8 +70,8 @@ external_components:
   components: [esp32_ble_server, xgimi_remote]
 
 logger:
- # level: DEBUG
-  level: INFO
+ level: DEBUG
+  # level: INFO
 
 
 wifi:
@@ -207,7 +207,7 @@ esphome:
 
   project:
     name: xgimi.titan-noir-esp32-ir-kuo
-    version: 26.10.06.1211
+    version: 26.10.07.0535
 
 
   on_boot:
