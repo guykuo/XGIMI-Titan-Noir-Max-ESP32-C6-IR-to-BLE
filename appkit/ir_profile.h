@@ -1526,17 +1526,17 @@ inline esp_err_t root_handler(httpd_req_t *req) {
 <style>
   :root { --fs-lg: 18px; --fs-md: 14px; --fs-sm: 12px; }
   body{font-family:system-ui,-apple-system,sans-serif;margin:12px;background:#0d1117;color:#c9d1d9;font-size:var(--fs-md)}
-  .box{background:#161b22;padding:14px 20px;border:1px solid #30363d;border-radius:6px;max-width:640px;margin:auto;margin-bottom:10px}
+  .box{background:#161b22;padding:14px 20px;border:1px solid #30363d;border-radius:12px;max-width:640px;margin:auto;margin-bottom:10px}
   h3{margin-top:0;color:#58a6ff;border-bottom:1px solid #21262d;padding-bottom:6px;margin-bottom:10px;font-size:var(--fs-lg)}
   label{display:block;margin:8px 0 4px;font-size:var(--fs-md);font-weight:600}
-  select,input[type="file"]{width:100%;padding:6px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#fff;box-sizing:border-box;font-size:var(--fs-md)}
-  .btn{padding:8px;background:#238636;color:#fff;border:none;border-radius:6px;font-weight:bold;text-align:center;text-decoration:none;cursor:pointer;font-size:var(--fs-lg)}
+  select,input[type="file"]{width:100%;padding:6px;background:#0d1117;border:1px solid #30363d;border-radius:12px;color:#fff;box-sizing:border-box;font-size:var(--fs-md)}
+  .btn{padding:8px;background:#238636;color:#fff;border:none;border-radius:12px;font-weight:bold;text-align:center;text-decoration:none;cursor:pointer;font-size:var(--fs-lg)}
   .btn.sec{background:#21262d;border:1px solid #30363d;color:#c9d1d9}
   .btn:hover{opacity:0.9}
   
   /* Adjusted 4-Column Grid Layout Engine */
   .grid-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
-  .btn-test { padding: 12px 6px; background: #1f6feb; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: var(--fs-md); text-align: center; }
+  .btn-test { padding: 12px 6px; background: #1f6feb; color: white; border: none; border-radius:12px; font-weight: bold; cursor: pointer; font-size: var(--fs-md); text-align: center; }
   .btn-test:active { background: #388bfd; }
   .btn-test.pwr { grid-column: span 2; background: #da3637; }
   .btn-test.pwr:active { background: #f85149; }
@@ -1546,7 +1546,8 @@ inline esp_err_t root_handler(httpd_req_t *req) {
   .btn-test.focus:active { background: #50663d; }
   .btn-test.dmenu { background: #76752D; border: 1px solid #30363d; color: #c9d1d9; }
   .btn-test.dmenu:active { background: #76752D; }
-
+  .btn-test.macro { background: #473666; border: 1px solid #30363d; color: #c9d1d9; }
+  .btn-test.macro:active { background: #5B4683; }
   .btn-test.span-2 { grid-column: span 2; }
 
   /* Mobile Responsive Fallback (Flips to 2 columns on small mobile devices) */
@@ -1557,7 +1558,7 @@ inline esp_err_t root_handler(httpd_req_t *req) {
     .btn-test.span-2 { grid-column: span 1; }
   }
   
-  .stat-grid-box { background: #0d1117; border: 1px solid #21262d; border-radius: 6px; padding: 10px 14px; margin-top: 3px; }
+  .stat-grid-box { background: #0d1117; border: 1px solid #21262d; border-radius:12px; padding: 10px 14px; margin-top: 3px; }
   .diag-grid { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 20px; row-gap: 6px; }
   .diag-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #21262d; padding-bottom: 4px; }
   .diag-item.span-2 { grid-column: span 2; }
@@ -1634,46 +1635,40 @@ inline esp_err_t root_handler(httpd_req_t *req) {
     <!-- Row 2: Directional Controls Up Direction -->
     <button class="btn-test dmenu" onclick="sendClick('home')">HOME</button>
     <button class="btn-test" onclick="sendClick('cursor_up')">UP</button>
-    <button class="btn-test util" style="visibility:hidden;"></button>
-    <button class="btn-test util" style="visibility:hidden;"></button>
+    <button class="btn-test dmenu" onclick="sendClick('game_menu')">GAME</button>
+    <button class="btn-test util" onclick="sendClick('volume_up')">VOL +</button>
     
     <!-- Row 3: Navigation Mid Track Row -->
     <button class="btn-test" onclick="sendClick('cursor_left')">LEFT</button>
     <button class="btn-test" onclick="sendClick('cursor_enter')">ENTER</button>
     <button class="btn-test" onclick="sendClick('cursor_right')">RIGHT</button>
-    <button class="btn-test dmenu" onclick="sendClick('game_menu')">GAME</button>
+    <button class="btn-test util" onclick="sendClick('volume_down')">VOL -</button>
     
     <!-- Row 4: Directional Controls Down Direction -->
     <button class="btn-test dmenu" onclick="sendClick('back')">BACK</button>
     <button class="btn-test" onclick="sendClick('cursor_down')">DOWN</button>
     <button class="btn-test dmenu" onclick="sendClick('settings_menu')">MENU</button>
-    <button class="btn-test util" style="visibility:hidden;"></button>
-    
-    <!-- Row 5: Hardware Audio Controls -->
-    <button class="btn-test util" onclick="sendClick('volume_down')">VOL -</button>
     <button class="btn-test util" onclick="sendClick('mute')">MUTE</button>
-    <button class="btn-test util" onclick="sendClick('volume_up')">VOL +</button>
-    <button class="btn-test util" onclick="sendClick('input')">INPUT</button>
     
-    <!-- Row 6: Hardware Video/Gaming Controls -->
+    <!-- Row 5: Hardware Video/Gaming Controls -->
     <button class="btn-test focus" onclick="sendClick('focus_manual')">Focus MANUAL</button>
     <button class="btn-test focus" onclick="sendClick('focus_auto')">Focus AUTO</button>
-    <button class="btn-test util" onclick="sendClick('picture')">Picture</button>
-    <button class="btn-test util" style="visibility:hidden;"></button>
+    <button class="btn-test focus" onclick="sendClick('picture')">Picture</button>
+    <button class="btn-test focus" onclick="sendClick('input')">INPUT</button>
     
-    <!-- Row 7: Programmable App Shortcuts -->
+    <!-- Row 6: Programmable App Shortcuts -->
     <button class="btn-test" onclick="sendClick('shortcut_1')">Short 1</button>
     <button class="btn-test" onclick="sendClick('shortcut_2')">Short 2</button>
     <button class="btn-test" onclick="sendClick('shortcut_3')">Short 3</button>
     <button class="btn-test" onclick="sendClick('shortcut_4')">Short 4</button>
 
-    <!-- Row 8: Automation Macro Engines -->
-    <button class="btn-test util" onclick="sendClick('macro_record')">Macro RECORD</button>
-    <button class="btn-test util" onclick="sendClick('macro_play')">Macro PLAY</button>
+    <!-- Row 7: Automation Macro Engines -->
+    <button class="btn-test macro" onclick="sendClick('macro_record')">Macro RECORD</button>
+    <button class="btn-test macro" onclick="sendClick('macro_play')">Macro PLAY</button>
     <button class="btn-test util" style="visibility:hidden;"></button>
     <button class="btn-test util" style="visibility:hidden;"></button>
     
-    <!-- Row 9: Bluetooth Token Diagnostic Layer -->
+    <!-- Row 8: Bluetooth Token Diagnostic Layer -->
     <button class="btn-test util" onclick="sendClick('token_sniff')">Token SNIFF</button>
     <button class="btn-test util" onclick="sendClick('token_recall')">Token RECALL</button>
     <button class="btn-test util" style="visibility:hidden;"></button>
@@ -1688,12 +1683,12 @@ inline esp_err_t root_handler(httpd_req_t *req) {
 <div class="box">
   <h3>Extended Function Matrix</h3>
   <div class="grid-container">
-    <!-- Row 10: Custom 1 to 4 -->
+    <!-- Row 9: Custom 1 to 4 -->
     <button class="btn-test util" onclick="sendClick('custom_1')">Custom 1</button>
     <button class="btn-test util" onclick="sendClick('custom_2')">Custom 2</button>
     <button class="btn-test util" onclick="sendClick('custom_3')">Custom 3</button>
     <button class="btn-test util" onclick="sendClick('custom_4')">Custom 4</button>
-    <!-- Row 11: Custom 5 to 8 -->
+    <!-- Row 10: Custom 5 to 8 -->
     <button class="btn-test util" onclick="sendClick('custom_5')">Custom 5</button>
     <button class="btn-test util" onclick="sendClick('custom_6')">Custom 6</button>
     <button class="btn-test util" onclick="sendClick('custom_7')">Custom 7</button>
@@ -2031,7 +2026,7 @@ inline std::string generate_macro_csv() {
             std::memset(chunk, 0, sizeof(chunk));
             
             // STREAMLINED: Drops the old type column cell
-            snprintf(chunk, sizeof(chunk), "STEP,%s,%s,%u\n", 
+            snprintf(chunk, sizeof(chunk), "step,%s,%s,%u\n", 
                      step.action_string, state_to_str(step.event_state), step.delay_ms);
             csv_out += chunk;
         }
@@ -2055,7 +2050,6 @@ inline esp_err_t export_macro_text_handler(httpd_req_t *req) {
     char chunk_buf[256];
     bool found_any_data = false;
 
-    // Stream out up to the exact maximum bounds limit (0 heap allocations)
     for (int slot_id = 0; slot_id < MAX_BOUND_HOTKEYS; slot_id++) {
         uint64_t macro_nvs_key = 384720194ULL + slot_id;
         auto pref_obj = esphome::global_preferences->make_preference<UniversalFlashMacro>(macro_nvs_key);
@@ -2066,24 +2060,36 @@ inline esp_err_t export_macro_text_handler(httpd_req_t *req) {
         }
 
         found_any_data = true;
-        snprintf(chunk_buf, sizeof(chunk_buf), "MACRO,%d,Macro_Slot_%d\n", slot_id, slot_id);
+
+        // Dynamic lookup to match the human-readable action string to the current slot id
+        const char* human_readable_label = nullptr;
+        for (uint16_t b = 0; b < global_binding_registry.total_bound_keys; b++) {
+            if (global_binding_registry.bindings[b].shared_macro_slot == slot_id) {
+                human_readable_label = global_binding_registry.bindings[b].action_string;
+                break;
+            }
+        }
+
+        if (human_readable_label == nullptr || std::strlen(human_readable_label) == 0) {
+            snprintf(chunk_buf, sizeof(chunk_buf), "MACRO,Macro_Slot_%d\n", slot_id);
+        } else {
+            snprintf(chunk_buf, sizeof(chunk_buf), "MACRO,%s\n", human_readable_label);
+        }
         httpd_resp_send_chunk(req, chunk_buf, strlen(chunk_buf));
 
         for (uint16_t i = 0; i < macro_buf.total_steps; i++) {
             const auto& step = macro_buf.steps[i];
-            snprintf(chunk_buf, sizeof(chunk_buf), "STEP,%s,%s,%u\n", 
+            snprintf(chunk_buf, sizeof(chunk_buf), "step,%s,%s,%u\n", 
                      step.action_string, state_to_str(step.event_state), step.delay_ms);
             httpd_resp_send_chunk(req, chunk_buf, strlen(chunk_buf));
         }
     }
 
-    // Fallback block if the database contains no recorded macro paths
     if (!found_any_data) {
-        snprintf(chunk_buf, sizeof(chunk_buf), "MACRO,0,Empty_Suite\n");
+        snprintf(chunk_buf, sizeof(chunk_buf), "MACRO,Empty_Suite\n");
         httpd_resp_send_chunk(req, chunk_buf, strlen(chunk_buf));
     }
 
-    // Finalize response pipeline stream signoff
     httpd_resp_send_chunk(req, NULL, 0);
     return ESP_OK;
 }
@@ -2101,7 +2107,6 @@ inline bool import_macro_from_csv(const std::string& csv_data) {
     
     int active_slot = -1;
 
-    // Stack-allocated lambda framework to safely commit structures to NVS
     auto save_active_macro = [&]() {
         if (active_slot >= 0 && active_slot < MAX_BOUND_HOTKEYS && macro_build.total_steps > 0) {
             uint64_t macro_nvs_key = 384720194ULL + active_slot;
@@ -2116,16 +2121,14 @@ inline bool import_macro_from_csv(const std::string& csv_data) {
         size_t line_end = csv_data.find('\n', line_start);
         if (line_end == std::string::npos) line_end = csv_data.size();
 
-        // Slice an allocation-free string_view representation of the current row line
         std::string_view line_view(&csv_data[line_start], line_end - line_start);
-        line_start = line_end + 1; // Advance the tracking pointer past newline boundaries
+        line_start = line_end + 1;
 
         if (!line_view.empty() && line_view.back() == '\r') {
             line_view.remove_suffix(1);
         }
         if (line_view.empty()) continue;
 
-        // In-place pointer token slicing helper function (replaces std::stringstream cells)
         auto get_next_cell = [](std::string_view& src) -> std::string_view {
             if (src.empty()) return std::string_view{};
             size_t comma_pos = src.find(',');
@@ -2141,43 +2144,59 @@ inline bool import_macro_from_csv(const std::string& csv_data) {
 
         std::string_view cell_type = get_next_cell(line_view);
 
-        if (cell_type == "MACRO") {
-            save_active_macro(); 
+        // -----------------------------------------------------------
+        // METADATA WORKFLOW DEFINITION PASS (Handles MACRO or macro)
+        // -----------------------------------------------------------
+        if (cell_type == "MACRO" || cell_type == "macro") {
+            save_active_macro(); // Flush any previously collected macro steps to flash before switching slots
             
-            std::string_view slot_view = get_next_cell(line_view);
-            if (!slot_view.empty()) {
-                // Parse slot id directly from string pointers without allocation wrappers
-                char tmp[16] = {0};
-                std::memcpy(tmp, slot_view.data(), std::min(slot_view.size(), sizeof(tmp) - 1));
-                active_slot = std::atoi(tmp);
-            } else {
-                active_slot = -1;
+            std::string_view label_view = get_next_cell(line_view);
+            active_slot = -1; // Reset tracking pointer
+        
+            if (!label_view.empty()) {
+                char search_name[MAX_ACTION_STRING_LEN] = {0};
+                std::memcpy(search_name, label_view.data(), std::min(label_view.size(), sizeof(search_name) - 1));
+        
+                // Resolve slot target via active hotkey action string matches
+                for (uint16_t b = 0; b < global_binding_registry.total_bound_keys; b++) {
+                    if (std::strcmp(global_binding_registry.bindings[b].action_string, search_name) == 0) {
+                        active_slot = global_binding_registry.bindings[b].shared_macro_slot;
+                        break;
+                    }
+                }
+        
+                // Legacy Fallback Check
+                if (active_slot == -1 && std::strncmp(search_name, "Macro_Slot_", 11) == 0) {
+                    active_slot = std::atoi(search_name + 11);
+                }
             }
             
             std::memset(&macro_build, 0, sizeof(macro_build));
             macro_build.struct_version = CURRENT_MACRO_VERSION; 
-        } 
-        else if (cell_type == "STEP") {
+        }
+        // -----------------------------------------------------------
+        // HARDWARE DATA KEY EXTRAPOLATION PASS (Handles STEP or step)
+        // -----------------------------------------------------------
+        else if (cell_type == "step" || cell_type == "STEP") {
             if (active_slot == -1 || macro_build.total_steps >= MAX_MACRO_STEPS) continue;
             
             std::string_view payload_view = get_next_cell(line_view); 
             std::string_view state_view   = get_next_cell(line_view);
             std::string_view delay_view   = get_next_cell(line_view);
-
+        
             auto& step = macro_build.steps[macro_build.total_steps];
             
             char state_tmp[16] = {0};
             std::memcpy(state_tmp, state_view.data(), std::min(state_view.size(), sizeof(state_tmp) - 1));
             step.event_state = str_to_state(state_tmp);
-
+        
             char delay_tmp[16] = {0};
             std::memcpy(delay_tmp, delay_view.data(), std::min(delay_view.size(), sizeof(delay_tmp) - 1));
             step.delay_ms = std::strtoul(delay_tmp, nullptr, 10);
-
-            // CRITICAL: Safe copy limited to MAX_ACTION_STRING_LEN (16 bytes)
+        
             std::memset(step.action_string, 0, MAX_ACTION_STRING_LEN);
             std::memcpy(step.action_string, payload_view.data(), std::min(payload_view.size(), MAX_ACTION_STRING_LEN - 1));
-
+        
             macro_build.total_steps++;
         }
     }
@@ -2281,10 +2300,9 @@ inline esp_err_t button_inject_handler(httpd_req_t *req) {
                     // We forcibly break out back to IDLE via .value() to ensure immediate availability.
                     // ====================================================================
                     if (esphome::id(macro_workflow_state).value() == MACRO_STATE_LIFTOFF_SHIELD) {
-                        ESP_LOGI("WEB_CONSOLE", "Web assignment completed. Simulating lifting edge to release state lock.");
+                        ESP_LOGI("WEB_CONSOLE", "Web assignment completed. Safely releasing software execution lock states.");
                         esphome::id(macro_workflow_state).value() = MACRO_STATE_IDLE;
                         
-                        // Corrected syntax using .value() to satisfy the compiler
                         esphome::id(global_cached_command).value() = 0;
                         esphome::id(global_initial_press_time).value() = 0;
                         esphome::id(global_last_processed_time).value() = 0;
