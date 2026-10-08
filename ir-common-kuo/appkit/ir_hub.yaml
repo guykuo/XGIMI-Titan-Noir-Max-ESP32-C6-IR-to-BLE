@@ -421,7 +421,35 @@ globals:
 # ====================================================================
 #                   
 script:
-#
+
+  # ====================================================================
+  # Centralized Projector Macro Session Status Indicators
+  # ====================================================================
+  - id: macro_indicator_start
+    mode: restart
+    then:
+      - lambda: |-
+          // 🛠️ FIXED: Arrow pointer notation used for cross-compiled hardware execution script paths
+          id(turn_led_on_custom)->execute(0.3f, 1.0f, 0.2f, 0.8f); 
+          
+          ESP_LOGI("MACRO_INDICATOR", "Projector notification: Session opened.");
+          fire_bluetooth_hid_action("volume_up", KEY_EVENT_DOWN);
+          vTaskDelay(pdMS_TO_TICKS(50));
+          fire_bluetooth_hid_action("volume_up", KEY_EVENT_UP);
+
+  - id: macro_indicator_end
+    mode: restart
+    then:
+      - lambda: |-
+          // 🛠️ FIXED: Arrow pointer notation used cleanly for execution pathing
+          id(turn_led_on_custom)->stop();
+          id(turn_led_off_custom)->execute();
+      
+          ESP_LOGI("MACRO_INDICATOR", "Projector notification: Session finalized/aborted.");
+          fire_bluetooth_hid_action("volume_down", KEY_EVENT_DOWN);
+          vTaskDelay(pdMS_TO_TICKS(50));
+          fire_bluetooth_hid_action("volume_down", KEY_EVENT_UP);
+
 # # ====================================================================
   # Hydrate Binding Registry Map from Flash Storage Slots during System Boot
   # ====================================================================
@@ -483,7 +511,9 @@ script:
             return;
           }
 
-          id(turn_led_on_custom)->execute(0.3, 1.0, 0.2, 0.8); 
+      - script.execute: macro_indicator_start
+
+      - lambda: |-
 
           // 2. Initialize tracking parameters and clear out our global RAM buffer workspace
           id(macro_assigned_shared_slot) = target_shared_slot;
@@ -513,18 +543,18 @@ script:
     then:
       - lambda: |-
           if (id(macro_workflow_state) == MACRO_STATE_RECORDING) {
-            // Check if we actually caught anything before shifting workflows
             if (id(macro_step_counter) == 0) {
-              id(macro_workflow_state) = MACRO_STATE_IDLE; // Abort out to idle safely
-              id(macro_recording_active) = false; // Release recording flag on cancel
+              id(macro_workflow_state) = MACRO_STATE_IDLE; 
+              id(macro_recording_active) = false; 
               id(display_show)->execute(false, "Record Canceled", "No actions pressed", "Action Mode");
               ESP_LOGW("MACRO_WORKFLOW", "No keys were captured during the session. Aborting macro recording.");
+          
+              // indicate immediate empty abort
+              id(macro_indicator_end)->execute();
               return;
             }
 
-            // Shift state machine to wait for the user to hold down their designated hotkey
             id(macro_workflow_state) = MACRO_STATE_AWAITING_HOTKEY; 
-            
             id(display_show)->execute(false, "Assign Hotkey", "Click desired button", "");
             ESP_LOGW("MACRO_WORKFLOW", "Actions successfully cached (%d steps). Awaiting button to bind.", id(macro_step_counter));
           } else {
@@ -579,7 +609,7 @@ script:
     then: 
       - delay: 60s
       - lambda: !lambda |-
-          // If the system is still stuck in recording mode after 60, abort it
+          // If the system is still stuck in recording mode after 60s, abort it
           if (id(macro_workflow_state) == MACRO_STATE_RECORDING) {
             ESP_LOGW("MACRO_WORKFLOW", "Macro recording timed out due to inactivity. Reverting to idle.");
             
@@ -592,9 +622,8 @@ script:
             id(showing_special_info) = true;
             id(display_show)->execute(false, "Record Timeout", "Inactivity Abort", "Action Mode");
             
-            // Securely kill the active light states
-            id(turn_led_on_custom)->stop();
-            id(turn_led_off_custom)->execute();
+            // Shut down status LEDs and sends volume_down pulse via single execution
+            id(macro_indicator_end)->execute();
           }
 
   # ====================================================================
@@ -618,9 +647,8 @@ script:
             id(showing_special_info) = true;
             id(display_show)->execute(false, "Assign Timeout", "Macro Canceled", "Action Mode");
             
-            // Securely kill active light states
-            id(turn_led_on_custom)->stop();
-            id(turn_led_off_custom)->execute();
+            // Shut down status LEDs and sends volume_down pulse via single execution
+            id(macro_indicator_end)->execute();
           }
 
 
@@ -1490,8 +1518,8 @@ script:
               if (millis() - id(macro_assignment_cooldown) < 400) return;
           
               id(macro_assignment_timeout_watcher)->stop();
-              id(turn_led_on_custom)->stop();
-              id(turn_led_off_custom)->execute();
+              
+              // ✂️ REMOVED: Manual LED stop/off lines have been stripped from here
           
               int target_shared_slot = -1;
               const char* key_name = found_cmd->action_string;
@@ -1512,6 +1540,9 @@ script:
                 id(display_show)->execute(false, "Assignment Error", "Invalid Key Destination", "Action Mode");
                 id(macro_recording_active) = false;
                 id(macro_workflow_state) = MACRO_STATE_IDLE; 
+                
+                // Shut down status LEDs and signals an abort to the projector on failed binding
+                id(macro_indicator_end)->execute();
                 return; 
               }
           
@@ -1542,6 +1573,9 @@ script:
                 id(commit_macro_to_flash_slot).execute(target_shared_slot);
                 id(save_binding_registry_to_nvs).execute();
           
+                // Safely executes LED shut-down and sends the volume_down verification burst
+                id(macro_indicator_end)->execute();
+          
                 // Fully sized stack arrays
                 char slot_msg_buf[32];
                 char key_msg_buf[48];
@@ -1549,8 +1583,6 @@ script:
                 snprintf(key_msg_buf, sizeof(key_msg_buf), "Key: %s", key_name);
           
                 id(showing_special_info) = true;
-                
-                // 🛠️ SYNTAX FIX: Cast strictly to std::string so the template engine does not break setup()
                 id(display_show)->execute(true, std::string(slot_msg_buf), std::string(key_msg_buf), "Action Mode");
                 
                 ESP_LOGW("MACRO_WORKFLOW", "Macro sequence committed to Fixed NVS Slot %d for button: %s", target_shared_slot, key_name);
