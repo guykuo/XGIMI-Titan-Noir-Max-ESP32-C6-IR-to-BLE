@@ -39,7 +39,7 @@ packages:
   
   hardware_package: !include ir-common-kuo/hardware-esp32-c3-0.42-OLED.yaml         # supports built-in 0.42 inch OLED display
   #hardware_package: !include ir-common-kuo/hardware-esp32-c6-wroom-1.yaml           # supports external 0.9 inch i2c OLED display
-  #hardware_package: !include ir-common-kuo/hardware-ideaspark-esp32-classic-OLED.yaml
+  #hardware_package: !include ir-common-kuo/hardware-ideaspark-esp32-classic-OLED.yaml # uses usb-micro cable
   #hardware_package: !include ir-common-kuo/hardware-lafvintech-c6-lcd-1.47.yaml
   #hardware_package: !include ir-common-kuo/hardware-m5stack-pico-d4-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
   #hardware_package: !include ir-common-kuo/hardware-hosyond-s3-lcd-3.5-touch.yaml
@@ -70,8 +70,8 @@ external_components:
   components: [esp32_ble_server, xgimi_remote]
 
 logger:
- level: DEBUG
-  # level: INFO
+ # level: DEBUG
+  level: INFO
 
 
 wifi:
@@ -196,18 +196,19 @@ esphome:
     - ir-common-kuo/appkit/ir_profile.h
 
   build_flags: 
- #   - "-Wl,--require-defined=cJSON_Parse"
     - '-DBLE_REMOTE_NAME_STR=\"${ble_remote_name}\"'
 
     # ============================================================
-    # POWER USERS: Uncomment the line below to activate extra buttons!
+    # POWER USERS: Uncomment the line below to activate extra buttons
+    
     # - "-DENABLE_EXTRA_BUTTONS"
+    
     # ============================================================
 
 
   project:
     name: xgimi.titan-noir-esp32-ir-kuo
-    version: 26.10.07.1548
+    version: 26.10.08.0221
 
 
   on_boot:

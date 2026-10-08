@@ -62,15 +62,15 @@ remote_receiver:
             proto = PROTO_SONY;
           }
           // PANASONIC Test: Header 3.4ms, space 1.7ms
-          else if (head_mark >= 3100 && head_mark <= 3700 && head_space >= 1500 && head_space <= 2000) {
+          else if (head_mark >= 3100 && head_mark <= 3700 && head_space >= 1400 && head_space <= 2000) {
             proto = PROTO_PANASONIC;
           }
           // LG Test: Symmetric 4.5ms Mark / 4.5ms Space
-          else if (head_mark >= 4000 && head_mark <= 5000 && head_space >= 4000 && head_space <= 5000) {
+          else if (head_mark >= 4000 && head_mark <= 4000 && head_space >= 4000 && head_space <= 4000) {
             proto = PROTO_LG;
           }
           // NEC / TViX Test: 9.0ms Mark
-          else if (head_mark >= 8500 && head_mark <= 9500) {
+          else if (head_mark >= 8400 && head_mark <= 9400) {
             proto = PROTO_NEC;
           }
         }
@@ -99,7 +99,7 @@ remote_receiver:
           uint8_t allowed = id(ir_receiver_allowed_protocol);
           
           // A: NEC / LG Repeat Detection (4 pulses, massive header mark)
-          if (total_pulses == 4 && head_mark >= 8500 && head_mark <= 9500) {
+          if (total_pulses == 4 && head_mark >= 8400 && head_mark <= 9400) {
             if (allowed == PROTO_NEC || allowed == PROTO_LG || allowed == 255) {
               std::string p_str = (allowed == PROTO_LG) ? "LG" : "NEC";
               id(general_IR_received_handler)->execute(p_str, id(learn_active_address), id(learned_best_command), 1);
@@ -672,14 +672,14 @@ script:
                 ESP_LOGD("MACRO_PLAY", "   -> Step [%d]: Total delay budget: %ums", idx, (unsigned int)raw_delay);
 
             # If the current step is a release (UP) edge following a press (DOWN) edge,
-            # we evaluate if the duration qualifies as a sustained hold (> 300 ms).
+            # we evaluate if the duration qualifies as a sustained hold (> 400 ms).
             - if:
                 condition:
                   lambda: |-
                     extern UniversalFlashMacro active_recording_buffer;
                     int idx = id(macro_step_counter);
                     // Check if this step is a release edge meant to hold down an active key
-                    return (active_recording_buffer.steps[idx].event_state == KEY_EVENT_UP && id(macro_last_event_time) > 500);
+                    return (active_recording_buffer.steps[idx].event_state == KEY_EVENT_UP && id(macro_last_event_time) > 400);
                 then:
                   # --- SUSTAINED HOLD STREAMING GATES (> 300ms) ---
                   - while:
@@ -970,7 +970,7 @@ script:
           int b_idx = id(learn_current_button_idx);
 
           // 2. Safe repeat lockout condition check
-          if (now - id(learn_last_save_time) < 500) {
+          if (now - id(learn_last_save_time) < 400) {
             id(learn_cache_clear).execute();
             return;
           }
@@ -1137,6 +1137,22 @@ script:
               id(action_string).assign(found_cmd->action_string);
               std::string cmd_name = found_cmd->action_string;
             
+              // 🛠️ FIX: INDEPENDENT CLICK SPLITTING LAYER
+              // If the same key is hit again after a quiet window (>130ms), force-terminate 
+              // the old hold state programmatically before executing the new down stroke.
+              if (id(global_cached_command) == ir_command) {
+                if (now - id(global_last_processed_time) > 130) {
+                  ESP_LOGD("IR_HUB", "Quiet gap detected (%ums). Splitting sequential clicks cleanly.", (unsigned int)(now - id(global_last_processed_time)));
+                  
+                  // Programmatically fire the release edge for the previous click
+                  id(ir_map_processor).execute(ir_command, 2); // 2 = UP
+                  
+                  // Reset tracking variables to guarantee a fresh DOWN edge below
+                  id(global_cached_command) = 0;
+                  id(global_is_holding) = false;
+                }
+              }
+
               if (id(global_cached_command) != ir_command) {
                 bool is_system_key = (cmd_name == "macro_record" || cmd_name == "macro_play");
                 if (!is_system_key) {
@@ -1347,9 +1363,6 @@ script:
   # ====================================================================
   # Execute the actual actions commanded by inbound IR (Unified Pass)
   # ====================================================================
-  # ====================================================================
-  # Execute the actual actions commanded by inbound IR (Unified Pass)
-  # ====================================================================
   - id: ir_map_processor
     parameters:
       ir_command: uint32_t
@@ -1379,11 +1392,6 @@ script:
             }
           }
 
-          // ============================================================
-          // WEB BUTTON SELF-HYDRATION HOOK
-          // If called from a web/software trigger where the hex code does not map,
-          // pull the current running string descriptor straight out of the global cache register.
-          // ============================================================
           if (found_cmd == nullptr) {
             static IRCommand web_fallback_cmd;
             if (!id(action_string).empty()) {
@@ -1400,11 +1408,30 @@ script:
           
           std::string cmd_name = found_cmd->action_string;
           
-          // ⚡ SYSTEM GUARD REMAINING: ONLY Power states enforce script delay loops
+          // ====================================================================
+          // RAPID-TYPING INTERCEPT CLEARING GATE
+          // If a new key arrives while recording before the flusher cleared the last one,
+          // programmatically force a clean release edge for the old key immediately.
+          // ====================================================================
+          if (id(macro_workflow_state) == MACRO_STATE_RECORDING) {
+            if (id(global_cached_command) != 0 && id(global_cached_command) != ir_command) {
+              ESP_LOGD("MACRO_REC", "Fast typing collision detected. Forcing release frame for command: 0x%X", (unsigned int)id(global_cached_command));
+              
+              // Programmatically terminate the old step record cleanly
+              id(ir_map_processor).execute(id(global_cached_command), 2); // 2 = UP
+              
+              // Clear tracking parameters instantly so the new key has a clean slate
+              id(global_cached_command) = 0;
+              id(global_initial_press_time) = now;
+              id(global_last_processed_time) = now;
+              id(global_is_holding) = false;
+            }
+          }
+                    
           bool is_automated_script = (cmd_name == "power_off" || cmd_name == "power_on");
           
           if (is_automated_script && event_state == KEY_EVENT_HOLDING) {
-            return; // Instantly drop trailing IR repeat spam during long presses!
+            return; 
           }
           
           // Standard debounce filter logic for regular keys
@@ -1412,11 +1439,12 @@ script:
             bool is_system_key = (cmd_name == "macro_record" || cmd_name == "macro_play" || is_automated_script);
             if (!is_system_key) {
               uint32_t delta_press = now - id(last_ir_press);
+              
+              // 🛠️ RESTORED: Fixed uniform 50ms floor prevents contact bounce noise from polluting NVS buffers
               if (delta_press < 50) return;
             }
             id(last_ir_press) = now;
           }
-
 
           uint32_t current_duration = now - id(global_initial_press_time);
 
@@ -1432,48 +1460,34 @@ script:
           if (id(macro_play_prefix_active)) {
             if (event_state == KEY_EVENT_DOWN) {
               uint8_t prefix_slot = get_bound_macro_slot(found_cmd->action_string);
-              
-              // Turn off the tracking latch and clear the prefix window instantly 
               id(macro_play_prefix_active) = false;
               id(macro_play_prefix_timeout_watcher)->stop();
 
               if (prefix_slot != 255) {
-                // Engage the hard safety debounce lock
                 id(debounce_safety_lock) = true;
-                id(release_debounce_lock)->execute(); // Arms the 110ms automatic release timer
-                
+                id(release_debounce_lock)->execute();
                 ESP_LOGI("MACRO_WORKFLOW", "Playback Hotkey Matched! Launching Macro Slot Sequence: %d", prefix_slot);
                 id(play_universal_shared_macro)->execute(prefix_slot);
-                return; // Swallow the physical IR press signal!
+                return;
               } else {
                 id(showing_special_info) = true;
                 id(display_show)->execute(false, "Playback Canceled", "No Macro Bound", "Action Mode");
                 id(showing_special_expiration_timer).execute();
-                return; // Swallow unbound keys pressed during prefix window
+                return;
               }
             }
             else if (event_state == KEY_EVENT_UP) {
-              // Catch and swallow the trailing release frame edge of the hotkey 
-              // so it never drops through to send an accidental release frame or driver flush!
-              ESP_LOGD("MACRO_WORKFLOW", "Swallowing hotkey release frame edge to protect playback.");
               return;
             }
           }
 
           // ====================================================================
-          // INTERCEPT B: TWO-STAGE HOTKEY ASSIGNMENT ENGINE (STATE 2)
+          // INTERCEPT B: TWO-STAGE HOTKEY ASSIGNMENT ENGINE
           // ====================================================================
           if (id(macro_workflow_state) == MACRO_STATE_AWAITING_HOTKEY) {
-            
-            if (event_state == KEY_EVENT_HOLDING) {
-              ESP_LOGV("MACRO_WORKFLOW", "Absorbing hold repeat frames during assignment save...");
-              return; 
-            }
-          
+            if (event_state == KEY_EVENT_HOLDING) return; 
             if (event_state == KEY_EVENT_DOWN) {
-              if (millis() - id(macro_assignment_cooldown) < 400) {
-                return;
-              }
+              if (millis() - id(macro_assignment_cooldown) < 400) return;
           
               id(macro_assignment_timeout_watcher)->stop();
               id(turn_led_on_custom)->stop();
@@ -1502,7 +1516,6 @@ script:
               }
           
               id(macro_recording_active) = false; 
-          
               int match_idx = -1;
               uint16_t current_loop_idx = 0;
               uint16_t bounds_limit = global_binding_registry.total_bound_keys;
@@ -1529,23 +1542,23 @@ script:
                 id(commit_macro_to_flash_slot).execute(target_shared_slot);
                 id(save_binding_registry_to_nvs).execute();
           
-                char slot_msg[32];
-                char key_msg[48];
-                snprintf(slot_msg, sizeof(slot_msg), "Macro Bound Slot %d", target_shared_slot);
-                snprintf(key_msg, sizeof(key_msg), "Key: %s", key_name);
+                // Fully sized stack arrays
+                char slot_msg_buf[32];
+                char key_msg_buf[48];
+                snprintf(slot_msg_buf, sizeof(slot_msg_buf), "Macro Bound Slot %d", target_shared_slot);
+                snprintf(key_msg_buf, sizeof(key_msg_buf), "Key: %s", key_name);
           
                 id(showing_special_info) = true;
-                id(display_show)->execute(true, slot_msg, key_msg, "Action Mode");
+                
+                // 🛠️ SYNTAX FIX: Cast strictly to std::string so the template engine does not break setup()
+                id(display_show)->execute(true, std::string(slot_msg_buf), std::string(key_msg_buf), "Action Mode");
+                
                 ESP_LOGW("MACRO_WORKFLOW", "Macro sequence committed to Fixed NVS Slot %d for button: %s", target_shared_slot, key_name);
               }
-              
-              // TRANSITION DIRECTLY TO SHIELD OR RETURN TO IDLE IF FROM SOFTWARE
               id(macro_workflow_state) = MACRO_STATE_LIFTOFF_SHIELD; 
               return; 
             }
-          
             if (event_state == KEY_EVENT_UP) {
-              ESP_LOGD("MACRO_WORKFLOW", "Physical liftoff detected. Releasing state machine to idle...");
               id(macro_workflow_state) = MACRO_STATE_IDLE; 
               return; 
             }
@@ -1557,7 +1570,6 @@ script:
           if (id(macro_workflow_state) == 99) {
             if (event_state == KEY_EVENT_HOLDING) return; 
             if (event_state == KEY_EVENT_UP) {
-              ESP_LOGD("MACRO_WORKFLOW", "Physical assignment hotkey liftoff registered. Returning to idle.");
               id(macro_workflow_state) = MACRO_STATE_IDLE; 
               return; 
             }
@@ -1635,27 +1647,22 @@ script:
             if (std::strcmp(found_cmd->action_string, "macro_record") == 0) return; 
 
             int step_idx = id(macro_step_counter);
+            
+            // Calculate absolute current continuous live frame duration
+            uint32_t live_hold_duration = now - id(global_initial_press_time);
 
-            // CONDUNDRUM SOLVER: Evaluate if this specific button requires long-hold behavior
-            // Add any custom buttons here that need long-press access to hidden menus.
-            bool is_hold_critical = (std::strcmp(found_cmd->action_string, "settings_menu") == 0 || 
-                                     std::strcmp(found_cmd->action_string, "shortcut_1") == 0 ||
-                                     std::strcmp(found_cmd->action_string, "shortcut_2") == 0 ||
-                                     std::strcmp(found_cmd->action_string, "shortcut_3") == 0 ||
-                                     std::strcmp(found_cmd->action_string, "shortcut_4") == 0 ||
-                                     std::strcmp(found_cmd->action_string, "power_off") == 0 ||
-                                     std::strcmp(found_cmd->action_string, "cursor_enter") == 0);
+            // ⚡ UPDATED: EXPANDED SINGLE-TAP IMMUNITY FILTER FOR POWER & FOCUS
+            bool is_stateless_single_tap = (std::strcmp(found_cmd->action_string, "power_on") == 0 || 
+                                            std::strcmp(found_cmd->action_string, "power_off") == 0 ||
+                                            std::strcmp(found_cmd->action_string, "focus_manual") == 0 ||
+                                            std::strcmp(found_cmd->action_string, "focus_auto") == 0);
 
-            // 🛑 1. CONDITIONAL HARDWARE HOLD BLOCKER
+            // 🛑 1. CONDITIONAL HARDWARE HOLD EXTRACTION GATE
             if (event_state == KEY_EVENT_HOLDING) {
-              if (!is_hold_critical) {
-                // For standard navigation keys, completely drop and swallow repeat frames
+              // Always instantly drop and swallow trailing repeat frames for single-tap locked keys
+              if (is_stateless_single_tap || live_hold_duration <= 400) {
                 return; 
               }
-              // ⚡ ARCHITECTURAL AMENDMENT:
-              // For critical holds, we swallow the repeat frame to clear the input queue
-              // but we DO NOT overwrite id(macro_last_event_time) = now;
-              // This leaves the time anchor locked at the original KEY_EVENT_DOWN timestamp!
               return;
             }
 
@@ -1671,21 +1678,22 @@ script:
               uint32_t delta = 0;
               if (step_idx > 0) {
                 if (event_state == KEY_EVENT_UP) {
-                  if (!is_hold_critical) {
-                    // Force a snappy 50ms tap representation for navigation layout cells
+                  // If it is a single-tap locked key OR held under 400ms, force standard 50ms representation!
+                  if (is_stateless_single_tap || live_hold_duration <= 400) {
                     delta = 50; 
                   } else {
-                    // Record the TRUE real-time duration of the long hold for engineering menus!
+                    // True Long Press: Record full sustained duration
                     delta = now - id(macro_last_event_time);
                     if (delta > 65535) delta = 65535;
                   }
                 } else {
-                  // Calculate actual human resting interval between separate navigation taps
+                  // Calculate pacing gap metrics between distinct button clicks
                   delta = now - id(macro_last_event_time);
-                  if (delta < 200) delta = 200; // Safe breathing gap for Android UI
+                  // 🛠️ RESTORED: Enforces discrete tap separation boundaries during macro playback
+                  if (delta < 200) delta = 200; 
                   if (delta > 65535) delta = 65535;
                 }
-              }
+              } // <--- 🛠️ CORRECTION 1: CLOSES THE "if (step_idx > 0)" CONDITIONAL FRAME CLEANLY
 
               std::memset(active_recording_buffer.steps[step_idx].action_string, 0, MAX_ACTION_STRING_LEN);
               std::strncpy(active_recording_buffer.steps[step_idx].action_string, found_cmd->action_string, MAX_ACTION_STRING_LEN - 1);
@@ -1702,20 +1710,25 @@ script:
 
               // ⚡ 2. IMMEDIATE MONOSTABLE HARDWARE INJECTION FORCE
               if (event_state == KEY_EVENT_DOWN) {
-                if (!is_hold_critical) {
-                  // Snappy discrete injection pairs for standard navigation tracking
-                  fire_bluetooth_hid_action(found_cmd->action_string, 0); // DOWN
-                  delayMicroseconds(1000); 
-                  fire_bluetooth_hid_action(found_cmd->action_string, 2); // UP
+                id(global_initial_press_time) = now;
+                id(global_cached_command) = ir_command;
+                
+                // If it is inside our filter list, immediately press its mapped firmware target cleanly
+                if (is_stateless_single_tap) {
+                  auto* target_btn = resolve_button(found_cmd->action_string);
+                  if (target_btn != nullptr) {
+                    target_btn->press(); 
+                  } else {
+                    fire_bluetooth_hid_action(found_cmd->action_string, 0);
+                  }
                 } else {
-                  // Standard direct pass-through for critical system holds
                   fire_bluetooth_hid_action(found_cmd->action_string, 0); // DOWN
                 }
               }
 
               if (event_state == KEY_EVENT_UP) {
-                if (is_hold_critical) {
-                  // Terminate the continuous engineering hold cleanly into the airwaves
+                // Only send individual UP frames for normal variable buttons
+                if (!is_stateless_single_tap) {
                   fire_bluetooth_hid_action(found_cmd->action_string, 2); // UP
                 }
                 
@@ -1725,8 +1738,7 @@ script:
                 id(global_is_holding) = false;
               }
             }
-            
-            return; // Short-circuit out of standard pass-through loop layers
+            return; 
           }
 
           // ============================================================
@@ -1741,7 +1753,7 @@ script:
             
             if (get_bound_macro_slot(found_cmd->action_string) != 255) {
               id(action_string).append(" *");
-            } else if (event_state == KEY_EVENT_HOLDING && current_duration >= 5000) {
+            } else if (event_state == KEY_EVENT_HOLDING && current_duration >= 4000) {
               id(action_string).append(" [hold]");
             } else if (event_state == KEY_EVENT_HOLDING) {
               id(action_string).append(" ..");
@@ -1952,13 +1964,13 @@ interval:
   - interval: 40ms
     then:
       - lambda: |-
-          // CRITICAL SYSTEM FIX: Completely disable the interval flusher while waiting for a hotkey!
           if (id(macro_workflow_state) == MACRO_STATE_AWAITING_HOTKEY) {
             return; 
           }
 
           uint32_t now = millis();
           if (id(global_cached_command) != 0) {
+            // RESTORED: Standard 140ms timeout ensures data-less IR repeat bursts (110ms) are not cut off
             if (now - id(global_last_raw_packet_time) >= 140) {
               
               id(ir_map_processor).execute(id(global_cached_command), 2); // 2 = UP/Release
