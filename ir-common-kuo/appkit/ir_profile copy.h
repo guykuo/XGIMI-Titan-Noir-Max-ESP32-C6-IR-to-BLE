@@ -1526,17 +1526,17 @@ inline esp_err_t root_handler(httpd_req_t *req) {
 <style>
   :root { --fs-lg: 18px; --fs-md: 14px; --fs-sm: 12px; }
   body{font-family:system-ui,-apple-system,sans-serif;margin:12px;background:#0d1117;color:#c9d1d9;font-size:var(--fs-md)}
-  .box{background:#161b22;padding:14px 20px;border:1px solid #30363d;border-radius:12px;max-width:640px;margin:auto;margin-bottom:10px}
+  .box{background:#161b22;padding:14px 20px;border:1px solid #30363d;border-radius:6px;max-width:640px;margin:auto;margin-bottom:10px}
   h3{margin-top:0;color:#58a6ff;border-bottom:1px solid #21262d;padding-bottom:6px;margin-bottom:10px;font-size:var(--fs-lg)}
   label{display:block;margin:8px 0 4px;font-size:var(--fs-md);font-weight:600}
-  select,input[type="file"]{width:100%;padding:6px;background:#0d1117;border:1px solid #30363d;border-radius:12px;color:#fff;box-sizing:border-box;font-size:var(--fs-md)}
-  .btn{padding:8px;background:#238636;color:#fff;border:none;border-radius:12px;font-weight:bold;text-align:center;text-decoration:none;cursor:pointer;font-size:var(--fs-lg)}
+  select,input[type="file"]{width:100%;padding:6px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#fff;box-sizing:border-box;font-size:var(--fs-md)}
+  .btn{padding:8px;background:#238636;color:#fff;border:none;border-radius:6px;font-weight:bold;text-align:center;text-decoration:none;cursor:pointer;font-size:var(--fs-lg)}
   .btn.sec{background:#21262d;border:1px solid #30363d;color:#c9d1d9}
   .btn:hover{opacity:0.9}
   
   /* Adjusted 4-Column Grid Layout Engine */
   .grid-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
-  .btn-test { padding: 12px 6px; background: #1f6feb; color: white; border: none; border-radius:12px; font-weight: bold; cursor: pointer; font-size: var(--fs-md); text-align: center; }
+  .btn-test { padding: 12px 6px; background: #1f6feb; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: var(--fs-md); text-align: center; }
   .btn-test:active { background: #388bfd; }
   .btn-test.pwr { grid-column: span 2; background: #da3637; }
   .btn-test.pwr:active { background: #f85149; }
@@ -1558,7 +1558,7 @@ inline esp_err_t root_handler(httpd_req_t *req) {
     .btn-test.span-2 { grid-column: span 1; }
   }
   
-  .stat-grid-box { background: #0d1117; border: 1px solid #21262d; border-radius:12px; padding: 10px 14px; margin-top: 3px; }
+  .stat-grid-box { background: #0d1117; border: 1px solid #21262d; border-radius: 6px; padding: 10px 14px; margin-top: 3px; }
   .diag-grid { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 20px; row-gap: 6px; }
   .diag-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #21262d; padding-bottom: 4px; }
   .diag-item.span-2 { grid-column: span 2; }
@@ -1635,40 +1635,46 @@ inline esp_err_t root_handler(httpd_req_t *req) {
     <!-- Row 2: Directional Controls Up Direction -->
     <button class="btn-test dmenu" onclick="sendClick('home')">HOME</button>
     <button class="btn-test" onclick="sendClick('cursor_up')">UP</button>
-    <button class="btn-test dmenu" onclick="sendClick('game_menu')">GAME</button>
-    <button class="btn-test util" onclick="sendClick('volume_up')">VOL +</button>
+    <button class="btn-test util" style="visibility:hidden;"></button>
+    <button class="btn-test util" style="visibility:hidden;"></button>
     
     <!-- Row 3: Navigation Mid Track Row -->
     <button class="btn-test" onclick="sendClick('cursor_left')">LEFT</button>
     <button class="btn-test" onclick="sendClick('cursor_enter')">ENTER</button>
     <button class="btn-test" onclick="sendClick('cursor_right')">RIGHT</button>
-    <button class="btn-test util" onclick="sendClick('volume_down')">VOL -</button>
+    <button class="btn-test dmenu" onclick="sendClick('game_menu')">GAME</button>
     
     <!-- Row 4: Directional Controls Down Direction -->
     <button class="btn-test dmenu" onclick="sendClick('back')">BACK</button>
     <button class="btn-test" onclick="sendClick('cursor_down')">DOWN</button>
     <button class="btn-test dmenu" onclick="sendClick('settings_menu')">MENU</button>
-    <button class="btn-test util" onclick="sendClick('mute')">MUTE</button>
+    <button class="btn-test util" style="visibility:hidden;"></button>
     
-    <!-- Row 5: Hardware Video/Gaming Controls -->
+    <!-- Row 5: Hardware Audio Controls -->
+    <button class="btn-test util" onclick="sendClick('volume_down')">VOL -</button>
+    <button class="btn-test util" onclick="sendClick('mute')">MUTE</button>
+    <button class="btn-test util" onclick="sendClick('volume_up')">VOL +</button>
+    <button class="btn-test util" onclick="sendClick('input')">INPUT</button>
+    
+    <!-- Row 6: Hardware Video/Gaming Controls -->
     <button class="btn-test focus" onclick="sendClick('focus_manual')">Focus MANUAL</button>
     <button class="btn-test focus" onclick="sendClick('focus_auto')">Focus AUTO</button>
-    <button class="btn-test focus" onclick="sendClick('picture')">Picture</button>
-    <button class="btn-test focus" onclick="sendClick('input')">INPUT</button>
+    <button class="btn-test util" onclick="sendClick('picture')">Picture</button>
+    <button class="btn-test util" style="visibility:hidden;"></button>
     
-    <!-- Row 6: Programmable App Shortcuts -->
+    <!-- Row 7: Programmable App Shortcuts -->
     <button class="btn-test" onclick="sendClick('shortcut_1')">Short 1</button>
     <button class="btn-test" onclick="sendClick('shortcut_2')">Short 2</button>
     <button class="btn-test" onclick="sendClick('shortcut_3')">Short 3</button>
     <button class="btn-test" onclick="sendClick('shortcut_4')">Short 4</button>
 
-    <!-- Row 7: Automation Macro Engines -->
+    <!-- Row 8: Automation Macro Engines -->
     <button class="btn-test macro" onclick="sendClick('macro_record')">Macro RECORD</button>
     <button class="btn-test macro" onclick="sendClick('macro_play')">Macro PLAY</button>
     <button class="btn-test util" style="visibility:hidden;"></button>
     <button class="btn-test util" style="visibility:hidden;"></button>
     
-    <!-- Row 8: Bluetooth Token Diagnostic Layer -->
+    <!-- Row 9: Bluetooth Token Diagnostic Layer -->
     <button class="btn-test util" onclick="sendClick('token_sniff')">Token SNIFF</button>
     <button class="btn-test util" onclick="sendClick('token_recall')">Token RECALL</button>
     <button class="btn-test util" style="visibility:hidden;"></button>
@@ -1683,12 +1689,12 @@ inline esp_err_t root_handler(httpd_req_t *req) {
 <div class="box">
   <h3>Extended Function Matrix</h3>
   <div class="grid-container">
-    <!-- Row 9: Custom 1 to 4 -->
+    <!-- Row 10: Custom 1 to 4 -->
     <button class="btn-test util" onclick="sendClick('custom_1')">Custom 1</button>
     <button class="btn-test util" onclick="sendClick('custom_2')">Custom 2</button>
     <button class="btn-test util" onclick="sendClick('custom_3')">Custom 3</button>
     <button class="btn-test util" onclick="sendClick('custom_4')">Custom 4</button>
-    <!-- Row 10: Custom 5 to 8 -->
+    <!-- Row 11: Custom 5 to 8 -->
     <button class="btn-test util" onclick="sendClick('custom_5')">Custom 5</button>
     <button class="btn-test util" onclick="sendClick('custom_6')">Custom 6</button>
     <button class="btn-test util" onclick="sendClick('custom_7')">Custom 7</button>
