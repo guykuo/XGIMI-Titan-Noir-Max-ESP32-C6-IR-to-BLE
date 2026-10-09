@@ -57,7 +57,7 @@ esp32_ble_server:
 
         - uuid: 0x2A4B
           read: true
-          # Byte-for-byte descriptor captured from the original XGIMI remote.
+          # Xgimi descriptor payload extended to support multi-device power lines
           value:
             [
               0x05, 0x01, 0x09, 0x06, 0xA1, 0x01, 0x05, 0x07,
@@ -66,7 +66,12 @@ esp32_ble_server:
               0x29, 0xFF, 0x81, 0x00, 0xC0, 0x05, 0x0C, 0x09,
               0x01, 0xA1, 0x01, 0x85, 0x02, 0x95, 0x03, 0x75,
               0x10, 0x15, 0x00, 0x26, 0x9C, 0x02, 0x19, 0x00,
-              0x2A, 0x9C, 0x02, 0x81, 0x00, 0xC0, 0xC0
+              0x2A, 0x9C, 0x02, 0x81, 0x00, 0xC0,
+              # --- SYSTEM CONTROL MAP INJECTION (REPORT ID 3) ---
+              0x05, 0x01, 0x09, 0x80, 0xA1, 0x01, 0x85, 0x03, 
+              0x95, 0x01, 0x75, 0x08, 0x15, 0x00, 0x25, 0xFF, 
+              0x19, 0x00, 0x29, 0xFF, 0x81, 0x00, 0xC0, 
+              0xC0
             ]
 
         - uuid: 0x2A4C
@@ -141,11 +146,20 @@ script:
       - lambda: |-
           // 1. Fire the initial DOWN packet immediately
           fire_bluetooth_hid_action("power_off", 0); 
-      - delay: 1500ms
-      - lambda: |-
-          // 2. Fire the trailing UP packet safely
+
+          // 2. Dynamic compile-time hold delay
+          #ifdef ENABLE_GENERIC_POWER
+          // Generic discrete HID power commands need a quick, tap-like release
+          vTaskDelay(pdMS_TO_TICKS(50));
+          #else
+          // XGIMI hardware lines require a sustained long hold to acknowledge power down
+          vTaskDelay(pdMS_TO_TICKS(1500));
+          #endif
+
+          // 3. Fire the trailing UP packet safely
           fire_bluetooth_hid_action("power_off", 2); 
-      - delay: 200ms
+          
+      - delay: 200ms # Keep baseline pipeline stabilization window intact
 
 # ====================================================================
 # ====================================================================

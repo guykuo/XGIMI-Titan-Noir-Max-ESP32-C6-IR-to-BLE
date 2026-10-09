@@ -1395,7 +1395,6 @@ script:
     parameters:
       ir_command: uint32_t
       event_state: int  # 0 = DOWN (Press), 1 = HOLDING (Repeat), 2 = UP (Release)
-
     then:
       - lambda: |-
           uint32_t now = millis();
@@ -1435,82 +1434,10 @@ script:
           }
           
           std::string cmd_name = found_cmd->action_string;
-          
-          // ====================================================================
-          // RAPID-TYPING INTERCEPT CLEARING GATE
-          // If a new key arrives while recording before the flusher cleared the last one,
-          // programmatically force a clean release edge for the old key immediately.
-          // ====================================================================
-          if (id(macro_workflow_state) == MACRO_STATE_RECORDING) {
-            if (id(global_cached_command) != 0 && id(global_cached_command) != ir_command) {
-              ESP_LOGD("MACRO_REC", "Fast typing collision detected. Forcing release frame for command: 0x%X", (unsigned int)id(global_cached_command));
-              
-              // Programmatically terminate the old step record cleanly
-              id(ir_map_processor).execute(id(global_cached_command), 2); // 2 = UP
-              
-              // Clear tracking parameters instantly so the new key has a clean slate
-              id(global_cached_command) = 0;
-              id(global_initial_press_time) = now;
-              id(global_last_processed_time) = now;
-              id(global_is_holding) = false;
-            }
-          }
-                    
-          bool is_automated_script = (cmd_name == "power_off" || cmd_name == "power_on");
-          
-          if (is_automated_script && event_state == KEY_EVENT_HOLDING) {
-            return; 
-          }
-          
-          // Standard debounce filter logic for regular keys
-          if (id(global_cached_command) != ir_command) {
-            bool is_system_key = (cmd_name == "macro_record" || cmd_name == "macro_play" || is_automated_script);
-            if (!is_system_key) {
-              uint32_t delta_press = now - id(last_ir_press);
-              
-              // 🛠️ RESTORED: Fixed uniform 50ms floor prevents contact bounce noise from polluting NVS buffers
-              if (delta_press < 50) return;
-            }
-            id(last_ir_press) = now;
-          }
-
           uint32_t current_duration = now - id(global_initial_press_time);
 
-          // ============================================================
-          // DYNAMIC OVERRIDE: NEUTRALIZE MACROS DURING RECORDING
-          // ============================================================
-          bool has_bound_macro = (get_bound_macro_slot(found_cmd->action_string) != 255) && 
-                                 (id(macro_workflow_state) == MACRO_STATE_IDLE);
-
-          // ============================================================
-          // INTERCEPT A: PREFIX PLAYBACK RUNNER GATE
-          // ============================================================
-          if (id(macro_play_prefix_active)) {
-            if (event_state == KEY_EVENT_DOWN) {
-              uint8_t prefix_slot = get_bound_macro_slot(found_cmd->action_string);
-              id(macro_play_prefix_active) = false;
-              id(macro_play_prefix_timeout_watcher)->stop();
-
-              if (prefix_slot != 255) {
-                id(debounce_safety_lock) = true;
-                id(release_debounce_lock)->execute();
-                ESP_LOGI("MACRO_WORKFLOW", "Playback Hotkey Matched! Launching Macro Slot Sequence: %d", prefix_slot);
-                id(play_universal_shared_macro)->execute(prefix_slot);
-                return;
-              } else {
-                id(showing_special_info) = true;
-                id(display_show)->execute(false, "Playback Canceled", "No Macro Bound", "Action Mode");
-                id(showing_special_expiration_timer).execute();
-                return;
-              }
-            }
-            else if (event_state == KEY_EVENT_UP) {
-              return;
-            }
-          }
-
           // ====================================================================
-          // INTERCEPT B: TWO-STAGE HOTKEY ASSIGNMENT ENGINE
+          // INTERCEPT A: TWO-STAGE HOTKEY ASSIGNMENT ENGINE (END OF CAPTURE)
           // ====================================================================
           if (id(macro_workflow_state) == MACRO_STATE_AWAITING_HOTKEY) {
             if (event_state == KEY_EVENT_HOLDING) return; 
@@ -1518,8 +1445,6 @@ script:
               if (millis() - id(macro_assignment_cooldown) < 400) return;
           
               id(macro_assignment_timeout_watcher)->stop();
-              
-              // ✂️ REMOVED: Manual LED stop/off lines have been stripped from here
           
               int target_shared_slot = -1;
               const char* key_name = found_cmd->action_string;
@@ -1541,7 +1466,6 @@ script:
                 id(macro_recording_active) = false;
                 id(macro_workflow_state) = MACRO_STATE_IDLE; 
                 
-                // Shut down status LEDs and signals an abort to the projector on failed binding
                 id(macro_indicator_end)->execute();
                 return; 
               }
@@ -1573,10 +1497,8 @@ script:
                 id(commit_macro_to_flash_slot).execute(target_shared_slot);
                 id(save_binding_registry_to_nvs).execute();
           
-                // Safely executes LED shut-down and sends the volume_down verification burst
                 id(macro_indicator_end)->execute();
           
-                // Fully sized stack arrays
                 char slot_msg_buf[32];
                 char key_msg_buf[48];
                 snprintf(slot_msg_buf, sizeof(slot_msg_buf), "Macro Bound Slot %d", target_shared_slot);
@@ -1597,7 +1519,7 @@ script:
           }
 
           // ====================================================================
-          // INTERCEPT C: HOTKEY LIFTOFF SHIELD TRAPPER (STATE 99)
+          // INTERCEPT B: HOTKEY LIFTOFF SHIELD TRAPPER (STATE 99)
           // ====================================================================
           if (id(macro_workflow_state) == 99) {
             if (event_state == KEY_EVENT_HOLDING) return; 
@@ -1661,123 +1583,106 @@ script:
               
               id(showing_special_info) = true;
               id(display_show)->execute(false, "Macro Playback", "Awaiting Hotkey...", "5s Timeout Gate");
-              ESP_LOGI("MACRO_WORKFLOW", "Playback window active. Click a configured hotkey button to execute.");
-              
-              id(macro_play_prefix_timeout_watcher)->execute(); // Arm the 5-second timeout script
+              id(macro_play_prefix_timeout_watcher)->execute(); 
               return;
             }
           }
 
+          // ====================================================================
+          // INTERCEPT C: PREFIX PLAYBACK RUNNER GATE
+          // ====================================================================
+          if (id(macro_play_prefix_active)) {
+            if (event_state == KEY_EVENT_DOWN) {
+              uint8_t prefix_slot = get_bound_macro_slot(found_cmd->action_string);
+              id(macro_play_prefix_active) = false;
+              id(macro_play_prefix_timeout_watcher)->stop();
 
-          // ============================================================
-          // WORKFLOW STATE: STEP 2 - STREAMLINED PASS-THROUGH RECORDING
-          // ============================================================
-          if (id(macro_workflow_state) == MACRO_STATE_RECORDING) {
-            id(macro_record_timeout_watcher)->execute();
-            
-            if (std::strcmp(found_cmd->action_string, "macro_play") == 0) return; 
-            if (std::strcmp(found_cmd->action_string, "macro_record") == 0) return; 
-
-            int step_idx = id(macro_step_counter);
-            
-            // Calculate absolute current continuous live frame duration
-            uint32_t live_hold_duration = now - id(global_initial_press_time);
-
-            // ⚡ UPDATED: EXPANDED SINGLE-TAP IMMUNITY FILTER FOR POWER & FOCUS
-            bool is_stateless_single_tap = (std::strcmp(found_cmd->action_string, "power_on") == 0 || 
-                                            std::strcmp(found_cmd->action_string, "power_off") == 0 ||
-                                            std::strcmp(found_cmd->action_string, "focus_manual") == 0 ||
-                                            std::strcmp(found_cmd->action_string, "focus_auto") == 0);
-
-            // 🛑 1. CONDITIONAL HARDWARE HOLD EXTRACTION GATE
-            if (event_state == KEY_EVENT_HOLDING) {
-              // Always instantly drop and swallow trailing repeat frames for single-tap locked keys
-              if (is_stateless_single_tap || live_hold_duration <= 400) {
-                return; 
-              }
-              return;
-            }
-
-            if (step_idx < MAX_MACRO_STEPS && (event_state == KEY_EVENT_DOWN || event_state == KEY_EVENT_UP)) {
-              
-              // Defensive structural guard against contact bounce noise
-              if (event_state == KEY_EVENT_UP && step_idx > 0 && 
-                  active_recording_buffer.steps[step_idx - 1].event_state == KEY_EVENT_UP &&
-                  (now - id(macro_last_event_time) < 30)) {
+              if (prefix_slot != 255) {
+                id(debounce_safety_lock) = true;
+                id(release_debounce_lock)->execute();
+                ESP_LOGI("MACRO_WORKFLOW", "Playback Hotkey Matched! Launching Macro Slot Sequence: %d", prefix_slot);
+                id(play_universal_shared_macro)->execute(prefix_slot);
+                return;
+              } else {
+                id(showing_special_info) = true;
+                id(display_show)->execute(false, "Playback Canceled", "No Macro Bound", "Action Mode");
+                id(showing_special_expiration_timer).execute();
                 return;
               }
+            }
+            else if (event_state == KEY_EVENT_UP) {
+              return;
+            }
+          }
 
-              uint32_t delta = 0;
-              if (step_idx > 0) {
-                if (event_state == KEY_EVENT_UP) {
-                  // If it is a single-tap locked key OR held under 400ms, force standard 50ms representation!
-                  if (is_stateless_single_tap || live_hold_duration <= 400) {
-                    delta = 50; 
+          // ====================================================================
+          // UNIFIED HOOK: PASSIVE MID-STREAM CAPTURE REGISTRATION PIPELINE
+          // ====================================================================
+          if (id(macro_workflow_state) == MACRO_STATE_RECORDING) {
+            id(macro_record_timeout_watcher)->execute(); // Keep session alive
+            
+            if (std::strcmp(found_cmd->action_string, "macro_play") != 0 && 
+                std::strcmp(found_cmd->action_string, "macro_record") != 0) {
+
+              int step_idx = id(macro_step_counter);
+
+              // Swallow holding noise frames; our timing engine targets clean state edges exclusively
+              if (event_state != KEY_EVENT_HOLDING && step_idx < MAX_MACRO_STEPS) {
+                
+                // Defensive structural guard against contact bounce noise
+                if (event_state == KEY_EVENT_UP && step_idx > 0 && 
+                    active_recording_buffer.steps[step_idx - 1].event_state == KEY_EVENT_UP &&
+                    (now - id(macro_last_event_time) < 30)) {
+                  return;
+                }
+
+                uint32_t delta = 0;
+                if (step_idx > 0) {
+                  if (event_state == KEY_EVENT_UP) {
+                    // --- BRANCH 1: SPECIAL CONSTRAINT TARGET (POWER_OFF OVERRIDE) ---
+                    if (std::strcmp(found_cmd->action_string, "power_off") == 0) {
+                      delta = 1500; 
+                      ESP_LOGD("MACRO_REC", "Special Case Applied: Clamped 'power_off' hold to 1500ms");
+                    } else {
+                      // --- BRANCH 2: SMART ADAPTIVE AUTOCORRECT FILTER ---
+                      uint32_t true_hold = now - id(macro_last_event_time);
+                      if (true_hold < 450) {
+                        delta = 50; // Clean up tired or accidental sluggish holds back into a standard tap
+                        ESP_LOGD("MACRO_REC", "Cleanup Filter Active: Normalized %ums hold down to 50ms tap", (unsigned int)true_hold);
+                      } else {
+                        delta = true_hold; // Intentional, sustained physical long-press duration cached
+                      }
+                    }
                   } else {
-                    // True Long Press: Record full sustained duration
+                    // Calculate human pacing interval gap between distinct button selections
                     delta = now - id(macro_last_event_time);
-                    if (delta > 65535) delta = 65535;
+                    if (delta < 200) delta = 200; // Protect spacing gap minimum threshold floor
                   }
-                } else {
-                  // Calculate pacing gap metrics between distinct button clicks
-                  delta = now - id(macro_last_event_time);
-                  // 🛠️ RESTORED: Enforces discrete tap separation boundaries during macro playback
-                  if (delta < 200) delta = 200; 
                   if (delta > 65535) delta = 65535;
                 }
-              } // <--- 🛠️ CORRECTION 1: CLOSES THE "if (step_idx > 0)" CONDITIONAL FRAME CLEANLY
 
-              std::memset(active_recording_buffer.steps[step_idx].action_string, 0, MAX_ACTION_STRING_LEN);
-              std::strncpy(active_recording_buffer.steps[step_idx].action_string, found_cmd->action_string, MAX_ACTION_STRING_LEN - 1);
-              
-              active_recording_buffer.steps[step_idx].event_state = (uint8_t)event_state;
-              active_recording_buffer.steps[step_idx].delay_ms = (uint16_t)delta;
-              
-              id(macro_last_event_time) = now;
-              id(macro_step_counter) = step_idx + 1;
-              active_recording_buffer.total_steps = id(macro_step_counter);
-              
-              ESP_LOGD("MACRO_REC", "Recorded Step [%d]: %s (State: %d, Delay: %u ms)", 
-                       step_idx, found_cmd->action_string, event_state, (unsigned int)delta);
-
-              // ⚡ 2. IMMEDIATE MONOSTABLE HARDWARE INJECTION FORCE
-              if (event_state == KEY_EVENT_DOWN) {
-                id(global_initial_press_time) = now;
-                id(global_cached_command) = ir_command;
+                std::memset(active_recording_buffer.steps[step_idx].action_string, 0, MAX_ACTION_STRING_LEN);
+                std::strncpy(active_recording_buffer.steps[step_idx].action_string, found_cmd->action_string, MAX_ACTION_STRING_LEN - 1);
                 
-                // If it is inside our filter list, immediately press its mapped firmware target cleanly
-                if (is_stateless_single_tap) {
-                  auto* target_btn = resolve_button(found_cmd->action_string);
-                  if (target_btn != nullptr) {
-                    target_btn->press(); 
-                  } else {
-                    fire_bluetooth_hid_action(found_cmd->action_string, 0);
-                  }
-                } else {
-                  fire_bluetooth_hid_action(found_cmd->action_string, 0); // DOWN
-                }
-              }
-
-              if (event_state == KEY_EVENT_UP) {
-                // Only send individual UP frames for normal variable buttons
-                if (!is_stateless_single_tap) {
-                  fire_bluetooth_hid_action(found_cmd->action_string, 2); // UP
-                }
+                active_recording_buffer.steps[step_idx].event_state = (uint8_t)event_state;
+                active_recording_buffer.steps[step_idx].delay_ms = (uint16_t)delta;
                 
-                id(global_cached_command) = 0;
-                id(global_initial_press_time) = 0;
-                id(global_last_processed_time) = 0;
-                id(global_is_holding) = false;
+                id(macro_last_event_time) = now;
+                id(macro_step_counter) = step_idx + 1;
+                active_recording_buffer.total_steps = id(macro_step_counter);
+                
+                ESP_LOGI("MACRO_REC", "Inline Mirror Captured -> Step [%d]: %s (State: %d, Delay: %u ms)", 
+                         step_idx, found_cmd->action_string, event_state, (unsigned int)delta);
               }
             }
-            return; 
+            // Control safely flows straight into the system output and driver components down below...
           }
 
           // ============================================================
           // POPULATE DYNAMIC TRACKING SENSOR STRINGS
           // ============================================================
           if (id(macro_playback_active) == true) {
-            return; // Block default flushes, display updates, and trailing edge updates during macro playback
+            return; 
           }
 
           if (!id(global_token_clear_armed)) {
@@ -1805,35 +1710,32 @@ script:
             id(display_show)->execute(false, id(action_string), addressStr, commandStr);
           }
 
-
           // ============================================================
-          // PROGRAMMATIC INTERCEPT GROUP
+          // PROGRAMMATIC SCRIPT INTERCEPT INTERFACE
           // ============================================================
           bool is_automated_script_action = (std::strcmp(found_cmd->action_string, "power_off") == 0 || 
                                              std::strcmp(found_cmd->action_string, "power_on") == 0);
           
           if (is_automated_script_action) {
             if (event_state == KEY_EVENT_DOWN) {
-              // Resolve the native programmatic ESPHome script template buttons
               auto* target_btn = resolve_button(found_cmd->action_string);
               if (target_btn != nullptr) {
-                target_btn->press(); // Yields control directly to your YAML custom delay steps
+                target_btn->press(); 
                 ESP_LOGI("IR_PROCESSOR", "IR Map redirected pass-through to native macro script for: %s", found_cmd->action_string);
               } else {
                 fire_bluetooth_hid_action(found_cmd->action_string, event_state);
               }
               
-              // Clear caches so background flusher intervals do not issue an overlapping release frame
               id(global_cached_command) = 0;
               id(global_initial_press_time) = 0;
               id(global_last_processed_time) = 0;
               id(global_is_holding) = false;
             }
-            return; // Stop processing and swallow the IR packet here!
+            return; 
           }
 
           // ============================================================
-          // UNIFIED ACTION DRIVER INJECTION PIPELINE (FULLY RESTORED)
+          // UNIFIED ACTION DRIVER INJECTION PIPELINE
           // ============================================================
           if (std::strcmp(found_cmd->action_string, "token_sniff") == 0) {
             if (event_state == KEY_EVENT_DOWN) {
@@ -1855,11 +1757,6 @@ script:
             }
             return;
           }
-          
-          if (std::strcmp(found_cmd->action_string, "macro_record") == 0 || 
-              std::strcmp(found_cmd->action_string, "macro_play") == 0) {
-            return; 
-          }
 
           if (id(global_cached_command) != ir_command) {
             if (event_state == KEY_EVENT_DOWN) {
@@ -1874,7 +1771,7 @@ script:
             }
           }
 
-          // Execute native Bluetooth / Driver injection via Step 1 function
+          // Transmit directly down into your low-level hardware BLE abstraction layers
           fire_bluetooth_hid_action(found_cmd->action_string, event_state);
 
           if (event_state == KEY_EVENT_UP) {
@@ -1885,7 +1782,7 @@ script:
           }
           
           id(macro_assignment_cooldown) = now;
-      
+          
   # ========== END of ir_map_processor ===================================
   # ======================================================================
 
@@ -1956,7 +1853,7 @@ script:
   - id: showing_special_expiration_timer
     mode: restart
     then:
-      - delay: 2s # how long without another IR button press before special display times out.
+      - delay: 4s # how long without another IR button press before special display times out.
       - lambda: |-
                 ESP_LOGD("Info Show", "Showing special info timed out.");
                 id(showing_special_info) = false;

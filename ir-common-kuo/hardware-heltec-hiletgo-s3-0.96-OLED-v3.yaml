@@ -98,15 +98,15 @@ script:
 # ========  Display Specific Implementation ========
 
 font:
-  - file: "gfonts://Roboto"
+  - file: "gfonts://JetBrains Mono"
     id: my_fontSmall
     size: 9
 
-  - file: "gfonts://Roboto"
+  - file: "gfonts://JetBrains Mono"
     id: my_fontMedium
     size: 10
 
-  - file: "gfonts://Roboto"
+  - file: "gfonts://JetBrains Mono"
     id: my_fontLarge
     size: 12
 

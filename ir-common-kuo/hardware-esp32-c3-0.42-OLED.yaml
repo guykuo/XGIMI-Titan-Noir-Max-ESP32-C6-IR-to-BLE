@@ -87,18 +87,20 @@ script:
 # ========  Display Specific Implementation ========
 
 font:
-  - file: "gfonts://Roboto"
+  - file: "gfonts://JetBrains Mono"
     id: my_fontSmall
     size: 9
+    bpp: 1  # 1-bit per pixel forces sharp contrast edges for tiny text rows
 
-  - file: "gfonts://Roboto"
+  - file: "gfonts://JetBrains Mono"
     id: my_fontMedium
     size: 10
+    bpp: 1  # Prevents fuzzy gray anti-aliased pixels on monochrome grids
 
-  - file: "gfonts://Roboto"
+  - file: "gfonts://JetBrains Mono"
     id: my_fontLarge
     size: 12
-
+    bpp: 1  # Maximizes character scannability for primary menu items
     
 # Built-in 72x40 SSD1306 OLED screen
 display:

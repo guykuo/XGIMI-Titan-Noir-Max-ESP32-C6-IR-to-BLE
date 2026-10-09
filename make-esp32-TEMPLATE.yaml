@@ -99,7 +99,6 @@ esp32:
   framework:
     type: esp-idf
     sdkconfig_options:
-      # ... Keep your existing lines intact ...
       CONFIG_BT_BLE_EST_LINK_CONN_NUM: "1"
       CONFIG_BT_ACL_CONNECTIONS: "1"
       
@@ -199,16 +198,17 @@ esphome:
     - '-DBLE_REMOTE_NAME_STR=\"${ble_remote_name}\"'
 
     # ============================================================
-    # POWER USERS: Uncomment the line below to activate extra buttons
-    
+    # UNCOMMENT to activate extra buttons
     # - "-DENABLE_EXTRA_BUTTONS"
     
     # ============================================================
-
+    # UNCOMMENT to swap global power commands from XGIMI bursts to Generic HID
+    # - "-DENABLE_GENERIC_POWER" 
+    
 
   project:
     name: xgimi.titan-noir-esp32-ir-kuo
-    version: 26.10.08.0221
+    version: 26.10.09.1624
 
 
   on_boot:
@@ -913,7 +913,7 @@ script:
                 else:
                    - display.page.show: active_page_std
 
-      - delay: 40s 
+      - delay: 60s 
       - display.page.show: blank_page
 
 
@@ -957,7 +957,7 @@ script:
                 else:
                    - display.page.show: active_page_std
 
-      - delay: 40s 
+      - delay: 60s 
       - display.page.show: blank_page
 
 

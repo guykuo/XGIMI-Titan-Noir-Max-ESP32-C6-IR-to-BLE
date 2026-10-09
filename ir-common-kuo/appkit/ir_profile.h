@@ -24,6 +24,12 @@
 #define TOSTRING_MACRO(x) STRINGIFY_MACRO(x)
 
 // =================== HUMAN-READABILITY DEFINES ==========================
+// --- HID REPORT DESCRIPTOR TYPES (resolved_type) ---
+#define HID_REPORT_KEYBOARD       0
+#define HID_REPORT_CONSUMER       1
+#define HID_REPORT_TOKEN_NONE     2
+#define HID_REPORT_SYSTEM_CONTROL 3
+
 #define PROTO_UNKNOWN   0
 #define PROTO_NEC       1
 #define PROTO_JVC       2
@@ -168,8 +174,35 @@ inline uint8_t str_to_state(const std::string& str) {
 inline uint16_t resolve_action_to_true_hid(const char* name, uint8_t& out_type) {
     if (name == nullptr) return 0xFFFF;
 
-    // KEYBOARD RESOLUTION PATH (REPORT TYPE 0)
-    if (std::strcmp(name, "power_off") == 0)         { out_type = 0; return 0x7F; }
+    // KEYBOARD RESOLUTION PATH (REPORT TYPE 0) OR SYSTEM CONTROL PATH (REPORT TYPE 3)
+    if (std::strcmp(name, "power_off") == 0) {
+
+    // ====================================================================
+    // POWER INFRASTRUCTURE CONFIGURATION PATHS
+    // ====================================================================
+#ifdef ENABLE_GENERIC_POWER
+    // --- GENERIC DISCRETE HID INFRASTRUCTURE BLOCKS ---
+    if (std::strcmp(name, "power_off") == 0) {
+        out_type = HID_REPORT_SYSTEM_CONTROL; 
+        return 0x81; // 0x81 = Generic Discrete System Power Down
+    }
+    else if (std::strcmp(name, "power_on") == 0) {
+        out_type = HID_REPORT_SYSTEM_CONTROL; 
+        return 0x83; // 0x83 = Generic Discrete System Wake Up
+    }
+#else
+    // --- DEFAULT XGIMI NATIVE FACTORY INFRASTRUCTURE BLOCKS ---
+    if (std::strcmp(name, "power_off") == 0) {
+        out_type = HID_REPORT_KEYBOARD; 
+        return 0x7F; // Default XGIMI Power Off Handshake Keystroke
+    }
+    else if (std::strcmp(name, "power_on") == 0) {
+        out_type = HID_REPORT_TOKEN_NONE; 
+        return 0xFFFF; // Default XGIMI: Bypassed here; maps to native wake bursts
+    }
+#endif
+
+    }
     else if (std::strcmp(name, "cursor_up") == 0)    { out_type = 0; return 0x52; }
     else if (std::strcmp(name, "cursor_down") == 0)  { out_type = 0; return 0x51; }
     else if (std::strcmp(name, "cursor_left") == 0)  { out_type = 0; return 0x50; }
@@ -436,20 +469,22 @@ inline void commit_database_to_flash(uint16_t target_slot) {
 
 
 // ====================================================================
-// METADATA-DECOUPLED BLUETOOTH HID INJECTION ENGINE
+// METADATA-DECOUPLED BLUETOOTH HID INJECTION ENGINE (SYMBOLIC EDITION)
 // ====================================================================
 inline void fire_bluetooth_hid_action(const char* action_name, int event_state) {
     if (action_name == nullptr) return;
 
-    // Handle instant virtual action press redirects for power_on hardware lines
+    // Preserve the native XGIMI hardware power_on button wake pulse routing ONLY if flag is absent
+#ifndef ENABLE_GENERIC_POWER
     if (std::strcmp(action_name, "power_on") == 0) {
         if (event_state == KEY_EVENT_DOWN) {
             esphome::id(power_on).press();
         }
         return;
     }
+#endif
 
-    uint8_t resolved_type = 2; // 0 = Keyboard, 1 = Consumer, 2 = Token/None
+    uint8_t resolved_type = HID_REPORT_TOKEN_NONE; 
     uint16_t true_hid_code = 0xFFFF;
 
     // ⚡ HIGH-SPEED LOOKUP SCAN:
@@ -466,39 +501,60 @@ inline void fire_bluetooth_hid_action(const char* action_name, int event_state) 
     if (runtime_cmd != nullptr) {
         // High-speed, zero-allocation prefix comparison checks on the button_name cell string
         if (std::strncmp(runtime_cmd->button_name, "RKEY:", 5) == 0) {
-            resolved_type = 0; // Force Keyboard Report Profile
+            resolved_type = HID_REPORT_KEYBOARD; 
             true_hid_code = (uint16_t)std::strtoul(runtime_cmd->button_name + 5, nullptr, 16);
             dynamic_payload_found = true;
         }
         else if (std::strncmp(runtime_cmd->button_name, "RCON:", 5) == 0) {
-            resolved_type = 1; // Force Consumer Report Profile
+            resolved_type = HID_REPORT_CONSUMER; 
             true_hid_code = (uint16_t)std::strtoul(runtime_cmd->button_name + 5, nullptr, 16);
             dynamic_payload_found = true;
         }
     }
 
-    // Fallback: If no metadata protocol payload is registered, look up standard hardcoded Xgimi tables
+    // Fallback: If no metadata protocol payload is registered, look up standard hardcoded tables
     if (!dynamic_payload_found) {
         true_hid_code = resolve_action_to_true_hid(action_name, resolved_type);
     }
 
-    if (true_hid_code == 0xFFFF && resolved_type != 2) return;
+    if (true_hid_code == 0xFFFF && resolved_type != HID_REPORT_TOKEN_NONE) return;
 
     // Streamlined low-overhead driver execution pipeline
     if (event_state == KEY_EVENT_DOWN) {
-        if (resolved_type == 0)      esphome::id(xgimi_remote_controller).hold_keyboard((uint8_t)true_hid_code);
-        else if (resolved_type == 1) esphome::id(xgimi_remote_controller).hold_consumer(true_hid_code);
+        if (resolved_type == HID_REPORT_KEYBOARD) {
+            esphome::id(xgimi_remote_controller).hold_keyboard((uint8_t)true_hid_code);
+        }
+        else if (resolved_type == HID_REPORT_CONSUMER) {
+            esphome::id(xgimi_remote_controller).hold_consumer(true_hid_code);
+        }
+        else if (resolved_type == HID_REPORT_SYSTEM_CONTROL) {
+            // Transmit via std::vector wrapper to satisfy BLECharacteristic::set_value() signature tracks
+            esphome::id(xgimi_keyboard_report).set_value(std::vector<uint8_t>{ (uint8_t)true_hid_code });
+        }
     }
     else if (event_state == KEY_EVENT_HOLDING) {
         // Consumer frames do not use typematic repeat pulses; maintain baseline downstream state directly
-        if (resolved_type == 0)      esphome::id(xgimi_remote_controller).hold_keyboard((uint8_t)true_hid_code);
-        else if (resolved_type == 1) esphome::id(xgimi_remote_controller).hold_consumer(true_hid_code);
+        if (resolved_type == HID_REPORT_KEYBOARD) {
+            esphome::id(xgimi_remote_controller).hold_keyboard((uint8_t)true_hid_code);
+        }
+        else if (resolved_type == HID_REPORT_CONSUMER) {
+            esphome::id(xgimi_remote_controller).hold_consumer(true_hid_code);
+        }
+        else if (resolved_type == HID_REPORT_SYSTEM_CONTROL) {
+            esphome::id(xgimi_keyboard_report).set_value(std::vector<uint8_t>{ (uint8_t)true_hid_code });
+        }
     }
     else if (event_state == KEY_EVENT_UP) {
-        if (resolved_type == 0)      esphome::id(xgimi_remote_controller).release_held_keyboard_();
-        else if (resolved_type == 1) {
+        if (resolved_type == HID_REPORT_KEYBOARD) {
+            esphome::id(xgimi_remote_controller).release_held_keyboard_();
+        }
+        else if (resolved_type == HID_REPORT_CONSUMER) {
             esphome::id(xgimi_remote_controller).hold_consumer(0x0000); // Send explicit zeroed release frame
             esphome::id(xgimi_remote_controller).release_held_consumer_();
+        }
+        else if (resolved_type == HID_REPORT_SYSTEM_CONTROL) {
+            // Send explicit clear frame down to the System Control BLE stack characteristic using initializer list mapping
+            esphome::id(xgimi_keyboard_report).set_value({ 0x00 });
         }
     }
 }
