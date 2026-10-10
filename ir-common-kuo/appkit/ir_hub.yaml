@@ -709,12 +709,12 @@ script:
                     // Check if this step is a release edge meant to hold down an active key
                     return (active_recording_buffer.steps[idx].event_state == KEY_EVENT_UP && id(macro_last_event_time) > 400);
                 then:
-                  # --- SUSTAINED HOLD STREAMING GATES (> 300ms) ---
+                  # --- SUSTAINED HOLD STREAMING GATES (> 400ms) ---
                   - while:
                       condition:
-                        lambda: 'return (id(macro_last_event_time) > 40);'
+                        lambda: 'return (id(macro_last_event_time) > 35);'
                       then:
-                        - delay: 40ms
+                        - delay: 35ms
                         - lambda: |-
                             extern UniversalFlashMacro active_recording_buffer;
                             int idx = id(macro_step_counter);
@@ -722,10 +722,10 @@ script:
 
                             // Issue continuous keep-alive updates using the HOLDING state (1)
                             ESP_LOGV("MACRO_PLAY", "Sending Keep-Alive frame for: %s", step.action_string);
-                            fire_bluetooth_hid_action(step.action_string, 1); 
+                            fire_bluetooth_hid_action(step.action_string, KEY_EVENT_HOLDING); 
 
                             // Deduct the elapsed interval from our pacing tracking cache
-                            id(macro_last_event_time) -= 40;
+                            id(macro_last_event_time) -= 35;
                   
                   # Consume any small remaining remainder window under 40ms cleanly
                   - delay: !lambda "return id(macro_last_event_time);"
@@ -758,7 +758,7 @@ script:
                   }
                                     
                   // 🛠️ FIX: Direct pass-through to your existing, unified injection engine!
-                  fire_bluetooth_hid_action(step.action_string, 0); // 0 = DOWN
+                  fire_bluetooth_hid_action(step.action_string, KEY_EVENT_DOWN); // 0 = DOWN
                 }
                 else if (step.event_state == KEY_EVENT_UP) {
                   ESP_LOGI("MACRO_PLAY", "Firing Step [%d]: UP -> Releasing '%s'", idx, step.action_string);
@@ -769,7 +769,7 @@ script:
                   }
            
                   // 🛠️ FIX: Direct pass-through to your existing, unified injection engine!
-                  fire_bluetooth_hid_action(step.action_string, 2); // 2 = UP
+                  fire_bluetooth_hid_action(step.action_string, KEY_EVENT_UP); // 2 = UP
                 }
                 
                 id(macro_step_counter) = idx + 1;
@@ -1165,7 +1165,7 @@ script:
               id(action_string).assign(found_cmd->action_string);
               std::string cmd_name = found_cmd->action_string;
             
-              // 🛠️ FIX: INDEPENDENT CLICK SPLITTING LAYER
+              // INDEPENDENT CLICK SPLITTING LAYER
               // If the same key is hit again after a quiet window (>130ms), force-terminate 
               // the old hold state programmatically before executing the new down stroke.
               if (id(global_cached_command) == ir_command) {
@@ -1173,7 +1173,7 @@ script:
                   ESP_LOGD("IR_HUB", "Quiet gap detected (%ums). Splitting sequential clicks cleanly.", (unsigned int)(now - id(global_last_processed_time)));
                   
                   // Programmatically fire the release edge for the previous click
-                  id(ir_map_processor).execute(ir_command, 2); // 2 = UP
+                  id(ir_map_processor).execute(ir_command, KEY_EVENT_UP); // 2 = UP
                   
                   // Reset tracking variables to guarantee a fresh DOWN edge below
                   id(global_cached_command) = 0;
@@ -1193,11 +1193,11 @@ script:
                 id(global_initial_press_time) = now;
                 id(global_last_processed_time) = now;
                 
-                id(ir_map_processor).execute(ir_command, 0); // 0 = DOWN
+                id(ir_map_processor).execute(ir_command, KEY_EVENT_DOWN); // 0 = DOWN
               } 
               else {
                 id(global_is_holding) = true;
-                id(ir_map_processor).execute(ir_command, 1); // 1 = HOLDING / REPEAT
+                id(ir_map_processor).execute(ir_command, KEY_EVENT_HOLDING); // 1 = HOLDING / REPEAT
                 id(global_last_processed_time) = now;
               }
             
@@ -1632,7 +1632,7 @@ script:
                 // Defensive structural guard against contact bounce noise
                 if (event_state == KEY_EVENT_UP && step_idx > 0 && 
                     active_recording_buffer.steps[step_idx - 1].event_state == KEY_EVENT_UP &&
-                    (now - id(macro_last_event_time) < 30)) {
+                    (now - id(macro_last_event_time) < 45)) {
                   return;
                 }
 
@@ -1890,7 +1890,7 @@ interval:
   # ====================================================================
   # HIGH-VELOCITY NON-BLOCKING STATE FLUSHER (LONG PRESS EDITIONS)
   # ====================================================================
-  - interval: 40ms
+  - interval: 35ms
     then:
       - lambda: |-
           if (id(macro_workflow_state) == MACRO_STATE_AWAITING_HOTKEY) {
@@ -1902,7 +1902,7 @@ interval:
             // RESTORED: Standard 140ms timeout ensures data-less IR repeat bursts (110ms) are not cut off
             if (now - id(global_last_raw_packet_time) >= 140) {
               
-              id(ir_map_processor).execute(id(global_cached_command), 2); // 2 = UP/Release
+              id(ir_map_processor).execute(id(global_cached_command), KEY_EVENT_UP); // 2 = UP/Release
 
               id(global_cached_command) = 0;
               id(global_initial_press_time) = 0;

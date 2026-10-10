@@ -79,9 +79,9 @@ inline constexpr uint16_t MAX_LEARNED_PROFILES = 3;
 inline bool flash_hydration_complete = false;
 
 #ifdef ENABLE_EXTRA_BUTTONS
-  inline constexpr uint32_t CURRENT_PROFILE_VERSION = 1024; // Power user footprint track
+  inline constexpr uint32_t CURRENT_PROFILE_VERSION = 1025; // Power user footprint track
 #else
-  inline constexpr uint32_t CURRENT_PROFILE_VERSION = 68; // <-- increment this change in NVRAM storage structures
+  inline constexpr uint32_t CURRENT_PROFILE_VERSION = 69; // <-- increment this change in NVRAM storage structures
 #endif
 
 
@@ -361,7 +361,7 @@ struct FlashStoredProfile {
   uint32_t cmd_clear_token_arm;  
   uint32_t cmd_clear_token_fire; 
   uint16_t total_keys;
-  FlashStoredKey keys[55];       // Centralized configuration ceiling cap
+  FlashStoredKey keys[80];       // Centralized configuration ceiling cap
 };
 
 
@@ -2434,7 +2434,7 @@ inline esp_err_t button_inject_handler(httpd_req_t *req) {
                     // Route inbound web clicks directly as KEY_EVENT_DOWN actions to the state engine 
                     // when an automation session is actively listening for payload keys or binding assignments.
                     uint32_t current_hex_mapping = find_active_command_by_name(action_param);
-                    esphome::id(ir_map_processor).execute(current_hex_mapping, 0); // 0 = DOWN / Edge Press
+                    esphome::id(ir_map_processor).execute(current_hex_mapping, KEY_EVENT_DOWN); // 0 = DOWN / Edge Press
                     
                     // ====================================================================
                     // NEW CORRECTION: ANTI-LOCKUP WEB CLEARING GATE (C++ TYPED EDITION)
@@ -2474,7 +2474,7 @@ inline esp_err_t button_inject_handler(httpd_req_t *req) {
                 if (std::strcmp(action_param, "macro_play") == 0) {
                     ESP_LOGI("WEB_CONSOLE", "Web Redirect: Engaging Macro Playback Sequence Tracker");
                     uint32_t simulated_hex = find_active_command_by_name("macro_play");
-                    esphome::id(ir_map_processor).execute(simulated_hex, 0); // 0 = DOWN (Opens prefix window)
+                    esphome::id(ir_map_processor).execute(simulated_hex, KEY_EVENT_DOWN); // 0 = DOWN (Opens prefix window)
                     
                     httpd_resp_set_status(req, "204 No Content");
                     httpd_resp_send(req, NULL, 0);
@@ -2483,7 +2483,7 @@ inline esp_err_t button_inject_handler(httpd_req_t *req) {
                 else if (std::strcmp(action_param, "macro_record") == 0) {
                     ESP_LOGI("WEB_CONSOLE", "Web Redirect: Toggling Macro Recording State Machine");
                     uint32_t simulated_hex = find_active_command_by_name("macro_record");
-                    esphome::id(ir_map_processor).execute(simulated_hex, 0); // 0 = DOWN (Starts or steps to assignment)
+                    esphome::id(ir_map_processor).execute(simulated_hex, KEY_EVENT_DOWN); // 0 = DOWN (Starts or steps to assignment)
                     
                     httpd_resp_set_status(req, "204 No Content");
                     httpd_resp_send(req, NULL, 0);
@@ -2552,7 +2552,7 @@ inline esp_err_t button_inject_handler(httpd_req_t *req) {
                         ESP_LOGI("WEB_CONSOLE", "Web redirected straight to native programmatic button for: %s", action_param);
                     } else {
                         // Fallback handling if native platform component entity reference is missing
-                        fire_bluetooth_hid_action(action_param, 0);
+                        fire_bluetooth_hid_action(action_param, KEY_EVENT_DOWN);
                     }
                     
                     httpd_resp_set_status(req, "204 No Content");
@@ -2570,9 +2570,25 @@ inline esp_err_t button_inject_handler(httpd_req_t *req) {
                     std::strcmp(action_param, "macro_play") != 0 &&
                     std::strcmp(action_param, "macro_record") != 0) {
                     
-                    fire_bluetooth_hid_action(action_param, 0); // DOWN / Press edge
-                    vTaskDelay(pdMS_TO_TICKS(60));              
-                    fire_bluetooth_hid_action(action_param, 2); // UP / Release edge
+                    // 1. Refresh global timing anchors so the 35ms flusher loop doesn't step on our web press
+                    uint32_t simulated_hex = find_active_command_by_name(action_param);
+                    esphome::id(global_last_raw_packet_time).value() = millis();
+                    esphome::id(global_cached_command).value() = simulated_hex;
+                
+                    // 2. Fire physical press edge down to BLE driver layers
+                    fire_bluetooth_hid_action(action_param, KEY_EVENT_DOWN); // 0 = DOWN / Press edge
+                    
+                    // 3. Keep delay safely under your 35ms cycle floor to prevent race condition overlaps
+                    vTaskDelay(pdMS_TO_TICKS(25));              
+                    
+                    // 4. Cleanly execute release sequences symmetrically
+                    fire_bluetooth_hid_action(action_param, KEY_EVENT_UP); // 2 = UP / Release edge
+                
+                    // 5. Explicitly clear state registers instantly to sync with the flusher expectation
+                    esphome::id(global_cached_command).value() = 0;
+                    esphome::id(global_initial_press_time).value() = 0;
+                    esphome::id(global_last_processed_time).value() = 0;
+                    esphome::id(global_is_holding).value() = false;
                 }
             }
         }
