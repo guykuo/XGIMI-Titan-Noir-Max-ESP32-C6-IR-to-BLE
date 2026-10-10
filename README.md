@@ -88,16 +88,16 @@ These "factory" IR profiles have known working IR code sets ...
 ## Hardware Definition Packages
 ESP32 boards are defined in ir-common-kuo/ as hardware.yaml files. These hardware files contain board specific information used to create the translator firmware. Several board types are supplied. You can also create your "hardware" file to support a new ESP32 board type or to customize GPIO assignments.
 
-Supplied hardware files are for ESP32 boards listed in descending order of author preference ...
+Supplied hardware files are for ESP32 boards listed in descending order of author preference for use as IR translator ...
 
 * hardware-esp32-c3-0.42-OLED.yaml         # supports built-in 0.42 inch OLED display
-* hardware-esp32-c6-wroom-1.yaml           # supports external 0.9 inch i2c OLED display
-* hardware-lafvintech-c6-lcd-1.47.yaml     # May need physical reset after flashing.
-* hardware-hosyond-s3-lcd-3.5-touch.yaml
-* hardware-waveshare-c6-lcd-1.47.yaml          (thanks to Avalones)
-* hardware-waveshare-s3-touch-lcd-2.8.yaml
+* hardware-esp32-c6-wroom-1.yaml            # recommend add external 0.9 inch i2c OLED display
 * hardware-waveshare-s3-lcd-1.47B.yaml     # Quirk: requires IR sensor WITHOUT LED (VS1838B)
 * hardware-heltec-hiletgo-s3-0.96-OLED-v3.yaml # Quirk: Needs special cable for serial logging
+* hardware-lafvintech-c6-lcd-1.47.yaml      # May need physical reset after flashing.
+* hardware-hosyond-s3-lcd-3.5-touch.yaml
+* hardware-waveshare-c6-lcd-1.47.yaml
+* hardware-waveshare-s3-touch-lcd-2.8.yaml
 * hardware-ideaspark-esp32-classic-OLED.yaml # Quirk: usb-micro cable, small RAM
 * hardware-m5stack-pico-d4-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
 
