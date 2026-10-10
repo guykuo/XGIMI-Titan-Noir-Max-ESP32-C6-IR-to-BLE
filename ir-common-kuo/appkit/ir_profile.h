@@ -379,7 +379,7 @@ inline esphome::button::Button* resolve_button(const char* name) {
   // Since macro_record and macro_play are virtual state-machine triggers 
   // that do not have physical compiled button entities, exit quietly 
   // with a nullptr to completely stop loud error logs from generating.
-  if (target_str == "macro_record" || target_str == "macro_play" || target_str == "ble_clear") {
+  if (target_str == "macro_record" || target_str == "macro_play" || target_str == "ble_clear" || target_str == "ble_pair") {
     return nullptr;
   }
 
@@ -1722,13 +1722,13 @@ inline esp_err_t root_handler(httpd_req_t *req) {
     <button class="btn-test macro" onclick="sendClick('macro_record')">Macro RECORD</button>
     <button class="btn-test macro" onclick="sendClick('macro_play')">Macro PLAY</button>
     <button class="btn-test util" style="visibility:hidden;"></button>
-    <button class="btn-test util" style="visibility:hidden;"></button>
+    <button class="btn-test util" style="background:#9D5352;" onclick="sendClick('ble_pair')">BLE PAIR</button>
     
     <!-- Row 8: Bluetooth Token Diagnostic Layer -->
     <button class="btn-test util" onclick="sendClick('token_sniff')">Token SNIFF</button>
     <button class="btn-test util" onclick="sendClick('token_recall')">Token RECALL</button>
     <button class="btn-test util" onclick="sendClick('token_clear')">Token CLEAR</button>
-    <button class="btn-test util" style="background:#da3637;" onclick="sendClick('ble_clear')">BLE CLEAR</button>
+    <button class="btn-test util" style="background:#BD6352;" onclick="sendClick('ble_clear')">BLE CLEAR</button>
 Use  </div>
 </div>
 )rawliteral", HTTPD_RESP_USE_STRLEN); // <-- This safely closes Chunk 2
@@ -2407,6 +2407,14 @@ inline esp_err_t button_inject_handler(httpd_req_t *req) {
                 // ====================================================================
                 // WEB BUTTON BLUETOOTH TOKEN & BOND DIAGNOSTIC INTERCEPT LAYER
                 // ====================================================================
+                if (std::strcmp(action_param, "ble_pair") == 0) {
+                    ESP_LOGW("WEB_CONSOLE", "Web Intercept: Starting bluetooth pairing!");
+                    esphome::id(xgimi_remote_controller).start_pairing_mode(); // Calls native C++ component purge
+                    
+                    httpd_resp_set_status(req, "204 No Content");
+                    httpd_resp_send(req, NULL, 0);
+                    return ESP_OK;
+                }
                 if (std::strcmp(action_param, "ble_clear") == 0) {
                     ESP_LOGW("WEB_CONSOLE", "Web Intercept: Purging all saved Bluetooth bonds!");
                     esphome::id(xgimi_remote_controller).clear_bonds(); // Calls native C++ component purge

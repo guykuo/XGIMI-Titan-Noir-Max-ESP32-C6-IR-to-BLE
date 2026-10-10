@@ -1,10 +1,15 @@
+# Lafvintech board may require physical reset after flashing.
+# Also, often needs boot button held at reset to enable flashing.
+# Extra long delay required to allow power rails to settle.
+# Otherwise, wifi will not intialize.
+
 # ============= BEGIN Configuration Options KUO ==========
 
 substitutions:
   pin_ir_receiver: GPIO1
   pin_indicator_LED: GPIO8
   pin_action_btn: GPIO9 # use boot button to start actions
-  wifi_tx_power: "13dB"
+  wifi_tx_power: "10.0dB"
 
 # Core Architecture Declaration
 
@@ -19,7 +24,7 @@ esphome:
     # 800.0f runs BEFORE the display (400.0f) initializes, giving us structural control
     - priority: 800.0
       then:
-        - delay: 1.5s                      # Give physical power lines time to stabilize
+        - delay: 2.5s  # Required delay to allow physical power lines time to stabilize
 
     - priority: -100 # 4. Wait until the very end of the boot sequence when it is safe
       then:
@@ -53,7 +58,7 @@ output:
     id: backlight_pwm
     frequency: 1000Hz     # Explicitly sets frequency for ESP-IDF stability
     min_power: 0.0
-    max_power: 1.0
+    max_power: 0.5
     
       
 light:
