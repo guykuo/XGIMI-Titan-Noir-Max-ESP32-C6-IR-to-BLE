@@ -23,7 +23,14 @@ i2c:
   id: bus_a
   
 # ============= END Configuration Options KUO ==========
-  
+
+esphome:
+  on_boot:
+    # 800.0f runs BEFORE the display (400.0f) initializes, giving us structural control
+    - priority: 800.0
+      then:
+        - delay: 0.5s  # Delay to allow physical power lines time to stabilize
+          
 globals:
     # ======= myDisplay display globals
   - id: myDisplay_line1

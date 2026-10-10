@@ -1377,7 +1377,7 @@ inline std::string generate_profile_csv(int idx) {
       char irCommand_buf[32];
       snprintf(irCommand_buf, sizeof(irCommand_buf), key_fmt, (unsigned int)p.cmd_codes[i].first);
       
-      snprintf(chunk_buf, sizeof(chunk_buf), "KEY,%s,%s,%s\n",
+      snprintf(chunk_buf, sizeof(chunk_buf), "key,%s,%s,%s\n",
                irCommand_buf, p.cmd_codes[i].second.action_string, p.cmd_codes[i].second.button_name);
       csv_out += chunk_buf;
   }
@@ -1455,27 +1455,45 @@ inline bool import_profile_from_csv(const std::string& csv_data) {
             else if (proto_view == "RC6")       active_profile_workspace.protocol = PROTO_RC6;
             else                                active_profile_workspace.protocol = PROTO_UNKNOWN;
 
-            char tmp[32] = {0};
-            std::memcpy(tmp, addr_view.data(), std::min(addr_view.size(), sizeof(tmp) - 1));
-            active_profile_workspace.device_address = std::strtoul(tmp, nullptr, 16);
+            // Helper lambda for robust, zero-allocation manual hex parsing from string_views
+            auto parse_hex_view = [](std::string_view view) -> uint32_t {
+                if (view.empty()) return 0;
+                
+                // Safely skip any explicit leading "0x" or "0X" signatures if they exist in the file
+                if (view.size() > 2 && view[0] == '0' && (view[1] == 'x' || view[1] == 'X')) {
+                    view.remove_prefix(2);
+                }
+                
+                uint32_t val = 0;
+                for (char c : view) {
+                    if (std::isspace(static_cast<unsigned char>(c))) continue;
+                    
+                    uint32_t digit = 0;
+                    if (c >= '0' && c <= '9')      digit = (c - '0');
+                    else if (c >= 'a' && c <= 'f') digit = (c - 'a' + 10);
+                    else if (c >= 'A' && c <= 'F') digit = (c - 'A' + 10);
+                    else break; // Stop tracking at commas, raw characters, or line returns
+                    
+                    val = (val * 16) + digit;
+                }
+                return val;
+            };
 
-            std::memset(tmp, 0, sizeof(tmp));
-            std::memcpy(tmp, arm_view.data(), std::min(arm_view.size(), sizeof(tmp) - 1));
-            active_profile_workspace.cmd_clear_token_arm = std::strtoul(tmp, nullptr, 16);
-
-            std::memset(tmp, 0, sizeof(tmp));
-            std::memcpy(tmp, fire_view.data(), std::min(fire_view.size(), sizeof(tmp) - 1));
-            active_profile_workspace.cmd_clear_token_fire = std::strtoul(tmp, nullptr, 16);
+            active_profile_workspace.device_address = parse_hex_view(addr_view);
+            active_profile_workspace.cmd_clear_token_arm = parse_hex_view(arm_view);
+            active_profile_workspace.cmd_clear_token_fire = parse_hex_view(fire_view);
 
             meta_parsed = true;
-            ESP_LOGI("CSV Import", "Metadata locked. Profile: %s, Address: 0x%X",
-                     active_profile_workspace.profile_name.c_str(), (unsigned int)active_profile_workspace.device_address);
+            ESP_LOGI("CSV Import", "Metadata locked. Profile: %s, Address: 0x%X, Arm Token: 0x%X",
+                     active_profile_workspace.profile_name.c_str(), 
+                     (unsigned int)active_profile_workspace.device_address,
+                     (unsigned int)active_profile_workspace.cmd_clear_token_arm);
         }
         
         // -----------------------------------------------------------
         // HARDWARE DATA KEY EXTRAPOLATION PASS
         // -----------------------------------------------------------
-        else if (cell_type == "KEY") {
+        else if (cell_type == "key" || cell_type == "KEY") {
             if (!meta_parsed) {
                 ESP_LOGE("CSV Import", "Structure malformed! Received KEY block before valid META row.");
                 return false;
@@ -1485,19 +1503,52 @@ inline bool import_profile_from_csv(const std::string& csv_data) {
             std::string_view token_view = get_next_cell(line_view); 
             std::string_view label_view = get_next_cell(line_view); 
 
-            char tmp_code[32] = {0};
-            std::memcpy(tmp_code, code_view.data(), std::min(code_view.size(), sizeof(tmp_code) - 1));
-            uint32_t command_code = std::strtoul(tmp_code, nullptr, 16);
+            // Cleanly trim out leading "0x" prefixes from custom keys if present
+            if (code_view.size() > 2 && code_view[0] == '0' && (code_view[1] == 'x' || code_view[1] == 'X')) {
+                code_view.remove_prefix(2);
+            }
+            
+            uint32_t command_code = 0;
+            for (char c : code_view) {
+                if (std::isspace(static_cast<unsigned char>(c))) continue;
+                
+                uint32_t digit = 0;
+                if (c >= '0' && c <= '9')      digit = (c - '0');
+                else if (c >= 'a' && c <= 'f') digit = (c - 'a' + 10);
+                else if (c >= 'A' && c <= 'F') digit = (c - 'A' + 10);
+                else break;
+                
+                command_code = (command_code * 16) + digit;
+            }
             
             char token_buf[MAX_ACTION_STRING_LEN] = {0}; 
             char label_buf[MAX_BUTTON_NAME_LEN]   = {0}; 
             
             std::memcpy(token_buf, token_view.data(), std::min(token_view.size(), sizeof(token_buf) - 1));
-            std::memcpy(label_buf, label_view.data(), std::min(label_view.size(), sizeof(label_buf) - 1));
+
+            // --- INTUITIVE FIELD 3 PREFIX STRIPPER ---
+            // Evaluates string_view footprint to look for embedded "RKEY:0x" or "RCON:0x" sequences
+            bool has_rkey_prefix = (label_view.size() > 7 && std::strncmp(label_view.data(), "RKEY:0", 6) == 0 && (label_view[6] == 'x' || label_view[6] == 'X'));
+            bool has_rcon_prefix = (label_view.size() > 7 && std::strncmp(label_view.data(), "RCON:0", 6) == 0 && (label_view[6] == 'x' || label_view[6] == 'X'));
+
+            if (has_rkey_prefix || has_rcon_prefix) {
+                // Copy the first 5 bytes verbatim ("RKEY:" or "RCON:")
+                std::memcpy(label_buf, label_view.data(), 5);
+                
+                // Skip the "0x" (offset by 2 bytes) and copy the remaining slice
+                size_t remaining_size = label_view.size() - 7;
+                size_t copy_target = std::min(remaining_size, sizeof(label_buf) - 6);
+                
+                std::memcpy(label_buf + 5, label_view.data() + 7, copy_target);
+            } else {
+                // Standard copy path fallback for normal string comments
+                std::memcpy(label_buf, label_view.data(), std::min(label_view.size(), sizeof(label_buf) - 1));
+            }
 
             add_cmd(command_code, token_buf, label_buf);
             keys_imported++;
         }
+
     } // <-- Closes the while loop
 
     if (!meta_parsed || keys_imported == 0) {
@@ -1509,7 +1560,6 @@ inline bool import_profile_from_csv(const std::string& csv_data) {
     ESP_LOGI("CSV Import", "Successfully recovered %d layout items.", (int)keys_imported);
     return true;
 } 
-
 
 
 
@@ -1949,7 +1999,7 @@ inline esp_err_t export_handler(httpd_req_t *req) {
         snprintf(irCommand_buf, sizeof(irCommand_buf), key_fmt, (unsigned int)p.cmd_codes[i].first);
         
         // Symmetrically aligned to export Field 2 (action_string) and Field 3 (button_name)
-        snprintf(chunk_buf, sizeof(chunk_buf), "KEY,%s,%s,%s\n",
+        snprintf(chunk_buf, sizeof(chunk_buf), "key,%s,%s,%s\n",
                  irCommand_buf, p.cmd_codes[i].second.action_string, p.cmd_codes[i].second.button_name);
         httpd_resp_send_chunk(req, chunk_buf, strlen(chunk_buf));
     }
@@ -2011,12 +2061,12 @@ inline esp_err_t import_handler(httpd_req_t *req) {
             char c = chunk_buf[i];
             if (!inside_payload) {
                 clean_csv.push_back(c);
-                if (clean_csv.size() >= 5) {
-                    if (clean_csv.rfind("META,", clean_csv.size() - 5) != std::string::npos) {
-                        // Isolate the start index and clear out any leading browser junk
-                        clean_csv = "META,";
-                        inside_payload = true;
-                    }
+                // Search the historical window for the valid META start token sequence
+                size_t meta_pos = clean_csv.find("META,");
+                if (meta_pos != std::string::npos) {
+                    // Instantly slice off leading browser multipart noise fields cleanly
+                    clean_csv = clean_csv.substr(meta_pos);
+                    inside_payload = true;
                 }
             } else {
                 clean_csv.push_back(c);
@@ -2224,9 +2274,42 @@ inline bool import_macro_from_csv(const std::string& csv_data) {
                     }
                 }
         
+                // --- NEW RESILIENT FALLBACK: Auto-resolve raw named hotkeys if registry is empty ---
+                if (active_slot == -1) {
+                    if (std::strcmp(search_name, "cursor_enter") == 0)      active_slot = 0;
+                    else if (std::strcmp(search_name, "cursor_up") == 0)    active_slot = 1;
+                    else if (std::strcmp(search_name, "cursor_right") == 0) active_slot = 2;
+                    else if (std::strcmp(search_name, "cursor_down") == 0)  active_slot = 3;
+                    else if (std::strcmp(search_name, "cursor_left") == 0)  active_slot = 4;
+                    else if (std::strcmp(search_name, "shortcut_1") == 0)   active_slot = 5;
+                    else if (std::strcmp(search_name, "shortcut_2") == 0)   active_slot = 6;
+                    else if (std::strcmp(search_name, "shortcut_3") == 0)   active_slot = 7;
+                    else if (std::strcmp(search_name, "shortcut_4") == 0)   active_slot = 8;
+                }
+        
                 // Legacy Fallback Check
                 if (active_slot == -1 && std::strncmp(search_name, "Macro_Slot_", 11) == 0) {
                     active_slot = std::atoi(search_name + 11);
+                }
+        
+                // Re-inject the mapping back into the runtime registry directory so they remain cross-profile linked
+                if (active_slot >= 0 && active_slot < MAX_BOUND_HOTKEYS) {
+                    int entry_idx = -1;
+                    for (uint16_t b = 0; b < global_binding_registry.total_bound_keys; b++) {
+                        if (std::strcmp(global_binding_registry.bindings[b].action_string, search_name) == 0) {
+                            entry_idx = b;
+                            break;
+                        }
+                    }
+                    if (entry_idx == -1 && global_binding_registry.total_bound_keys < MAX_BOUND_HOTKEYS) {
+                        entry_idx = global_binding_registry.total_bound_keys;
+                        global_binding_registry.total_bound_keys++;
+                    }
+                    if (entry_idx != -1) {
+                        std::strncpy(global_binding_registry.bindings[entry_idx].action_string, search_name, MAX_ACTION_STRING_LEN - 1);
+                        global_binding_registry.bindings[entry_idx].action_string[MAX_ACTION_STRING_LEN - 1] = '\0';
+                        global_binding_registry.bindings[entry_idx].shared_macro_slot = active_slot;
+                    }
                 }
             }
             
@@ -2295,11 +2378,12 @@ inline esp_err_t import_macro_text_handler(httpd_req_t *req) {
             char c = chunk_buf[i];
             if (!inside_payload) {
                 clean_macro_csv.push_back(c);
-                if (clean_macro_csv.size() >= 6) {
-                    if (clean_macro_csv.rfind("MACRO,", clean_macro_csv.size() - 6) != std::string::npos) {
-                        clean_macro_csv = "MACRO,";
-                        inside_payload = true;
-                    }
+                // Search the historical window for the start signature
+                size_t macro_pos = clean_macro_csv.find("MACRO,");
+                if (macro_pos != std::string::npos) {
+                    // Erase browser header metadata artifacts entirely
+                    clean_macro_csv = clean_macro_csv.substr(macro_pos);
+                    inside_payload = true;
                 }
             } else {
                 clean_macro_csv.push_back(c);
