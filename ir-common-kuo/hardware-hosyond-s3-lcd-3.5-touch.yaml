@@ -124,13 +124,13 @@ script:
 # ========  Display Specific Implementation ========
 
 font:
-  - file: "gfonts://JetBrains Mono"
+  - file: "gfonts://Roboto"
     id: my_fontSmall
     size: 30
-  - file: "gfonts://JetBrains Mono"
+  - file: "gfonts://Roboto"
     id: my_fontMedium
     size: 35
-  - file: "gfonts://JetBrains Mono"
+  - file: "gfonts://Roboto"
     id: my_fontLarge
     size: 40
 
