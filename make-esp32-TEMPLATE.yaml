@@ -15,7 +15,6 @@ substitutions:
   device_name:   esp32-xgimi # formal Home Assitant ID. lowercase a-z, digits 0-9, hyphen (no spaces, no caps, no underscore)
 
 
-
   # 2 ======= Default IR profile. Uncomment one (and only one) ============================
 
   #def_profile: "0"  # AWOL vision aetherion max
@@ -32,7 +31,6 @@ substitutions:
   #def_profile: "11" # tivo-roamio-TCD846500 
   #def_profile: "12" # panasonic projector
   
-
 
 packages: 
   # 3 =======  ESP32 board, Uncomment one (and only one) to specify board ===================
@@ -51,26 +49,22 @@ packages:
   #hardware_package: !include ir-common-kuo/HARDWARE.YAML # Or uncomment this line and replace HARDWARE.YAML with your file.
 
 
-# === END Configuration Options KUO =========================================================================
+# ====================== END Configuration Options KUO ======================================================
 # Code after this point typically does not need to be changed.
 # ===========================================================================================================
 
-
   ir_hub_package:         !include ir-common-kuo/appkit/ir_hub.yaml
-  mrmachine_BLE_package:  !include ir-common-kuo/appkit/mrmachine_bluetooth_V1.0.0.yaml # required, modified mrmachine BLE package
+  mrmachine_BLE_package:  !include ir-common-kuo/appkit/mrmachine_bluetooth_V1.0.0.yaml # required, heavily modified mrmachine BLE package
 
-preferences:
-  flash_write_interval: 3s # More quickly commits sniffed tokens to flash. Global data rarely changes.
-  
+logger:
+  # level: DEBUG
+  level: INFO
+    
 external_components:
 - source:
     type: local
     path: components
   components: [esp32_ble_server, xgimi_remote]
-
-logger:
- # level: DEBUG
-  level: INFO
 
 
 wifi:
@@ -93,6 +87,7 @@ wifi:
 
 captive_portal:
 
+# ============================================================
 esp32:
   partitions: ir-common-kuo/appkit/partitions.csv
   framework:
@@ -111,75 +106,7 @@ esp32:
       CONFIG_BT_BLE_MAX_ACT_PARAMS: "1"            # Drops background parallel device tracking down to 1
 
 
-# ======================================
-api:
-  encryption:
-    key: !secret api_encryption_key
-  reboot_timeout: 13h #time before reboot if HomeAssistant is not present. 
-
-  actions:
-
-    # ---------- Direct Bluetooth Native Action Injection ----------
-    - action: execute_native_bluetooth_action
-      variables:
-        action_name: string
-        event_state: int # 0=DOWN, 1=HOLD, 2=UP
-      then:
-        - lambda: |-
-            fire_bluetooth_hid_action(action_name.c_str(), event_state);
-
-    # ---------- Count ----------
-    - action: get_profile_count
-      supports_response: only
-      then:
-        - api.respond:
-            data: !lambda |-
-              root["count"]         = static_cast<int>(factory_count) + MAX_LEARNED_PROFILES;
-              root["factory_count"] = (int) factory_count;
-
-
-    # ---------- Export one profile via flat CSV string ----------
-    - action: export_csv_profile
-      variables:
-        index: int
-      supports_response: only
-      then:
-        - api.respond:
-            data: !lambda |-
-              std::string csv_data = generate_profile_csv(index);
-              if (!csv_data.empty()) {
-                root["csv"] = csv_data;
-              } else {
-                root["error"] = "CSV stream generation failed";
-              }
-
-    # ---------- 2) Import a profile via flat CSV string ----------
-    - action: import_csv_profile
-      variables:
-        csv_data: string
-      then:
-        - lambda: |-
-            ESP_LOGW("CSV Import", "Incoming profile migration package stream received via Native API.");
-            
-            bool import_success = import_profile_from_csv(csv_data);
-            
-            if (import_success) {
-              ESP_LOGI("CSV Import", "Migration successful. Mapping workspace component action indicators...");
-              link_hardware_buttons();
-              id(setup_ir_receiver_for_current_profile).execute();
-              commit_database_to_flash(id(selected_profile_slot));
-              id(ir_receiver_mode) = 1; // Return safely to normal Action Mode
-              id(display_token_remote_profile).execute();
-              id(display_show)->execute(true, "CSV Imported!", "Profile Active", active_profile_workspace.profile_name);
-              id(publish_selected_profile_csv).execute();
-            } else {
-              ESP_LOGE("CSV Import", "Profile rejected! Incompatible data streams or parsing validation failure.");
-              id(display_show)->execute(false, "Import Failed", "Corrupted CSV", "Rejected");
-            }
-            
-            
 # ============================================================
-
 esphome:
   name: ${device_name}
   friendly_name: ${friendly_name}
@@ -207,7 +134,7 @@ esphome:
 
   project:
     name: xgimi.titan-noir-esp32-ir-kuo
-    version: 26.10.09.2325
+    version: 26.10.09.1624
 
 
   on_boot:
@@ -324,6 +251,73 @@ esphome:
                   line2: ''
                   line3: ''
 
+
+# ======================================
+api:
+  encryption:
+    key: !secret api_encryption_key
+  reboot_timeout: 13h #time before reboot if HomeAssistant is not present. 
+
+  actions:
+
+    # ---------- Direct Bluetooth Native Action Injection ----------
+    - action: execute_native_bluetooth_action
+      variables:
+        action_name: string
+        event_state: int # 0=DOWN, 1=HOLD, 2=UP
+      then:
+        - lambda: |-
+            fire_bluetooth_hid_action(action_name.c_str(), event_state);
+
+    # ---------- Count ----------
+    - action: get_profile_count
+      supports_response: only
+      then:
+        - api.respond:
+            data: !lambda |-
+              root["count"]         = static_cast<int>(factory_count) + MAX_LEARNED_PROFILES;
+              root["factory_count"] = (int) factory_count;
+
+
+    # ---------- Export one profile via flat CSV string ----------
+    - action: export_csv_profile
+      variables:
+        index: int
+      supports_response: only
+      then:
+        - api.respond:
+            data: !lambda |-
+              std::string csv_data = generate_profile_csv(index);
+              if (!csv_data.empty()) {
+                root["csv"] = csv_data;
+              } else {
+                root["error"] = "CSV stream generation failed";
+              }
+
+    # ---------- 2) Import a profile via flat CSV string ----------
+    - action: import_csv_profile
+      variables:
+        csv_data: string
+      then:
+        - lambda: |-
+            ESP_LOGW("CSV Import", "Incoming profile migration package stream received via Native API.");
+            
+            bool import_success = import_profile_from_csv(csv_data);
+            
+            if (import_success) {
+              ESP_LOGI("CSV Import", "Migration successful. Mapping workspace component action indicators...");
+              link_hardware_buttons();
+              id(setup_ir_receiver_for_current_profile).execute();
+              commit_database_to_flash(id(selected_profile_slot));
+              id(ir_receiver_mode) = 1; // Return safely to normal Action Mode
+              id(display_token_remote_profile).execute();
+              id(display_show)->execute(true, "CSV Imported!", "Profile Active", active_profile_workspace.profile_name);
+              id(publish_selected_profile_csv).execute();
+            } else {
+              ESP_LOGE("CSV Import", "Profile rejected! Incompatible data streams or parsing validation failure.");
+              id(display_show)->execute(false, "Import Failed", "Corrupted CSV", "Rejected");
+            }
+            
 # ============================================================
 globals:
 
@@ -399,7 +393,6 @@ sensor:
       name: "Max Free Heap Block"
     loop_time:
       name: "Main Loop Time"
-
 
 # ============================================================
 
@@ -598,10 +591,7 @@ button:
         - script.execute: execute_token_recall_routine
       
 
-
-
 # ============================================================
-
 script:
   
   - id: execute_token_recall_routine
@@ -1143,10 +1133,10 @@ switch:
             - logger.log: "Sniffer already stopped. Clean loop break."
             
             
-#======================
+# ====================================================================
 interval:
   # ====================================================================
-  # FIXED: ZERO-ALLOCATION ON-DEMAND DROPDOWN METADATA HYDRATION
+  # ZERO-ALLOCATION ON-DEMAND DROPDOWN METADATA HYDRATION
   # ====================================================================
   - interval: 2.0s
     id: dynamic_select_hydration_timer
