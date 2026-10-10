@@ -1635,9 +1635,11 @@ inline esp_err_t root_handler(httpd_req_t *req) {
 </script>
 </head><body>
 <div class="box">
-  <h3>Profile Management: ESP32 IR Hub Target</h3>
+  <h3>Profile Management: 
 )rawliteral", HTTPD_RESP_USE_STRLEN);
-           
+
+    httpd_resp_send_chunk(req, BLE_REMOTE_NAME_STR "</h3>", HTTPD_RESP_USE_STRLEN);
+
     int active_idx = esphome::id(active_remote_layout).value();
     load_profile_to_workspace(active_idx);
     
