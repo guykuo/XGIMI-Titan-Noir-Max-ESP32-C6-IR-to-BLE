@@ -6,8 +6,6 @@
 
 Titan Noir projectors lack IR control capability and only accept bluetooth signals. This project works around that limitation by translating infrared signals into bluetooth commands the Titan Noir projectors accept. Typical use is to add an Xgimi Titan Noir to a universal IR remote. Depending on which IR code set you choose, you can add as a completely new projector or have the XTN projector masquerade as an existing projector already in your remote. This project runs on low cost ESP32 board.
 
-# NOTICE -- ESP32 board must be completely erased once before use with latest version of project. This is needed to allow repartitioning of board and clearing out NVRAM. The project is too larage to safely fit without increasing APP and NVRAM allocation. This will also preclude Over The Air updates --
-
 ## Requirements
 
 *   A BlueTooth BLE Capable ESP32 Board. Two boards detailed here are...
@@ -90,17 +88,18 @@ These "factory" IR profiles have known working IR code sets ...
 ## Hardware Definition Packages
 ESP32 boards are defined in ir-common-kuo/ as hardware.yaml files. These hardware files contain board specific information used to create the translator firmware. Several board types are supplied. You can also create your "hardware" file to support a new ESP32 board type or to customize GPIO assignments.
 
-Supplied hardware files are for ESP32 boards ...
+Supplied hardware files are for ESP32 boards listed in descending order of author preference ...
 
-* hardware-esp32-c3-0.42-OLED.yaml
-* hardware-esp32-c6-wroom-1.yaml
+* hardware-esp32-c3-0.42-OLED.yaml         # supports built-in 0.42 inch OLED display
+* hardware-esp32-c6-wroom-1.yaml           # supports external 0.9 inch i2c OLED display
+* hardware-lafvintech-c6-lcd-1.47.yaml     # May need physical reset after flashing.
 * hardware-hosyond-s3-lcd-3.5-touch.yaml
-* hardware-ideaspark-esp32-0.96-OLED.yaml
-* hardware-lafvintech-c6-lcd-1.47.yaml
-* hardware-m5stack-pico-d4-atom-lite.yaml
-* hardware-waveshare-c6-lcd-1.47.yaml      (thanks to Avalones)
-* hardware-waveshare-s3-lcd-1.47B.yaml
+* hardware-waveshare-c6-lcd-1.47.yaml          (thanks to Avalones)
 * hardware-waveshare-s3-touch-lcd-2.8.yaml
+* hardware-waveshare-s3-lcd-1.47B.yaml     # Quirk: requires IR sensor WITHOUT LED (VS1838B)
+* hardware-heltec-hiletgo-s3-0.96-OLED-v3.yaml # Quirk: Needs special cable for serial logging
+* hardware-ideaspark-esp32-classic-OLED.yaml # Quirk: usb-micro cable, small RAM
+* hardware-m5stack-pico-d4-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
 
 Look in the hardware file for actual GPIO pins for IR receiver and optional i2c display
   
@@ -253,6 +252,10 @@ Here are pinouts of two styles of IR sensors and the correct connection points o
 <img width="1000" height="827" alt="pinouts c3" src="https://github.com/user-attachments/assets/ed81b73e-706c-42e6-9b2c-3ecd1d09404e" />
 
 The IR sensor style that has the small pc board includes a red LED which lights with IR presence. That feedback LED may be useful during troubleshooting, but is not required and can cause issues with some ESP32 boards. Either style of IR sensor will work with ESP32 boards that have no or a small OLED display. If board has larger (> 1 inch) LCD display, IR sensors, like VS1838B,  WITHOUT an indicator LED are recommended. _Some_ boards with large, built-in displays cannot tolerate load of a IR sensor with indicator LED on 3Vcc. Brownout of 3Vcc can cause bootup failure. A plain VS1838B IR sensor draws less current and is less likely to cause 3Vcc brownouts.
+
+A significant percentage (about 20%) of IR sensor I and others have purchased have been defective. Most of those have been sensors with feedback LED. Provided you have correctly wired up your sensor and are using correct hardware file, one way to check IR sensor is to compile with logging set to DEBUG and watch the logs after flashing your board. A defective IR typically shows no signals listed in log as you expose it to IR signals. There should be info lines printed in log as each IR signal arrives. If nothing shows in log, the sensor is dead.
+
+Another type of IR sensor defect is a noisy sensor that reports signals even when there are none. Physcially shielded sensor from all IR, if you continue to see unrecognized IR signals written to the log, that sensor is noisy and should be replaced.
 
 Here is an alternative board I have also tested, ESP32-C6-WROOM-1. This one does not have a built-in display, but this project will run on it and uses its single light to give feedback.
 
