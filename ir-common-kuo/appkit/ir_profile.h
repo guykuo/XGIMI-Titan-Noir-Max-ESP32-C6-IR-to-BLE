@@ -175,7 +175,6 @@ inline uint16_t resolve_action_to_true_hid(const char* name, uint8_t& out_type) 
     if (name == nullptr) return 0xFFFF;
 
     // KEYBOARD RESOLUTION PATH (REPORT TYPE 0) OR SYSTEM CONTROL PATH (REPORT TYPE 3)
-    if (std::strcmp(name, "power_off") == 0) {
 
     // ====================================================================
     // POWER INFRASTRUCTURE CONFIGURATION PATHS
@@ -201,38 +200,40 @@ inline uint16_t resolve_action_to_true_hid(const char* name, uint8_t& out_type) 
         return 0xFFFF; // Default XGIMI: Bypassed here; maps to native wake bursts
     }
 #endif
+    // ====================================================================
+    // REGULAR ACTIONS
+    // ====================================================================
 
-    }
-    else if (std::strcmp(name, "cursor_up") == 0)    { out_type = 0; return 0x52; }
-    else if (std::strcmp(name, "cursor_down") == 0)  { out_type = 0; return 0x51; }
-    else if (std::strcmp(name, "cursor_left") == 0)  { out_type = 0; return 0x50; }
-    else if (std::strcmp(name, "cursor_right") == 0) { out_type = 0; return 0x4F; }
-    else if (std::strcmp(name, "cursor_enter") == 0) { out_type = 0; return 0x28; }
-    else if (std::strcmp(name, "settings_menu") == 0){ out_type = 0; return 0x41; }
-    else if (std::strcmp(name, "back") == 0)          { out_type = 0; return 0x29; }
-    else if (std::strcmp(name, "home") == 0)          { out_type = 0; return 0x4A; }
-    else if (std::strcmp(name, "game_menu") == 0)     { out_type = 0; return 0x65; }
-    else if (std::strcmp(name, "focus_manual") == 0)  { out_type = 0; return 0x3D; }
-    else if (std::strcmp(name, "focus_auto") == 0)    { out_type = 0; return 0x44; }
-    else if (std::strcmp(name, "volume_up") == 0)    { out_type = 0; return 0x80; }
-    else if (std::strcmp(name, "volume_down") == 0)  { out_type = 0; return 0x81; }
+    else if (std::strcmp(name, "cursor_up") == 0)     { out_type = HID_REPORT_KEYBOARD; return 0x52; }
+    else if (std::strcmp(name, "cursor_down") == 0)   { out_type = HID_REPORT_KEYBOARD; return 0x51; }
+    else if (std::strcmp(name, "cursor_left") == 0)   { out_type = HID_REPORT_KEYBOARD; return 0x50; }
+    else if (std::strcmp(name, "cursor_right") == 0)  { out_type = HID_REPORT_KEYBOARD; return 0x4F; }
+    else if (std::strcmp(name, "cursor_enter") == 0)  { out_type = HID_REPORT_KEYBOARD; return 0x28; }
+    else if (std::strcmp(name, "settings_menu") == 0) { out_type = HID_REPORT_KEYBOARD; return 0x41; }
+    else if (std::strcmp(name, "back") == 0)          { out_type = HID_REPORT_KEYBOARD; return 0x29; }
+    else if (std::strcmp(name, "home") == 0)          { out_type = HID_REPORT_KEYBOARD; return 0x4A; }
+    else if (std::strcmp(name, "game_menu") == 0)     { out_type = HID_REPORT_KEYBOARD; return 0x65; }
+    else if (std::strcmp(name, "focus_manual") == 0)  { out_type = HID_REPORT_KEYBOARD; return 0x3D; }
+    else if (std::strcmp(name, "focus_auto") == 0)    { out_type = HID_REPORT_KEYBOARD; return 0x44; }
+    else if (std::strcmp(name, "volume_up") == 0)     { out_type = HID_REPORT_KEYBOARD; return 0x80; }
+    else if (std::strcmp(name, "volume_down") == 0)   { out_type = HID_REPORT_KEYBOARD; return 0x81; }
 
     else if (std::strcmp(name, "custom_1") == 0 || std::strcmp(name, "custom_2") == 0 || 
              std::strcmp(name, "custom_3") == 0 || std::strcmp(name, "custom_4") == 0 || 
              std::strcmp(name, "custom_5") == 0 || std::strcmp(name, "custom_6") == 0 || 
              std::strcmp(name, "custom_7") == 0 || std::strcmp(name, "custom_8") == 0)      
-             { out_type = 0; return 0x4A; }
+                                                      { out_type = HID_REPORT_KEYBOARD; return 0x4A; }
 
     // CONSUMER RESOLUTION PATH (REPORT TYPE 1)
-    else if (std::strcmp(name, "input") == 0)        { out_type = 1; return 0x01BC; }
-    else if (std::strcmp(name, "picture") == 0)      { out_type = 1; return 0x0223; }
-    else if (std::strcmp(name, "shortcut_1") == 0)   { out_type = 1; return 0x021D; }
-    else if (std::strcmp(name, "shortcut_2") == 0)   { out_type = 1; return 0x021F; }
-    else if (std::strcmp(name, "shortcut_3") == 0)   { out_type = 1; return 0x0221; }
-    else if (std::strcmp(name, "shortcut_4") == 0)   { out_type = 1; return 0x0222; }
-    else if (std::strcmp(name, "mute") == 0)         { out_type = 1; return 0x01BD; }
+    else if (std::strcmp(name, "input") == 0)        { out_type = HID_REPORT_CONSUMER; return 0x01BC; }
+    else if (std::strcmp(name, "picture") == 0)      { out_type = HID_REPORT_CONSUMER; return 0x0223; }
+    else if (std::strcmp(name, "shortcut_1") == 0)   { out_type = HID_REPORT_CONSUMER; return 0x021D; }
+    else if (std::strcmp(name, "shortcut_2") == 0)   { out_type = HID_REPORT_CONSUMER; return 0x021F; }
+    else if (std::strcmp(name, "shortcut_3") == 0)   { out_type = HID_REPORT_CONSUMER; return 0x0221; }
+    else if (std::strcmp(name, "shortcut_4") == 0)   { out_type = HID_REPORT_CONSUMER; return 0x0222; }
+    else if (std::strcmp(name, "mute") == 0)         { out_type = HID_REPORT_CONSUMER; return 0x01BD; }
     
-    out_type = 2; 
+    out_type = HID_REPORT_TOKEN_NONE; 
     return 0xFFFF;
 }
 
