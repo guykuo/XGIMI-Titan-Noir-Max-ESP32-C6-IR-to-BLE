@@ -18,7 +18,7 @@ substitutions:
   # 2 ======= Default IR profile. Uncomment one (and only one) ============================
 
   #def_profile: "0"  # AWOL vision aetherion max
-  #def_profile: "1"  # benq-w5800
+  def_profile: "1"  # benq-w5800
   #def_profile: "2"  # epson-pro-cinema-LS12000
   #def_profile: "3"  # hisense-50u6g
   #def_profile: "4"  # jvc-hr-S9600u
@@ -28,7 +28,7 @@ substitutions:
   #def_profile: "8"  # optoma-UHD50X
   #def_profile: "9"  # sony-VPL-XW600ES 
   #def_profile: "10" # sony-XBR-77A9G 
-  def_profile: "11" # tivo-roamio-TCD846500 
+  #def_profile: "11" # tivo-roamio-TCD846500 
   #def_profile: "12" # panasonic projector
   
 
@@ -47,7 +47,8 @@ packages:
   #esp_board: !include irlib-kuo/esp-ideaspark-esp32-classic-OLED.yaml  # usb-micro cable, ltd RAM, noisy IR
   #esp_board: !include irlib-kuo/esp-ideaspark-esp32-classic-lcd-1.14.yaml # USB-c to USB-A cable to flash. Ltd RAM
   #esp_board: !include irlib-kuo/esp-m5stack-pico-d4-atom-lite.yaml     # recommend add i2c OLED display
-  #esp_board: !include irlib-kuo/esp-m5stick-S3.yaml 
+  #esp_board: !include irlib-kuo/esp-m5stick-S3.yaml              # WIP IR does not work
+  #esp_board: !include irlib-kuo/esp-waveshare-c5-lcd-1.47.yaml    # diff to join wifi AP
 
 
 # ====================== END Main Configuration Options KUO =================================================
@@ -69,6 +70,7 @@ external_components:
 
 
 wifi:
+#  networks: []
   reboot_timeout: 13h
   output_power: ${wifi_tx_power}
   power_save_mode: NONE
@@ -92,7 +94,7 @@ esphome:
   comment: ESP32 with XGIMI BLE Translator
   project:
     name: xgimi.titan-noir-esp32-ir-kuo
-    version: 26.10.15.2120
+    version: 26.10.16.0142
     
   includes:
     - <sstream>
