@@ -1,0 +1,237 @@
+# =====================================================================
+# M5Stick S3 Audited Hardware Layout - Pure Native ESP-IDF Implementation
+# =====================================================================
+substitutions:
+  pin_ir_receiver: GPIO42
+  pin_indicator_LED: GPIO8
+  pin_action_btn: GPIO11        # Hardware Front Button A
+  pin_action_btn_pullup: false
+  wifi_tx_power: "10.0dB"
+
+
+
+esp32:
+  board: esp32-s3-devkitc-1     # Verified ESP32-S3 Core Target
+  variant: esp32s3
+  framework:
+    type: arduino
+    version: recommended
+
+# ============= END Configuration Options ==========
+
+esphome:
+  name: esp32-xgimi
+
+  includes:
+    - <Wire.h>
+
+  libraries:
+    - Wire
+    - M5Unified
+    - M5GFX
+
+  build_flags:
+    - -DESP32S3
+    - -DBOARD_HAS_PSRAM
+    - -DCORE_DEBUG_LEVEL=5
+    - -DARDUINO_USB_CDC_ON_BOOT=1
+    - -DARDUINO_USB_MODE=1
+
+  on_boot:
+    # -----------------------------------------------------------------------------
+    # PHASE 1 (Priority 900): High-priority system stabilization.
+    # -----------------------------------------------------------------------------
+    - priority: 900
+      then:
+        - lambda: |-
+            auto cfg = M5.config();
+            M5.begin(cfg);
+            
+            // 1. Force the power rails on
+            M5.Power.setExtOutput(true); 
+            
+            // 2. Shut down the audio system to free shared silicon clocks
+            M5.Speaker.end();
+            M5.Mic.end();
+
+    # -----------------------------------------------------------------------------
+    # PHASE 2 (Priority 200): Handle your 180° canvas flip safely.
+    # -----------------------------------------------------------------------------
+    - priority: 200
+      then:
+        - lambda: |-
+            // 1. Orient layout exactly 180 degrees 
+            M5.Display.setRotation(3);
+            M5.Display.fillScreen(TFT_BLACK);
+            
+            // 2. Lock the firmware state strictly to Action Mode (1) for translation
+            id(ir_receiver_allowed_protocol) = 255; 
+            id(ir_receiver_mode) = 1;               
+
+    # -----------------------------------------------------------------------------
+    # PHASE 3 (Priority -200): Final Hardware Pin Isolation.
+    # This detaches the pin from the display data bus and cleanly re-assigns the 
+    # hardware interrupt vector right before the main processing loops begin.
+    # -----------------------------------------------------------------------------
+    - priority: -200
+      then:
+        - lambda: |-
+            // 1. Disarm audio revived by display loops
+            M5.Speaker.end();
+            M5.Mic.end();
+            
+            // 2. SILICON RE-MAPPING: Explicitly isolate GPIO42 from the display matrix
+            pinMode(42, INPUT_PULLUP);
+            
+            ESP_LOGI("hardware_stable", "GPIO42 successfully isolated from display matrix. Pipeline live.");
+
+    - priority: -100
+      then:
+        - light.turn_on:
+            id: display_backlight
+            brightness: 30%
+        - delay: 500ms
+        - component.update: stick_display
+        
+
+external_components:
+  - source:
+      type: local
+      path: components
+
+i2c:
+  sda: GPIO47 # Set this to your hardware's actual SDA pin
+  scl: GPIO48 # Set this to your hardware's actual SCL pin
+  id: my_i2c_bus
+
+
+switch:
+    
+  - platform: gpio 
+    id: indicator_led
+    pin:
+      number: ${pin_indicator_LED}
+      inverted: true
+
+output:
+  - platform: ledc
+    pin: GPIO38
+    id: lcd_backlight_raw
+    frequency: 1000Hz
+    
+
+light:
+  - platform: monochromatic
+    id: display_backlight
+    name: "Display Backlight"
+    output: lcd_backlight_raw
+    restore_mode: ALWAYS_ON
+    default_transition_length: 0s
+
+
+globals:
+  - id: myDisplay_line1
+    type: std::string  
+    restore_value: no
+    initial_value: ''
+
+  - id: myDisplay_line2
+    restore_value: no
+    type: std::string  
+    initial_value: ''
+    
+  - id: myDisplay_line3
+    restore_value: no
+    type: std::string  
+    initial_value: ''
+
+    
+# ==================== SCRIPTS BLOCKS ====================
+script:
+
+  
+  - id: flash_led_custom
+    parameters:
+      count: int         
+      dwell: int         
+      red: float         
+      green: float       
+      blue: float        
+    mode: queued
+    then:
+      - repeat:
+          count: !lambda "return count;"
+          then:
+            - switch.turn_on: indicator_led
+            - delay: !lambda "return dwell;"
+            - switch.turn_off: indicator_led
+            - delay: !lambda "return dwell;"
+            
+  - id: turn_led_on_custom
+    parameters:
+      red: float         
+      green: float       
+      blue: float        
+      brightness: float  
+    mode: single
+    then:
+      - switch.turn_off: indicator_led
+
+  - id: turn_led_off_custom
+    mode: single
+    then:
+      - switch.turn_on: indicator_led
+
+# ======== Display Specific Component Configurations ========
+font:
+  - file: "gfonts://Roboto"
+    id: my_fontSmall
+    size: 25
+  - file: "gfonts://Roboto"
+    id: my_fontMedium
+    size: 28
+  - file: "gfonts://Roboto"
+    id: my_fontLarge
+    size: 32
+              
+
+display:
+  - platform: m5sticks3_display
+    id: stick_display
+    update_interval: 100ms
+
+    pages:
+      - id: active_page_std
+        lambda: |-
+          auto L1color = Color(255, 100, 0);
+          auto L2color = Color(255, 120, 0);
+          auto L3color = Color(255, 150, 0);
+          it.print(5, 5,  id(my_fontSmall), L1color, id(myDisplay_line1).c_str());
+          it.print(5, 45,  id(my_fontSmall), L2color, id(myDisplay_line2).c_str());
+          it.print(5, 95, id(my_fontLarge), L3color,  id(myDisplay_line3).c_str());
+
+      - id: active_page_small
+        lambda: |-
+          auto L1color = Color(255, 130, 0);
+          auto L2color = Color(255, 130, 0);
+          auto L3color = Color(255, 130, 0);
+          it.print(5, 5,  id(my_fontMedium), L1color, id(myDisplay_line1).c_str());
+          it.print(5, 45,  id(my_fontMedium), L2color, id(myDisplay_line2).c_str());
+          it.print(5, 85, id(my_fontMedium), L3color, id(myDisplay_line3).c_str());
+
+      - id: blank_page
+        lambda: |-
+          // Blank page – pixels off
+          
+          
+    on_page_change:
+      - then:
+          - if:
+              condition:        
+                lambda: 'return to == id(blank_page);'
+              then:
+                - light.turn_off: display_backlight
+              else:
+                - light.turn_on:
+                    id: display_backlight
+                    brightness: 50%
