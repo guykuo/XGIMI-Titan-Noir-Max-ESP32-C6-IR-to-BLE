@@ -44,7 +44,8 @@ Getting the translator to work requires you to...
 
 # Layout of this Git
 Project Git is arranged as below. You will find make, hardware, and IRmap files that are combined to create your own combination of IR code set translation and particular ESP32 board the translator is to run upon.
-<img width="858" height="648" alt="project git layout" src="https://github.com/user-attachments/assets/fe9c50c5-b773-4f4f-9fae-a9b09bbe8d99" />
+
+<img width="951" height="821" alt="project git layout" src="https://github.com/user-attachments/assets/a9d894b6-632e-4e45-9f47-f2a1a48a31ab" />
 
 
 
@@ -52,7 +53,7 @@ Project Git is arranged as below. You will find make, hardware, and IRmap files 
 
 
 
-Available hardware boards are in ir-common-kuo/ subdirectory.
+Available hardware boards are in irlib-kuo/ subdirectory.
 
 
 ## IR Profiles
@@ -85,23 +86,24 @@ These "factory" IR profiles have known working IR code sets ...
 | **Panasonic** | Panasonic projectors. WIP IR mapping |
 
 
-## Hardware Definition Packages
-ESP32 boards are defined in ir-common-kuo/ as hardware.yaml files. These hardware files contain board specific information used to create the translator firmware. Several board types are supplied. You can also create your "hardware" file to support a new ESP32 board type or to customize GPIO assignments.
+## ESP Board Definition Packages
+ESP32 boards are defined in ir-common-kuo/ as esp.yaml files. These esp files contain board specific information used to create the translator firmware. Several board types are supplied. You can also create your "esp" file to support a new ESP32 board type or to customize GPIO assignments.
 
-Supplied hardware files are for ESP32 boards listed in descending order of author preference for use as IR translator ...
+Supplied esp files are for ESP32 boards listed in descending order of author preference for use as IR translator ...
 
-* hardware-esp32-c3-0.42-OLED.yaml         # supports built-in 0.42 inch OLED display
-* hardware-esp32-c6-wroom-1.yaml            # recommend add external 0.9 inch i2c OLED display
-* hardware-waveshare-s3-lcd-1.47B.yaml     # Quirk: requires IR sensor WITHOUT LED (VS1838B)
-* hardware-heltec-hiletgo-s3-0.96-OLED-v3.yaml # Quirk: Needs special cable for serial logging
-* hardware-lafvintech-c6-lcd-1.47.yaml      # May need physical reset after flashing.
-* hardware-hosyond-s3-lcd-3.5-touch.yaml
-* hardware-waveshare-c6-lcd-1.47.yaml
-* hardware-waveshare-s3-touch-lcd-2.8.yaml
-* hardware-ideaspark-esp32-classic-OLED.yaml # Quirk: usb-micro cable, small RAM
-* hardware-m5stack-pico-d4-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
+* esp-esp32-c3-0.42-OLED.yaml         # supports built-in 0.42 inch OLED display
+* esp-esp32-c6-wroom-1.yaml            # recommend add external 0.9 inch i2c OLED display
+* esp-waveshare-s3-lcd-1.47B.yaml     # requires IR sensor WITHOUT LED (VS1838B)
+* esp-heltec-hiletgo-s3-0.96-OLED-v3.yaml # needs special cable for logging
+* esp-lafvintech-c6-lcd-1.47.yaml      # May need physical reset after flashing.
+* esp-hosyond-s3-lcd-3.5-touch.yaml
+* esp-waveshare-c6-lcd-1.47.yaml
+* esp-waveshare-s3-touch-lcd-2.8.yaml
+* esp-ideaspark-esp32-classic-OLED.yaml # usb-micro cable, ltd RAM, noisy IR
+* esp-ideaspark-esp32-classic-lcd-1.14.yaml # USB-c to USB-A cable to flash. Ltd RAM
+* esp-m5stack-pico-d4-atom-lite.yaml  # recommend add i2c OLED display
 
-Look in the hardware file for actual GPIO pins for IR receiver and optional i2c display
+Look in the esp file for actual GPIO pins for IR receiver and optional i2c display
   
 # The Hardware
 ## Selecting an ESP32 Board
@@ -154,17 +156,17 @@ Boards that will NOT work
 *   Ideaspark ESP32 classic with 1.14 inch LCD (Too little RAM)
     
 <br>
-Each variation of ESP board has its own pinout and specific GPIO pins suitable for for IR signal input. It is particularly important to obtain pinout information and know which GPIO pins are actually free for use (not strapping pins or already assigned to other board functions). Because that process can be overwhelming, four board configuration "hardware" files have been supplied. These pre-define board type and pinouts. Most likely, you can simply specify one of the supplied hardware files within your make file.
+Each variation of ESP board has its own pinout and specific GPIO pins suitable for for IR signal input. It is particularly important to obtain pinout information and know which GPIO pins are actually free for use (not strapping pins or already assigned to other board functions). Because that process can be overwhelming, four board configuration "esp" files have been supplied. These pre-define board type and pinouts. Most likely, you can simply specify one of the supplied esp files within your make file.
 
-Hardware files provided have already been configured for those specific boards. Easiest way to proceed is to use one of the exact same boards as I have for this project. If you follow the same board selection and pin wiring that I made, you can directly use one of the supplied hardwared files when creating an IR to Bluetooth translator.
+Esp files provided have already been configured for those specific boards. Easiest way to proceed is to use one of the exact same boards as I have for this project. If you follow the same board selection and pin wiring that I made, you can directly use one of the supplied esp files when creating an IR to Bluetooth translator.
 
 ### Using Other ESP Boards
 
 Skip this step if you are using one of already tested boards. To use a different board, obtain its pinout diagram and identify a free GPIO pin suitable for IR input. Beware that some GPIO pins are used for special functions such as boot strapping, timing signals, or may be allocated to devices on the PC board.
 
-Once you know the board pinout and identify an appropriate GPIO pin, make a copy of one of my "hardware" files within ir-common-kuo directory. Name your copy uniquely and and customize it for your particular board.
+Once you know the board pinout and identify an appropriate GPIO pin, make a copy of one of my "esp" files within ir-common-kuo directory. Name your copy uniquely and and customize it for your particular board.
 
-Adjust values in your hardware yaml for your particular board.
+Adjust values in your esp yaml for your particular board.
 
 ```yaml
 # ============= BEGIN Configuration Options KUO ==========
@@ -203,7 +205,7 @@ ESP32-C6-WROOM-1 board has GPIO10 freely usable as input for I used as IR signal
 
 ### Adafruit ESP32-C6-DevKitC-1 N8 Pinout and GPIO Pin Selection Example
 
-Although this is also an ESP32-C6 board, its pinout differs from above C6 board. I give this as a reminder that when selecting other boards, you MUST obtain its pinout diagram to know which connectors are to be used. On this alternative board, GPIO 10, GND, and 3V are in totally different places. Also GPIO 10 is not pre-assigned and available to use as IR receiver pin. If your board already has GPIO 10 unavailable, you would need to to create a new hardware file with the correct specifications for board and pins.
+Although this is also an ESP32-C6 board, its pinout differs from above C6 board. I give this as a reminder that when selecting other boards, you MUST obtain its pinout diagram to know which connectors are to be used. On this alternative board, GPIO 10, GND, and 3V are in totally different places. Also GPIO 10 is not pre-assigned and available to use as IR receiver pin. If your board already has GPIO 10 unavailable, you would need to to create a new esp file with the correct specifications for board and pins.
 
 <img width="1300" alt="5672_esp32-c6-devkitc-1-pin-layout" src="https://github.com/user-attachments/assets/0ffb0a8e-b76c-4adf-bfc6-18cbf68f614f" />
 
@@ -262,7 +264,7 @@ Here are pinouts of two styles of IR sensors and the correct connection points o
 
 The IR sensor style that has the small pc board includes a red LED which lights with IR presence. That feedback LED may be useful during troubleshooting, but is not required and can cause issues with some ESP32 boards. Either style of IR sensor will work with ESP32 boards that have no or a small OLED display. If board has larger (> 1 inch) LCD display, IR sensors, like VS1838B,  WITHOUT an indicator LED are recommended. _Some_ boards with large, built-in displays cannot tolerate load of a IR sensor with indicator LED on 3Vcc. Brownout of 3Vcc can cause bootup failure. A plain VS1838B IR sensor draws less current and is less likely to cause 3Vcc brownouts.
 
-A significant percentage (about 20%) of IR sensor I and others have purchased have been defective. Most of those have been sensors with feedback LED. Provided you have correctly wired up your sensor and are using correct hardware file, one way to check IR sensor is to compile with logging set to DEBUG and watch the logs after flashing your board. A defective IR typically shows no signals listed in log as you expose it to IR signals. There should be info lines printed in log as each IR signal arrives. If nothing shows in log, the sensor is dead.
+A significant percentage (about 20%) of IR sensor I and others have purchased have been defective. Most of those have been sensors with feedback LED. Provided you have correctly wired up your sensor and are using correct esp file, one way to check IR sensor is to compile with logging set to DEBUG and watch the logs after flashing your board. A defective IR typically shows no signals listed in log as you expose it to IR signals. There should be info lines printed in log as each IR signal arrives. If nothing shows in log, the sensor is dead.
 
 Another type of IR sensor defect is a noisy sensor that reports signals even when there are none. Physcially shielded sensor from all IR, if you continue to see unrecognized IR signals written to the log, that sensor is noisy and should be replaced.
 
@@ -410,15 +412,15 @@ Name of remote is specified by changing name within quotes of line. Here it is *
 Default IR Profile is set by uncommenting one and only one line. Here it is *epson-pro-cinema-LS12000*<br>
 You can later override this via profile setting on the ESP32 board.<br>
 <br><br>
-ESP32 board is set by uncommenting one and only one line. Here it is *hardware-c3.yaml*<br>
+ESP32 board is set by uncommenting one and only one line. Here it is *esp-esp32-c3-0.42-OLED.yaml*<br>
 <br><br>
 ```YAML
-# ============= BEGIN Configuration Options KUO ======================================================================
+# ============= BEGIN Main Configuration Options KUO ======================================================================
 
 # Three things must be configured here
 #   ble_remote_name
 #   Default IR profile
-#   hardware_package
+#   esp_board
 
 substitutions:
   # 1 ======= ble_remote_name, Bluetooth Name for your IR remote ===========================
@@ -430,12 +432,11 @@ substitutions:
   device_name:   esp32-xgimi # formal Home Assitant ID. lowercase a-z, digits 0-9, hyphen (no spaces, no caps, no underscore)
 
 
-
   # 2 ======= Default IR profile. Uncomment one (and only one) ============================
 
   #def_profile: "0"  # AWOL vision aetherion max
   #def_profile: "1"  # benq-w5800
-  def_profile: "2"  # epson-pro-cinema-LS12000
+  #def_profile: "2"  # epson-pro-cinema-LS12000
   #def_profile: "3"  # hisense-50u6g
   #def_profile: "4"  # jvc-hr-S9600u
   #def_profile: "5"  # jvc-rs2-codeset-A 
@@ -444,7 +445,7 @@ substitutions:
   #def_profile: "8"  # optoma-UHD50X
   #def_profile: "9"  # sony-VPL-XW600ES 
   #def_profile: "10" # sony-XBR-77A9G 
-  #def_profile: "11" # tivo-roamio-TCD846500 
+  def_profile: "11" # tivo-roamio-TCD846500 
   #def_profile: "12" # panasonic projector
   
 
@@ -452,21 +453,20 @@ substitutions:
 packages: 
   # 3 =======  ESP32 board, Uncomment one (and only one) to specify board ===================
   
-  hardware_package: !include ir-common-kuo/hardware-esp32-c3-0.42-OLED.yaml         # supports built-in 0.42 inch OLED display
-  #hardware_package: !include ir-common-kuo/hardware-esp32-c6-wroom-1.yaml           # supports external 0.9 inch i2c OLED display
-  #hardware_package: !include ir-common-kuo/hardware-ideaspark-esp32-classic-OLED.yaml
-  #hardware_package: !include ir-common-kuo/hardware-lafvintech-c6-lcd-1.47.yaml
-  #hardware_package: !include ir-common-kuo/hardware-m5stack-pico-d4-atom-lite.yaml  # supports external 0.9 inch i2c OLED display
-  #hardware_package: !include ir-common-kuo/hardware-hosyond-s3-lcd-3.5-touch.yaml
-  #hardware_package: !include ir-common-kuo/hardware-waveshare-c6-lcd-1.47.yaml
-  #hardware_package: !include ir-common-kuo/hardware-waveshare-s3-touch-lcd-2.8.yaml
-  #hardware_package: !include ir-common-kuo/hardware-waveshare-s3-lcd-1.47B.yaml     # requires IR sensor WITHOUT LED like VS1838B
-  #hardware_package: !include ir-common-kuo/hardware-heltec-hiletgo-s3-0.96-OLED-v3.yaml   # Needs specialcable for serial logging
+  esp_board: !include irlib-kuo/esp-esp32-c3-0.42-OLED.yaml      # supports built-in 0.42 inch OLED display
+  #esp_board: !include irlib-kuo/esp-esp32-c6-wroom-1.yaml        # recommend add 0.9 inch i2c OLED display
+  #esp_board: !include irlib-kuo/esp-waveshare-s3-lcd-1.47B.yaml  # requires IR sensor WITHOUT LED (VS1838B)
+  #esp_board: !include irlib-kuo/esp-heltec-hiletgo-s3-0.96-OLED-v3.yaml # needs special cable for logging
+  #esp_board: !include irlib-kuo/esp-lafvintech-c6-lcd-1.47.yaml  # needs physical reset after flashing.
+  #esp_board: !include irlib-kuo/esp-hosyond-s3-lcd-3.5-touch.yaml
+  #esp_board: !include irlib-kuo/esp-waveshare-c6-lcd-1.47.yaml
+  #esp_board: !include irlib-kuo/esp-waveshare-s3-touch-lcd-2.8.yaml
+  #esp_board: !include irlib-kuo/esp-ideaspark-esp32-classic-OLED.yaml  # usb-micro cable, ltd RAM, noisy IR
+  #esp_board: !include irlib-kuo/esp-ideaspark-esp32-classic-lcd-1.14.yaml # USB-c to USB-A cable to flash. Ltd RAM
+  #esp_board: !include irlib-kuo/esp-m5stack-pico-d4-atom-lite.yaml     # recommend add i2c OLED display
 
-  #hardware_package: !include ir-common-kuo/HARDWARE.YAML # Or uncomment this line and replace HARDWARE.YAML with your file.
 
-
-# === END Configuration Options KUO =========================================================================
+# ====================== END Main Configuration Options KUO =================================================
 
 ```  
 ### 5a Build and Flash the Firmware
