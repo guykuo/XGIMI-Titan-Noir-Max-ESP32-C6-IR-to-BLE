@@ -153,7 +153,6 @@ Boards that will NOT work
 
 *   ESP32-S2 series (no bluetooth)
 *   ESP32-P4 series (no bluetooth)
-*   Ideaspark ESP32 classic with 1.14 inch LCD (Too little RAM)
     
 <br>
 Each variation of ESP board has its own pinout and specific GPIO pins suitable for for IR signal input. It is particularly important to obtain pinout information and know which GPIO pins are actually free for use (not strapping pins or already assigned to other board functions). Because that process can be overwhelming, four board configuration "esp" files have been supplied. These pre-define board type and pinouts. Most likely, you can simply specify one of the supplied esp files within your make file.
@@ -169,20 +168,19 @@ Once you know the board pinout and identify an appropriate GPIO pin, make a copy
 Adjust values in your esp yaml for your particular board.
 
 ```yaml
-# ============= BEGIN Configuration Options KUO ==========
-
 substitutions:
   pin_ir_receiver: GPIO1   # IR sensor. 
   pin_indicator_LED: GPIO8 # LED indicator (both ESP32-C3 and C6)
   pin_action_btn: GPIO9     # use boot button for actions. Both ESP32-c3 and ESP32-C6 use pin 9 for boot button. 
-  wifi_tx_power: "12dB"     # wifi power for this board.
-
+  pin_action_btn_pullup: true
+  wifi_tx_power: "10dB"
+  
 # Core Architecture Declaration
 esp32:
   board: esp32-c3-devkitm-1
   framework:
     type: esp-idf
-  
+    
 # i2c Display Pins
 i2c: 
   sda: GPIO5
@@ -191,7 +189,7 @@ i2c:
   scan: false # to prevent startup crashes during boot scans
   id: bus_a
   
-# ============= END Configuration Options KUO ==========
+# ============= END Configuration Options KUO ========== 
 
 ```
 
