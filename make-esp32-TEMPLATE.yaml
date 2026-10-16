@@ -3,7 +3,7 @@
 # Three things must be configured here
 #   ble_remote_name
 #   Default IR profile
-#   hardware_package
+#   esp_board
 
 substitutions:
   # 1 ======= ble_remote_name, Bluetooth Name for your IR remote ===========================
@@ -18,7 +18,7 @@ substitutions:
   # 2 ======= Default IR profile. Uncomment one (and only one) ============================
 
   #def_profile: "0"  # AWOL vision aetherion max
-  def_profile: "1"  # benq-w5800
+  #def_profile: "1"  # benq-w5800
   #def_profile: "2"  # epson-pro-cinema-LS12000
   #def_profile: "3"  # hisense-50u6g
   #def_profile: "4"  # jvc-hr-S9600u
@@ -28,7 +28,7 @@ substitutions:
   #def_profile: "8"  # optoma-UHD50X
   #def_profile: "9"  # sony-VPL-XW600ES 
   #def_profile: "10" # sony-XBR-77A9G 
-  #def_profile: "11" # tivo-roamio-TCD846500 
+  def_profile: "11" # tivo-roamio-TCD846500 
   #def_profile: "12" # panasonic projector
   
 
@@ -36,27 +36,26 @@ substitutions:
 packages: 
   # 3 =======  ESP32 board, Uncomment one (and only one) to specify board ===================
   
-  hardware_package: !include ir-common-kuo/hardware-esp32-c3-0.42-OLED.yaml  # supports built-in 0.42 inch OLED display
-  #hardware_package: !include ir-common-kuo/hardware-esp32-c6-wroom-1.yaml     # recommend add 0.9 inch i2c OLED display
-  #hardware_package: !include ir-common-kuo/hardware-waveshare-s3-lcd-1.47B.yaml     # requires IR sensor WITHOUT LED (VS1838B)
-  #hardware_package: !include ir-common-kuo/hardware-heltec-hiletgo-s3-0.96-OLED-v3.yaml # needs special cable for logging
-  #hardware_package: !include ir-common-kuo/hardware-lafvintech-c6-lcd-1.47.yaml      # needs physical reset after flashing.
-  #hardware_package: !include ir-common-kuo/hardware-hosyond-s3-lcd-3.5-touch.yaml
-  #hardware_package: !include ir-common-kuo/hardware-waveshare-c6-lcd-1.47.yaml
-  #hardware_package: !include ir-common-kuo/hardware-waveshare-s3-touch-lcd-2.8.yaml
-  #hardware_package: !include ir-common-kuo/hardware-ideaspark-esp32-classic-OLED.yaml # usb-micro cable, ltd RAM, noisy IR
-  #hardware_package: !include ir-common-kuo/hardware-ideaspark-esp32-classic-lcd-1.14.yaml # USB-c to USB-A cable to flash. Ltd RAM
-  #hardware_package: !include ir-common-kuo/hardware-m5stack-pico-d4-atom-lite.yaml  # recommend add  0.9 inch i2c OLED display
-
-  #hardware_package: !include ir-common-kuo/HARDWARE.YAML # Or uncomment this line and replace HARDWARE.YAML with your file.
+  esp_board: !include irlib-kuo/esp-esp32-c3-0.42-OLED.yaml      # supports built-in 0.42 inch OLED display
+  #esp_board: !include irlib-kuo/esp-esp32-c6-wroom-1.yaml        # recommend add 0.9 inch i2c OLED display
+  #esp_board: !include irlib-kuo/esp-waveshare-s3-lcd-1.47B.yaml  # requires IR sensor WITHOUT LED (VS1838B)
+  #esp_board: !include irlib-kuo/esp-heltec-hiletgo-s3-0.96-OLED-v3.yaml # needs special cable for logging
+  #esp_board: !include irlib-kuo/esp-lafvintech-c6-lcd-1.47.yaml  # needs physical reset after flashing.
+  #esp_board: !include irlib-kuo/esp-hosyond-s3-lcd-3.5-touch.yaml
+  #esp_board: !include irlib-kuo/esp-waveshare-c6-lcd-1.47.yaml
+  #esp_board: !include irlib-kuo/esp-waveshare-s3-touch-lcd-2.8.yaml
+  #esp_board: !include irlib-kuo/esp-ideaspark-esp32-classic-OLED.yaml  # usb-micro cable, ltd RAM, noisy IR
+  #esp_board: !include irlib-kuo/esp-ideaspark-esp32-classic-lcd-1.14.yaml # USB-c to USB-A cable to flash. Ltd RAM
+  #esp_board: !include irlib-kuo/esp-m5stack-pico-d4-atom-lite.yaml     # recommend add i2c OLED display
+  #esp_board: !include irlib-kuo/esp-m5stick-S3.yaml 
 
 
 # ====================== END Main Configuration Options KUO =================================================
 # Code after this point typically does not need to be changed.
 # ===========================================================================================================
 
-  ir_hub_package:         !include ir-common-kuo/appkit/ir_hub.yaml
-  mrmachine_BLE_package:  !include ir-common-kuo/appkit/mrmachine_bluetooth_V1.0.0.yaml # required, heavily modified mrmachine BLE package
+  ir-hub-package:         !include irlib-kuo/appkit/ir-hub.yaml
+  mrmachine-ble-package:  !include irlib-kuo/appkit/mrmachine-ble-v1.0.0x.yaml # required, heavily modified mrmachine BLE package
 
 logger:
   level: DEBUG
@@ -70,7 +69,6 @@ external_components:
 
 
 wifi:
-#  networks: []
   reboot_timeout: 13h
   output_power: ${wifi_tx_power}
   power_save_mode: NONE
@@ -94,7 +92,7 @@ esphome:
   comment: ESP32 with XGIMI BLE Translator
   project:
     name: xgimi.titan-noir-esp32-ir-kuo
-    version: 26.10.14.2259
+    version: 26.10.15.2120
     
   includes:
     - <sstream>
@@ -103,7 +101,7 @@ esphome:
     - <vector>
     - <algorithm>
     - <cctype>
-    - ir-common-kuo/appkit/ir_profile.h
+    - irlib-kuo/appkit/ir-profile.h
 
   build_flags: 
     # ============================================================
@@ -243,9 +241,8 @@ preferences:
 captive_portal:
 
 esp32:
-  partitions: ir-common-kuo/appkit/partitions.csv
+  partitions: irlib-kuo/appkit/partitions.csv
   framework:
-    type: esp-idf
     sdkconfig_options:
       CONFIG_BT_BLE_EST_LINK_CONN_NUM: "1"
       CONFIG_BT_ACL_CONNECTIONS: "1"
