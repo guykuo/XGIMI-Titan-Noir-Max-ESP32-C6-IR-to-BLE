@@ -45,8 +45,7 @@ Getting the translator to work requires you to...
 # Layout of this Git
 Project Git is arranged as below. You will find make, hardware, and IRmap files that are combined to create your own combination of IR code set translation and particular ESP32 board the translator is to run upon.
 
-<img width="951" height="821" alt="project git layout" src="https://github.com/user-attachments/assets/a9d894b6-632e-4e45-9f47-f2a1a48a31ab" />
-
+<img width="756" height="860" alt="project git layout" src="https://github.com/user-attachments/assets/5d0c513e-6182-402d-bccb-e4ec325d5830" />
 
 
 
