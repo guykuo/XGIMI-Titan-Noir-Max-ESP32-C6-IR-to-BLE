@@ -875,6 +875,9 @@ script:
           if (id(macro_workflow_state) == MACRO_STATE_RECORDING || id(macro_recording_active) == true) {
             ESP_LOGW("NVS Flash", "Macro wipe initiated. Clearing custom shortcut streams...");
             
+            // Stop indicating macro recording
+            id(macro_indicator_recording)->stop(); 
+          
             static UniversalFlashMacro blank_macro;
             std::memset(&blank_macro, 0, sizeof(blank_macro));
             blank_macro.struct_version = CURRENT_MACRO_VERSION; // Target dynamic structure version 5

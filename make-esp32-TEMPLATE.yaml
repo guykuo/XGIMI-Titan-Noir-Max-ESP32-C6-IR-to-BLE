@@ -97,7 +97,7 @@ esphome:
   comment: ESP32 with XGIMI BLE Translator
   project:
     name: xgimi.titan-noir-esp32-ir-kuo
-    version: 26.10.17.0320
+    version: 26.10.17.0450
     
   includes:
     - <sstream>
@@ -410,7 +410,7 @@ sensor:
 text_sensor:
   - platform: debug
     device:
-      name: "Device Hardware Info" # Shows flash chip size, speed, mode, and ESP version      
+      name: "Device Hardware Info" # Shows flash chip size, speed, mode, and ESP vers    
     reset_reason:
       name: "Last Reset Reason"
 
