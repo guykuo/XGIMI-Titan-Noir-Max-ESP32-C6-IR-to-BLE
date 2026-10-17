@@ -1831,7 +1831,6 @@ inline void execute_action_pipeline_worker(const std::string& cmd_name, int even
         char virt_buf[32] = {0};
         snprintf(virt_buf, sizeof(virt_buf), "Logged [%d]", esphome::id(macro_step_counter).value());
         esphome::id(display_show).execute(false, cmd_name, "Recording...", std::string(virt_buf));
-        return;
     }
 
     if (esphome::id(macro_playback_active).value()) return; 
