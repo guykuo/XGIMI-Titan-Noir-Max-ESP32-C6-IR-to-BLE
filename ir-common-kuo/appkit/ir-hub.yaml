@@ -344,7 +344,7 @@ globals:
   - id: macro_assignment_cooldown
     type: uint32_t
     initial_value: '0'
-  - id: macro_play_prefix_active
+  - id: macro_play_hotkey_active
     type: bool
     initial_value: 'false'
 
@@ -465,8 +465,8 @@ script:
           id(macro_indicator_awaiting_hotkey)->stop();
           id(turn_led_on_custom)->execute(0.0f, 0.4f, 0.4f, 0.2f); 
 
-  # TERMINATE ALL WINDOWS PROFILE: Absolute Black Fallback Shut Down
-  - id: macro_indicator_clear_all
+  # END Macro Recording Indicator
+  - id: macro_indicator_recording_all_done
     mode: single
     then:
       - lambda: |-
@@ -479,6 +479,18 @@ script:
           fire_bluetooth_hid_action("volume_down", KEY_EVENT_DOWN);
           vTaskDelay(pdMS_TO_TICKS(50));
           fire_bluetooth_hid_action("volume_down", KEY_EVENT_UP);
+
+  # END Macro Playback Indicator
+  - id: macro_indicator_playback_all_done
+    mode: single
+    then:
+      - lambda: |-
+          id(macro_indicator_recording)->stop();
+          id(macro_indicator_awaiting_hotkey)->stop();
+          id(macro_indicator_playback)->stop();
+          id(turn_led_on_custom)->stop();
+          id(turn_led_off_custom)->execute(); 
+                    
 
 # # ====================================================================
   # Hydrate Binding Registry Map from Flash Storage Slots during System Boot
@@ -586,7 +598,7 @@ script:
               ESP_LOGW("MACRO_WORKFLOW", "No keys were captured during the session. Aborting macro recording.");
           
               // Call the termination engine directly to drop colors and execute volume_down
-              id(macro_indicator_clear_all)->execute(); 
+              id(macro_indicator_recording_all_done)->execute(); 
               return;
             }
 
@@ -657,7 +669,7 @@ script:
             id(display_show)->execute(false, "Record Timeout", "Inactivity Abort", "Action Mode");
             
             // Use consolidated termination script
-            id(macro_indicator_clear_all)->execute();
+            id(macro_indicator_recording_all_done)->execute();
           }
 
   # ====================================================================
@@ -682,7 +694,7 @@ script:
             id(display_show)->execute(false, "Assign Timeout", "Macro Canceled", "Action Mode");
             
             // Use consolidated termination script
-            id(macro_indicator_clear_all)->execute();
+            id(macro_indicator_recording_all_done)->execute();
           }
 
   # ====================================================================
@@ -815,26 +827,26 @@ script:
           id(macro_playback_active) = false;
           ESP_LOGI("MACRO_PLAY", "Asynchronous macro playback completed successfully.");
 
-          // Close out lights and sound volume confirmations
-          id(macro_indicator_clear_all)->execute();
+          // Close out lights
+          id(macro_indicator_playback_all_done)->execute();
 
           id(showing_special_info) = true;
           id(display_show)->execute(true, "Macro Complete", "All steps executed", "Action Mode");
           id(showing_special_expiration_timer).execute();
 
   # ====================================================================
-  # Automated 5-Second Expiration Timer for Prefix Playback
+  # Automated 5-Second Expiration Timer for Macro Playback Hotkey Selection
   # ====================================================================
-  - id: macro_play_prefix_timeout_watcher
+  - id: macro_play_hotkey_timeout_watcher
     mode: restart
     then:
       - delay: 5s
       - if:
           condition:
-            lambda: 'return id(macro_play_prefix_active);'
+            lambda: 'return id(macro_play_hotkey_active);'
           then:
             - lambda: |-
-                id(macro_play_prefix_active) = false;
+                id(macro_play_hotkey_active) = false;
                 ESP_LOGW("MACRO_WORKFLOW", "Prefix playback timed out due to inactivity.");
                 id(showing_special_info) = true;
                 id(display_show)->execute(false, "Playback Timeout", "Prefix Cleared", "Action Mode");

@@ -1587,7 +1587,7 @@ inline void execute_action_pipeline_worker(const std::string& cmd_name, int even
     uint32_t now = millis();
     uint32_t current_duration = now - esphome::id(global_initial_press_time).value();
     uint32_t workflow_state = esphome::id(macro_workflow_state).value();
-    bool is_prefix_listening = esphome::id(macro_play_prefix_active).value();
+    bool is_prefix_listening = esphome::id(macro_play_hotkey_active).value();
     bool is_token_clear_armed = esphome::id(global_token_clear_armed).value();
     
     // ====================================================================
@@ -1623,7 +1623,7 @@ inline void execute_action_pipeline_worker(const std::string& cmd_name, int even
                 esphome::id(display_show).execute(false, "Assignment Error", "Invalid Key Destination", "Action Mode"); 
                 esphome::id(macro_recording_active).value() = false;
                 esphome::id(macro_workflow_state).value() = MACRO_STATE_IDLE; 
-                esphome::id(macro_indicator_clear_all).execute(); 
+                esphome::id(macro_indicator_recording_all_done).execute(); 
                 return; 
             }
         
@@ -1647,7 +1647,7 @@ inline void execute_action_pipeline_worker(const std::string& cmd_name, int even
             
             if (match_idx == -1) {
                 ESP_LOGE("MACRO_WORKFLOW", "Registry overflow! Absolute memory ceiling of %d hotkeys reached.", MAX_BOUND_HOTKEYS);
-                esphome::id(macro_indicator_clear_all).execute(); 
+                esphome::id(macro_indicator_recording_all_done).execute(); 
                 esphome::id(macro_workflow_state).value() = MACRO_STATE_IDLE;
                 return;
             }
@@ -1659,7 +1659,7 @@ inline void execute_action_pipeline_worker(const std::string& cmd_name, int even
             
             esphome::id(commit_macro_to_flash_slot).execute(target_shared_slot); 
             esphome::id(save_binding_registry_to_nvs).execute(); 
-            esphome::id(macro_indicator_clear_all).execute(); 
+            esphome::id(macro_indicator_recording_all_done).execute(); 
       
             char slot_msg_buf[32];
             char key_msg_buf[48];
@@ -1728,10 +1728,10 @@ inline void execute_action_pipeline_worker(const std::string& cmd_name, int even
     // --- STAGE D: MACRO PLAYBACK TRIGGER CONTROLS ---
     if (cmd_name == "macro_play" && event_state == KEY_EVENT_DOWN) {
         if (workflow_state == MACRO_STATE_IDLE) {
-            esphome::id(macro_play_prefix_active).value() = true;
+            esphome::id(macro_play_hotkey_active).value() = true;
             esphome::id(showing_special_info).value() = true;
             esphome::id(display_show).execute(false, "Macro Playback", "Awaiting Hotkey...", "5s Timeout Gate"); 
-            esphome::id(macro_play_prefix_timeout_watcher).execute(); 
+            esphome::id(macro_play_hotkey_timeout_watcher).execute(); 
             return;
         }
     }
@@ -1740,8 +1740,8 @@ inline void execute_action_pipeline_worker(const std::string& cmd_name, int even
     if (is_prefix_listening) {
         if (event_state == KEY_EVENT_DOWN) {
             uint8_t prefix_slot = get_bound_macro_slot(cmd_name.c_str());
-            esphome::id(macro_play_prefix_active).value() = false;
-            esphome::id(macro_play_prefix_timeout_watcher).stop(); 
+            esphome::id(macro_play_hotkey_active).value() = false;
+            esphome::id(macro_play_hotkey_timeout_watcher).stop(); 
 
             if (prefix_slot != 255) {
                 esphome::id(debounce_safety_lock).value() = true;
@@ -2931,7 +2931,7 @@ inline esp_err_t button_inject_handler(httpd_req_t *req) {
                 // Maps macros, confirmations, and script tokens purely as strings.
                 // Updated to evaluate LIVE global values to prevent asynchronous thread locks.
                 // ====================================================================
-                bool is_prefix_listening  = esphome::id(macro_play_prefix_active).value();
+                bool is_prefix_listening  = esphome::id(macro_play_hotkey_active).value();
                 bool is_token_clear_armed = esphome::id(global_token_clear_armed).value(); 
                 
                 // Check the live global ID component state dynamically here
