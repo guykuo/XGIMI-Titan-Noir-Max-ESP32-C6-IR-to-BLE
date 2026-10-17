@@ -1566,12 +1566,12 @@ script:
   - id: showing_special_expiration_timer
     mode: restart
     then:
-      - delay: 4s 
+      - delay: 5s 
       - lambda: |-
           id(showing_special_info) = false; // Opens the display gate back up
           
           // Force an instant foreground refresh to redraw your standard remote menu
-          id(display_show)->execute(false, "Action Mode", active_profile_workspace.profile_name, "");
+          // id(display_show)->execute(false, "Action Mode", active_profile_workspace.profile_name, "");
 
   # =================================================================
   - id: set_profile_timeout_watcher
