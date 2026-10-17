@@ -1,0 +1,224 @@
+# =====================================================================
+# M5Stick S3 Audited Hardware Layout - Pure Native ESP-IDF Implementation
+# =====================================================================
+substitutions:
+  pin_ir_receiver: GPIO42
+  pin_indicator_LED: GPIO8
+  pin_action_btn: GPIO11        # Hardware Front Button A
+  pin_action_btn_pullup: false
+  wifi_tx_power: "8.5dB"
+
+
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  framework: 
+    type: esp-idf
+    version: recommended
+    sdkconfig_options: 
+      CONFIG_BT_BLE_EST_LINK_CONN_NUM: 1
+      CONFIG_BT_ACL_CONNECTIONS: 1
+      CONFIG_BT_ALLOCATION_FROM_SPIRAM_FIRST: n
+      CONFIG_BT_BLE_DYNAMIC_ENV_MEMORY: y
+      CONFIG_BT_SMP_ENABLE: y
+      CONFIG_BT_BLE_SMP_ENABLE: y
+      CONFIG_BT_BLE_MAX_ACT_PARAMS: 1
+        
+# ============= END Configuration Options ==========
+
+esphome:
+  name: esp32-xgimi
+
+  build_flags:
+    - -DESP32S3
+    - -DBOARD_HAS_PSRAM
+    - -DCORE_DEBUG_LEVEL=5
+
+  on_boot:
+    # -----------------------------------------------------------------------------
+    # PHASE 1 (Priority 900): High-priority system stabilization.
+    # -----------------------------------------------------------------------------
+    - priority: 900
+      then:
+        - lambda: |-
+            auto cfg = M5.config();
+            
+            // 1. Tell the hardware manager to explicitly disable the speaker amplifier on boot
+            // This natively kills the PMIC amplifier switching noise before it can distort GPIO42
+            cfg.internal_spk = false; 
+            
+            M5.begin(cfg);
+            
+            // 2. CRITICAL: Turn EXT_5V output back ON. The internal IR Receiver requires this rail for power!
+            M5.Power.setExtOutput(true); 
+            
+            // 3. Close software audio tasks safely
+            M5.Speaker.end();
+            M5.Mic.end();
+
+    # -----------------------------------------------------------------------------
+    # PHASE 2 (Priority 200): Handle your 180° canvas flip safely.
+    # -----------------------------------------------------------------------------
+    - priority: 200
+      then:
+        - lambda: |-
+            // 1. Orient layout exactly 180 degrees 
+            M5.Display.setRotation(3);
+            M5.Display.fillScreen(TFT_BLACK);
+            
+            // 2. FORCE BACKLIGHT ON NATIVELY via M5Unified (0-255 range)
+            M5.Display.setBrightness(128); // 128 = ~50% brightness balance
+            
+            // 3. Lock the firmware state strictly to Action Mode (1) for translation
+            id(ir_receiver_allowed_protocol) = 255; 
+            id(ir_receiver_mode) = 1;               
+
+    # -----------------------------------------------------------------------------
+    # PHASE 3 (Priority -200): Hardware Pin Isolation with RMT Signal Routing
+    # -----------------------------------------------------------------------------
+    - priority: -200
+      then:
+        - lambda: |-
+            // 1. Maintain complete audio circuit isolation
+            M5.Speaker.end();
+            M5.Mic.end();
+            
+            // 2. CLEAR ALL DISPLAY BUS REGISTERS AND UNBIND OVERLAPS
+            // Detaches GPIO42 from the active display data bus matrix lines safely
+            gpio_reset_pin(GPIO_NUM_42);
+            
+            // 3. APPLY NATIVE PULLUP BALANCING (Isolates from display trace cross-talk)
+            gpio_set_direction(GPIO_NUM_42, GPIO_MODE_INPUT);
+            gpio_set_pull_mode(GPIO_NUM_42, GPIO_PULLUP_ONLY);
+            
+            // 4. THE FIX: Explicitly bind the RMT Channel 0 Input to physical GPIO42
+            // This bypasses standard Arduino/ESPHome pin-state logic and hooks directly to the RMT engine
+            esp_rom_gpio_connect_in_signal(GPIO_NUM_42, RMT_SIG_IN0_IDX, false);
+            
+            ESP_LOGI("hardware_stable", "GPIO42 isolated from display matrix and routed directly to RMT Engine.");
+        
+
+external_components:
+  - source:
+      type: local
+      path: components
+
+i2c:
+  sda: GPIO47 # Set this to your hardware's actual SDA pin
+  scl: GPIO48 # Set this to your hardware's actual SCL pin
+  id: my_i2c_bus
+
+
+switch:
+    
+  - platform: gpio 
+    id: indicator_led
+    pin:
+      number: ${pin_indicator_LED}
+      inverted: true
+    
+globals:
+  - id: myDisplay_line1
+    type: std::string  
+    restore_value: no
+    initial_value: ''
+
+  - id: myDisplay_line2
+    restore_value: no
+    type: std::string  
+    initial_value: ''
+    
+  - id: myDisplay_line3
+    restore_value: no
+    type: std::string  
+    initial_value: ''
+
+    
+# ==================== SCRIPTS BLOCKS ====================
+script:
+
+  
+  - id: flash_led_custom
+    parameters:
+      count: int         
+      dwell: int         
+      red: float         
+      green: float       
+      blue: float        
+    mode: queued
+    then:
+      - repeat:
+          count: !lambda "return count;"
+          then:
+            - switch.turn_on: indicator_led
+            - delay: !lambda "return dwell;"
+            - switch.turn_off: indicator_led
+            - delay: !lambda "return dwell;"
+            
+  - id: turn_led_on_custom
+    parameters:
+      red: float         
+      green: float       
+      blue: float        
+      brightness: float  
+    mode: single
+    then:
+      - switch.turn_off: indicator_led
+
+  - id: turn_led_off_custom
+    mode: single
+    then:
+      - switch.turn_on: indicator_led
+
+# ======== Display Specific Component Configurations ========
+font:
+  - file: "gfonts://Roboto"
+    id: my_fontSmall
+    size: 25
+  - file: "gfonts://Roboto"
+    id: my_fontMedium
+    size: 28
+  - file: "gfonts://Roboto"
+    id: my_fontLarge
+    size: 32
+              
+
+display:
+  - platform: m5sticks3_display
+    id: stick_display
+    update_interval: 100ms
+
+    pages:
+      - id: active_page_std
+        lambda: |-
+          auto L1color = Color(255, 100, 0);
+          auto L2color = Color(255, 120, 0);
+          auto L3color = Color(255, 150, 0);
+          it.print(5, 5,  id(my_fontSmall), L1color, id(myDisplay_line1).c_str());
+          it.print(5, 45,  id(my_fontSmall), L2color, id(myDisplay_line2).c_str());
+          it.print(5, 95, id(my_fontLarge), L3color,  id(myDisplay_line3).c_str());
+
+      - id: active_page_small
+        lambda: |-
+          auto L1color = Color(255, 130, 0);
+          auto L2color = Color(255, 130, 0);
+          auto L3color = Color(255, 130, 0);
+          it.print(5, 5,  id(my_fontMedium), L1color, id(myDisplay_line1).c_str());
+          it.print(5, 45,  id(my_fontMedium), L2color, id(myDisplay_line2).c_str());
+          it.print(5, 85, id(my_fontMedium), L3color, id(myDisplay_line3).c_str());
+
+      - id: blank_page
+        lambda: |-
+          // Blank page – pixels off
+          
+          
+    on_page_change:
+      - then:
+          - if:
+              condition:        
+                lambda: 'return to == id(blank_page);'
+              then:
+                - lambda: 'M5.Display.setBrightness(0);'
+              else:
+                - lambda: 'M5.Display.setBrightness(128);' 

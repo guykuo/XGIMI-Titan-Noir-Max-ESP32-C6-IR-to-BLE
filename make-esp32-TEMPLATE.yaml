@@ -3,7 +3,7 @@
 # Three things must be configured here
 #   ble_remote_name
 #   Default IR profile
-#   esp_board
+#   board_pkg
 
 substitutions:
   # 1 ======= ble_remote_name, Bluetooth Name for your IR remote ===========================
@@ -18,8 +18,8 @@ substitutions:
   # 2 ======= Default IR profile. Uncomment one (and only one) ============================
 
   #def_profile: "0"  # AWOL vision aetherion max
-  def_profile: "1"  # benq-w5800
-  #def_profile: "2"  # epson-pro-cinema-LS12000
+  #def_profile: "1"  # benq-w5800
+  def_profile: "2"  # epson-pro-cinema-LS12000
   #def_profile: "3"  # hisense-50u6g
   #def_profile: "4"  # jvc-hr-S9600u
   #def_profile: "5"  # jvc-rs2-codeset-A 
@@ -32,31 +32,33 @@ substitutions:
   #def_profile: "12" # panasonic projector
   
 
-
 packages: 
   # 3 =======  ESP32 board, Uncomment one (and only one) to specify board ===================
   
-  esp_board: !include irlib-kuo/esp-esp32-c3-0.42-OLED.yaml      # supports built-in 0.42 inch OLED display
-  #esp_board: !include irlib-kuo/esp-esp32-c6-wroom-1.yaml        # recommend add 0.9 inch i2c OLED display
-  #esp_board: !include irlib-kuo/esp-waveshare-s3-lcd-1.47B.yaml  # requires IR sensor WITHOUT LED (VS1838B)
-  #esp_board: !include irlib-kuo/esp-heltec-hiletgo-s3-0.96-OLED-v3.yaml # needs special cable for logging
-  #esp_board: !include irlib-kuo/esp-lafvintech-c6-lcd-1.47.yaml  # needs physical reset after flashing.
-  #esp_board: !include irlib-kuo/esp-hosyond-s3-lcd-3.5-touch.yaml
-  #esp_board: !include irlib-kuo/esp-waveshare-c6-lcd-1.47.yaml
-  #esp_board: !include irlib-kuo/esp-waveshare-s3-touch-lcd-2.8.yaml
-  #esp_board: !include irlib-kuo/esp-ideaspark-esp32-classic-OLED.yaml  # usb-micro cable, ltd RAM, noisy IR
-  #esp_board: !include irlib-kuo/esp-ideaspark-esp32-classic-lcd-1.14.yaml # USB-c to USB-A cable to flash. Ltd RAM
-  #esp_board: !include irlib-kuo/esp-m5stack-pico-d4-atom-lite.yaml     # recommend add i2c OLED display
-  #esp_board: !include irlib-kuo/esp-m5stick-S3.yaml              # WIP IR does not work
-  #esp_board: !include irlib-kuo/esp-waveshare-c5-lcd-1.47.yaml    # diff to join wifi AP
+  board_pkg: !include ir-common-kuo/board-esp32-c3-0.42-OLED.yaml      # supports built-in 0.42 inch OLED display
+  #board_pkg: !include ir-common-kuo/board-esp32-c6-wroom-1.yaml        # recommend add 0.9 inch i2c OLED display
+  #board_pkg: !include ir-common-kuo/board-waveshare-s3-lcd-1.47B.yaml  # requires IR sensor WITHOUT LED (VS1838B)
+  #board_pkg: !include ir-common-kuo/board-heltec-hiletgo-s3-0.96-OLED-v3.yaml # needs special cable for logging
+  #board_pkg: !include ir-common-kuo/board-lafvintech-c6-lcd-1.47.yaml  # needs physical reset after flashing.
+  #board_pkg: !include ir-common-kuo/board-hosyond-s3-lcd-3.5-touch.yaml
+  #board_pkg: !include ir-common-kuo/board-waveshare-c6-lcd-1.47.yaml
+  #board_pkg: !include ir-common-kuo/board-waveshare-s3-touch-lcd-2.8.yaml
+  #board_pkg: !include ir-common-kuo/board-ideaspark-esp32-classic-OLED.yaml  # usb-micro cable, ltd RAM, noisy IR
+  #board_pkg: !include ir-common-kuo/board-ideaspark-esp32-classic-lcd-1.14.yaml # USB-c to USB-A cable to flash. Ltd heap
+  #board_pkg: !include ir-common-kuo/board-m5stack-pico-d4-atom-lite.yaml # needs grove IR and i2c OLED display
+ 
+  # ===== following boards are NOT recommendable. Included only for development purposes
+  #board_pkg: !include ir-common-kuo/board-m5stick-S3-grove-IR.yaml    # Works.  Use external grove IR sensor
+  #board_pkg: !include ir-common-kuo/board-m5stick-S3-internal_IR.yaml # Incompatible. Built-in IR too noisy
+  #board_pkg: !include ir-common-kuo/board-waveshare-c5-lcd-1.47.yaml  # Incompatible. Too little heap space
 
 
 # ====================== END Main Configuration Options KUO =================================================
 # Code after this point typically does not need to be changed.
 # ===========================================================================================================
 
-  ir-hub-package:         !include irlib-kuo/appkit/ir-hub.yaml
-  mrmachine-ble-package:  !include irlib-kuo/appkit/mrmachine-ble-v1.0.0x.yaml # required, heavily modified mrmachine BLE package
+  ir-hub-pkg:         !include ir-common-kuo/appkit/ir-hub.yaml
+  mrmachine-ble-pkg:  !include ir-common-kuo/appkit/mrmachine-ble-v1.0.0x.yaml # required, heavily modified mrmachine BLE package
 
 logger:
   level: DEBUG
@@ -73,6 +75,7 @@ wifi:
 #  networks: []
   reboot_timeout: 13h
   output_power: ${wifi_tx_power}
+  fast_connect: true
   power_save_mode: NONE
   ap:
     ssid: "${ble_remote_name}"
@@ -94,7 +97,7 @@ esphome:
   comment: ESP32 with XGIMI BLE Translator
   project:
     name: xgimi.titan-noir-esp32-ir-kuo
-    version: 26.10.16.0142
+    version: 26.10.17.0320
     
   includes:
     - <sstream>
@@ -103,7 +106,7 @@ esphome:
     - <vector>
     - <algorithm>
     - <cctype>
-    - irlib-kuo/appkit/ir-profile.h
+    - ir-common-kuo/appkit/ir-profile.h
 
   build_flags: 
     # ============================================================
@@ -236,14 +239,15 @@ esphome:
                   line2: ''
                   line3: ''
 
-# ============================================================
+# ============= end esphome ======================
+
 preferences:
   flash_write_interval: 5s # More quickly commits sniffed tokens to flash. Global data rarely changes.
 
 captive_portal:
 
 esp32:
-  partitions: irlib-kuo/appkit/partitions.csv
+  partitions: ir-common-kuo/appkit/partitions.csv
   framework:
     sdkconfig_options:
       CONFIG_BT_BLE_EST_LINK_CONN_NUM: "1"

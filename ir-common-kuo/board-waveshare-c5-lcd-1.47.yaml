@@ -1,0 +1,193 @@
+# Waveshare ESP32-C5-LCD-1.47
+# ============= BEGIN Configuration Options ==========
+
+substitutions:
+  pin_ir_receiver: GPIO1      # IR receiver
+  pin_indicator_LED: GPIO8    # Onboard RGB LED (WS2812)
+  pin_action_btn: GPIO28       # BOOT button
+  pin_action_btn_pullup: true
+  wifi_tx_power: "10dB"
+
+# Core Architecture Declaration
+
+esp32:
+  board: esp32-c5-devkitc-1
+  framework:
+    type: esp-idf
+# ============= END Configuration Options ==========
+
+esphome:
+  on_boot:
+    - priority: 800.0
+      then:
+        - delay: 1.5s
+
+    - priority: -100
+      then:
+        - light.turn_on:
+            id: display_backlight
+            brightness: 0.3
+
+globals:
+  - id: myDisplay_line1
+    type: std::string
+    restore_value: no
+    initial_value: ''
+  - id: myDisplay_line2
+    type: std::string
+    restore_value: no
+    initial_value: ''
+  - id: myDisplay_line3
+    type: std::string
+    restore_value: no
+    initial_value: ''
+
+output:
+  - platform: ledc
+    pin:
+      number: GPIO10          # LCD_BL on Waveshare board
+      mode: OUTPUT
+    id: backlight_pwm
+    frequency: 1000Hz
+    min_power: 0.0
+    max_power: 1.0
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: indicator_led
+    pin: ${pin_indicator_LED} # GPIO8 – onboard RGB LED
+    chipset: WS2812
+    num_leds: 1
+    rgb_order: GRB
+    name: "Sniffer Indicator"
+    internal: true
+
+  - platform: monochromatic
+    name: "Display Backlight"
+    id: display_backlight
+    output: backlight_pwm
+    default_transition_length: 0.5s
+    gamma_correct: 0
+    restore_mode: ALWAYS_OFF
+    internal: true
+
+script:
+  - id: flash_led_custom
+    parameters:
+      count: int
+      dwell: int
+      red: float
+      green: float
+      blue: float
+    mode: queued
+    then:
+      - repeat:
+          count: !lambda "return count;"
+          then:
+            - light.turn_on:
+                id: indicator_led
+                red: !lambda "return red;"
+                green: !lambda "return green;"
+                blue: !lambda "return blue;"
+                brightness: 0.2
+                transition_length: 0s
+            - delay: !lambda "return dwell;"
+            - light.turn_off:
+                id: indicator_led
+                transition_length: 0s
+            - delay: !lambda "return dwell;"
+
+  - id: turn_led_on_custom
+    parameters:
+      red: float
+      green: float
+      blue: float
+      brightness: float
+    mode: single
+    then:
+      - light.turn_on:
+          id: indicator_led
+          red: !lambda "return red;"
+          green: !lambda "return green;"
+          blue: !lambda "return blue;"
+          brightness: !lambda "return brightness;"
+          transition_length: 0s
+
+  - id: turn_led_off_custom
+    mode: single
+    then:
+      - light.turn_off:
+          id: indicator_led
+          transition_length: 0s
+
+# ======== Display Specific Implementation ========
+
+font:
+  - file: "gfonts://Roboto"
+    id: my_fontMedium
+    size: 20
+    glyphs: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 :.,_[]*+-()=/!"
+
+spi:
+  clk_pin: GPIO7
+  mosi_pin: GPIO6
+  miso_pin: GPIO5         # Required by ESP-IDF SPI driver on this board
+
+display:
+  - platform: mipi_spi
+    id: myDisplay
+    model: ST7789V       # Hardcoded model definition for exact 172x320 panel
+    color_depth: 8       # <--- reduce ram usage
+    dimensions: 
+      width: 172
+      height: 320
+      offset_width: 34   
+      offset_height: 0 
+      pad_width: 0
+      pad_height: 0 
+    rotation: 270
+    invert_colors: true
+    cs_pin: GPIO23
+    dc_pin: GPIO24
+    reset_pin: GPIO26    # LCD_RST
+    update_interval: 0.1s
+    data_rate: 40MHz
+
+    on_page_change:
+      - then:
+          - if:
+              condition:
+                lambda: 'return to == id(blank_page);'
+              then:
+                - light.turn_off:
+                    id: display_backlight
+              else:
+                - light.turn_on:
+                    id: display_backlight
+                    brightness: 50%
+
+    pages:
+      - id: active_page_std
+        lambda: |-
+            auto L1color = Color(255, 100, 0);
+            auto L2color = Color(255, 120, 0);
+            auto L3color = Color(255, 150, 0);
+
+            it.print(5, 20, id(my_fontMedium), L1color, id(myDisplay_line1).c_str());
+            it.print(5, 50, id(my_fontMedium), L2color, id(myDisplay_line2).c_str());
+            it.print(5, 80, id(my_fontMedium), L3color,  id(myDisplay_line3).c_str());
+
+      - id: active_page_small
+        lambda: |-
+            auto L1color = Color(255, 130, 0);
+            auto L2color = Color(255, 130, 0);
+            auto L3color = Color(255, 130, 0);
+            
+            it.print(5, 20, id(my_fontMedium), L1color, id(myDisplay_line1).c_str());
+            it.print(5, 50, id(my_fontMedium), L2color, id(myDisplay_line2).c_str());
+            it.print(5, 80, id(my_fontMedium), L3color, id(myDisplay_line3).c_str());
+
+      - id: blank_page
+        lambda: |-
+          // Leaving lambda completely blank turns all pixels off safely
+
