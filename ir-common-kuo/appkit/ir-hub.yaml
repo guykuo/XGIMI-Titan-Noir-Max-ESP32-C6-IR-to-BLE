@@ -427,19 +427,15 @@ script:
   # Centralized Projector Macro Session Status Indicators
   # ====================================================================
 
-  # RECORDING MODE PROFILE: Smooth 1.2-Second Breath Pulse
+  # RECORDING MODE PROFILE: Pure Solid Static Glow (Zero stutters, zero loops)
   - id: macro_indicator_recording
-    mode: restart
+    mode: single
     then: 
-      - while: 
-          condition:
-            lambda: 'return true;'
-          then:
-            # Keep your standard smooth 400ms transition values
-            - lambda: 'id(turn_led_on_custom)->execute(1.0f, 0.0f, 0.0f, 0.2f);' 
-            - delay: 500ms
-            - lambda: 'id(turn_led_off_custom)->execute();' 
-            - delay: 700ms
+      - lambda: |-
+          id(macro_indicator_awaiting_hotkey)->stop();
+          id(macro_indicator_playback)->stop();
+          // Engage solid Red indicator instantly at 30% brightness duty cycle
+          id(turn_led_on_custom)->execute(1.0f, 0.0f, 0.0f, 0.3f); 
 
   # AWAITING HOTKEY SELECTION PROFILE: High-Velocity 30ms Hardware Strobe Alert
   - id: macro_indicator_awaiting_hotkey
@@ -1121,19 +1117,7 @@ script:
               
               b_idx++; 
               id(learn_current_button_idx) = b_idx;
-              
-              // Flash sequence alterations
-              if (b_idx == (int)TOTAL_SYSTEM_BUTTONS) {
-                id(flash_led_custom).execute(5, 100, 0.6, 1.0, 0.0);
-                id(flash_led_custom).execute(5, 150, 0.2, 1.0, 0.4);
-              } else {
-                if (b_idx % 5 == 0) {
-                  id(flash_led_custom).execute(1, 460, 0.0, 1.0, 0.0);
-                } else {
-                  id(flash_led_custom).execute(1, 200, 0.6, 1.0, 0.6);
-                }              
-              }
-              
+                            
               id(learn_cache_clear).execute();
               id(learn_mode_timeout_watcher).execute(); // Reset 30s timer
               
