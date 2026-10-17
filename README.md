@@ -87,21 +87,21 @@ These "factory" IR profiles have known working IR code sets ...
 
 
 ## ESP Board Definition Packages
-ESP32 boards are defined in ir-common-kuo/ as esp.yaml files. These esp files contain board specific information used to create the translator firmware. Several board types are supplied. You can also create your "esp" file to support a new ESP32 board type or to customize GPIO assignments.
+ESP32 boards are defined in ir-common-kuo/ as board.yaml files. These board files contain board specific information used to create the translator firmware. Several board types are supplied. You can also create your "board" file to support a new ESP32 board type or to customize GPIO assignments.
 
-Supplied esp files are for ESP32 boards listed in descending order of author preference for use as IR translator ...
+Supplied board files are for ESP32 boards listed in descending order of author preference for use as IR translator ...
 
-* esp-esp32-c3-0.42-OLED.yaml         # supports built-in 0.42 inch OLED display
-* esp-esp32-c6-wroom-1.yaml            # recommend add external 0.9 inch i2c OLED display
-* esp-waveshare-s3-lcd-1.47B.yaml     # requires IR sensor WITHOUT LED (VS1838B)
-* esp-heltec-hiletgo-s3-0.96-OLED-v3.yaml # needs special cable for logging
-* esp-lafvintech-c6-lcd-1.47.yaml      # May need physical reset after flashing.
-* esp-hosyond-s3-lcd-3.5-touch.yaml
-* esp-waveshare-c6-lcd-1.47.yaml
-* esp-waveshare-s3-touch-lcd-2.8.yaml
-* esp-ideaspark-esp32-classic-OLED.yaml # usb-micro cable, ltd RAM, noisy IR
-* esp-ideaspark-esp32-classic-lcd-1.14.yaml # USB-c to USB-A cable to flash. Ltd RAM
-* esp-m5stack-pico-d4-atom-lite.yaml  # recommend add i2c OLED display
+* board-esp32-c3-0.42-OLED.yaml         # supports built-in 0.42 inch OLED display
+* board-esp32-c6-wroom-1.yaml            # recommend add external 0.9 inch i2c OLED display
+* board-waveshare-s3-lcd-1.47B.yaml     # requires IR sensor WITHOUT LED (VS1838B)
+* board-heltec-hiletgo-s3-0.96-OLED-v3.yaml # needs special cable for logging
+* board-lafvintech-c6-lcd-1.47.yaml      # May need physical reset after flashing.
+* board-hosyond-s3-lcd-3.5-touch.yaml
+* board-waveshare-c6-lcd-1.47.yaml
+* board-waveshare-s3-touch-lcd-2.8.yaml
+* board-ideaspark-esp32-classic-OLED.yaml # usb-micro cable, ltd RAM, noisy IR
+* board-ideaspark-esp32-classic-lcd-1.14.yaml # USB-c to USB-A cable to flash. Ltd RAM
+* board-m5stack-pico-d4-atom-lite.yaml  # add grove IR sensor and OLED display
 
 Look in the esp file for actual GPIO pins for IR receiver and optional i2c display
   
@@ -153,6 +153,8 @@ Boards that will NOT work
 
 *   ESP32-S2 series (no bluetooth)
 *   ESP32-P4 series (no bluetooth)
+*   M5stick-S3 (will only work if external grove IR sensor added. Internal IR sensor unusably noisy)
+*   Waveshare ESP32-C5 with 1.47 inch LCD (too little heap space)
     
 <br>
 Each variation of ESP board has its own pinout and specific GPIO pins suitable for for IR signal input. It is particularly important to obtain pinout information and know which GPIO pins are actually free for use (not strapping pins or already assigned to other board functions). Because that process can be overwhelming, four board configuration "esp" files have been supplied. These pre-define board type and pinouts. Most likely, you can simply specify one of the supplied esp files within your make file.
