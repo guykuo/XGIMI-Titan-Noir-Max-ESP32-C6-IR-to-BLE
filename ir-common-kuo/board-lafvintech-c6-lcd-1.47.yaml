@@ -1,7 +1,9 @@
+# Lafvintech ESP32-C6 with 1.47 inch LCD
+#
+# Overall, great balance of cost and features. Adequate heap space
+# Has LCD, multi-color LED, and adequate RAM and low cost.
+
 # Lafvintech board may require physical reset after flashing.
-# Also, often needs boot button held at reset to enable flashing.
-# Extra long delay required to allow power rails to settle.
-# Otherwise, wifi will not intialize.
 
 # ============= BEGIN Configuration Options KUO ==========
 
@@ -18,6 +20,7 @@ esp32:
   board: esp32-c6-devkitc-1
   framework:
     type: esp-idf
+    
 # ============= END Configuration Options KUO ==========
 
 esphome:
@@ -25,7 +28,8 @@ esphome:
     # 800.0f runs BEFORE the display (400.0f) initializes, giving us structural control
     - priority: 800.0
       then:
-        - delay: 3.0s  # Required delay to allow physical power lines time to stabilize
+        - delay: 3.0s  # Extra long delay required to allow power rails to settle.
+                       # Otherwise, wifi will not intialize
 
     - priority: -100 # 4. Wait until the very end of the boot sequence when it is safe
       then:
