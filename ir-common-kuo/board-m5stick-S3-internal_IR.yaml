@@ -1,3 +1,7 @@
+# Does not work unless external IR sensor is used instead of built-in sensor
+# Even with audio amp power shut off, built-in IR sensor has extreme noise
+# and distorts IR signals severely enough to prevent decoding of signals.
+
 # =====================================================================
 # M5Stick S3 Audited Hardware Layout - Pure Native ESP-IDF Implementation
 # =====================================================================
@@ -50,8 +54,8 @@ esphome:
             
             M5.begin(cfg);
             
-            // 2. CRITICAL: Turn EXT_5V output back ON. The internal IR Receiver requires this rail for power!
-            M5.Power.setExtOutput(true); 
+            // 2. CRITICAL: Turn on power for IR receiver
+            M5.Power.setExtOutput(true, m5::ext_none);
             
             // 3. Close software audio tasks safely
             M5.Speaker.end();

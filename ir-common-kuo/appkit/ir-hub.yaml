@@ -424,7 +424,7 @@ globals:
 script:
 
   # ====================================================================
-  # Centralized Projector Macro Session Status Indicators
+  #  Macro Session Status Indicators
   # ====================================================================
 
   # RECORDING MODE PROFILE: Pure Solid Static Glow (Zero stutters, zero loops)
@@ -434,8 +434,15 @@ script:
       - lambda: |-
           id(macro_indicator_awaiting_hotkey)->stop();
           id(macro_indicator_playback)->stop();
-          // Engage solid Red indicator instantly at 30% brightness duty cycle
+          // Engage solid Red indicator at 30% brightness duty cycle
           id(turn_led_on_custom)->execute(1.0f, 0.0f, 0.0f, 0.3f); 
+          
+      # -- On screen indicator: Pulse volume up immediately via BLE stack ---
+      - lambda: |-
+          fire_bluetooth_hid_action("volume_up", KEY_EVENT_DOWN);
+          vTaskDelay(pdMS_TO_TICKS(50));
+          fire_bluetooth_hid_action("volume_up", KEY_EVENT_UP);
+
 
   # AWAITING HOTKEY SELECTION PROFILE: High-Velocity 30ms Hardware Strobe Alert
   - id: macro_indicator_awaiting_hotkey
@@ -446,7 +453,6 @@ script:
           condition:
             lambda: 'return true;'
           then:
-            # Crank your target channel to a high values to see it distinctly (e.g. Pure Blue)
             - lambda: 'id(turn_led_on_custom)->execute(0.3f, 0.0f, 1.0f, 0.2f);' 
             - delay: 100ms
             - lambda: 'id(turn_led_off_custom)->execute();' 
@@ -471,6 +477,7 @@ script:
           id(macro_indicator_playback)->stop();
           id(turn_led_on_custom)->stop();
           id(turn_led_off_custom)->execute(); 
+      # -- On screen indicator: Pulse volume down immediately via BLE stack ---
       - lambda: |-
           fire_bluetooth_hid_action("volume_down", KEY_EVENT_DOWN);
           vTaskDelay(pdMS_TO_TICKS(50));
@@ -486,7 +493,7 @@ script:
           id(macro_indicator_playback)->stop();
           id(turn_led_on_custom)->stop();
           id(turn_led_off_custom)->execute(); 
-                    
+    # no volume down for end of macro playbac                 
 
 # # ====================================================================
   # Hydrate Binding Registry Map from Flash Storage Slots during System Boot
@@ -512,7 +519,7 @@ script:
           }
 
           // ============================================================
-          // NEW ADDITION: DYNAMIC SELF-HEALING SWEEP FOR MACRO STEP SLOTS
+          // DYNAMIC SELF-HEALING SWEEP FOR MACRO STEP SLOTS
           // ============================================================
           ESP_LOGD("NVS_MACRO", "Validating persistent macro step memory models...");
           for (int slot = 0; slot < MAX_BOUND_HOTKEYS; slot++) {
@@ -549,13 +556,7 @@ script:
             return;
           }
 
-      # --- AUDIO SIGNATURE START: Pulse volume up immediately via BLE stack ---
-      - lambda: |-
-          fire_bluetooth_hid_action("volume_up", KEY_EVENT_DOWN);
-          vTaskDelay(pdMS_TO_TICKS(50));
-          fire_bluetooth_hid_action("volume_up", KEY_EVENT_UP);
-
-      - script.execute: macro_indicator_recording #Activate recording breath loop
+      - script.execute: macro_indicator_recording #Indicate macro recording
       
       - lambda: |-
 
@@ -830,6 +831,7 @@ script:
           id(display_show)->execute(true, "Macro Complete", "All steps executed", "Action Mode");
           id(showing_special_expiration_timer).execute();
 
+
   # ====================================================================
   # Automated 5-Second Expiration Timer for Macro Playback Hotkey Selection
   # ====================================================================
@@ -849,10 +851,10 @@ script:
 
 
 
-
   # ====================================================================
   # Load and link profiles from NVRAM. Doing after delay helps avoids core panic
-  
+  # ====================================================================
+
   - id: standalone_system_hydration
     mode: single
     then:
@@ -929,13 +931,13 @@ script:
           }
 
           // ------------------------------------------------------------
-          // BRANCH B: CLEAR REMOTES IF IN LEARN/SETUP PROFILE MODE
+          // BRANCH B: CLEAR PROFILES IF IN LEARN/SETUP PROFILE MODE
           // ------------------------------------------------------------
           ESP_LOGW("NVS Flash", "Factory wipe initiated. Clearing all custom profile tracks...");
           
           static FlashStoredProfile blank_profile;
           
-          // Clear all isolated custom preference database slots sequentially
+          // Clear all custom preference database slots sequentially
           for (uint16_t slot = 0; slot < MAX_LEARNED_PROFILES; slot++) {
             uint64_t slot_nvs_key = 1948204712ULL + slot;
             auto pref_obj = esphome::global_preferences->make_preference<FlashStoredProfile>(slot_nvs_key);
@@ -973,7 +975,6 @@ script:
   # ====================================================================
   # IR code learning mode scripts
   # ====================================================================
-
 
   - id: start_learning_mode
     then:
@@ -1031,9 +1032,9 @@ script:
 
   # ====================================================================
   # Button learning phase 0 and phase A settling timer
-  # Does deferred assessement and handling of inbound IR during learing
+  # Does deferred assessement and handling of inbound IR during learning
   # Multiple IR signals are received with a single button push. Many are invalid.
-  # Caching and evaluating them after all arrive allows section of valid one.
+  # Caching and evaluating them after all arrive allows selection of valid one.
   # We separately analyze raw IR packets to determine underlying protocol.
 
   - id: ir_settling_timer
@@ -1177,14 +1178,14 @@ script:
 
 
           switch(id(ir_receiver_mode)) {
-            case IR_MODE_DEACTIVATED: { // deactivated --------------
+            case IR_MODE_DEACTIVATED: { // deactivated
               ESP_LOGD("IR HUB", "IR Receiver deactivated. No active profile.");
               break;
             } // -- end case IR_MODE_DEACTIVATED
 
 
             // ================================================================
-            case IR_MODE_ACTION: { // action mode (LONG PRESS COMPATIBLE) ------------------
+            case IR_MODE_ACTION: { // action mode (LONG PRESS COMPATIBLE)
               const auto& active_profile = active_profile_workspace;
               const IRCommand* found_cmd = nullptr;
               for (const auto& kv_pair : active_profile.cmd_codes) {
@@ -1337,7 +1338,8 @@ script:
                 ESP_LOGD("IR HUB", "No profile registry match found for incoming signature.");
               }
               break;
-            } //-- end case IR_MODE_SET_PROFILE
+            } // =========== end case IR_MODE_SET_PROFILE ========
+
 
 
             // ================================================================
@@ -1415,15 +1417,14 @@ script:
                 }
               }
               break;
-            } //------- end case IR_MODE_LEARN
+            } //  =========== end case IR_MODE_LEARN  ===========
 
-            // ================================================================
             default:
               // if we fall to here, something is awry with ir_receiver_mode
               ESP_LOGD("IR HUB", "Unknown ir_receiver_mode.");
 
               break;
-          }
+          } //  =========== end case default  ===========
  
 
   # ====================================================================
@@ -1524,6 +1525,7 @@ script:
           id: debounce_safety_lock
           value: 'false'
 
+
   # =================================================================
   # Automated 15-Second Expiration Timer for Clear Token Armed
   - id: token_clear_safety_timeout
@@ -1540,8 +1542,8 @@ script:
             
             // Revert display back to standard runtime view seamlessly 
             id(display_show)->execute(false,
-                                      "Wipe Timeout", 
-                                      "Safety Disarmed", 
+                                      "Timed Out", 
+                                      "Token Clear Canceled", 
                                       active_profile_workspace.profile_name);
           }
 
@@ -1553,9 +1555,7 @@ script:
       - delay: 5s 
       - lambda: |-
           id(showing_special_info) = false; // Opens the display gate back up
-          
-          // Force an instant foreground refresh to redraw your standard remote menu
-          // id(display_show)->execute(false, "Action Mode", active_profile_workspace.profile_name, "");
+
 
   # =================================================================
   - id: set_profile_timeout_watcher

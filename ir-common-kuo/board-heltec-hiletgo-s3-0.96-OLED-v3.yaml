@@ -1,7 +1,7 @@
 # Heltec / Hiletgo ESP32 V3
 # Although, board works for this project, it will not output log on serial port unless special cable adapter is added.
 # Board will flash via USB-C to USB-C cable due to special conditions during boot, but after boot will not log to USB-C serial
-
+# Indicator LED is very bright white, not a neopixel. Ample heap space. I would categorize this as good albeit not perfect choice. 
 # The Heltec V3 board has an omission in its Type-C port design. It lacks two standard CC (configuration channel) pulldown resistors.
 # Use a USB-A to USB-C cable plugged into a standard USB-A port on your computer. This bypasses the smart handshake and forces the connection alive
 
@@ -136,7 +136,7 @@ display:
         lambda: |-
           it.print(0, 0,  id(my_fontSmall), id(myDisplay_line1).c_str());
           it.print(0, 14, id(my_fontSmall), id(myDisplay_line2).c_str());
-          it.print(0, 26, id(my_fontSmall), id(myDisplay_line3).c_str());
+          it.print(0, 28, id(my_fontSmall), id(myDisplay_line3).c_str());
 
       - id: blank_page
         lambda: |-

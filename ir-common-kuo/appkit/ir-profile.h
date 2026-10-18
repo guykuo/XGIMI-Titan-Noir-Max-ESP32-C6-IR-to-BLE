@@ -1888,7 +1888,7 @@ inline void execute_action_pipeline_worker(const std::string& cmd_name, int even
                 esphome::id(token_clear_safety_timeout).stop(); 
                 esphome::id(global_token_clear_armed).value() = false;   
                 esphome::id(showing_special_info).value() = false;
-                esphome::id(display_show).execute(false, "Wipe Aborted", "Safety Disarmed", active_profile_workspace.profile_name);
+                esphome::id(display_show).execute(false, "Wipe Aborted", "Action Mode", active_profile_workspace.profile_name);
             }
             return; 
         }

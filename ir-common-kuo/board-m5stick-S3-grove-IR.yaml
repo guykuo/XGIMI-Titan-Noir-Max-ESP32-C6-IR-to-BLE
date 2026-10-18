@@ -1,3 +1,11 @@
+# Does not work unless external IR sensor is used instead of built-in sensor
+# Even with audio amp power shut off, built-in IR sensor has extreme noise
+# and distorts IR signals severely enough to prevent decoding of signals.
+
+# This version of board file enables external IR sensor on grove connector.
+# works, but difficult to justify this over an Atom Lite.
+# Board not recommended by project author.
+
 # =====================================================================
 # M5Stick S3 Audited Hardware Layout - Pure Native ESP-IDF Implementation
 # =====================================================================

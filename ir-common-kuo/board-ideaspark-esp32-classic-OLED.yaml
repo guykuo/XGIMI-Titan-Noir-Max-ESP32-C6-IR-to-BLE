@@ -1,3 +1,8 @@
+# Ideaspark classic ESP32 with OLED
+# Adequate RAM, but not as good safety margin as C3 OLED boards
+# Overall OK choice and would work in most setups.
+
+
 # ============= BEGIN Configuration Options KUO ==========
 
 substitutions:
@@ -121,7 +126,7 @@ display:
       - id: active_page_small
         lambda: |-
           it.print(0, 0,  id(my_fontSmall), id(myDisplay_line1).c_str());
-          it.print(0, 14, id(my_fontSmall), id(myDisplay_line2).c_str());
+          it.print(0, 13, id(my_fontSmall), id(myDisplay_line2).c_str());
           it.print(0, 26, id(my_fontSmall), id(myDisplay_line3).c_str());
 
       - id: blank_page

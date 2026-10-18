@@ -1,3 +1,12 @@
+# M5stack Atom Lite
+# Practical choice if user completely unable to solder. Plug in M5stack IR Unit IR and OLED display without need
+# for any soldering. Not cheapest solution, but works for those without soldering skills.
+#
+# Flashing process for this board often includes harmless error messags about chip connection or clock speed.
+# Usually reduces serial flash speed, but not harmful to usability
+# 
+# Modest heap availability but able to upload/download macros and profiles.
+#
 # ============= BEGIN Configuration Options KUO ==========
 
 substitutions:

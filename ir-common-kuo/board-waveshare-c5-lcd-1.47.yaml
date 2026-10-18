@@ -1,4 +1,7 @@
 # Waveshare ESP32-C5-LCD-1.47
+# Required extreme measures to reduce heap usage to usable level
+# Display driver changed to st7789v platform to save massive buffer space
+ 
 # ============= BEGIN Configuration Options ==========
 
 substitutions:
@@ -125,33 +128,30 @@ script:
 font:
   - file: "gfonts://Roboto"
     id: my_fontMedium
-    size: 20
+    size: 11
     glyphs: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 :.,_[]*+-()=/!"
-
+    
 spi:
   clk_pin: GPIO7
   mosi_pin: GPIO6
   miso_pin: GPIO5         # Required by ESP-IDF SPI driver on this board
 
+# Replace high-overhead mipi_spi with standard st7789v
 display:
-  - platform: mipi_spi
+  - platform: st7789v
     id: myDisplay
-    model: ST7789V       # Hardcoded model definition for exact 172x320 panel
-    color_depth: 8       # <--- reduce ram usage
-    dimensions: 
-      width: 172
-      height: 320
-      offset_width: 34   
-      offset_height: 0 
-      pad_width: 0
-      pad_height: 0 
-    rotation: 270
-    invert_colors: true
+    model: Custom
+    width: 172
+    height: 320
+    offset_width: 34
+    offset_height: 0
+    rotation: 270    
+    eightbitcolor: true
     cs_pin: GPIO23
     dc_pin: GPIO24
-    reset_pin: GPIO26    # LCD_RST
-    update_interval: 0.1s
-    data_rate: 40MHz
+    reset_pin: GPIO26
+    update_interval: 0.5s
+    data_rate: 26.67MHz
 
     on_page_change:
       - then:
@@ -173,19 +173,17 @@ display:
             auto L2color = Color(255, 120, 0);
             auto L3color = Color(255, 150, 0);
 
-            it.print(5, 20, id(my_fontMedium), L1color, id(myDisplay_line1).c_str());
-            it.print(5, 50, id(my_fontMedium), L2color, id(myDisplay_line2).c_str());
-            it.print(5, 80, id(my_fontMedium), L3color,  id(myDisplay_line3).c_str());
+            it.print(5, 50, id(my_fontMedium), L1color, id(myDisplay_line1).c_str());
+            it.print(5, 80, id(my_fontMedium), L2color, id(myDisplay_line2).c_str());
+            it.print(5, 110, id(my_fontMedium), L3color, id(myDisplay_line3).c_str());
 
       - id: active_page_small
         lambda: |-
-            auto L1color = Color(255, 130, 0);
-            auto L2color = Color(255, 130, 0);
-            auto L3color = Color(255, 130, 0);
+            auto TextColor = Color(255, 130, 0);
             
-            it.print(5, 20, id(my_fontMedium), L1color, id(myDisplay_line1).c_str());
-            it.print(5, 50, id(my_fontMedium), L2color, id(myDisplay_line2).c_str());
-            it.print(5, 80, id(my_fontMedium), L3color, id(myDisplay_line3).c_str());
+            it.print(5, 50, id(my_fontMedium), TextColor, id(myDisplay_line1).c_str());
+            it.print(5, 80, id(my_fontMedium), TextColor, id(myDisplay_line2).c_str());
+            it.print(5, 110, id(my_fontMedium), TextColor, id(myDisplay_line3).c_str());
 
       - id: blank_page
         lambda: |-

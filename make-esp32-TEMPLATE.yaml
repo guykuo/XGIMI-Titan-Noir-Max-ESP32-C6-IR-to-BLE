@@ -19,7 +19,7 @@ substitutions:
 
   #def_profile: "0"  # AWOL vision aetherion max
   #def_profile: "1"  # benq-w5800
-  def_profile: "2"  # epson-pro-cinema-LS12000
+  #def_profile: "2"  # epson-pro-cinema-LS12000
   #def_profile: "3"  # hisense-50u6g
   #def_profile: "4"  # jvc-hr-S9600u
   #def_profile: "5"  # jvc-rs2-codeset-A 
@@ -28,29 +28,29 @@ substitutions:
   #def_profile: "8"  # optoma-UHD50X
   #def_profile: "9"  # sony-VPL-XW600ES 
   #def_profile: "10" # sony-XBR-77A9G 
-  #def_profile: "11" # tivo-roamio-TCD846500 
+  def_profile: "11" # tivo-roamio-TCD846500 
   #def_profile: "12" # panasonic projector
   
 
 packages: 
   # 3 =======  ESP32 board, Uncomment one (and only one) to specify board ===================
   
-  board_pkg: !include ir-common-kuo/board-esp32-c3-0.42-OLED.yaml      # supports built-in 0.42 inch OLED display
-  #board_pkg: !include ir-common-kuo/board-esp32-c6-wroom-1.yaml        # recommend add 0.9 inch i2c OLED display
+  board_pkg: !include ir-common-kuo/board-esp32-c3-0.42-OLED.yaml      # lowest cost, good board with OLED
+  #board_pkg: !include ir-common-kuo/board-esp32-c6-wroom-1.yaml        # ample RAM. Add 0.9 inch i2c OLED display
   #board_pkg: !include ir-common-kuo/board-waveshare-s3-lcd-1.47B.yaml  # requires IR sensor WITHOUT LED (VS1838B)
   #board_pkg: !include ir-common-kuo/board-heltec-hiletgo-s3-0.96-OLED-v3.yaml # needs special cable for logging
   #board_pkg: !include ir-common-kuo/board-lafvintech-c6-lcd-1.47.yaml  # needs physical reset after flashing.
+  #board_pkg: !include ir-common-kuo/board-m5stack-pico-d4-atom-lite.yaml # No-Solder. Needs grove IR and i2c OLED display
   #board_pkg: !include ir-common-kuo/board-hosyond-s3-lcd-3.5-touch.yaml
   #board_pkg: !include ir-common-kuo/board-waveshare-c6-lcd-1.47.yaml
   #board_pkg: !include ir-common-kuo/board-waveshare-s3-touch-lcd-2.8.yaml
-  #board_pkg: !include ir-common-kuo/board-ideaspark-esp32-classic-OLED.yaml  # usb-micro cable, ltd RAM, noisy IR
+  #board_pkg: !include ir-common-kuo/board-ideaspark-esp32-classic-OLED.yaml  # usb-micro cable, ltd heap, noisy IR
   #board_pkg: !include ir-common-kuo/board-ideaspark-esp32-classic-lcd-1.14.yaml # USB-c to USB-A cable to flash. Ltd heap
-  #board_pkg: !include ir-common-kuo/board-m5stack-pico-d4-atom-lite.yaml # needs grove IR and i2c OLED display
  
   # ===== following boards are NOT recommendable. Included only for development purposes
-  #board_pkg: !include ir-common-kuo/board-m5stick-S3-grove-IR.yaml    # Works.  Use external grove IR sensor
-  #board_pkg: !include ir-common-kuo/board-m5stick-S3-internal_IR.yaml # Incompatible. Built-in IR too noisy
-  #board_pkg: !include ir-common-kuo/board-waveshare-c5-lcd-1.47.yaml  # Incompatible. Too little heap space
+  #board_pkg: !include ir-common-kuo/board-m5stick-S3-grove-IR.yaml    # works ONLY WITH EXTERNAL grove IR sensor
+  #board_pkg: !include ir-common-kuo/board-m5stick-S3-internal_IR.yaml # incompatible, if using built-in IR sensor
+  #board_pkg: !include ir-common-kuo/board-waveshare-c5-lcd-1.47.yaml  # incompatible. Far too little heap space
 
 
 # ====================== END Main Configuration Options KUO =================================================
@@ -61,8 +61,8 @@ packages:
   mrmachine-ble-pkg:  !include ir-common-kuo/appkit/mrmachine-ble-v1.0.0x.yaml # required, heavily modified mrmachine BLE package
 
 logger:
-  level: DEBUG
-  #level: INFO
+  #level: DEBUG
+  level: INFO
     
 external_components:
 - source:
@@ -76,7 +76,7 @@ wifi:
   reboot_timeout: 13h
   output_power: ${wifi_tx_power}
   fast_connect: true
-  power_save_mode: NONE
+  power_save_mode: LIGHT
   ap:
     ssid: "${ble_remote_name}"
     password: !secret fallback_ap_password
@@ -97,7 +97,7 @@ esphome:
   comment: ESP32 with XGIMI BLE Translator
   project:
     name: xgimi.titan-noir-esp32-ir-kuo
-    version: 26.10.17.0917
+    version: 26.10.18.1020
     
   includes:
     - <sstream>
@@ -410,7 +410,7 @@ sensor:
 text_sensor:
   - platform: debug
     device:
-      name: "Device Hardware Info" # Shows flash chip size, speed, mode, and ESP vers    
+      name: "Device Hardware Info" # Shows flash chip size, speed, mode, and ESP ver      
     reset_reason:
       name: "Last Reset Reason"
 
@@ -419,27 +419,28 @@ text_sensor:
       id: my_ip_address
       
       
-  - platform: template # change from Avalones ---------------
+  - platform: template # changed from Avalones
     name: "IR Active Profile"
     id: ir_active_profile_ts
-    # ...
     lambda: |-
       int idx = id(active_remote_profile);
       int total_valid_slots = static_cast<int>(factory_count) + MAX_LEARNED_PROFILES;
-      static char buf[128]; // Stack allocation prevents heap reallocation
+      
+      // STATIC STORAGE ASSIGNMENT: Prevents continuous heap re-allocation spikes
+      static char static_telemetry_buffer[128]; 
       
       if (idx < 0 || idx >= total_valid_slots) {
-        snprintf(buf, sizeof(buf), "idx=%d (profile not loaded)", idx);
-        return {buf};
+        snprintf(static_telemetry_buffer, sizeof(static_telemetry_buffer), "idx=%d (profile not loaded)", idx);
+        return {static_telemetry_buffer};
       }
       
       const char* kind = (idx < (int) factory_count) ? "internal" : "custom";
-      snprintf(buf, sizeof(buf), "idx=%d  %s  [%s]",
+      snprintf(static_telemetry_buffer, sizeof(static_telemetry_buffer), "idx=%d  %s  [%s]",
                idx,
-               active_profile_workspace.profile_name.c_str(), // Reads directly from workspace
+               active_profile_workspace.profile_name.c_str(), 
                kind);
                
-      return {buf};
+      return {static_telemetry_buffer};
 
 
 
@@ -710,8 +711,9 @@ script:
     then:
       - logger.log: "Preparing NimBLE token sniffing..."
 
-      # Prep globals for sniffing
+      # Prep globals for sniffing (Kept to zero-heap static footprint definitions)
       - lambda: |-
+          std::memset(id(sniffer_candidate_token).data(), 0, id(sniffer_candidate_token).size());
           std::strcpy(id(sniffer_candidate_token).data(), "None");
           id(sniffer_hit_counter) = 0;
 
@@ -727,109 +729,121 @@ script:
       # Start Bluedroid Scanning via Lambda
       - lambda: |-
           esp_ble_gap_register_callback([](esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param) {
-              if (event == ESP_GAP_BLE_SCAN_RESULT_EVT) {
-                  auto &scan_result = param->scan_rst; 
-                  
-                  if (scan_result.adv_data_len > 0) {
-                      uint8_t *adv = scan_result.ble_adv;
-                      uint8_t len = scan_result.adv_data_len;
+              if (event != ESP_GAP_BLE_SCAN_RESULT_EVT) return;
+              
+              auto &scan_result = param->scan_rst; 
+              if (scan_result.adv_data_len == 0) return;
+
+              uint8_t *adv = scan_result.ble_adv;
+              uint8_t len = scan_result.adv_data_len;
+                            
+              // 1. FAST POINTER SCAN (Avoids string operations entirely unless structure keys match)
+              for (int i = 0; i < len - 3; i++) {
+                  if (adv[i] == 0xFF && adv[i+1] == 0x46 && adv[i+2] == 0x00) {
                       
-                      for (int i = 0; i < len - 3; i++) {
-                          if (adv[i] == 0xFF && adv[i+1] == 0x46 && adv[i+2] == 0x00) {
-                              
-                              // OPTIMIZED: Stack-allocated fixed buffer avoids heap fragmentation
-                              char token_hex[64] = {0};
-                              size_t offset = 0;
-                              for (int j = 0; j < len && offset < 60; j++) {
-                                  offset += snprintf(token_hex + offset, 4, "%02X", adv[j]);
-                              }
+                      // 2. STACK BUFFER PROTECTION: Enforce absolute flat bounds upfront
+                      char token_hex[32]; // Drastically scaled down to fit standard 15-byte token streams comfortably
+                      std::memset(token_hex, 0, sizeof(token_hex));
+                      
+                      size_t offset = 0;
+                      // Bound length loop execution tightly inside stack limit matrices
+                      for (int j = 0; j < len && offset < (sizeof(token_hex) - 3); j++) {
+                          offset += snprintf(token_hex + offset, 3, "%02X", adv[j]);
+                      }
 
-                              // Reject automated background pairing token
-                              if (std::strcmp(token_hex, "0201060319800103FF460003031218") == 0) {
-                                  continue; 
-                              }
+                      // Reject automated background pairing tokens using flat pointer arrays
+                      if (std::strcmp(token_hex, "0201060319800103FF460003031218") == 0) {
+                          continue; 
+                      }
 
-                              if (offset < 30) continue;
-                              
-                              // Zero-allocation masking comparison using safe C string utilities
-                              bool is_match = false;
-                              if (std::strcmp(id(sniffer_candidate_token).data(), "None") != 0) {
-                                  size_t cand_len = std::strlen(id(sniffer_candidate_token).data());
-                                  if (cand_len == offset) {
-                                      is_match = true;
-                                      for(size_t m = 0; m < offset; m++) {
-                                          if (offset >= 4 && m >= (offset - 4) && m < (offset - 2)) continue;
-                                          if (id(sniffer_candidate_token).at(m) != token_hex[m]) {
-                                              is_match = false;
-                                              break;
-                                          }
-                                      }
+                      if (offset < 30) continue;
+                      
+                      // 3. ZERO-ALLOCATION MASKING ENGINE
+                      bool is_match = false;
+                      const char* candidate = id(sniffer_candidate_token).data();
+                      
+                      if (candidate != nullptr && std::strcmp(candidate, "None") != 0) {
+                          size_t cand_len = std::strlen(candidate);
+                          if (cand_len == offset) {
+                              is_match = true;
+                              for (size_t m = 0; m < offset; m++) {
+                                  // Mask out the dynamic rolling validation bytes cleanly
+                                  if (offset >= 4 && m >= (offset - 4) && m < (offset - 2)) continue;
+                                  if (candidate[m] != token_hex[m]) {
+                                      is_match = false;
+                                      break;
                                   }
-                              }
-                              
-                              if (is_match) {
-                                  id(sniffer_hit_counter)++;
-                                  ESP_LOGI("xgimi_bluedroid", "Match count: %d for Token: %s", id(sniffer_hit_counter), token_hex);
-                                  
-                                  if (id(sniffer_hit_counter) >= 5) {
-                                      if (len >= 15) {
-                                          uint8_t *tail_ptr = adv + (len - 15);
-                                          
-                                          if (memcmp(tail_ptr, id(active_wake_token), 15) == 0) {
-                                              ESP_LOGD("xgimi_bluedroid", "Token matches active_wake_token. Skipping write.");
-                                              
-                                              esp_ble_gap_stop_scanning();
-                                              esp_ble_gap_register_callback(nullptr);
-                                              
-                                              id(flash_led_custom).execute(4, 200, 0.0, 1.0, 0.0);
-                                              id(indicator_led)->turn_off();
-                                              id(display_show).stop();
-                                              id(display_show).execute(false, "Token Recognized", "Matches", "Existing");
-                                              
-                                              id(sniffer_status)->publish_state(false);
-                                              id(xgimi_sniffer_switch).publish_state(false);
-                                              id(sniffing_sequence).stop(); 
-                                              return;
-                                          }
-                                          
-                                          // HEAP SAFE: Instantly commit raw bytes to memory structures
-                                          memcpy(id(active_wake_token), tail_ptr, 15);
-                                          memcpy(id(learned_wake_token), tail_ptr, 15);
-                                          global_preferences->sync(); 
-                                          
-                                          std::vector<uint8_t> active_token_vector(id(active_wake_token), id(active_wake_token) + 15);
-                                          id(xgimi_remote_controller)->set_wake_token(active_token_vector);
-                                          
-                                          esp_ble_gap_stop_scanning();
-                                          esp_ble_gap_register_callback(nullptr);
-                                          
-                                          // OPTIMIZED: Format directly into a flat fixed stack scratchpad 
-                                          char ui_buf[64] = {0};
-                                          snprintf(ui_buf, sizeof(ui_buf), 
-                                                   "%02X %02X %02X %02X %02X...", 
-                                                   tail_ptr[0], tail_ptr[1], tail_ptr[2], tail_ptr[3], tail_ptr[4]);
-
-                                          id(flash_led_custom).execute(8, 200, 0.0, 1.0, 0.0);
-                                          id(indicator_led)->turn_off();
-                                          id(display_show).stop();
-                                          
-                                          // ZERO HEAP CHURN: Pass the array pointer directly into string_view parameter
-                                          id(display_show).execute(false, ui_buf, "Storing Token", "Wait 5 sec");
-                                          
-                                          id(sniffer_status)->publish_state(false);
-                                          id(xgimi_sniffer_switch).publish_state(false);
-                                          id(sniffing_sequence).stop(); 
-                                          return;
-                                      }
-                                  }
-                              } else {
-                                  std::strncpy(id(sniffer_candidate_token).data(), token_hex, id(sniffer_candidate_token).size() - 1);
-                                  id(sniffer_candidate_token).at(id(sniffer_candidate_token).size() - 1) = '\0';
-                                  
-                                  id(sniffer_hit_counter) = 1;
-                                  ESP_LOGI("xgimi_bluedroid", "New unique signature target: %s", token_hex);
                               }
                           }
+                      }
+                      
+                      // 4. PROCESS MATCH LOGIC EXCLUSIVELY VIA CONTIGUOUS BUFFERS
+                      if (is_match) {
+                          id(sniffer_hit_counter)++;
+                          ESP_LOGI("xgimi_bluedroid", "Match count: %d for Token: %s", id(sniffer_hit_counter), token_hex);
+                          
+                          if (id(sniffer_hit_counter) >= 5) {
+                              if (len >= 15) {
+                                  uint8_t *tail_ptr = adv + (len - 15);
+                                  
+                                  if (std::memcmp(tail_ptr, id(active_wake_token), 15) == 0) {
+                                      ESP_LOGD("xgimi_bluedroid", "Token matches active_wake_token. Skipping write.");
+                                      
+                                      esp_ble_gap_stop_scanning();
+                                      esp_ble_gap_register_callback(nullptr);
+                                      
+                                      id(flash_led_custom).execute(4, 200, 0.0, 1.0, 0.0);
+                                      id(indicator_led)->turn_off();
+                                      id(display_show).stop();
+                                      id(display_show).execute(false, "Token Recognized", "Matches", "Existing");
+                                      
+                                      id(sniffer_status)->publish_state(false);
+                                      id(xgimi_sniffer_switch).publish_state(false);
+                                      id(sniffing_sequence).stop(); 
+                                      return;
+                                  }
+                                  
+                                  // HEAP SAFE: Instantly commit raw bytes to memory structures
+                                  std::memcpy(id(active_wake_token), tail_ptr, 15);
+                                  std::memcpy(id(learned_wake_token), tail_ptr, 15);
+                                  global_preferences->sync(); 
+                                  
+                                  std::vector<uint8_t> active_token_vector(id(active_wake_token), id(active_wake_token) + 15);
+                                  id(xgimi_remote_controller)->set_wake_token(active_token_vector);
+                                  
+                                  esp_ble_gap_stop_scanning();
+                                  esp_ble_gap_register_callback(nullptr);
+                                  
+                                  // OPTIMIZED: Format directly into a flat fixed stack scratchpad 
+                                  char ui_buf[32];
+                                  std::memset(ui_buf, 0, sizeof(ui_buf));
+                                  snprintf(ui_buf, sizeof(ui_buf), 
+                                           "%02X %02X %02X %02X %02X...", 
+                                           tail_ptr[0], tail_ptr[1], tail_ptr[2], tail_ptr[3], tail_ptr[4]);
+
+                                  id(flash_led_custom).execute(8, 200, 0.0, 1.0, 0.0);
+                                  id(indicator_led)->turn_off();
+                                  id(display_show).stop();
+                                  
+                                  // ZERO HEAP CHURN: Pass the array pointer directly into string parameter
+                                  id(display_show).execute(false, std::string(ui_buf), "Storing Token", "Wait 5 sec");
+                                  
+                                  id(sniffer_status)->publish_state(false);
+                                  id(xgimi_sniffer_switch).publish_state(false);
+                                  id(sniffing_sequence).stop(); 
+                                  return;
+                                  
+                              }
+                          }
+                      } else {
+                          // Copy strings via explicitly bounded safe flat allocations
+                          char* cand_dest = id(sniffer_candidate_token).data();
+                          size_t dest_max = id(sniffer_candidate_token).size();
+                          std::strncpy(cand_dest, token_hex, dest_max - 1);
+                          cand_dest[dest_max - 1] = '\0';
+                          
+                          id(sniffer_hit_counter) = 1;
+                          ESP_LOGI("xgimi_bluedroid", "New unique signature target: %s", token_hex);
                       }
                   }
               }
@@ -1157,23 +1171,22 @@ interval:
             lambda: 'return flash_hydration_complete;'
           then:
             - lambda: |-
-                // Pre-allocated static storage block prevents heap fragmentation passes
-                static std::vector<std::string> string_cache;
-                string_cache.clear();
-                string_cache.reserve(factory_count + MAX_LEARNED_PROFILES);
-          
-                char buf[128]; // Sized array buffer
-                int factory = static_cast<int>(factory_count);
-          
-                // 1. CHIP RECOVERY PATH: Look up factory strings instantly from our global flash array
+                // 1. STACK & STATIC PERSISTENCE: Allocate fixed memory boundaries upfront.
+                // This completely prevents runtime heap allocations or vector re-growing.
+                constexpr size_t TOTAL_SLOTS = 13 + 3; // factory_count + MAX_LEARNED_PROFILES
+                static char option_strings[TOTAL_SLOTS][64]; 
+                static const char* permanent_pointer_matrix[TOTAL_SLOTS];
+
+                int factory = 13; // Hardcoded fallback match to your factory_count ceiling specs
+
+                // 2. CHIP RECOVERY PATH: Map hardcoded profile choices cleanly into pre-allocated memory
                 for (int i = 0; i < factory; i++) {
-                  std::memset(buf, 0, sizeof(buf));
-                  snprintf(buf, sizeof(buf), "%d  internal  (%s)", i, factory_names[i]);
-                  string_cache.push_back(std::string(buf));
+                  snprintf(option_strings[i], sizeof(option_strings[i]), "%d  internal  (%s)", i, factory_names[i]);
+                  permanent_pointer_matrix[i] = option_strings[i];
                 }
-          
-                // 2. NVS PROFILE PATH: Inspect user-learned tracks via localized storage references
-                for (uint16_t k = 0; k < MAX_LEARNED_PROFILES; k++) {
+
+                // 3. NVS PROFILE PATH: Read custom profile strings directly out of NVRAM slots
+                for (uint16_t k = 0; k < 3; k++) {
                   size_t custom_idx = factory + k;
                   uint64_t slot_nvs_key = 1948204712ULL + k;
                   auto pref_obj = esphome::global_preferences->make_preference<FlashStoredProfile>(slot_nvs_key);
@@ -1181,51 +1194,44 @@ interval:
                   static FlashStoredProfile flash_p;
                   std::memset(&flash_p, 0, sizeof(flash_p));
                   
-                  std::memset(buf, 0, sizeof(buf));
                   if (pref_obj.load(&flash_p) && flash_p.total_keys > 0 && std::strlen(flash_p.profile_name) > 0) {
-                    snprintf(buf, sizeof(buf), "%d  custom    (%s)", (int)custom_idx, flash_p.profile_name);
+                    snprintf(option_strings[custom_idx], sizeof(option_strings[custom_idx]), "%d  custom    (%s)", (int)custom_idx, flash_p.profile_name);
                   } else {
-                    snprintf(buf, sizeof(buf), "%d  custom    (slot %d)", (int)custom_idx, (int)k);
+                    snprintf(option_strings[custom_idx], sizeof(option_strings[custom_idx]), "%d  custom    (slot %d)", (int)custom_idx, (int)k);
                   }
-                  string_cache.push_back(std::string(buf));
+                  permanent_pointer_matrix[custom_idx] = option_strings[custom_idx];
                 }
-          
-                // Restore runtime workspace configuration cleanly for the active layout index
+
+                // 4. RESTORE ACTIVE WORKSPACE LAYOUT IN COLD MEMORY 
                 int current_boot_layout_idx = id(active_remote_profile);
                 load_profile_to_workspace(current_boot_layout_idx);
-          
-                // Reconstruct native pointer tables array smoothly
-                static const char* permanent_pointer_matrix[32]; // Fixed size boundary explicit declaration
-                size_t total_items = string_cache.size();
-                if (total_items > 32) total_items = 32;
-          
-                for (size_t i = 0; i < total_items; i++) {
-                  permanent_pointer_matrix[i] = string_cache[i].c_str();
-                }
-          
-                struct FixedVectorLayout {
+
+                // 5. MEMORY LAYOUT TRICKERY: Spoof an esphome::FixedVector using our contiguous array pointers
+                struct FakeVectorLayout {
                   const char* const* data;
                   size_t size;
                   size_t capacity;
                 };
-          
-                FixedVectorLayout fake_vector;
+
+                FakeVectorLayout fake_vector;
                 fake_vector.data = permanent_pointer_matrix;
-                fake_vector.size = total_items;
-                fake_vector.capacity = total_items;
-          
+                fake_vector.size = TOTAL_SLOTS;
+                fake_vector.capacity = TOTAL_SLOTS;
+
+                // Safely cast our contiguous fake layout struct directly into the framework expectation
                 const auto* native_vector_ptr = reinterpret_cast<const esphome::FixedVector<const char*>*>(&fake_vector);
                 id(ir_profile_slot_selector).traits.set_options(*native_vector_ptr);
                 
+                // 6. SAFE STATE PUBLISHING
                 int active_idx = id(selected_profile_slot);
-                if (active_idx >= 0 && active_idx < (int)total_items) {
-                  id(ir_profile_slot_selector).publish_state(string_cache[active_idx]);
-                } else if (!string_cache.empty()) {
-                  id(ir_profile_slot_selector).publish_state(string_cache[0]);
+                if (active_idx >= 0 && active_idx < (int)TOTAL_SLOTS) {
+                  id(ir_profile_slot_selector).publish_state(option_strings[active_idx]);
+                } else {
+                  id(ir_profile_slot_selector).publish_state(option_strings[0]);
                 }
 
-                // Push initial text sensor telemetry state cleanly
-                static char dropdown_sync_buf[128]; // Sized array buffer
+                // 7. TELEMETRY SYNCHRONIZATION
+                static char dropdown_sync_buf[64];
                 const char* final_kind = (current_boot_layout_idx < factory) ? "internal" : "custom";
                 snprintf(dropdown_sync_buf, sizeof(dropdown_sync_buf), "idx=%d  %s  [%s]",
                          current_boot_layout_idx,
@@ -1233,7 +1239,7 @@ interval:
                          final_kind);
                 id(ir_active_profile_ts).publish_state(dropdown_sync_buf);
 
-                ESP_LOGI("custom_select", "Select dropdown successfully populated with %d runtime layouts!", (int)total_items);
+                ESP_LOGI("custom_select", "Select dropdown optimized safely without any heap allocations!");
                 id(selectRepopulated) = true;
                 
             - component.suspend: dynamic_select_hydration_timer
