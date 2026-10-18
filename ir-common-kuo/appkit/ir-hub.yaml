@@ -1202,37 +1202,36 @@ script:
             
               id(action_string).assign(found_cmd->action_string);
               std::string cmd_name = found_cmd->action_string;
-            
-              // INDEPENDENT CLICK SPLITTING LAYER
-              // If the same key is hit again after a quiet window (>130ms), force-terminate 
-              // the old hold state programmatically before executing the new down stroke.
+              
+              // 1. REINFORCED SYSTEM DEBOUNCE: Enforce global time boundaries across ALL key styles
+              uint32_t delta_press = now - id(last_ir_press);
+              bool is_system_key = (cmd_name == "macro_record" || cmd_name == "macro_play");
+              
+              if (is_system_key && delta_press < 450) {
+                ESP_LOGD("IR_HUB", "Debounce shield active: Absorbed duplicate system key frame burst.");
+                return; 
+              } else if (!is_system_key && delta_press < 50) {
+                return;
+              }
+              
               if (id(global_cached_command) == ir_command) {
                 if (now - id(global_last_processed_time) > 130) {
                   ESP_LOGD("IR_HUB", "Quiet gap detected (%ums). Splitting sequential clicks cleanly.", (unsigned int)(now - id(global_last_processed_time)));
-                  
-                  // Programmatically fire the release edge for the previous click
-                  id(ir_map_processor).execute(ir_command, KEY_EVENT_UP); // 2 = UP
-                  
-                  // Reset tracking variables to guarantee a fresh DOWN edge below
+                  id(ir_map_processor).execute(ir_command, KEY_EVENT_UP); 
                   id(global_cached_command) = 0;
                   id(global_is_holding) = false;
                 }
               }
-
+              
               if (id(global_cached_command) != ir_command) {
-                bool is_system_key = (cmd_name == "macro_record" || cmd_name == "macro_play");
-                if (!is_system_key) {
-                  uint32_t delta_press = now - id(last_ir_press);
-                  if (delta_press < 50) return;
-                }
                 id(last_ir_press) = now;
-            
+              
                 id(global_cached_command) = ir_command;
                 id(global_initial_press_time) = now;
                 id(global_last_processed_time) = now;
                 
-                id(ir_map_processor).execute(ir_command, KEY_EVENT_DOWN); // 0 = DOWN
-              } 
+                id(ir_map_processor).execute(ir_command, KEY_EVENT_DOWN); 
+              }
               else {
                 id(global_is_holding) = true;
                 id(ir_map_processor).execute(ir_command, KEY_EVENT_HOLDING); // 1 = HOLDING / REPEAT
