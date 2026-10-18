@@ -92,18 +92,18 @@ Supplied board files are listed in descending order of author preference for use
 
 | | |
 | :--- | :--- |
-| board-esp32-c3-0.42-OLED.yaml      | lowest cost, good board with OLED |
+| board-esp32-c3-0.42-OLED.yaml      | Lowest cost, good board with OLED |
 | board-lafvintech-c6-lcd-1.47.yaml  | low cost, good board with LCD. Ample heap space |
-| board-esp32-c6-wroom-1.yaml        | ample heap. Add 0.9 inch i2c OLED display |
-| board-waveshare-s3-lcd-1.47B.yaml  | requires IR sensor WITHOUT LED (VS1838B) |
-| board-heltec-hiletgo-s3-0.96-OLED-v3.yaml | needs special cable for logging |
+| board-esp32-c6-wroom-1.yaml        | Add 0.9 inch i2c OLED display. Works well but add display |
+| board-waveshare-s3-lcd-1.47B.yaml  | Requires IR sensor WITHOUT LED (VS1838B) |
+| board-heltec-hiletgo-s3-0.96-OLED-v3.yaml | Needs special cable for logging |
 | board-m5stack-pico-d4-atom-lite.yaml | No-Solder. Needs grove IR and i2c OLED display |
-| board-hosyond-s3-lcd-3.5-touch.yaml | large LCD screen |
-| board-waveshare-c6-lcd-1.47.yaml | large LCD screen |
-| board-waveshare-s3-touch-lcd-2.8.yaml |  LCDlarge screen |
-| board-ideaspark-esp32-classic-OLED.yaml | usb-micro cable, ltd heap, noisy IR |
-| board-ideaspark-esp32-classic-lcd-1.14.yaml | USB-c to USB-A cable to flash. Ltd heap |
-| board-m5stick-S3-grove-IR.yaml | works ONLY WITH EXTERNAL grove IR sensor |
+| board-hosyond-s3-lcd-3.5-touch.yaml | Large LCD screen |
+| board-waveshare-s3-touch-lcd-2.8.yaml |  Large LCD screen |
+| board-waveshare-c6-lcd-1.47.yaml | LCD screen |
+| board-ideaspark-esp32-classic-OLED.yaml | USB-micro cable needed, Limited heap, noisy IR |
+| board-ideaspark-esp32-classic-lcd-1.14.yaml | USB-c to USB-A cable to flash. Limited heap |
+| board-m5stick-S3-grove-IR.yaml | NOT RECOMMENDED. WORKS ONLY WITH EXTERNAL grove IR sensor |
 
 Look in the board file for actual GPIO pins for IR receiver and optional i2c display
   
