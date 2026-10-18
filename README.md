@@ -85,10 +85,10 @@ These "factory" IR profiles have known working IR code sets ...
 | **Panasonic** | Panasonic projectors. WIP IR mapping |
 
 
-## ESP Board Definition Packages
-ESP32 boards are defined in ir-common-kuo/ as board.yaml files. These board files contain board specific information used to create the translator firmware. Several board types are supplied. You can also create your "board" file to support a new ESP32 board type or to customize GPIO assignments.
+## Supported ESP Boards
+ESP32 boards are defined in ir-common-kuo/ as board.yaml files. These board files contain board specific information used to create the translator firmware. Several board types are supported. You can also create your "board" file to support a new ESP32 board type or to customize GPIO assignments.
 
-Supplied board files are for ESP32 boards listed in descending order of author preference for use as IR translator ...
+Supplied board files are listed in descending order of author preference for use as IR translator ...
 
 * board-esp32-c3-0.42-OLED.yaml      # lowest cost, good board with OLED
 * board-lafvintech-c6-lcd-1.47.yaml  # low cost, good board with LCD. Ample heap space.
