@@ -1,0 +1,204 @@
+# Ideaspark ESP32 Development Board Integrated 1.14 inch ST7789 240x320 LCD
+# Will not power up board if connected to PC via USB-C to USB-C cable
+# Board lacks some config resistors on USB-C port. So, PC's fail to supply power.
+# 
+# Requires use of usb-c to usb-A cable to power up and program connected to PC.
+# Will aso work if usb-c to usb-A cable connected to PC via USB-C to USB-A adapter
+# Power up fine on USB-C power SUPPLIES with USB-C to USB-C cable
+#
+# Onboard, blue indicator LED cannot be used as indicator because it is connected
+# to GPIO2 which is also display dc_pin that continually lights up blue LED.
+#
+# RAM extremely limited. We reduce display bit depth and limit fonts to mitigate.
+# Will import and export profiles and macros despite limited heap availability.
+# 
+# Only ESP32 board I have encountered that maintains logging through a boot cycle.
+#
+# Overall, a usable but definitely less desirable board option.
+ 
+# ============= BEGIN Configuration Options KUO ==========
+
+substitutions:
+  pin_ir_receiver:   GPIO16 # (RX2)
+  pin_indicator_LED: GPIO17 # (TX2) use external LED. On board LED conflicts with display dc_pin
+  pin_action_btn:    GPIO0  # use boot button to start actions
+  pin_action_btn_pullup: true
+  wifi_tx_power: "15dB"
+
+# Core Architecture Declaration
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    
+# ============= END Configuration Options KUO ==========
+
+esphome:
+  on_boot:
+    # 800.0f runs BEFORE the display (400.0f) initializes, giving us structural control
+    - priority: 800.0
+      then:
+        - delay: 2.0s  # Give delay to allow physical power lines time to stabilize
+
+    - priority: -100 # 4. Wait until the very end of the boot sequence when it is safe
+      then:
+        - light.turn_on:
+            id: display_backlight
+            brightness: 0.5
+            
+            
+globals:
+    # ======= myDisplay display globals
+  - id: myDisplay_line1
+    type: std::string  
+    restore_value: no
+    initial_value: ''
+
+  - id: myDisplay_line2
+    restore_value: no
+    type: std::string  
+    initial_value: ''
+    
+  - id: myDisplay_line3
+    restore_value: no
+    type: std::string  
+    initial_value: ''
+
+switch:
+  - platform: gpio # indicator LED that lights up when sniffing
+    id: indicator_led
+    pin:
+      number: ${pin_indicator_LED}
+      inverted: true
+
+output:
+  - platform: ledc
+    pin: 
+      number: GPIO32
+      mode: OUTPUT        # Restores standard pushing power for the backlight circuit
+    id: backlight_pwm
+    frequency: 1000Hz     # Explicitly sets frequency for ESP-IDF stability
+    min_power: 0.0
+    max_power: 0.5
+
+light: 
+  - platform: monochromatic  
+    name: "Display Backlight" # display backlight  
+    id: display_backlight
+    output: backlight_pwm
+    default_transition_length: 0.5s
+    gamma_correct: 0          
+    internal: true
+    
+                   
+    
+script:
+  - id: flash_led_custom
+    parameters:
+      count: int         # Number of flashes
+      dwell: int         # duration of flash in msec
+      red: float         # Ignored on Ideaspark, kept for API matching
+      green: float       # Ignored on Ideaspark, kept for API matching
+      blue: float        # Ignored on Ideaspark, kept for API matching
+    mode: queued
+    then:
+      - repeat:
+          count: !lambda "return count;"
+          then:
+            # --- TURN BINARY LED ON ---
+            - switch.turn_on: indicator_led
+            - delay: !lambda "return dwell;"
+  
+            # --- TURN BINARY LED OFF ---
+            - switch.turn_off: indicator_led
+            - delay: !lambda "return dwell;"
+            
+  - id: turn_led_on_custom
+    parameters:
+      red: float         # Ignored on Ideaspark, kept for API matching
+      green: float       # Ignored on Ideaspark, kept for API matching
+      blue: float        # Ignored on Ideaspark, kept for API matching
+      brightness: float  # Ignored on Ideaspark, kept for API matching
+    mode: single
+    then:
+      - switch.turn_on: indicator_led
+
+  - id: turn_led_off_custom
+    mode: single
+    then:
+      - switch.turn_off: indicator_led
+                    
+# ========  Display Specific Implementation ========
+
+font:
+  - file: "gfonts://Roboto"
+    id: my_fontMedium
+    size: 20
+    glyphs: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 :.,_[]*+-()=/!"
+    
+spi:
+  clk_pin: GPIO18
+  mosi_pin: GPIO23
+
+# Master Display Component Configuration
+display:
+  - platform: mipi_spi
+    id: myDisplay
+    model: st7789v
+    color_depth: 8       # <--- reduce ram usage
+    dimensions:
+      width: 135
+      height: 240
+      offset_width: 52
+      offset_height: 40
+      pad_width: 53
+      pad_height: 40
+    rotation: 270  
+    invert_colors: true
+    cs_pin: GPIO15
+    reset_pin: GPIO4
+    dc_pin: GPIO2
+    update_interval: 0.3s
+    data_rate: 40MHz  
+      
+    on_page_change:
+      - then:
+          - if:
+              condition:
+                lambda: 'return to == id(blank_page);'
+              then:
+                - light.turn_on:
+                    id: display_backlight
+                    brightness: 0%
+              else:
+                - light.turn_on:
+                    id: display_backlight
+                    brightness: 50%
+
+
+    pages:
+      - id: active_page_std
+        lambda: |-
+            auto L1color = Color(255, 100, 0);
+            auto L2color = Color(255, 120, 0);
+            auto L3color = Color(255, 150, 0);
+
+            it.print(5, 20, id(my_fontMedium), L1color, id(myDisplay_line1).c_str());
+            it.print(5, 50, id(my_fontMedium), L2color, id(myDisplay_line2).c_str());
+            it.print(5, 80, id(my_fontMedium), L3color,  id(myDisplay_line3).c_str());
+
+      - id: active_page_small
+        lambda: |-
+            auto L1color = Color(255, 130, 0);
+            auto L2color = Color(255, 130, 0);
+            auto L3color = Color(255, 130, 0);
+            
+            it.print(5, 20, id(my_fontMedium), L1color, id(myDisplay_line1).c_str());
+            it.print(5, 50, id(my_fontMedium), L2color, id(myDisplay_line2).c_str());
+            it.print(5, 80, id(my_fontMedium), L3color, id(myDisplay_line3).c_str());
+
+      - id: blank_page
+        lambda: |-
+          // Leaving lambda completely blank turns all pixels off safely
+
