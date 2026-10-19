@@ -653,9 +653,13 @@ Select your guest or IOT network. Then enter password for your network.
 
 <img width="900" alt="Screenshot 2026-10-18 at 21 48 27" src="https://github.com/user-attachments/assets/e6c386f2-038d-48c4-a76a-77695b545ab4" />
 
-Once you have entered credentials for your network, the ESP board will shut down its AP and attempt connection to your guest wifi network. If connection is successful, its display will show the <ip_address> it has been assigned on your network.
+
+
+Once you have entered credentials for your network, the ESP board will shut down its AP and attempt connection to your guest wifi network. If connection is successful, its display will show the <ip_address> it has been assigned on your network. The SSID and password survives re-flashing new versions of translator firmware. The board will remember your network credentials until the board is completely erased. 
 
 <img width="400" height="496" alt="ipofboard" src="https://github.com/user-attachments/assets/10b8b6e5-f6b4-4031-b551-87ae2fef7e06" />
+
+
 
 ### Using Translator Webpage
 
@@ -665,14 +669,17 @@ NB: On many boards, the first connection attempt after provisioning will fail. S
 
 ###Profile Management
 <img width="350" height="177" alt="top webpage" src="https://github.com/user-attachments/assets/84b86ab8-ced4-493a-b7e3-df3f1fec7765" />
+
 Top portion of web page allows selection of active profile, downloading of selected profile and uploading of a profile.csv file to one of the three custom profile slots
 
 ###Testing Console
 <img width="350" height="240" alt="Testing Console" src="https://github.com/user-attachments/assets/d1985627-dbc8-4950-9831-b0194bf10135" />
+
 Testing Console lets you activate buttons much as though using your IR remote control. The main difference being you cannot long press web buttons.
 
 ###Macro Management
 <img width="350" height="247" alt="macro section" src="https://github.com/user-attachments/assets/048571b0-7e2a-4772-9d7c-57b821753246" />
+
 Macro section lets you download and upload your entire macro set.
 
 Your macro and profile csv file can be edited in a text editor before re-uploading. If you edit the macro csv file, be mindful of format, spaces and capitalization. 
@@ -683,6 +690,7 @@ Your macro and profile csv file can be shared with other users for upload onto t
 
 ###System Diagnostics
 <img width="350" alt="Screenshot 2026-10-18 at 22 37 39" src="https://github.com/user-attachments/assets/89aa6389-1958-479e-ae11-c1c291d31e19" />
+
 System Diagnostics show vital information about your translator board. 
 
 The most important items are Free Heap and Max Block. Those indicate how much RAM your board has available to carry out actions. Depending on how severely your heap is fragmented, max block may become much smaller than total Free Heap. Translator software has been written to minimize increases in heap fragmentation over time. If Max Block gets smaller than requested memory, the board will crash and reboot. That will take the translator offline for a few seconds. 
