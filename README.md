@@ -667,17 +667,39 @@ Once, provisioned on your translator's web page can be accessed at http://<ip_ad
 
 NB: On many boards, the first connection attempt after provisioning will fail. Should that occur, reboot the board once and allow it to reconnect to your network. Thereafter, connection to the web page should work.
 
-###Profile Management
+#### Profile Management
 <img width="350" height="177" alt="top webpage" src="https://github.com/user-attachments/assets/84b86ab8-ced4-493a-b7e3-df3f1fec7765" />
 
 Top portion of web page allows selection of active profile, downloading of selected profile and uploading of a profile.csv file to one of the three custom profile slots
 
-###Testing Console
+_Active Profile_ is the profile that is currently being used for IR mapping to Xgimi bluetooth.<br><br>
+
+_Select Target Profile Slot:_ sets which profile you want to work with.<br><br>
+
+_Activate Selected Profile_ sets selected profile as the active profile for IR mapping.<br><br>
+
+_Download CSV_ downloads selected profile as a CSV file.<br><br>
+
+_Choose file_ lets you chose a CSV to upload. You should have target slot set to one of the custom memories for upload. If you attempt to upload to a factor slot, it will instead be uploaded into memory slot 0.<br><br>
+
+_Upload CSV_ performs the actual upload. Click this after you have set a target profile slot into which to upload.<br><br>
+
+Here is a sample CSV.
+The META row is slot#, profile name, protocol, device address, token_clear_arming_code, token_clear_fire_code
+
+The KEY rows are command, xgimi-action, button-name-on-original-remote
+
+<img width="642" height="1404" alt="profile example" src="https://github.com/user-attachments/assets/d8bbff6b-77b0-40bd-b4da-d0d776dc4639" />
+
+In addition to letting you save and restore learned profiles, you can also override a factory profile. To do so, download a factory profile, edit it and uploading into a custom slot. During profile setting (via double click of boot button), the system searches for a match starting within custom profiles in reverse order. It will find your modified version first and use that instead of a matching factory profile. Alternatively, select and activate the profile you wish to use.
+
+
+#### Testing Console
 <img width="350" height="240" alt="Testing Console" src="https://github.com/user-attachments/assets/d1985627-dbc8-4950-9831-b0194bf10135" />
 
 Testing Console lets you activate buttons much as though using your IR remote control. The main difference being you cannot long press web buttons.
 
-###Macro Management
+#### Macro Management
 <img width="350" height="247" alt="macro section" src="https://github.com/user-attachments/assets/048571b0-7e2a-4772-9d7c-57b821753246" />
 
 Macro section lets you download and upload your entire macro set.
@@ -688,7 +710,7 @@ Editing of profile csv files allows power users to override bluetooth commands w
 
 Your macro and profile csv file can be shared with other users for upload onto their translator boards. 
 
-###System Diagnostics
+#### System Diagnostics
 <img width="350" alt="Screenshot 2026-10-18 at 22 37 39" src="https://github.com/user-attachments/assets/89aa6389-1958-479e-ae11-c1c291d31e19" />
 
 System Diagnostics show vital information about your translator board. 
@@ -1098,34 +1120,6 @@ Macro record and playback
 Bluetooth raw code support (BKEY, BCON) via CSV download/upload
 AWOL Aethrion profile verified 
 
-
-#Webserver
-This project includes a webserver which can be reached at your ESP32 board's IP address after it has been provisioned onto your local network via the usual Home Assistant device captive AP setup.
-
-Credentials for webserver are admin / fallback_ap_password from your secrets file
-
-<img width="1088" height="1704" alt="Screenshot 2026-09-27 at 20 33 39" src="https://github.com/user-attachments/assets/724df177-cf7b-4109-9097-aed48b06bb22" />
-
-_Active Profile_ is the profile that is currently being used for IR mapping to Xgimi bluetooth.<br><br>
-
-_Select Target Profile Slot:_ sets which profile you want to work with.<br><br>
-
-_Activate Selected Profile_ sets selected profile as the active profile for IR mapping.<br><br>
-
-_Download CSV_ downloads selected profile as a CSV file.<br><br>
-
-_Choose file_ lets you chose a CSV to upload. You should have target slot set to one of the custom memories for upload. If you attempt to upload to a factor slot, it will instead be uploaded into memory slot 0.<br><br>
-
-_Upload CSV_ performs the actual upload. Click this after you have set a target profile slot into which to upload.<br><br>
-
-Here is a sample CSV.
-The META row is slot#, profile name, protocol, device address, token_clear_arming_code, token_clear_fire_code
-
-The KEY rows are command, xgimi-action, button-name-on-original-remote
-
-<img width="642" height="1404" alt="profile example" src="https://github.com/user-attachments/assets/d8bbff6b-77b0-40bd-b4da-d0d776dc4639" />
-
-In addition to letting you save and restore learned profiles, you can also override a factory profile. To do so, download a factory profile, edit it and uploading into a custom slot. During profile setting, the system searches for a match starting within custom profiles in reverse order. It will find your modified version first and use that instead of a matching factory profile.
 
 
 
