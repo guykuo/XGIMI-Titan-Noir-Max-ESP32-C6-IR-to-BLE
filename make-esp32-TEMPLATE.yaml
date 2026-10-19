@@ -75,7 +75,9 @@ wifi:
 #  networks: []
   reboot_timeout: 13h
   output_power: ${wifi_tx_power}
-  fast_connect: true
+  # Crucial for stability on multi-node or mesh routers
+  power_save_mode: LIGHT   
+  fast_connect: false
   power_save_mode: NONE
   ap:
     ssid: "${ble_remote_name}"
@@ -97,7 +99,7 @@ esphome:
   comment: ESP32 with XGIMI BLE Translator
   project:
     name: xgimi.titan-noir-esp32-ir-kuo
-    version: 26.10.19.0400
+    version: 26.10.19.0930
     
   includes:
     - <sstream>
