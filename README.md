@@ -641,7 +641,7 @@ I strongly recommend that ESP32 Home devices NOT be placed on your main wifi net
 
 In this example, the translator board has been named _C3 Solo._ Look in available networks and eventually you should see a network of the same name. Connect to that provisioning network. It may take a minute for the provisioning network to appear because the board will first attempt to connect to a local wifi network before it gives up and starts its AP provisioning network. The provisioning network is only up briefly before the next cycle of network connection attempt repeats. So, you may need to attempt connection to AP network several times before being successful
 
-<img width="700" alt="c3 solo network" src="https://github.com/user-attachments/assets/51a37185-dc85-4a1c-b1b7-7ad1622bb35e" />
+<img width="300" alt="c3 solo network" src="https://github.com/user-attachments/assets/51a37185-dc85-4a1c-b1b7-7ad1622bb35e" />
 
 Password for the AP network is the fallback_ap_password from your secrets.yaml file. Don't include the quotes.
 
@@ -657,7 +657,7 @@ Select your guest or IOT network. Then enter password for your network.
 
 Once you have entered credentials for your network, the ESP board will shut down its AP and attempt connection to your guest wifi network. If connection is successful, its display will show the <ip_address> it has been assigned on your network. The SSID and password survives re-flashing new versions of translator firmware. The board will remember your network credentials until the board is completely erased. 
 
-<img width="400" height="496" alt="ipofboard" src="https://github.com/user-attachments/assets/10b8b6e5-f6b4-4031-b551-87ae2fef7e06" />
+<img width="400"  alt="ipofboard" src="https://github.com/user-attachments/assets/10b8b6e5-f6b4-4031-b551-87ae2fef7e06" />
 
 
 
@@ -668,7 +668,7 @@ Once, provisioned on your translator's web page can be accessed at http://<ip_ad
 NB: On many boards, the first connection attempt after provisioning will fail. Should that occur, reboot the board once and allow it to reconnect to your network. Thereafter, connection to the web page should work.
 
 #### Profile Management
-<img width="700" height="177" alt="top webpage" src="https://github.com/user-attachments/assets/84b86ab8-ced4-493a-b7e3-df3f1fec7765" />
+<img width="700"  alt="top webpage" src="https://github.com/user-attachments/assets/84b86ab8-ced4-493a-b7e3-df3f1fec7765" />
 
 Top portion of web page allows selection of active profile, downloading of selected profile and uploading of a profile.csv file to one of the three custom profile slots
 
@@ -689,18 +689,18 @@ The META row is slot#, profile name, protocol, device address, token_clear_armin
 
 The KEY rows are command, xgimi-action, button-name-on-original-remote
 
-<img width="642" height="1404" alt="profile example" src="https://github.com/user-attachments/assets/d8bbff6b-77b0-40bd-b4da-d0d776dc4639" />
+<img width="642" alt="profile example" src="https://github.com/user-attachments/assets/d8bbff6b-77b0-40bd-b4da-d0d776dc4639" />
 
 In addition to letting you save and restore learned profiles, you can also override a factory profile. To do so, download a factory profile, edit it and uploading into a custom slot. During profile setting (via double click of boot button), the system searches for a match starting within custom profiles in reverse order. It will find your modified version first and use that instead of a matching factory profile. Alternatively, select and activate the profile you wish to use.
 
 
 #### Testing Console
-<img width="700" height="240" alt="Testing Console" src="https://github.com/user-attachments/assets/d1985627-dbc8-4950-9831-b0194bf10135" />
+<img width="700"  alt="Testing Console" src="https://github.com/user-attachments/assets/d1985627-dbc8-4950-9831-b0194bf10135" />
 
 Testing Console lets you activate buttons much as though using your IR remote control. The main difference being you cannot long press web buttons.
 
 #### Macro Management
-<img width="700" height="247" alt="macro section" src="https://github.com/user-attachments/assets/048571b0-7e2a-4772-9d7c-57b821753246" />
+<img width="700"  alt="macro section" src="https://github.com/user-attachments/assets/048571b0-7e2a-4772-9d7c-57b821753246" />
 
 Macro section lets you download and upload your entire macro set.
 
