@@ -146,25 +146,11 @@ struct UniversalBindingRegistry {
 // ====================================================================
 // ⚡ HIGH-SPEED MACRO CSV TRANSLATION STRINGS
 // ====================================================================
-inline const char* type_to_str(uint8_t type) {
-    if (type == 0) return "KEYBOARD";
-    if (type == 1) return "CONSUMER";
-    return "TOKEN";
-}
-
-inline uint8_t str_to_type(const std::string& str) {
-    if (str == "KEYBOARD") return 0;
-    if (str == "CONSUMER") return 1;
-    return 2;
-}
 
 inline const char* state_to_str(uint8_t state) {
     return (state == 0) ? "DOWN" : "UP";
 }
 
-inline uint8_t str_to_state(const std::string& str) {
-    return (str == "DOWN") ? 0 : 2;
-}
 
 // ====================================================================
 // STATIC HARDCODED FALLBACK XGIMI HID TRANSLATION MAP
@@ -1330,16 +1316,6 @@ inline void load_profile_to_workspace(int idx) {
 }
 
 
-
-// Legacy bridge function placeholders required by older initialization clocks
-inline void load_saved_flash_profiles() {
-  flash_hydration_complete = true;
-}
-
-inline void link_hardware_buttons() {}
-
-
-
 // ====================================================================
 // 8. HEAP-SAFE HIGH-EFFICIENCY FLAT CSV EXPORT STREAM GENERATOR
 // ====================================================================
@@ -1744,8 +1720,6 @@ inline void execute_action_pipeline_worker(const std::string& cmd_name, int even
             esphome::id(macro_play_hotkey_timeout_watcher).stop(); 
 
             if (prefix_slot != 255) {
-                esphome::id(debounce_safety_lock).value() = true;
-                esphome::id(release_debounce_lock).execute(); 
                 ESP_LOGI("MACRO_WORKFLOW", "Playback Hotkey Matched! Launching Macro Slot Sequence: %d", prefix_slot);
                 esphome::id(play_universal_shared_macro).execute(prefix_slot);
                 return;
@@ -2183,7 +2157,7 @@ inline esp_err_t root_handler(httpd_req_t *req) {
 </div>
 
 <div class="box">
-  <h3>Remote Interaction Testing Console</h3>
+  <h3>Control Console</h3>
   <div class="grid-container">
     <!-- Row 1: System Power Management Keys (Using Span-2 for alignment in 4 columns) -->
     <button class="btn-test pwr" onclick="sendClick('power_on')">POWER ON</button>
@@ -2262,7 +2236,7 @@ inline esp_err_t root_handler(httpd_req_t *req) {
     // --------------------------------------------------------------------
     httpd_resp_send_chunk(req, R"rawliteral(
 <div class="box">
-  <h3>Macro Storage Management</h3>
+  <h3>Macro Management</h3>
   <div style="margin-bottom:15px;">
     <div style="margin-bottom:12px;">
       <a href="/export_macro" class="btn" style="display:block; background:#1f6feb; text-decoration:none;">Download Macros</a>
@@ -2542,7 +2516,6 @@ inline esp_err_t import_handler(httpd_req_t *req) {
     }
 
     if (import_profile_from_csv(clean_csv)) {
-        link_hardware_buttons();
         esphome::id(setup_ir_receiver_for_current_profile).execute();
         
         int final_custom_slot = target_slot - (int)factory_count;
@@ -2552,7 +2525,9 @@ inline esp_err_t import_handler(httpd_req_t *req) {
         } else {
             esphome::id(active_remote_profile).value() = target_slot;
         }
-        
+        //MARK PROFILE AS STORED FOR BOOT GUARDIAN
+        esphome::id(profile_has_been_stored).value() = 1; 
+
         commit_database_to_flash(final_custom_slot);
         esphome::id(display_show).execute(true, "CSV Web Uploaded!", "Profile Operational", active_profile_workspace.profile_name);
     } else {
@@ -2666,6 +2641,7 @@ inline esp_err_t export_macro_text_handler(httpd_req_t *req) {
 }
 
 // ====================================================================
+// ====================================================================
 // ZERO-HEAP IN-PLACE TEXT TOKENIZATION CSV MACRO DEPLOYMENT ENGINE
 // ====================================================================
 inline bool import_macro_from_csv(const std::string& csv_data) {
@@ -2772,7 +2748,7 @@ inline bool import_macro_from_csv(const std::string& csv_data) {
             macro_build.struct_version = CURRENT_MACRO_VERSION; 
         }
         
-        // --- 🛠️ VERIFIED: Extraction Path for 4-Column Step Arrays ---
+        // --- Extraction Path for 4-Column Step Arrays ---
         else if (cell_type == "step" || cell_type == "STEP") {
             if (active_slot == -1 || macro_build.total_steps >= MAX_MACRO_STEPS) continue;
             
@@ -2787,7 +2763,7 @@ inline bool import_macro_from_csv(const std::string& csv_data) {
             std::memcpy(pre_tmp, pre_delay_view.data(), std::min(pre_delay_view.size(), sizeof(pre_tmp) - 1));
             step.delay_before_down_ms = std::strtoul(pre_tmp, nullptr, 10);
             
-            // --- CRITICAL FIRST STEP RULE INFORCED ON WEBSERVER CAPTURES ---
+            // --- CRITICAL FIRST STEP RULE ENFORCED ON WEBSERVER CAPTURES ---
             if (macro_build.total_steps == 0) {
                 step.delay_before_down_ms = 0;
             }
@@ -2804,8 +2780,19 @@ inline bool import_macro_from_csv(const std::string& csv_data) {
         }
     }
     
+    // Save the final macro from the file streaming loop
     save_active_macro(); 
+
+    // ====================================================================
+    // CRITICAL FIX: COMMIT ALL RAM UPDATES PERMANENTLY TO FLASH
+    // ====================================================================
+    // 1. Flush the macro data structures out into NVS sectors completely
     esphome::global_preferences->sync();
+
+    // 2. Safely trigger your YAML script to lock hotkey shortcuts into NVS
+    esphome::id(save_binding_registry_to_nvs).execute();
+    // ====================================================================
+
     return true;
 }
 

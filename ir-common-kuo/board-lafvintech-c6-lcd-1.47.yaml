@@ -12,7 +12,7 @@ substitutions:
   pin_indicator_LED: GPIO8
   pin_action_btn: GPIO9 # use boot button to start actions
   pin_action_btn_pullup: true
-  wifi_tx_power: "10.0dB"
+  wifi_tx_power: "13.0dB"
 
 # Core Architecture Declaration
 

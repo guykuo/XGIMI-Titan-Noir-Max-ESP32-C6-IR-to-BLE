@@ -294,12 +294,6 @@ globals:
   - id: global_last_processed_time
     type: uint32_t
     initial_value: '0'
-  - id: global_sony_stream_time
-    type: uint32_t
-    initial_value: '0'
-  - id: global_sony_frame_count
-    type: int
-    initial_value: '0'
   - id: global_is_holding
     type: bool
     initial_value: 'false'
@@ -308,12 +302,7 @@ globals:
   - id: global_token_clear_armed
     type: bool
     initial_value: 'false'
-  - id: debounce_safety_lock
-    type: bool
-    initial_value: 'false'
-  - id: global_intercept_active
-    type: bool
-    initial_value: 'false'
+
   - id: last_ir_press
     type: uint32_t
     initial_value: '0'
@@ -724,7 +713,7 @@ script:
           // Prime the counter variables natively
           id(macro_step_counter) = 0;
 
-      - script.execute: macro_indicator_playback # 🟢 Light up solid green on playback start
+      - script.execute: macro_indicator_playback # Light up solid green on playback start
 
       - while:
           condition:
@@ -733,9 +722,19 @@ script:
               return (id(macro_step_counter) < active_recording_buffer.total_steps);
           then:
             # ============================================================
-            # USER EXPERIENCE FACTOR: DYNAMIC SCREEN PROGRESS TRACKER
+            # STEP A: CALCULATE AND WAIT FOR PRE-DELAY METRICS
             # ============================================================
             - lambda: |-
+                extern UniversalFlashMacro active_recording_buffer;
+                int idx = id(macro_step_counter);
+                id(macro_last_event_time) = active_recording_buffer.steps[idx].delay_before_down_ms;
+                ESP_LOGD("MACRO_PLAY", "Pacing Step [%d] -> Holding Pre-Delay gap budget: %u ms", idx, (unsigned int)id(macro_last_event_time));
+
+            - delay: !lambda "return id(macro_last_event_time);"
+
+            # ============================================================
+            # DYNAMIC SCREEN PROGRESS TRACKER (AT KEYDOWN)
+            # ============================================================
             - lambda: |-
                 extern UniversalFlashMacro active_recording_buffer;
                 int idx = id(macro_step_counter);
@@ -748,17 +747,6 @@ script:
                 
                 // Pushes real-time progress text and the running action string directly onto the OLED buffer
                 id(display_show)->execute(false, "Macro Playing...", step_counter_buf, std::string(step.action_string));
-
-            # ============================================================
-            # STEP A: CALCULATE AND WAIT FOR PRE-DELAY METRICS
-            # ============================================================
-            - lambda: |-
-                extern UniversalFlashMacro active_recording_buffer;
-                int idx = id(macro_step_counter);
-                id(macro_last_event_time) = active_recording_buffer.steps[idx].delay_before_down_ms;
-                ESP_LOGD("MACRO_PLAY", "Pacing Step [%d] -> Holding Pre-Delay gap budget: %u ms", idx, (unsigned int)id(macro_last_event_time));
-
-            - delay: !lambda "return id(macro_last_event_time);"
 
             # ============================================================
             # STEP B: EXECUTE KEY DOWN EDGE STROKE
@@ -862,9 +850,6 @@ script:
       - lambda: |-
           ESP_LOGI("ir_hub", "Safe flash window open. Hydrating profiles via framework preference registry...");
           
-          load_saved_flash_profiles();
-          link_hardware_buttons();
-                    
           id(setup_ir_receiver_for_current_profile).execute();
           id(ir_receiver_mode) = IR_MODE_ACTION; // Set back to Action Mode
           
@@ -1512,17 +1497,6 @@ script:
                    (int)true_hardware_index,
                    (int)active_profile.protocol,
                    to_string(active_profile.protocol)); 
-
-            
-
-  # =================================================================
-  # Automatic hardware lock release timer step
-  - id: release_debounce_lock
-    then:
-      - delay: 110ms
-      - globals.set:
-          id: debounce_safety_lock
-          value: 'false'
 
 
   # =================================================================
