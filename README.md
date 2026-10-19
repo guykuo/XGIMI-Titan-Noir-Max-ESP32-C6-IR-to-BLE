@@ -1123,7 +1123,7 @@ The META row is slot#, profile name, protocol, device address, token_clear_armin
 
 The KEY rows are command, xgimi-action, button-name-on-original-remote
 
-<img width="860" height="1400" alt="sample csv" src="https://github.com/user-attachments/assets/0b06b717-f2e2-40c2-a32b-d824baab2cb3" />
+<img width="642" height="1404" alt="profile example" src="https://github.com/user-attachments/assets/d8bbff6b-77b0-40bd-b4da-d0d776dc4639" />
 
 In addition to letting you save and restore learned profiles, you can also override a factory profile. To do so, download a factory profile, edit it and uploading into a custom slot. During profile setting, the system searches for a match starting within custom profiles in reverse order. It will find your modified version first and use that instead of a matching factory profile.
 
