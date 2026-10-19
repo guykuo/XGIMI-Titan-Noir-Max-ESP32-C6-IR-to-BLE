@@ -630,6 +630,68 @@ The translator hosts a webpage
 
 <img width="705" height="1376" alt="web page" src="https://github.com/user-attachments/assets/8dff7a25-1d22-4dae-9779-74668574ee63" />
 
+Translator web page is at http://<local-ip-address-of-esp32board>
+
+However, you must first provision your ESP32 board onto your local network via the usual ESP Home method of provisioning devices.
+
+### Provisioning ESP Home device on Local Network
+When an ESP Home device (including this translator) first boots, it attempts to connect to a local wifi network. Newly flashed devices typically do not know your network SSID or password. So, they spin up their own captive wifi network access point (AP). That AP lets you select a local network and enter network password. Thereafter, the board will connect to that local network upon boot.
+
+I strongly recommend that ESP32 Home devices NOT be placed on your main wifi network. They are not secure devices. Connect them to a separate guest or IOT (Internet of Things) network that does not permit them to create connections to your main network devices. Ideally, your main network has also been configured to allow connection TO guest network devices. That allows you to control the ESP Home device from your main network. If such a access route is not available on your home networks, you may need to connect your laptop or phone to the guest/IOT network to access its web page.
+
+In this example, the translator board has been named _C3 Solo._ Look in available networks and eventually you should see a network of the same name. Connect to that provisioning network. It may take a minute for the provisioning network to appear because the board will first attempt to connect to a local wifi network before it gives up and starts its AP provisioning network. The provisioning network is only up briefly before the next cycle of network connection attempt repeats. So, you may need to attempt connection to AP network several times before being successful
+
+<img width="350" alt="c3 solo network" src="https://github.com/user-attachments/assets/51a37185-dc85-4a1c-b1b7-7ad1622bb35e" />
+
+Password for the AP network is the fallback_ap_password from your secrets.yaml file. Don't include the quotes.
+
+Once connected you will usually be automatically shown the captive network screen. If it does not appear, open your web browser to http://192.168.4.1 to open the captive screen manually. NB: Manually going that address can sometimes show the webserver instead of the AP provisioning screen.
+
+<img width="900" alt="Screenshot 2026-10-18 at 21 47 29" src="https://github.com/user-attachments/assets/f1d4e54f-5613-4320-80d8-5190c3926f2f" />
+
+Select your guest or IOT network. Then enter password for your network.
+
+<img width="900" alt="Screenshot 2026-10-18 at 21 48 27" src="https://github.com/user-attachments/assets/e6c386f2-038d-48c4-a76a-77695b545ab4" />
+
+Once you have entered credentials for your network, the ESP board will shut down its AP and attempt connection to your guest wifi network. If connection is successful, its display will show the <ip_address> it has been assigned on your network.
+
+<img width="400" height="496" alt="ipofboard" src="https://github.com/user-attachments/assets/10b8b6e5-f6b4-4031-b551-87ae2fef7e06" />
+
+### Using Translator Webpage
+
+Once, provisioned on your translator's web page can be accessed at http://<ip_address>
+
+NB: On many boards, the first connection attempt after provisioning will fail. Should that occur, reboot the board once and allow it to reconnect to your network. Thereafter, connection to the web page should work.
+
+###Profile Management
+<img width="350" height="177" alt="top webpage" src="https://github.com/user-attachments/assets/84b86ab8-ced4-493a-b7e3-df3f1fec7765" />
+Top portion of web page allows selection of active profile, downloading of selected profile and uploading of a profile.csv file to one of the three custom profile slots
+
+###Testing Console
+<img width="350" height="240" alt="Testing Console" src="https://github.com/user-attachments/assets/d1985627-dbc8-4950-9831-b0194bf10135" />
+Testing Console lets you activate buttons much as though using your IR remote control. The main difference being you cannot long press web buttons.
+
+###Macro Management
+<img width="350" height="247" alt="macro section" src="https://github.com/user-attachments/assets/048571b0-7e2a-4772-9d7c-57b821753246" />
+Macro section lets you download and upload your entire macro set.
+
+Your macro and profile csv file can be edited in a text editor before re-uploading. If you edit the macro csv file, be mindful of format, spaces and capitalization. 
+
+Editing of profile csv files allows power users to override bluetooth commands with RKEY and RCON commands. 
+
+Your macro and profile csv file can be shared with other users for upload onto their translator boards. 
+
+###System Diagnostics
+<img width="350" alt="Screenshot 2026-10-18 at 22 37 39" src="https://github.com/user-attachments/assets/89aa6389-1958-479e-ae11-c1c291d31e19" />
+System Diagnostics show vital information about your translator board. 
+
+The most important items are Free Heap and Max Block. Those indicate how much RAM your board has available to carry out actions. Depending on how severely your heap is fragmented, max block may become much smaller than total Free Heap. Translator software has been written to minimize increases in heap fragmentation over time. If Max Block gets smaller than requested memory, the board will crash and reboot. That will take the translator offline for a few seconds. 
+
+Typically, a Max Block size > 20K is needed for continuous reliable operation. If your board shows less than 20K of Total Free, the Max Block will naturally be smaller than that. If that is the case, you have selected an ESP board that has too little RAM. 
+
+
+
+
 
 
 
