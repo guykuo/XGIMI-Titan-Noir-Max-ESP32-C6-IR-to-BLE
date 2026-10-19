@@ -614,14 +614,22 @@ On one occasion, I have seen an XTNM refuse to accept any bluetooth commands fro
 
 
 ## 9\. Macro Recording and Playback
-You can record up to 9 macros (sequences of button presses and holds) for later playback. Unlike recording and playback on most universal remotes that use a fixed inter-button delay during playback, this IR project records your cadence and attempts to play back actions with approximately the same speed and pauses you make during recording. This lets you naturally pace macro sequencess to match projector response speed. If you pause to let the projector open a menu or complete an action, the playback will simiarly pause.
+You can record up to 9 macros (sequences of button presses and holds) for later playback. Unlike recording and playback on most universal remotes that use a fixed inter-button delay during playback, this IR project records your cadence and plays back actions with approximately the same speed and pauses you made during recording. This lets you naturally pace macro sequencess to match projector response speed. If you pause to let the projector open a menu or complete an action, the playback will simiarly pause.
 
 To record a macro, press the "macro_record" button of your remote once. Then, press your sequence of buttons. Once done recording, press the "macro_record" button ONCE.
-The next button you press will be assigned the just recorded macro. The buttons that can accept a macro are the D-Pad buttons (up, down, left, right, enter) and the four shortcut buttons. Macros can be up to 16 buttons presses in length
+The next button you press will be assigned as the hotkey for your just recorded macro. 
 
-To play back a macro, press the "macro_play" button of your remote once. Then, press the button to which your macro was previously assigned. You macro sequence will play back.
+Buttons that can be assigned as hotkey are the D-Pad buttons (up, down, left, right, enter) and the four shortcut buttons. Macros can be up to 32 buttons presses in length.
 
-To erase all macros, _while you have macro recording mode on_, press and hold the BOOT button at least five seconds. 
+To play back a macro, press the "macro_play" button of your remote once. Then, press the hotkey button to which your macro was assigned. You macro sequence will play back.
+
+To erase all macros, _while you are in macro recording mode_, press and hold the BOOT button for least five seconds. 
+
+## 10\. Web Page
+The translator hosts a webpage
+
+<img width="705" height="1376" alt="web page" src="https://github.com/user-attachments/assets/8dff7a25-1d22-4dae-9779-74668574ee63" />
+
 
 
 
