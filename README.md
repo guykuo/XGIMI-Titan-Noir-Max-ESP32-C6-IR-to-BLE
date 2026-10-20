@@ -95,7 +95,7 @@ Supplied board files are listed in descending order of author preference for use
 | :--- | :--- |
 | board-esp32-c3-0.42-OLED.yaml      | Lowest cost, Good, tiny board with OLED |
 | board-lafvintech-c6-lcd-1.47.yaml  | Low cost, good board with LCD and neopixel. Ample heap space |
-| board-waveshare-c6-lcd-1.47.yaml | LCD screen | Good board with LCD and neopixel. Ample heap space |
+| board-waveshare-c6-lcd-1.47.yaml | Good board with LCD and neopixel. Ample heap space |
 | board-esp32-c6-wroom-1.yaml        | Works very well but add 0.9 inch i2c OLED display |
 | board-waveshare-s3-lcd-1.47B.yaml  | Requires IR sensor WITHOUT LED (VS1838B) |
 | board-heltec-hiletgo-s3-0.96-OLED-v3.yaml | Needs special cable for logging |
