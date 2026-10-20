@@ -56,14 +56,15 @@ Available hardware boards are in irlib-kuo/ subdirectory.
 
 
 ## IR Profiles
-This translator project has several "factory" IR profiles built-in. You and can also learn up to five new IR remote profiles if none of the factory profiles are suitable.
+This translator project has several "factory" IR profiles built-in. You and can also learn up to three custom IR remote profiles if none of the factory profiles are suitable.
 
-The "factory" IR profiles, were selected to avoid conflicts in a home theater.
-One should usually choose one that does not conflict with existing devices in your system.
+The "factory" IR profiles, were selected to be easily downloaded remote codes for universal remotes.
+If adding an Xgimi projector to a room, one should usually choose one that does not conflict with existing devices in your system 
 
-An alternative strategy is to intentionally select a projector that is already configured in your universal remote but being replaced.
-This lets the Titan Noir masquerade as the old projector without reconfiguring your universal remote. However, the old projector cannot be
-simultaneously used under masquerading strategy.
+However, if REPLACING an existing projector that is already configured in your universal remote, choosing a profile that matches your old projector is easiest strategy.
+This lets the Titan Noir masquerade as your prior projector and be instantly integrated without further reprogramming of your remote.
+
+Obviously, the old projector cannot be simultaneously used under masquerading strategy (unless you cut off its power when not in use)
 
 These "factory" IR profiles have known working IR code sets ...
 
