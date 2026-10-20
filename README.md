@@ -94,16 +94,16 @@ Supplied board files are listed in descending order of author preference for use
 | :--- | :--- |
 | board-esp32-c3-0.42-OLED.yaml      | Lowest cost, Good, tiny board with OLED |
 | board-lafvintech-c6-lcd-1.47.yaml  | Low cost, good board with LCD and neopixel. Ample heap space |
+| board-waveshare-c6-lcd-1.47.yaml | LCD screen | Good board with LCD and neopixel. Ample heap space |
 | board-esp32-c6-wroom-1.yaml        | Works very well but add 0.9 inch i2c OLED display |
 | board-waveshare-s3-lcd-1.47B.yaml  | Requires IR sensor WITHOUT LED (VS1838B) |
 | board-heltec-hiletgo-s3-0.96-OLED-v3.yaml | Needs special cable for logging |
 | board-m5stack-pico-d4-atom-lite.yaml | No-Solder. Needs grove IR and i2c OLED display |
 | board-hosyond-s3-lcd-3.5-touch.yaml | Large LCD screen |
-| board-waveshare-c6-lcd-1.47.yaml | LCD screen |
 | board-waveshare-s3-touch-lcd-2.8.yaml |  Large LCD screen, lacks indicator LED |
 | board-ideaspark-esp32-classic-OLED.yaml | USB-micro cable needed, Limited heap, noisy IR |
 | board-ideaspark-esp32-classic-lcd-1.14.yaml | USB-c to USB-A cable to flash. Limited heap |
-| board-m5stick-S3-grove-IR.yaml | NOT RECOMMENDED. WORKS ONLY WITH EXTERNAL grove IR sensor |
+| board-m5stick-S3-grove-IR.yaml | NOT RECOMMENDED. Works ONLY with EXTERNAL grove IR sensor |
 
 Look in the board file for actual GPIO pins for IR receiver and optional i2c display
   
@@ -266,15 +266,17 @@ Here are pinouts of two styles of IR sensors and the correct connection points o
 
 The IR sensor style that has the small pc board includes a red LED which lights with IR presence. That feedback LED may be useful during troubleshooting, but is not required and can cause issues with some ESP32 boards. Either style of IR sensor will work with ESP32 boards that have no or a small OLED display. If board has larger (> 1 inch) LCD display, IR sensors, like VS1838B,  WITHOUT an indicator LED are recommended. _Some_ boards with large, built-in displays cannot tolerate load of a IR sensor with indicator LED on 3Vcc. Brownout of 3Vcc can cause bootup failure. A plain VS1838B IR sensor draws less current and is less likely to cause 3Vcc brownouts.
 
-A significant percentage (about 20%) of IR sensor I and others have purchased have been defective. Most of those have been sensors with feedback LED. Provided you have correctly wired up your sensor and are using correct esp file, one way to check IR sensor is to compile with logging set to DEBUG and watch the logs after flashing your board. A defective IR typically shows no signals listed in log as you expose it to IR signals. There should be info lines printed in log as each IR signal arrives. If nothing shows in log, the sensor is dead.
+A significant percentage (about 20%) of IR sensor I and others have purchased have been defective. Most of those have been sensors with feedback LED. Check that you have correctly wired your sensor and are using correct esp file. Test IR sensor by compiling with logging set to DEBUG and watch the logs after flashing your board. A defective IR typically shows no signals listed in log as you expose it to IR signals. There should be info lines printed in log as each IR signal arrives. If nothing shows in log, the sensor is dead.
 
-Another type of IR sensor defect is a noisy sensor that reports signals even when there are none. Physcially shielded sensor from all IR, if you continue to see unrecognized IR signals written to the log, that sensor is noisy and should be replaced.
+Another type of IR sensor defect is a noisy sensor that reports signals even when there are none. Physcially shield sensor from all IR, if you continue to see unrecognized IR signals written to the log, that sensor is noisy and should be replaced.
 
 Here is an alternative board I have also tested, ESP32-C6-WROOM-1. This one does not have a built-in display, but this project will run on it and uses its single light to give feedback.
 
 <img width="1000" height="827" alt="pinouts c6" src="https://github.com/user-attachments/assets/52b63bcd-5724-4e93-91a2-a50d24705c71" />
 
+Lafvintech C6 and Waveshare C6 with 1.47 inch LCD displays are both excellent choices if you want a slightly larger and more clear display. 
 
+Waveshare makes several boards with 1.47 inch LCD displays. They are NOT all equivalent. Their C5 version has far too little heap space and will not work. Their S3 1.47B version will work well BUT MUST use an IR sensor without feedback LED. Otherwise, that board will boot loop due to 3.3 volt rail overload.
 
 
 # How Bluetooth to Titan Noir Works
