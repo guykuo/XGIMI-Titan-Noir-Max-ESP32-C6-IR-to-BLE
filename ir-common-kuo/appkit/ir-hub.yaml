@@ -1200,7 +1200,7 @@ script:
               }
               
               if (id(global_cached_command) == ir_command) {
-                if (now - id(global_last_processed_time) > 130) {
+                if (now - id(global_last_processed_time) > 150) {
                   ESP_LOGD("IR_HUB", "Quiet gap detected (%ums). Splitting sequential clicks cleanly.", (unsigned int)(now - id(global_last_processed_time)));
                   id(ir_map_processor).execute(ir_command, KEY_EVENT_UP); 
                   id(global_cached_command) = 0;
@@ -1571,8 +1571,9 @@ interval:
 
           uint32_t now = millis();
           if (id(global_cached_command) != 0) {
-            // RESTORED: Standard 140ms timeout ensures data-less IR repeat bursts (110ms) are not cut off
-            if (now - id(global_last_raw_packet_time) >= 140) {
+            // Keep this cleanly aligned at 140-150ms to gracefully absorb standard repeat bursts
+            // Standard 145 timeout ensures data-less IR repeat bursts (110ms) are not cut off
+            if (now - id(global_last_raw_packet_time) >= 145) {
               
               id(ir_map_processor).execute(id(global_cached_command), KEY_EVENT_UP); // 2 = UP/Release
 
