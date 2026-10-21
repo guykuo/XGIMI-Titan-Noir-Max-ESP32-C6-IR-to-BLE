@@ -19,7 +19,7 @@ substitutions:
 
   #def_profile: "0"  # AWOL vision aetherion max
   #def_profile: "1"  # benq-w5800
-  #def_profile: "2"  # epson-pro-cinema-LS12000
+  def_profile: "2"  # epson-pro-cinema-LS12000
   #def_profile: "3"  # hisense-50u6g
   #def_profile: "4"  # jvc-hr-S9600u
   #def_profile: "5"  # jvc-rs2-codeset-A 
@@ -28,25 +28,25 @@ substitutions:
   #def_profile: "8"  # optoma-UHD50X
   #def_profile: "9"  # sony-VPL-XW600ES 
   #def_profile: "10" # sony-XBR-77A9G 
-  def_profile: "11" # tivo-roamio-TCD846500 
+  #def_profile: "11" # tivo-roamio-TCD846500 
   #def_profile: "12" # panasonic projector
   
 
 packages: 
   # 3 =======  ESP32 board, Uncomment one (and only one) to specify board ===================
                                                                            # Number is recommendation ranking
-  board_pkg: !include ir-common-kuo/board-esp32-c3-0.42-OLED.yaml          # 1 lowest cost good board w OLED. EZ solder
+  board_pkg: !include ir-common-kuo/board-esp32-c3-0.42-OLED.yaml         # 1 lowest cost good board w OLED. EZ solder
   #board_pkg: !include ir-common-kuo/board-esp32-c6-wroom-1.yaml           # 7 ample RAM. Add 0.9 inch i2c OLED display
   #board_pkg: !include ir-common-kuo/board-heltec-s3-0.96-OLED-v3.yaml     # 6 needs special cable for logging
-  #board_pkg: !include ir-common-kuo/board-hosyond-s3-lcd-3.5-touch.yaml   # 8 large LCD
+  #board_pkg: !include ir-common-kuo/board-hosyond-s3-lcd-3.5-touch.yaml   # 8 supports touchscreen control buttons
   #board_pkg: !include ir-common-kuo/board-ideaspark-esp32-OLED.yaml       #10 USB-micro cable, ltd heap, noisy IR
   #board_pkg: !include ir-common-kuo/board-ideaspark-esp32-lcd-1.14.yaml   #11 USB-c to USB-A cable to flash. Ltd heap
   #board_pkg: !include ir-common-kuo/board-lafvintech-c6-lcd-1.47.yaml     # 2 low cost, LCD, RGB LED. Ample heap. EZ solder
   #board_pkg: !include ir-common-kuo/board-m5stack-pico-d4-atom-lite.yaml  # 5 No-Solder. Needs grove IR and i2c OLED display
   #board_pkg: !include ir-common-kuo/board-waveshare-s3-lcd-1.47B.yaml     # 4 requires IR sensor WITHOUT LED (VS1838B)
-  #board_pkg: !include ir-common-kuo/board-waveshare-c6-lcd-1.47.yaml      # 3 ample ram. good board with LCD. Diff solder.
+  #board_pkg: !include ir-common-kuo/board-waveshare-c6-lcd-1.47.yaml       # 3 ample ram. good board with LCD. Diff solder.
   #board_pkg: !include ir-common-kuo/board-waveshare-s3-touch-lcd-2.8.yaml # 9 large LCD, no indicator LED
-     
+ 
   # ===== following boards are NOT recommendable. Included only for development purposes
   #board_pkg: !include ir-common-kuo/board-m5stick-S3-grove-IR.yaml        #12 works ONLY WITH EXTERNAL grove IR sensor
   #board_pkg: !include ir-common-kuo/board-m5stick-S3-internal_IR.yaml # incompatible, if using built-in IR sensor
@@ -78,7 +78,6 @@ wifi:
   # Crucial for stability on multi-node or mesh routers
   power_save_mode: LIGHT   
   fast_connect: false
-  power_save_mode: NONE
   ap:
     ssid: "${ble_remote_name}"
     password: !secret fallback_ap_password
@@ -99,7 +98,7 @@ esphome:
   comment: ESP32 with XGIMI BLE Translator
   project:
     name: xgimi.titan-noir-esp32-ir-kuo
-    version: 26.10.20.0331
+    version: 26.10.21.0235
     
   includes:
     - <sstream>
@@ -318,7 +317,6 @@ api:
             
             if (import_success) {
               ESP_LOGI("CSV Import", "Migration successful. Mapping workspace component action indicators...");
-              link_hardware_buttons();
               id(setup_ir_receiver_for_current_profile).execute();
               commit_database_to_flash(id(selected_profile_slot));
               id(ir_receiver_mode) = 1; // Return safely to normal Action Mode
@@ -909,10 +907,23 @@ script:
    
     then:
       - lambda: |-
-          id(myDisplay_line1) = line1; 
-          id(myDisplay_line2) = line2;
-          id(myDisplay_line3) = line3;
-          
+          // If a command comes in while the macro engine is completely IDLE (0),
+          // forcefully open the special info gate to prevent lock status freezing.
+          if (id(macro_workflow_state) == MACRO_STATE_IDLE) {
+            id(showing_special_info) = false;
+          }
+
+          // ─── TOUCH-TO-WAKE OVERRIDE INTERCEPTOR ───
+          if (line3 == "0x9999") {
+            id(myDisplay_line1) = "Touch Screen";
+            id(myDisplay_line2) = line2; 
+            id(myDisplay_line3) = "Ready";
+          } else {
+            id(myDisplay_line1) = line1; 
+            id(myDisplay_line2) = line2;
+            id(myDisplay_line3) = line3;
+          }    
+                              
       - if:
           condition:
             lambda: |-
@@ -930,7 +941,18 @@ script:
                    - display.page.show: active_page_std
 
       - delay: 60s 
-      - display.page.show: blank_page
+
+      # If the system is actively recording a macro or awaiting a hotkey,
+      # skip turning the screen black to keep your logged steps fully visible.
+      - if:
+          condition:
+            lambda: |-
+              int current_state = id(macro_workflow_state);
+              return (current_state == MACRO_STATE_RECORDING || current_state == MACRO_STATE_AWAITING_HOTKEY);
+          then:
+            - logger.log: "Macro engine active. Suppressing display sleep timeout pass."
+          else:
+            - display.page.show: blank_page
 
 
 # --- myDisplay modify a line and auto dim display ---
@@ -974,8 +996,18 @@ script:
                    - display.page.show: active_page_std
 
       - delay: 60s 
-      - display.page.show: blank_page
 
+      # If the system is actively recording a macro or awaiting a hotkey,
+      # skip turning the screen black to keep your logged steps fully visible.
+      - if:
+          condition:
+            lambda: |-
+              int current_state = id(macro_workflow_state);
+              return (current_state == MACRO_STATE_RECORDING || current_state == MACRO_STATE_AWAITING_HOTKEY);
+          then:
+            - logger.log: "Macro engine active. Suppressing display sleep timeout pass."
+          else:
+            - display.page.show: blank_page
 
 
   # --- show token_param on display ---

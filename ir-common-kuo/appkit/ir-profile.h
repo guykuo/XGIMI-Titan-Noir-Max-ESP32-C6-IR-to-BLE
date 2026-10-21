@@ -58,6 +58,20 @@ static const char *const TAG_MAPS = "universal_hid_maps";
 #define MACRO_STATE_RECORDING       1   // Actively caching IR codes to buffer
 #define MACRO_STATE_AWAITING_HOTKEY  2   // Capture stopped; waiting for destination button
 #define MACRO_STATE_LIFTOFF_SHIELD  99  // Trapper guard to absorb release packet
+
+// ====================================================================
+// UNIFIED ARCHITECTURE INPUT SOURCE DESCRIPTORS
+//
+#ifndef INPUT_SOURCES_DEFINED
+#define INPUT_SOURCES_DEFINED
+
+enum InputSource : uint32_t {
+    SOURCE_WEB        = 0x0000, // Browser console injection clicks
+    SOURCE_TOUCH_WAKE = 0x9999, // Screen wake/illumination touch pass
+    SOURCE_TOUCH_PAD  = 0xBBBB, // Standard button grid interaction taps
+};
+
+#endif
 // ====================================================================
 
 // Zero-heap translation helper function for logging statements
@@ -265,7 +279,7 @@ inline uint16_t encode_action_to_id(const char* name, uint8_t& out_type) {
     if (name == nullptr) return 0xFFFF;
     
     if (std::strncmp(name, "RKEY:", 5) == 0) {
-        out_type = 0;
+        out_type = HID_REPORT_KEYBOARD; // 👈 Enforced macro definition
         std::string raw_hex(name + 5);
         size_t space_pos = raw_hex.find(' ');
         if (space_pos != std::string::npos) {
@@ -274,7 +288,16 @@ inline uint16_t encode_action_to_id(const char* name, uint8_t& out_type) {
         return (uint16_t)std::strtoul(raw_hex.c_str(), nullptr, 16);
     }
     if (std::strncmp(name, "RCON:", 5) == 0) {
-        out_type = 1;
+        out_type = HID_REPORT_CONSUMER; // 👈 Enforced macro definition
+        std::string raw_hex(name + 5);
+        size_t space_pos = raw_hex.find(' ');
+        if (space_pos != std::string::npos) {
+            raw_hex = raw_hex.substr(0, space_pos);
+        }
+        return (uint16_t)std::strtoul(raw_hex.c_str(), nullptr, 16);
+    }
+    if (std::strncmp(name, "RCMB:", 5) == 0) {
+        out_type = HID_REPORT_COMBO_INPUT; // 👈 Enforced macro definition
         std::string raw_hex(name + 5);
         size_t space_pos = raw_hex.find(' ');
         if (space_pos != std::string::npos) {
@@ -283,7 +306,7 @@ inline uint16_t encode_action_to_id(const char* name, uint8_t& out_type) {
         return (uint16_t)std::strtoul(raw_hex.c_str(), nullptr, 16);
     }
     
-    out_type = 2; 
+    out_type = HID_REPORT_TOKEN_NONE; // Updated fallback consistency
     for (size_t i = 0; i < TOTAL_SYSTEM_BUTTONS; i++) {
         if (std::strcmp(name, learn_button_names[i]) == 0) {
             return (uint16_t)i;
@@ -490,6 +513,7 @@ inline void commit_database_to_flash(uint16_t target_slot) {
 
 
 // ====================================================================
+// ====================================================================
 // METADATA-DECOUPLED BLUETOOTH HID INJECTION ENGINE (SYMBOLIC EDITION)
 // ====================================================================
 inline void fire_bluetooth_hid_action(const char* action_name, int event_state) {
@@ -531,7 +555,12 @@ inline void fire_bluetooth_hid_action(const char* action_name, int event_state) 
             true_hid_code = (uint16_t)std::strtoul(runtime_cmd->button_name + 5, nullptr, 16);
             dynamic_payload_found = true;
         }
-    }
+        else if (std::strncmp(runtime_cmd->button_name, "RCMB:", 5) == 0) {
+            resolved_type = HID_REPORT_COMBO_INPUT; 
+            true_hid_code = (uint16_t)std::strtoul(runtime_cmd->button_name + 5, nullptr, 16);
+            dynamic_payload_found = true;
+        } // Closed the RCMB else if cleanly
+    } // Closed the runtime_cmd verification boundary guard cleanly
 
     // Fallback: If no metadata protocol payload is registered, look up standard hardcoded tables
     if (!dynamic_payload_found) {
@@ -553,17 +582,21 @@ inline void fire_bluetooth_hid_action(const char* action_name, int event_state) 
         }
         // Symmetrically honors the big-endian literal 0x2D40
         else if (resolved_type == HID_REPORT_COMBO_INPUT) {
-            uint8_t modifiers = (true_hid_code >> 8) & 0xFF; // Extracts 0x2D
-            uint8_t keycode   = true_hid_code & 0xFF;        // Extracts 0x40
+            // Guarded: Only dispatch raw frame array configurations on the initial DOWN edge
+            // Prevents continuous looping HOLD delays from micro-stuttering host layouts
+            if (event_state == KEY_EVENT_DOWN) {
+                uint8_t modifiers = (true_hid_code >> 8) & 0xFF; // Extracts 0x2D
+                uint8_t keycode   = true_hid_code & 0xFF;        // Extracts 0x40
 
-            // Construct a raw 8-byte frame mirroring standard BLE HID report formats
-            uint8_t press_report[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-            
-            press_report[0] = modifiers; // Index 0: Modifiers (0x2D)
-            press_report[2] = keycode;   // Index 2: Main Key usage character (0x40)
+                // Construct a raw 8-byte frame mirroring standard BLE HID report formats
+                uint8_t press_report[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+                
+                press_report[0] = modifiers; // Index 0: Modifiers (0x2D)
+                press_report[2] = keycode;   // Index 2: Main Key usage character (0x40)
 
-            // Direct pass-through injection right out into the public GATT stack pipeline
-            esphome::id(xgimi_remote_controller).notify_keyboard_(press_report);
+                // Direct pass-through injection right out into the public GATT stack pipeline
+                esphome::id(xgimi_remote_controller).notify_keyboard_(press_report);
+            }
         }
     }
     else if (event_state == KEY_EVENT_UP) {
@@ -595,7 +628,6 @@ inline void fire_bluetooth_hid_action(const char* action_name, int event_state) 
             // Step 3: Now cleanly release the remaining modifier layout masks entirely
             esphome::id(xgimi_remote_controller).release_held_keyboard_();
         }
-
     }
 }
 
@@ -1337,29 +1369,24 @@ inline std::string generate_profile_csv(int idx) {
   char chunk_buf[256];
 
   // Determine the best padding width format string based on active protocol structure tracks
-  // %02X -> Enforces 2 characters (e.g., 0xA7)
-  // %04X -> Enforces 4 characters (e.g., 0xB04F)
-  // %05X -> Enforces 5 characters (e.g., 0x03A2A)
   const char* addr_fmt = "%04X"; // Default fallback
   const char* key_fmt  = "%X";   // Default fallback
 
   if (p.protocol == PROTO_NEC) {
-      // NEC addresses are typically 4 hex digits (e.g. 0x7300), commands are 2 digits (e.g. 0x17)
       addr_fmt = "%04X";
       key_fmt  = "%02X";
   } else if (p.protocol == PROTO_JVC) {
       addr_fmt = "%04X";
       key_fmt  = "%04X";
   } else if (p.protocol == PROTO_SONY) {
-      // Sony layouts use extended bit values (e.g. address 0x0000, keys 0x03A2A -> 5 digits)
       addr_fmt = "%04X";
       key_fmt  = "%05X";
   } else if (p.protocol == PROTO_PANASONIC) {
       addr_fmt = "%04X";
-      key_fmt  = "%07X"; // Panasonic uses large 7-digit codes (e.g., 1003A3B)
+      key_fmt  = "%07X";
   }
 
-  // Row 1: Profile Configuration Header Metadata Line (Strict Padding Applied)
+  // Row 1: Profile Configuration Header Metadata Line (Wiped profile-level override)
   std::string meta_line = "META," + std::to_string(idx) + "," + p.profile_name + "," + to_string(p.protocol) + ",";
   
   char addr_buf[32];
@@ -1371,7 +1398,13 @@ inline std::string generate_profile_csv(int idx) {
   // Rows 2+: Command Code Data Rows (Strict Padding Applied)
   for (size_t i = 0; i < p.cmd_codes.size(); i++) {
       char irCommand_buf[32];
-      snprintf(irCommand_buf, sizeof(irCommand_buf), key_fmt, (unsigned int)p.cmd_codes[i].first);
+      
+      // Keeps single-key override protected from hex truncation
+      if (std::strncmp(p.cmd_codes[i].second.button_name, "RCMB:", 5) == 0) {
+          snprintf(irCommand_buf, sizeof(irCommand_buf), "%04X", (unsigned int)p.cmd_codes[i].first);
+      } else {
+          snprintf(irCommand_buf, sizeof(irCommand_buf), key_fmt, (unsigned int)p.cmd_codes[i].first);
+      }
       
       snprintf(chunk_buf, sizeof(chunk_buf), "key,%s,%s,%s\n",
                irCommand_buf, p.cmd_codes[i].second.action_string, p.cmd_codes[i].second.button_name);
@@ -1440,6 +1473,7 @@ inline bool import_profile_from_csv(const std::string& csv_data) {
 
             active_profile_workspace.profile_name.assign(name_view.data(), name_view.size());
 
+            // Wiped profile-level RCMB fallback, mapping strictly to physical layers
             if (proto_view == "NEC")            active_profile_workspace.protocol = PROTO_NEC;
             else if (proto_view == "JVC")       active_profile_workspace.protocol = PROTO_JVC;
             else if (proto_view == "SONY")      active_profile_workspace.protocol = PROTO_SONY;
@@ -1449,11 +1483,9 @@ inline bool import_profile_from_csv(const std::string& csv_data) {
             else if (proto_view == "RC6")       active_profile_workspace.protocol = PROTO_RC6;
             else                                active_profile_workspace.protocol = PROTO_UNKNOWN;
 
-            // Helper lambda for robust, zero-allocation manual hex parsing from string_views
             auto parse_hex_view = [](std::string_view view) -> uint32_t {
                 if (view.empty()) return 0;
                 
-                // Safely skip any explicit leading "0x" or "0X" signatures if they exist in the file
                 if (view.size() > 2 && view[0] == '0' && (view[1] == 'x' || view[1] == 'X')) {
                     view.remove_prefix(2);
                 }
@@ -1466,7 +1498,7 @@ inline bool import_profile_from_csv(const std::string& csv_data) {
                     if (c >= '0' && c <= '9')      digit = (c - '0');
                     else if (c >= 'a' && c <= 'f') digit = (c - 'a' + 10);
                     else if (c >= 'A' && c <= 'F') digit = (c - 'A' + 10);
-                    else break; // Stop tracking at commas, raw characters, or line returns
+                    else break;
                     
                     val = (val * 16) + digit;
                 }
@@ -1494,7 +1526,6 @@ inline bool import_profile_from_csv(const std::string& csv_data) {
             std::string_view token_view = get_next_cell(line_view); 
             std::string_view label_view = get_next_cell(line_view); 
 
-            // Cleanly trim out leading "0x" prefixes from custom keys if present
             if (code_view.size() > 2 && code_view[0] == '0' && (code_view[1] == 'x' || code_view[1] == 'X')) {
                 code_view.remove_prefix(2);
             }
@@ -1517,30 +1548,26 @@ inline bool import_profile_from_csv(const std::string& csv_data) {
             
             std::memcpy(token_buf, token_view.data(), std::min(token_view.size(), sizeof(token_buf) - 1));
 
-            // --- INTUITIVE FIELD 3 PREFIX STRIPPER ---
-            // Evaluates string_view footprint to look for embedded "RKEY:0x" or "RCON:0x" sequences
+            // Fixed single-quote syntax comparison check
             bool has_rkey_prefix = (label_view.size() > 7 && std::strncmp(label_view.data(), "RKEY:0", 6) == 0 && (label_view[6] == 'x' || label_view[6] == 'X'));
             bool has_rcon_prefix = (label_view.size() > 7 && std::strncmp(label_view.data(), "RCON:0", 6) == 0 && (label_view[6] == 'x' || label_view[6] == 'X'));
+            bool has_rcmb_prefix = (label_view.size() > 7 && std::strncmp(label_view.data(), "RCMB:0", 6) == 0 && (label_view[6] == 'x' || label_view[6] == 'X'));
 
-            if (has_rkey_prefix || has_rcon_prefix) {
-                // Copy the first 5 bytes verbatim ("RKEY:" or "RCON:")
+            if (has_rkey_prefix || has_rcon_prefix || has_rcmb_prefix) {
                 std::memcpy(label_buf, label_view.data(), 5);
                 
-                // Skip the "0x" (offset by 2 bytes) and copy the remaining slice
                 size_t remaining_size = label_view.size() - 7;
                 size_t copy_target = std::min(remaining_size, sizeof(label_buf) - 6);
                 
                 std::memcpy(label_buf + 5, label_view.data() + 7, copy_target);
             } else {
-                // Standard copy path fallback for normal string comments
                 std::memcpy(label_buf, label_view.data(), std::min(label_view.size(), sizeof(label_buf) - 1));
             }
 
             add_cmd(command_code, token_buf, label_buf);
             keys_imported++;
         }
-
-    } // <-- Closes the while loop
+    }
 
     if (!meta_parsed || keys_imported == 0) {
         ESP_LOGE("CSV Import", "Parsing failed: Meta missing or zero keys processed.");
@@ -1550,7 +1577,7 @@ inline bool import_profile_from_csv(const std::string& csv_data) {
     active_profile_workspace.cmd_codes.shrink_to_fit();
     ESP_LOGI("CSV Import", "Successfully recovered %d layout items.", (int)keys_imported);
     return true;
-} 
+}
 
 
 
@@ -1559,7 +1586,7 @@ inline bool import_profile_from_csv(const std::string& csv_data) {
 // Handles all macro logic, safety gates, and BLE transmission 
 // strictly via string tokens, bypassing all IR lookup vulnerabilities.
 // ====================================================================
-inline void execute_action_pipeline_worker(const std::string& cmd_name, int event_state, uint32_t raw_ir_hex = 0) {
+inline void execute_action_pipeline_worker(const std::string& cmd_name, int event_state, uint32_t raw_ir_hex) {
     uint32_t now = millis();
     uint32_t current_duration = now - esphome::id(global_initial_press_time).value();
     uint32_t workflow_state = esphome::id(macro_workflow_state).value();
@@ -1824,9 +1851,13 @@ inline void execute_action_pipeline_worker(const std::string& cmd_name, int even
     if (esphome::id(showing_special_info).value()) {
         esphome::id(showing_special_expiration_timer).execute();
     } else {
-        char cmd_buf[32] = {0};
-        snprintf(cmd_buf, sizeof(cmd_buf), "0x%04X", (unsigned int)raw_ir_hex);
-        esphome::id(display_show).execute(false, esphome::id(action_string).value(), active_profile_workspace.profile_name, std::string(cmd_buf));
+        // Only run the default telemetry screen overwrite if we are NOT inside a macro session.
+        // This stops "Logged [X]" from being instantly wiped out while recording steps.
+        if (workflow_state != MACRO_STATE_RECORDING) {
+            char cmd_buf[32] = {0};
+            snprintf(cmd_buf, sizeof(cmd_buf), "0x%04X", (unsigned int)raw_ir_hex);
+            esphome::id(display_show).execute(false, esphome::id(action_string).value(), active_profile_workspace.profile_name, std::string(cmd_buf));
+        }
     }
 
     // ============================================================
@@ -1892,38 +1923,56 @@ inline void execute_action_pipeline_worker(const std::string& cmd_name, int even
 // UNIFIED TEXT-DRIVEN DECOUPLED STATE MACHINE ENGINE PIPELINE
 // Top-Level Iterative Dispatcher Layer (100% Recursion-Free)
 // ====================================================================
-inline void execute_action_pipeline(const std::string& cmd_name, int event_state, uint32_t raw_ir_hex = 0) {
+inline void execute_action_pipeline(const std::string& cmd_name, int event_state, uint32_t raw_ir_hex) {
     
-    // --- ITERATIVE SYNTHETIC PACKET GENERATOR (WEB / TOUCH PANEL GATES) ---
-    if (raw_ir_hex == 0 && event_state == KEY_EVENT_DOWN) {
+    // 1. ISOLATE TOUCH CHIP HARDWARE WAKE CONDITIONS
+    if (raw_ir_hex == SOURCE_TOUCH_WAKE || cmd_name == "") {
+        esphome::id(myDisplay_line1).value() = "";
+        esphome::id(myDisplay_line3).value() = "";
+        esphome::id(display_show).execute(false, "Panel Active", active_profile_workspace.profile_name, "Touch Screen");
+        return; 
+    }
+
+    // 2. ISOLATE KEEP_ALIVE SYSTEM WATCHDOG TICKERS
+    if (cmd_name == "keep_alive") {
+        return;
+    }
+    
+    esphome::id(action_string).value() = cmd_name;
         
-        // 🚀 THE ULTIMATE BLUEPRINT FIX: Identify infrastructure/state actions
+    // 3. SYNTHETIC PACKET GENERATOR FOR BOTH WEBSERVER CONSOLES AND TOUCH PANELS
+    // Both inputs now arrive as discrete, perfectly paced edge actions
+    if ((raw_ir_hex == SOURCE_WEB || raw_ir_hex == SOURCE_TOUCH_PAD) && event_state == KEY_EVENT_DOWN) {
+        
+        uint32_t workflow_state = esphome::id(macro_workflow_state).value();
         bool is_state_infrastructure_key = (cmd_name == "macro_record" || 
                                             cmd_name == "macro_play"   || 
                                             cmd_name == "token_clear"  ||
                                             cmd_name == "token_sniff"  ||
                                             cmd_name == "token_recall" ||
-                                            esphome::id(macro_workflow_state).value() == MACRO_STATE_AWAITING_HOTKEY);
+                                            workflow_state == MACRO_STATE_AWAITING_HOTKEY ||
+                                            workflow_state == MACRO_STATE_LIFTOFF_SHIELD);
 
         if (is_state_infrastructure_key) {
-            // FIRE EXACTLY ONCE AS A DISCRETE KEY_EVENT_DOWN STROKE. NO SYNTHETIC KEY_EVENT_UP GENERATED!
             execute_action_pipeline_worker(cmd_name, KEY_EVENT_DOWN, 0xEFFF);
+            
+            if (esphome::id(macro_workflow_state).value() == MACRO_STATE_LIFTOFF_SHIELD) {
+                execute_action_pipeline_worker(cmd_name, KEY_EVENT_UP, 0xEFFF);
+                esphome::id(showing_special_expiration_timer).execute();
+            }
             return;
         }
 
-        // Standard pass-through buttons (like UP, DOWN) still use the safe discrete down/up sequence
+        // Standard pass-through execution block
         execute_action_pipeline_worker(cmd_name, KEY_EVENT_DOWN, 0xEFFF);
-        vTaskDelay(pdMS_TO_TICKS(45));
+        vTaskDelay(pdMS_TO_TICKS(60)); 
         execute_action_pipeline_worker(cmd_name, KEY_EVENT_UP, 0xEFFF);
         return; 
     }
 
-    // Pass physical IR remotes directly through to the tracking core exactly once
+    // 4. PHYSICAL HARDWARE IR REMOTES PASS-THROUGH
     execute_action_pipeline_worker(cmd_name, event_state, raw_ir_hex);
 }
-
-
-
 
 // ====================================================================
 // ==== Custom Webserver ===
@@ -2365,7 +2414,7 @@ inline esp_err_t select_handler(httpd_req_t *req) {
 
 
 // ====================================================================
-// HIGH-PERFORMANCE ZERO-HEAP CHUNKED STREAMING PROFILE CSV EXPORT HANDLER
+// HIGH-PERFORMANCE ZERO-RESERVE CHUNKED STREAMING PROFILE CSV EXPORT HANDLER
 // ====================================================================
 inline esp_err_t export_handler(httpd_req_t *req) {
     int target_slot = 0;
@@ -2383,71 +2432,78 @@ inline esp_err_t export_handler(httpd_req_t *req) {
 
     // Capture operational layout state and load requested data targets
     int current_active = esphome::id(active_remote_profile).value();
-    load_profile_to_workspace(target_slot);
+    load_profile_to_workspace(target_slot); //
 
-    const auto& p = active_profile_workspace;
-    httpd_resp_set_type(req, "text/csv");
+    const auto& p = active_profile_workspace; //
+    httpd_resp_set_type(req, "text/csv"); //
     
     // SANITIZATION WORKER: Clean up spaces from the profile name for web transmission
-    char sanitized_name[32] = {0};
-    std::strncpy(sanitized_name, p.profile_name.c_str(), sizeof(sanitized_name) - 1);
-    for (size_t i = 0; i < std::strlen(sanitized_name); i++) {
-        if (sanitized_name[i] == ' ') {
-            sanitized_name[i] = '_';
+    char sanitized_name[32] = {0}; //
+    std::strncpy(sanitized_name, p.profile_name.c_str(), sizeof(sanitized_name) - 1); //
+    for (size_t i = 0; i < std::strlen(sanitized_name); i++) { //
+        if (sanitized_name[i] == ' ') { //
+            sanitized_name[i] = '_'; //
         }
     }
 
     // Format the clean customized profile filename package (0 heap churn)
-    char header_buf[128];
+    char header_buf[128]; //
     snprintf(header_buf, sizeof(header_buf), 
              "attachment; filename=profile_slot_%d_%s.csv", 
-             target_slot, sanitized_name);
-    httpd_resp_set_hdr(req, "Content-Disposition", header_buf);
+             target_slot, sanitized_name); //
+    httpd_resp_set_hdr(req, "Content-Disposition", header_buf); //
 
     // Protocol-specific formatting masks
-    const char* addr_fmt = "%04X";
-    const char* key_fmt  = "%X";
+    const char* addr_fmt = "%04X"; //
+    const char* key_fmt  = "%X";   //
 
-    if (p.protocol == PROTO_NEC) {
-        addr_fmt = "%04X"; key_fmt = "%02X";
-    } else if (p.protocol == PROTO_JVC) {
-        addr_fmt = "%04X"; key_fmt = "%04X";
-    } else if (p.protocol == PROTO_SONY) {
-        addr_fmt = "%04X"; key_fmt = "%05X";
-    } else if (p.protocol == PROTO_PANASONIC) {
-        addr_fmt = "%04X"; key_fmt = "%07X";
+    if (p.protocol == PROTO_NEC) { //
+        addr_fmt = "%04X"; key_fmt = "%02X"; //
+    } else if (p.protocol == PROTO_JVC) { //
+        addr_fmt = "%04X"; key_fmt = "%04X"; //
+    } else if (p.protocol == PROTO_SONY) { //
+        addr_fmt = "%04X"; key_fmt = "%05X"; //
+    } else if (p.protocol == PROTO_PANASONIC) { //
+        addr_fmt = "%04X"; key_fmt = "%07X"; //
     }
 
-    char chunk_buf[256];
+    char chunk_buf[256]; //
 
     // 1. Stream the META row directly
-    char addr_buf[16];
-    snprintf(addr_buf, sizeof(addr_buf), addr_fmt, (unsigned int)p.device_address);
+    char addr_buf[16]; //
+    snprintf(addr_buf, sizeof(addr_buf), addr_fmt, (unsigned int)p.device_address); //
     
+    // Kept standard: Outputs true physical carrier protocol string natively
     snprintf(chunk_buf, sizeof(chunk_buf), "META,%d,%s,%s,%s\n", 
-             target_slot, p.profile_name.c_str(), to_string(p.protocol), addr_buf);
-    httpd_resp_send_chunk(req, chunk_buf, strlen(chunk_buf));
+             target_slot, p.profile_name.c_str(), to_string(p.protocol), addr_buf); //
+    httpd_resp_send_chunk(req, chunk_buf, strlen(chunk_buf)); //
 
     // 2. Stream key row allocations sequentially (0 heap allocation overhead)
-    for (size_t i = 0; i < p.cmd_codes.size(); i++) {
-        char irCommand_buf[16];
-        snprintf(irCommand_buf, sizeof(irCommand_buf), key_fmt, (unsigned int)p.cmd_codes[i].first);
+    for (size_t i = 0; i < p.cmd_codes.size(); i++) { //
+        char irCommand_buf[16]; //
+        
+        // Contextual Pacing Guard: Enforces 4-character formatting only for single-key overrides
+        if (std::strncmp(p.cmd_codes[i].second.button_name, "RCMB:", 5) == 0) {
+            snprintf(irCommand_buf, sizeof(irCommand_buf), "%04X", (unsigned int)p.cmd_codes[i].first);
+        } else {
+            snprintf(irCommand_buf, sizeof(irCommand_buf), key_fmt, (unsigned int)p.cmd_codes[i].first); //
+        }
         
         // Symmetrically aligned to export Field 2 (action_string) and Field 3 (button_name)
         snprintf(chunk_buf, sizeof(chunk_buf), "key,%s,%s,%s\n",
-                 irCommand_buf, p.cmd_codes[i].second.action_string, p.cmd_codes[i].second.button_name);
-        httpd_resp_send_chunk(req, chunk_buf, strlen(chunk_buf));
+                 irCommand_buf, p.cmd_codes[i].second.action_string, p.cmd_codes[i].second.button_name); //
+        httpd_resp_send_chunk(req, chunk_buf, strlen(chunk_buf)); //
     }
 
     // 3. Finalize stream pipeline signature
-    httpd_resp_send_chunk(req, NULL, 0);
+    httpd_resp_send_chunk(req, NULL, 0); //
 
     // Restore workspace configuration state back to normal
-    if (target_slot != current_active) {
-        load_profile_to_workspace(current_active);
+    if (target_slot != current_active) { //
+        load_profile_to_workspace(current_active); //
     }
 
-    return ESP_OK;
+    return ESP_OK; //
 }
 
 

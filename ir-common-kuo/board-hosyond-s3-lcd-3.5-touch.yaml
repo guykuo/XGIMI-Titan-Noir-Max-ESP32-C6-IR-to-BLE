@@ -2,13 +2,76 @@
 # ============= BEGIN Configuration Options KUO ==========
 
 substitutions:
-  pin_ir_receiver: GPIO45 # spare GPIO on expansion pin connector
-  pin_indicator_LED: GPIO40 # neopixel
-  pin_action_btn: GPIO0 # use boot button to start actions
+  pin_ir_receiver: GPIO45 
+  pin_indicator_LED: GPIO40 
+  pin_action_btn: GPIO0 
   pin_action_btn_pullup: true
   wifi_tx_power: "14dB"
+  panel_BL_percent: "50%"
+  def_profile: "0"
 
-  display_BL_percent: 50%
+  # ─── 🟢 THE UNIFIED TEXT MACRO BLUEPRINT ───
+  draw_all_remote_buttons: |-
+    auto grid_line_color = Color(60, 60, 60);
+    auto text_btn_color = Color(180, 180, 180);
+    auto font_btn = id(my_fontButton); 
+    
+    // ─── 🟢 CUSTOM HIGHLIGHT COLORS ───
+    auto yellow_nav_color = Color(255, 215, 0); // High-visibility navigation yellow
+
+    // Horizontal Dividers
+    it.horizontal_line(0, 140, 320, grid_line_color);
+    for(int r = 1; r <= 8; r++) {
+      it.horizontal_line(0, 144 + (r * 42), 320, grid_line_color);
+    }
+    
+    // Center divider splits the screen all the way down, separating ON (left) and OFF (right)
+    it.vertical_line(160, 140, 340, grid_line_color);
+    
+    // Left and Right quarter dividers now start at y = 186 (Row 1), leaving Row 0 clean
+    it.vertical_line(80,  186, 298, grid_line_color); 
+    it.vertical_line(240, 186, 298, grid_line_color); 
+    
+    // Render text centered perfectly inside the double-wide buttons
+    it.print(80,  158, font_btn, Color(255,50,50), esphome::display::TextAlign::TOP_CENTER, "ON");
+    it.print(240, 158, font_btn, Color(255,50,50), esphome::display::TextAlign::TOP_CENTER, "OFF");
+    
+    // ─── ROW 1 ELEM ───
+    it.print(40,  200, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "Home");
+    it.print(120, 200, font_btn, yellow_nav_color, esphome::display::TextAlign::TOP_CENTER, "Up"); // 🟡 Yellow Highlight
+    it.print(200, 200, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "Game");
+    it.print(280, 200, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "Vol+");
+    
+    // ─── ROW 2 ELEM ───
+    it.print(40,  242, font_btn, yellow_nav_color, esphome::display::TextAlign::TOP_CENTER, "Left"); // 🟡 Yellow Highlight
+    it.print(120, 242, font_btn, yellow_nav_color, esphome::display::TextAlign::TOP_CENTER, "Enter"); // 🟡 Yellow Highlight
+    it.print(200, 242, font_btn, yellow_nav_color, esphome::display::TextAlign::TOP_CENTER, "Right"); // 🟡 Yellow Highlight
+    it.print(280, 242, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "Vol-");
+    
+    // ─── ROW 3 ELEM ───
+    it.print(40,  284, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "Back");
+    it.print(120, 284, font_btn, yellow_nav_color, esphome::display::TextAlign::TOP_CENTER, "Down"); // 🟡 Yellow Highlight
+    it.print(200, 284, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "Menu");
+    it.print(280, 284, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "Mute");
+    
+    // Remaining standard matrix elements (Row 4 to Row 7)
+    it.print(40,  326, font_btn, Color(100,200,100), esphome::display::TextAlign::TOP_CENTER, "Foc Man");
+    it.print(120, 326, font_btn, Color(100,200,100), esphome::display::TextAlign::TOP_CENTER, "Foc Auto");
+    it.print(200, 326, font_btn, Color(100,200,100), esphome::display::TextAlign::TOP_CENTER, "Pict");
+    it.print(280, 326, font_btn, Color(100,200,100), esphome::display::TextAlign::TOP_CENTER, "Input");
+    it.print(40,  368, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "S1");
+    it.print(120, 368, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "S2");
+    it.print(200, 368, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "S3");
+    it.print(280, 368, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "S4");
+    it.print(40,  410, font_btn, Color(150,100,220), esphome::display::TextAlign::TOP_CENTER, "M REC");
+    it.print(120, 410, font_btn, Color(150,100,220), esphome::display::TextAlign::TOP_CENTER, "M Play");
+    it.print(200, 410, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, " ");
+    it.print(280, 410, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "BT Pair");
+    it.print(40,  452, font_btn, Color(200,200,100), esphome::display::TextAlign::TOP_CENTER, "Tkn Sniff");
+    it.print(120, 452, font_btn, Color(200,200,100), esphome::display::TextAlign::TOP_CENTER, "Tkn Wipe");
+    it.print(200, 452, font_btn, Color(200,200,100), esphome::display::TextAlign::TOP_CENTER, "Tkn Recall");
+    it.print(280, 452, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "BT Clear");
+
   
 # Core Architecture Declaration
 esp32:
@@ -20,19 +83,44 @@ esp32:
 # ============= END Configuration Options KUO ==========
 
 esphome:
-
   on_boot:
-    - priority: 100.0
+    - priority: -50.0
       then:
-        - light.turn_on:
-            id: display_backlight
-            brightness: ${display_BL_percent}
+        - light.turn_on: 
+            id: panel_backlight
+            brightness: ${panel_BL_percent}
+
+            
+external_components:
+  - source: 
+      type: local
+      path: components
+    components: [ st77922_touch ]
+    
+# Instantiate the C++ loop hook directly via standard initialization lambdas
+st77922_touch:
+  id: touch_bridge
+
 
 psram:
   mode: octal
   speed: 80MHz
 
 globals:
+
+  # New latches to stop the infinite execution loop
+  - id: touch_active_latch
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+  - id: touch_last_action
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+
+  
+  
     # ======= myDisplay display globals
   - id: myDisplay_line1
     type: std::string  
@@ -47,7 +135,8 @@ globals:
   - id: myDisplay_line3
     restore_value: no
     type: std::string  
-    initial_value: ''          
+    initial_value: ''    
+          
           
 light:
   - platform: esp32_rmt_led_strip # neopixel
@@ -61,10 +150,10 @@ light:
 
   - platform: monochromatic  
     name: "Display Backlight"
-    id: display_backlight
+    id: panel_backlight
     output: backlight_pwm
-    default_transition_length: 0.5s
-    gamma_correct: 0          # Keeps response linear 
+    default_transition_length: 0.1s
+    gamma_correct: 0 
     restore_mode: ALWAYS_OFF    
     internal: true
 
@@ -74,9 +163,7 @@ output:
     id: backlight_pwm
     frequency: 4000Hz    
 
-  - platform: gpio
-    pin: GPIO48
-    id: hardware_reset_line
+
 
 script:
   - id: flash_led_custom
@@ -130,21 +217,24 @@ script:
           id: indicator_led
           transition_length: 0s  
 
-
 # ========  Display Specific Implementation ========
 
 font:
   - file: "gfonts://Roboto"
     id: my_fontSmall
-    size: 30
+    size: 25
   - file: "gfonts://Roboto"
     id: my_fontMedium
-    size: 35
+    size: 30
   - file: "gfonts://Roboto"
     id: my_fontLarge
     size: 40
+  - file: "gfonts://Roboto"
+    id: my_fontButton
+    size: 14          # Dedicated compact font just for the layout buttons
 
-    
+
+
 # Configure the 4-bit Hardware Quad-SPI bus
 spi:
   id: tft_qspi
@@ -152,7 +242,10 @@ spi:
   clk_pin: GPIO12   
   data_pins: [GPIO11, GPIO13, GPIO14, GPIO9]
 
-# Master Display Component Configuration
+
+# ====================================================================
+# 2. RENDER THE INTERACTIVE GRAPHIC TOUCH BOXES ON SCREEN
+# ====================================================================
 display:
   - platform: mipi_spi
     id: myDisplay
@@ -160,13 +253,14 @@ display:
     model: ST7789V
     bus_mode: quad
     cs_pin: GPIO10
-    reset_pin: GPIO43 # Not real reset GPIO0, just declaring one helps boot up display after flashing.
+    reset_pin: GPIO43 
     rotation: 0
     dimensions: 320X480     
     invert_colors: true
     color_order: RGB    
     data_rate: 80MHz    
-    update_interval: 0.1s
+    update_interval: 0.3s # 🔥 CHANGED: Gives ESP-IDF breathing room between frames
+
 
     # factory initialization matrix sequence
     init_sequence:
@@ -240,14 +334,14 @@ display:
       - then:
           - if:
               condition:
-                lambda: 'return to == id(blank_page);'
+                lambda: 'return (const esphome::display::DisplayPage*)to == id(blank_page);'
               then:
                 - light.turn_off:
-                    id: display_backlight
+                    id: panel_backlight
               else:
                 - light.turn_on:
-                    id: display_backlight
-                    brightness: ${display_BL_percent}
+                    id: panel_backlight
+                    brightness: ${panel_BL_percent}
 
     pages:
       - id: active_page_std
@@ -255,10 +349,17 @@ display:
             auto L1color = Color(255, 100, 0);
             auto L2color = Color(255, 120, 0);
             auto L3color = Color(255, 150, 0);
-
-            it.print(5, 30,  id(my_fontSmall), L1color, id(myDisplay_line1).c_str());
-            it.print(5, 75,  id(my_fontSmall), L2color, id(myDisplay_line2).c_str());
-            it.print(5, 115, id(my_fontLarge), L3color,  id(myDisplay_line3).c_str());
+            
+            char buf1[32] = {0}; char buf2[32] = {0}; char buf3[32] = {0};
+            snprintf(buf1, sizeof(buf1), "%.25s", id(myDisplay_line1).c_str());
+            snprintf(buf2, sizeof(buf2), "%.25s", id(myDisplay_line2).c_str());
+            snprintf(buf3, sizeof(buf3), "%.20s", id(myDisplay_line3).c_str());
+            
+            it.print(5, 10,  id(my_fontSmall), L1color, esphome::display::TextAlign::TOP_LEFT, buf1);
+            it.print(5, 50,  id(my_fontSmall), L2color, esphome::display::TextAlign::TOP_LEFT, buf2);
+            it.print(5, 90, id(my_fontMedium), L3color, esphome::display::TextAlign::TOP_LEFT, buf3);
+            
+            ${draw_all_remote_buttons}
 
       - id: active_page_small
         lambda: |-
@@ -266,11 +367,12 @@ display:
             auto L2color = Color(255, 130, 0);
             auto L3color = Color(255, 130, 0);
             
-            it.print(5, 30,  id(my_fontMedium), L1color, id(myDisplay_line1).c_str());
-            it.print(5, 70,  id(my_fontMedium), L2color, id(myDisplay_line2).c_str());
-            it.print(5, 110,  id(my_fontMedium),L3color, id(myDisplay_line3).c_str());
+            it.print(5, 10,  id(my_fontSmall), L1color, id(myDisplay_line1).c_str());
+            it.print(5, 50,  id(my_fontSmall), L2color, id(myDisplay_line2).c_str());
+            it.print(5, 90, id(my_fontSmall), L3color, id(myDisplay_line3).c_str());
+                        
+            ${draw_all_remote_buttons}
 
       - id: blank_page
         lambda: |-
           // Leaving lambda completely blank turns all pixels off safely
-

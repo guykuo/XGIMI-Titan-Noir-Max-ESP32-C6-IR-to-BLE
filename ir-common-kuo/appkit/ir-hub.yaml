@@ -471,6 +471,11 @@ script:
           fire_bluetooth_hid_action("volume_down", KEY_EVENT_DOWN);
           vTaskDelay(pdMS_TO_TICKS(50));
           fire_bluetooth_hid_action("volume_down", KEY_EVENT_UP);
+      # FORCE DISARM RECOVERY SPLASH ON COMPLETED SESSIONS ───
+      # Placing a short delay before firing the expiration timer guarantees that
+      # any parallel watchdog timeouts finish processing before the gate opens.
+      - delay: 100ms
+      - script.execute: showing_special_expiration_timer          
 
   # END Macro Playback Indicator
   - id: macro_indicator_playback_all_done
@@ -482,7 +487,9 @@ script:
           id(macro_indicator_playback)->stop();
           id(turn_led_on_custom)->stop();
           id(turn_led_off_custom)->execute(); 
-    # no volume down for end of macro playbac                 
+      # no volume down for end of macro playbac  
+      - delay: 100ms
+      - script.execute: showing_special_expiration_timer
 
 # # ====================================================================
   # Hydrate Binding Registry Map from Flash Storage Slots during System Boot
@@ -641,23 +648,20 @@ script:
     then: 
       - delay: 60s
       - lambda: |-
-          // If the system is still stuck in recording mode after 60s, abort it
           if (id(macro_workflow_state) == MACRO_STATE_RECORDING) {
             ESP_LOGW("MACRO_WORKFLOW", "Macro recording timed out due to inactivity. Reverting to idle.");
             
-            // Reset state machine variables safely
             id(macro_workflow_state) = MACRO_STATE_IDLE;
             id(macro_recording_active) = false;
             id(macro_step_counter) = 0;
             
-            // Clean up display panel status
             id(showing_special_info) = true;
             id(display_show)->execute(false, "Record Timeout", "Inactivity Abort", "Action Mode");
             
-            // Use consolidated termination script
+            // Call the cleanup tracker
             id(macro_indicator_recording_all_done)->execute();
           }
-
+          
   # ====================================================================
   # Macro assignment timeout watcher
   # ====================================================================
@@ -666,23 +670,20 @@ script:
     then:
       - delay: 30s
       - lambda: |-
-          // If the system is still stuck in Hotkey Listen Mode after 30s, abort it
           if (id(macro_workflow_state) == MACRO_STATE_AWAITING_HOTKEY) {
             ESP_LOGW("MACRO_WORKFLOW", "Hotkey assignment timed out due to inactivity. Reverting to idle.");
             
-            // Reset state machine variables safely
             id(macro_workflow_state) = MACRO_STATE_IDLE;
             id(macro_recording_active) = false;
             id(macro_step_counter) = 0;
             
-            // Clean up display panel status
             id(showing_special_info) = true;
             id(display_show)->execute(false, "Assign Timeout", "Macro Canceled", "Action Mode");
             
-            // Use consolidated termination script
+            // Call the cleanup tracker
             id(macro_indicator_recording_all_done)->execute();
           }
-
+          
   # ====================================================================
   # WATCHDOG-SAFE COOPERATIVE ASYNCHRONOUS PLAYBACK ENGINE (STEP TRACKER)
   # ====================================================================
@@ -1173,6 +1174,13 @@ script:
             case IR_MODE_ACTION: { // action mode (LONG PRESS COMPATIBLE)
               const auto& active_profile = active_profile_workspace;
               const IRCommand* found_cmd = nullptr;
+              
+              // Catch the touch screen text WAKE_UP token  ───
+              if (ir_protocolStr == "WAKE_UP" || ir_command == 0x0) { // Catch simulated synthetic string injections
+                id(myDisplay).show_page(id(active_page_std));
+                return;
+              }
+              
               for (const auto& kv_pair : active_profile.cmd_codes) {
                 if (kv_pair.first == ir_command && ir_address == active_profile.device_address) {
                   found_cmd = &kv_pair.second;
@@ -1186,11 +1194,12 @@ script:
               }
             
               id(action_string).assign(found_cmd->action_string);
-              std::string cmd_name = found_cmd->action_string;
-              
-              // 1. REINFORCED SYSTEM DEBOUNCE: Enforce global time boundaries across ALL key styles
+
+              // 2. REINFORCED SYSTEM DEBOUNCE: Enforce global time boundaries across ALL key styles
               uint32_t delta_press = now - id(last_ir_press);
-              bool is_system_key = (cmd_name == "macro_record" || cmd_name == "macro_play");
+              
+              bool is_system_key = (std::strcmp(found_cmd->action_string, "macro_record") == 0 || 
+                                    std::strcmp(found_cmd->action_string, "macro_play") == 0);
               
               if (is_system_key && delta_press < 450) {
                 ESP_LOGD("IR_HUB", "Debounce shield active: Absorbed duplicate system key frame burst.");
@@ -1199,6 +1208,7 @@ script:
                 return;
               }
               
+              // --- 3. REPEAT RUNNER SYSTEM SEQUENCES BEGIN HERE ---
               if (id(global_cached_command) == ir_command) {
                 if (now - id(global_last_processed_time) > 150) {
                   ESP_LOGD("IR_HUB", "Quiet gap detected (%ums). Splitting sequential clicks cleanly.", (unsigned int)(now - id(global_last_processed_time)));
