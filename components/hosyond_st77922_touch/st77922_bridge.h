@@ -3,6 +3,17 @@
 #include "esphome/components/light/light_state.h"
 #include "ST77922_Touch.h" 
 
+#ifndef INPUT_SOURCES_DEFINED
+#define INPUT_SOURCES_DEFINED
+
+enum InputSource : uint32_t {
+    SOURCE_WEB        = 0x0000, // Browser console injection clicks
+    SOURCE_TOUCH_WAKE = 0x9999, // Screen wake/illumination touch pass
+    SOURCE_TOUCH_PAD  = 0xBBBB, // Standard button grid interaction taps
+};
+
+#endif
+
 void execute_action_pipeline(const std::string& cmd_name, int event_state, uint32_t raw_ir_hex = 0);
 
 namespace st77922_touch {
@@ -60,7 +71,7 @@ class ST77922TouchBridge : public esphome::Component {
           call.set_state(true);
           call.perform();
         }
-        execute_action_pipeline("keep_alive", 0, 0x9999);
+        execute_action_pipeline("keep_alive", 0, SOURCE_TOUCH_WAKE);
         wake_prevent_latch = true; 
         wake_timestamp = now; 
         last_action = "WAKE_GUARD";
@@ -127,7 +138,7 @@ class ST77922TouchBridge : public esphome::Component {
         
         if (action != "") {
           if (!is_down_stroke_fired) {
-            execute_action_pipeline(action, 0, 0xBBBB);
+            execute_action_pipeline(action, 0, SOURCE_TOUCH_PAD);
             is_down_stroke_fired = true; 
             touch_down_timestamp = 0;
             soft_debounce_lift_time = now; 
@@ -200,7 +211,7 @@ class ST77922TouchBridge : public esphome::Component {
 
       if (last_action != action) {
         if (is_down_stroke_fired && !last_action.empty() && last_action != "WAKE_GUARD") {
-            execute_action_pipeline(last_action, 2, 0xBBBB); 
+            execute_action_pipeline(last_action, 2, SOURCE_TOUCH_PAD); 
         }
         is_down_stroke_fired = false;
         last_action = action;
@@ -208,15 +219,15 @@ class ST77922TouchBridge : public esphome::Component {
       }
 
       if (!is_down_stroke_fired) {
-        execute_action_pipeline(action, 0, 0xBBBB); 
+        execute_action_pipeline(action, 0, SOURCE_TOUCH_PAD); 
         is_down_stroke_fired = true;
         last_packet_sent_time = now;
       } 
       else {
         uint32_t held_duration = now - touch_down_timestamp;
         if (held_duration >= 500) {
-          if (now - last_packet_sent_time >= 120) {
-            execute_action_pipeline(action, 1, 0xBBBB); 
+          if (now - last_packet_sent_time >= 75) {
+            execute_action_pipeline(action, 1, SOURCE_TOUCH_PAD); 
             last_packet_sent_time = now;
           }
         }
@@ -229,7 +240,7 @@ class ST77922TouchBridge : public esphome::Component {
       
       if (is_down_stroke_fired) {
           if (!last_action.empty() && last_action != "PROFILE_MENU_LOCK" && last_action != "PROFILE_RELEASE_PENDING" && last_action != "WAKE_GUARD") {
-              execute_action_pipeline(last_action, 2, 0xBBBB); 
+              execute_action_pipeline(last_action, 2, SOURCE_TOUCH_PAD); 
           }
           
           // 🛠️ THE RELEASE FLUSHER: Clear out your custom layout tracking state variables
