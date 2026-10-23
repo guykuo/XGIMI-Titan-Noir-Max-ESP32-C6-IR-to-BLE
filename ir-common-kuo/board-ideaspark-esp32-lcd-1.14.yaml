@@ -128,7 +128,88 @@ script:
     mode: single
     then:
       - switch.turn_off: indicator_led
-                    
+
+
+# ============ General Display Scripts =============
+# --- myDisplay display 3 lines and auto dim display ---
+  - id: display_show
+    mode: restart 
+    parameters:
+      small_text: bool
+      line1: std::string
+      line2: std::string
+      line3: std::string
+   
+    then:
+      - lambda: |-
+          id(myDisplay_line1) = line1; 
+          id(myDisplay_line2) = line2;
+          id(myDisplay_line3) = line3;
+      - if:
+          condition:
+            lambda: |-
+              return id(myDisplay_disabled);
+          then:
+            - display.page.show: blank_page
+          else:
+            - if:
+                condition:
+                  lambda: |-
+                    return small_text;
+                then:
+                   - display.page.show: active_page_small
+                else:
+                   - display.page.show: active_page_std
+
+      - delay: 40s #how long display remains on
+      - display.page.show: blank_page
+
+
+# --- myDisplay modify a line and auto dim display ---
+  - id: display_modify_a_line
+    mode: restart 
+    parameters:
+      small_text: bool
+      whichLine: int
+      aline: std::string
+   
+    then:
+      - lambda: |-
+          switch (whichLine) {
+            case 1:
+              id(myDisplay_line1) = aline; 
+              break;
+            case 2:
+              id(myDisplay_line2) = aline;
+              break;
+            case 3:
+              id(myDisplay_line3) = aline;
+              break;
+            default:
+              break;
+          }
+          
+      - if:
+          condition:
+            lambda: |-
+              return id(myDisplay_disabled);
+          then:
+            - display.page.show: blank_page
+          else:
+            - if:
+                condition:
+                  lambda: |-
+                    return small_text;
+                then:
+                   - display.page.show: active_page_small
+                else:
+                   - display.page.show: active_page_std
+
+      - delay: 40s #how long display remains on
+      - display.page.show: blank_page
+
+
+
 # ========  Display Specific Implementation ========
 
 font:

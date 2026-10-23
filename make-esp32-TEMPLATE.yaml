@@ -98,7 +98,7 @@ esphome:
   comment: ESP32 with XGIMI BLE Translator
   project:
     name: xgimi.titan-noir-esp32-ir-kuo
-    version: 26.10.21.0235
+    version: 26.10.23.1414
     
   includes:
     - <sstream>
@@ -893,121 +893,6 @@ script:
           line1: 'Wake Token'
           line2: 'Sniffing'
           line3: 'TIMEOUT/ENDED'
-
-
-
-# --- myDisplay display 3 lines and auto dim display ---
-  - id: display_show
-    mode: restart 
-    parameters:
-      small_text: bool
-      line1: string  # Reverted to framework-supported keyword (SSO stack optimization applies)
-      line2: string
-      line3: string
-   
-    then:
-      - lambda: |-
-          // If a command comes in while the macro engine is completely IDLE (0),
-          // forcefully open the special info gate to prevent lock status freezing.
-          if (id(macro_workflow_state) == MACRO_STATE_IDLE) {
-            id(showing_special_info) = false;
-          }
-
-          // ─── TOUCH-TO-WAKE OVERRIDE INTERCEPTOR ───
-          if (line3 == "0x9999") {
-            id(myDisplay_line1) = "Touch Screen";
-            id(myDisplay_line2) = line2; 
-            id(myDisplay_line3) = "Ready";
-          } else {
-            id(myDisplay_line1) = line1; 
-            id(myDisplay_line2) = line2;
-            id(myDisplay_line3) = line3;
-          }    
-                              
-      - if:
-          condition:
-            lambda: |-
-              return id(myDisplay_disabled);
-          then:
-            - display.page.show: blank_page
-          else:
-            - if:
-                condition:
-                  lambda: |-
-                    return small_text;
-                then:
-                   - display.page.show: active_page_small
-                else:
-                   - display.page.show: active_page_std
-
-      - delay: 60s 
-
-      # If the system is actively recording a macro or awaiting a hotkey,
-      # skip turning the screen black to keep your logged steps fully visible.
-      - if:
-          condition:
-            lambda: |-
-              int current_state = id(macro_workflow_state);
-              return (current_state == MACRO_STATE_RECORDING || current_state == MACRO_STATE_AWAITING_HOTKEY);
-          then:
-            - logger.log: "Macro engine active. Suppressing display sleep timeout pass."
-          else:
-            - display.page.show: blank_page
-
-
-# --- myDisplay modify a line and auto dim display ---
-  - id: display_modify_a_line
-    mode: restart 
-    parameters:
-      small_text: bool
-      whichLine: int
-      aline: string  # Reverted to framework-supported keyword
-   
-    then:
-      - lambda: |-
-          switch (whichLine) {
-            case 1:
-              id(myDisplay_line1) = aline; 
-              break;
-            case 2:
-              id(myDisplay_line2) = aline;
-              break;
-            case 3:
-              id(myDisplay_line3) = aline;
-              break;
-            default:
-              break;
-          }
-          
-      - if:
-          condition:
-            lambda: |-
-              return id(myDisplay_disabled);
-          then:
-            - display.page.show: blank_page
-          else:
-            - if:
-                condition:
-                  lambda: |-
-                    return small_text;
-                then:
-                   - display.page.show: active_page_small
-                else:
-                   - display.page.show: active_page_std
-
-      - delay: 60s 
-
-      # If the system is actively recording a macro or awaiting a hotkey,
-      # skip turning the screen black to keep your logged steps fully visible.
-      - if:
-          condition:
-            lambda: |-
-              int current_state = id(macro_workflow_state);
-              return (current_state == MACRO_STATE_RECORDING || current_state == MACRO_STATE_AWAITING_HOTKEY);
-          then:
-            - logger.log: "Macro engine active. Suppressing display sleep timeout pass."
-          else:
-            - display.page.show: blank_page
 
 
   # --- show token_param on display ---

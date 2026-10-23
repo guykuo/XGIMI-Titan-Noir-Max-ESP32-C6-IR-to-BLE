@@ -1141,6 +1141,26 @@ script:
       - lambda: |-
           uint32_t now = millis();
 
+          // ─── INFRARED NOISE FILTER ───
+          // If a command is 0x0, check if it is explicitly mapped to a button in the loaded profile.
+          // Otherwise, it is random ambient noise and must be dropped instantly.
+          if (ir_command == 0x0) {
+            bool is_legit_zero_button = false;
+            
+            for (const auto& kv_pair : active_profile_workspace.cmd_codes) {
+              if (kv_pair.first == 0x0 && ir_address == active_profile_workspace.device_address) {
+                is_legit_zero_button = true;
+                break;
+              }
+            }
+
+            if (!is_legit_zero_button) {
+              ESP_LOGV("IR_GUARD", "Suppressed unmapped ambient IR noise pulse (0x0 command).");
+              return; // Drop noise instantly before wasting CPU cycles
+            }
+          }
+          // ─────────────────────────────────────
+
           uint8_t incoming_proto = PROTO_UNKNOWN;
           if (ir_protocolStr == "NEC") incoming_proto = PROTO_NEC;
           else if (ir_protocolStr == "JVC") incoming_proto = PROTO_JVC;
@@ -1175,11 +1195,13 @@ script:
               const auto& active_profile = active_profile_workspace;
               const IRCommand* found_cmd = nullptr;
               
+              #ifdef HAS_PHYSICAL_TOUCHSCREEN_MENU
               // Catch the touch screen text WAKE_UP token  ───
               if (ir_protocolStr == "WAKE_UP" || ir_command == 0x0) { // Catch simulated synthetic string injections
                 id(myDisplay).show_page(id(active_page_std));
                 return;
               }
+              #endif
               
               for (const auto& kv_pair : active_profile.cmd_codes) {
                 if (kv_pair.first == ir_command && ir_address == active_profile.device_address) {

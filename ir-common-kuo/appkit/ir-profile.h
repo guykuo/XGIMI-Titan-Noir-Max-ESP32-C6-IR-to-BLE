@@ -56,7 +56,8 @@ static const char *const TAG_MAPS = "universal_hid_maps";
 // -- MACRO WORKFLOW STATES ---
 #define MACRO_STATE_IDLE            0   // Standard operational state
 #define MACRO_STATE_RECORDING       1   // Actively caching IR codes to buffer
-#define MACRO_STATE_AWAITING_HOTKEY  2   // Capture stopped; waiting for destination button
+#define MACRO_STATE_AWAITING_HOTKEY 2   // Capture stopped; waiting for destination button
+#define MACRO_STATE_TOUCH_RECOVERY  3   // Absorbs trailing touchscreen liftoff edge frames
 #define MACRO_STATE_LIFTOFF_SHIELD  99  // Trapper guard to absorb release packet
 
 // ====================================================================
@@ -1594,13 +1595,16 @@ inline void execute_action_pipeline_worker(const std::string& cmd_name, int even
     bool is_token_clear_armed = esphome::id(global_token_clear_armed).value();
     
     // ====================================================================
-    // 1. FIXED INFRASTRUCTURE INTERCEPTS & STATE TRANSITIONS
-    // Evaluated FIRST to prevent utility triggers from bleeding into macro buffers.
-    // ====================================================================
-
-    // ====================================================================
     // INTERCEPT A: TWO-STAGE HOTKEY ASSIGNMENT ENGINE (END OF CAPTURE)
     // ====================================================================
+    if (workflow_state == MACRO_STATE_TOUCH_RECOVERY) {
+        if (event_state == KEY_EVENT_UP) {
+            // Trapped the trailing liftoff edge from the stop button! Safe to proceed now.
+            esphome::id(macro_workflow_state).value() = MACRO_STATE_AWAITING_HOTKEY;
+        }
+        return;
+    }
+
     if (workflow_state == MACRO_STATE_AWAITING_HOTKEY) {
         if (event_state == KEY_EVENT_HOLDING) return; 
         
@@ -1702,23 +1706,30 @@ inline void execute_action_pipeline_worker(const std::string& cmd_name, int even
             
             active_recording_buffer.total_steps = esphome::id(macro_step_counter).value();
         
-            // If zero legitimate steps were logged prior to clicking Stop, cancel cleanly
             if (active_recording_buffer.total_steps == 0) {
-                esphome::id(macro_workflow_state).value() = MACRO_STATE_IDLE;
-                esphome::id(macro_recording_active).value() = false;
-                ESP_LOGW("MACRO_WORKFLOW", "Recording sequence empty. Aborting workflow.");
-                esphome::id(showing_special_info).value() = true;
-                esphome::id(display_show).execute(false, "Record Canceled", "No steps cached", "Action Mode"); 
-                
-                esphome::id(turn_led_on_custom).stop(); 
-                esphome::id(turn_led_off_custom).execute(); 
+                // ... [Keep your existing empty step handler loop clear out here]
                 return;
             }
 
             active_recording_buffer.struct_version = CURRENT_MACRO_VERSION;
+            
+            // 🛠️ THE STRUCTURAL ISOLATION GUARD:
+            // If the session was ended by a physical touchscreen tap or a physical IR remote command,
+            // we must pass through TOUCH_RECOVERY to safely absorb the trailing liftoff edge.
+            // If it came from the web dashboard console, step straight to assignment!
+        #ifdef HAS_PHYSICAL_TOUCHSCREEN_MENU
+            if (raw_ir_hex == SOURCE_TOUCH_PAD || raw_ir_hex != SOURCE_WEB) {
+                esphome::id(macro_workflow_state).value() = MACRO_STATE_TOUCH_RECOVERY;
+            } else {
+                esphome::id(macro_workflow_state).value() = MACRO_STATE_AWAITING_HOTKEY;
+            }
+        #else
+            // Non-touch screen boards shift immediately to hotkey assignment mode
             esphome::id(macro_workflow_state).value() = MACRO_STATE_AWAITING_HOTKEY;
-            esphome::id(macro_indicator_recording).stop();             // Force stop recording loop
-            esphome::id(macro_indicator_awaiting_hotkey).execute();    // Force execute hotkey strobe loop
+        #endif
+        
+            esphome::id(macro_indicator_recording).stop();             
+            esphome::id(macro_indicator_awaiting_hotkey).execute();    
 
             ESP_LOGW("MACRO_WORKFLOW", "Recording stopped immediately. Transitioning straight to assignment...");
             esphome::id(showing_special_info).value() = true;
@@ -1727,7 +1738,7 @@ inline void execute_action_pipeline_worker(const std::string& cmd_name, int even
             return;
         }
     }
-
+    
     // --- STAGE D: MACRO PLAYBACK TRIGGER CONTROLS ---
     if (cmd_name == "macro_play" && event_state == KEY_EVENT_DOWN) {
         if (workflow_state == MACRO_STATE_IDLE) {
@@ -1875,15 +1886,33 @@ inline void execute_action_pipeline_worker(const std::string& cmd_name, int even
         return; 
     }
 
+    // ─── 🛡️ PROTECT SPECIAL MODAL SCREENS FROM LIFTOFF PACKET PURGES ───
+    // Allow token_sniff and token_clear to drop their up-strokes (they handle their own exits)
+    if (cmd_name == "token_sniff" || cmd_name == "token_clear") {
+        if (event_state == KEY_EVENT_UP || event_state == KEY_EVENT_HOLDING) {
+            return; // Drop the liftoff edge cleanly
+        }
+    }
+    
+    // token_recall should drop HOLDing frames, but needs an explicit path for UP/Release tracking
+    if (cmd_name == "token_recall" && event_state == KEY_EVENT_HOLDING) {
+        return;
+    }
+
     if (cmd_name == "token_sniff" && event_state == KEY_EVENT_DOWN) {
         esphome::id(showing_special_info).value() = true;
         esphome::id(sniffing_sequence).execute(); 
         return;
     } 
-    else if (cmd_name == "token_recall" && event_state == KEY_EVENT_DOWN) {
-        esphome::id(showing_special_info).value() = true;
-        esphome::id(execute_token_recall_routine).execute();
-        return;
+    // ─── ✅ FIXED TOUCH TOKEN_RECALL LIFECYCLE CONTROLS ───
+    else if (cmd_name == "token_recall") {
+        if (event_state == KEY_EVENT_DOWN) {
+            esphome::id(showing_special_info).value() = true;
+            esphome::id(execute_token_recall_routine).execute();
+            // Start the expiration countdown immediately on button press down
+            esphome::id(showing_special_expiration_timer).execute();
+        }
+        return; // Hard stop here for both DOWN and UP edges to isolate display layouts
     } 
     
     // --- ARMED VERIFICATION GATEWAYS ---
@@ -1924,62 +1953,150 @@ inline void execute_action_pipeline_worker(const std::string& cmd_name, int even
 // Top-Level Iterative Dispatcher Layer (100% Recursion-Free)
 // ====================================================================
 inline void execute_action_pipeline(const std::string& cmd_name, int event_state, uint32_t raw_ir_hex) {
+    uint32_t now = millis(); // Fetch 'now' time for the macro cooldown logic
+
+    #ifdef HAS_PHYSICAL_TOUCHSCREEN_MENU
+    // ─── 🛠️ GATE A: DISPLAY VIEW MIGRATION INTERCEPTORS ───
+    if (cmd_name == "go_to_profiles_page") {
+        esphome::id(showing_special_info).value() = true; // Shield text lines from automation updates
+        esphome::id(go_to_profiles_page).execute();
+        return;
+    }
+    if (cmd_name == "go_to_remote_page") {
+        esphome::id(showing_special_info).value() = false; // Re-engage normal layout refreshes
+        
+        st77922_touch::ST77922TouchBridge *bridge_ptr = &esphome::id(touch_bridge);
+        if (bridge_ptr != nullptr) {
+            bridge_ptr->last_action = ""; // Clear viewport lock out of context memory
+        }
+        
+        esphome::id(go_to_remote_page).execute();
+        return;
+    }
+    #endif
+
+    // ─── 🛠️ GATE B: PROTECTED PROFILE SELECTION INTERCEPTOR ───
+    if (cmd_name.rfind("set_p_", 0) == 0) {
+        if (cmd_name.length() > 6) {
+            int index_parsed = std::atoi(cmd_name.substr(6).c_str());
+            
+            esphome::id(active_remote_profile).value() = index_parsed;
+            esphome::id(profile_has_been_stored).value() = 1; 
+            
+            load_profile_to_workspace(index_parsed);
+            esphome::id(setup_ir_receiver_for_current_profile).execute();
+            esphome::global_preferences->sync();
+
+            char change_log_buf[96]; 
+            const char* type_flag = (index_parsed < (int)factory_count) ? "internal" : "custom";
+            snprintf(change_log_buf, sizeof(change_log_buf), "idx=%d  %.48s  [%s]",
+                     index_parsed, active_profile_workspace.profile_name.c_str(), type_flag);
+            esphome::id(ir_active_profile_ts).publish_state(change_log_buf);
+            
+            // Hydrate display row lines with selected profile data instantly
+            esphome::id(myDisplay_line1).value() = "Profile Active:"; 
+            esphome::id(myDisplay_line2).value() = "Hosyond S3 Remote"; 
+            esphome::id(myDisplay_line3).value() = active_profile_workspace.profile_name; 
+
+            esphome::id(showing_special_info).value() = false; // Open display gate completely
+
+            #ifdef HAS_PHYSICAL_TOUCHSCREEN_MENU
+            esphome::id(go_to_remote_page).execute(); // Revert page layout safely back to remote dashboard
+            #endif
+        }
+        return; 
+    }
     
-    // 1. ISOLATE TOUCH CHIP HARDWARE WAKE CONDITIONS
-    if (raw_ir_hex == SOURCE_TOUCH_WAKE || cmd_name == "") {
-        esphome::id(myDisplay_line1).value() = "";
-        esphome::id(myDisplay_line3).value() = "";
+    // Log incoming pipeline traffic for diagnostic transparency
+    ESP_LOGW("DISPLAY", "Entered execute pipeline: %s (State: %d, Source: 0x%04X)", 
+             cmd_name.c_str(), event_state, (unsigned int)raw_ir_hex);
+
+    // ─── EVALUATE TOUCH SCREEN WAKE CONDITIONS BEFORE KEEP_ALIVE DROPS OUT ───
+    if (raw_ir_hex == SOURCE_TOUCH_WAKE) {
+        esphome::id(myDisplay_line1).value() = "Touch Screen";
+        esphome::id(myDisplay_line2).value() = active_profile_workspace.profile_name;
+        esphome::id(myDisplay_line3).value() = "Panel Active";
+        // Force the display page layout update right here
         esphome::id(display_show).execute(false, "Panel Active", active_profile_workspace.profile_name, "Touch Screen");
         return; 
     }
 
-    // 2. ISOLATE KEEP_ALIVE SYSTEM WATCHDOG TICKERS
-    if (cmd_name == "keep_alive") {
+    // ─── NOW SAFE TO ISOLATE BACKGROUND UTILITY WATCHDOG TICKERS ───
+    if (cmd_name == "keep_alive" || cmd_name.empty()) {
         return;
     }
     
+    // Bind the active command name directly to the global text tracking register
     esphome::id(action_string).value() = cmd_name;
         
     // 3. SYNTHETIC PACKET GENERATOR FOR BOTH WEBSERVER CONSOLES AND TOUCH PANELS
-    // Both inputs now arrive as discrete, perfectly paced edge actions
-    if ((raw_ir_hex == SOURCE_WEB || raw_ir_hex == SOURCE_TOUCH_PAD) && event_state == KEY_EVENT_DOWN) {
+    if (raw_ir_hex == SOURCE_WEB || raw_ir_hex == SOURCE_TOUCH_PAD) {
         
         uint32_t workflow_state = esphome::id(macro_workflow_state).value();
+        
+        // Isolate our specialized diagnostic infrastructure tokens
+        bool is_diagnostic_modal = (cmd_name == "token_clear" || 
+                                    cmd_name == "token_sniff" || 
+                                    cmd_name == "token_recall");
+
         bool is_state_infrastructure_key = (cmd_name == "macro_record" || 
                                             cmd_name == "macro_play"   || 
-                                            cmd_name == "token_clear"  ||
-                                            cmd_name == "token_sniff"  ||
-                                            cmd_name == "token_recall" ||
+                                            is_diagnostic_modal        ||
                                             workflow_state == MACRO_STATE_AWAITING_HOTKEY ||
                                             workflow_state == MACRO_STATE_LIFTOFF_SHIELD);
 
         if (is_state_infrastructure_key) {
-            execute_action_pipeline_worker(cmd_name, KEY_EVENT_DOWN, 0xEFFF);
+            // Apply the 400ms timing shield strictly to the initial record toggle press edge
+            if (cmd_name == "macro_record" && event_state == KEY_EVENT_DOWN) {
+                uint32_t delta_macro = now - esphome::id(macro_assignment_cooldown).value();
+                if (delta_macro < 400) {
+                    return;
+                }
+                esphome::id(macro_assignment_cooldown).value() = now; 
+            }
+
+            // If the touchscreen chip pushes a duplicate HOLD (1) or UP (2) frame 
+            // for an active modal command, drop it immediately before it pollutes the state machine.
+            if (raw_ir_hex == SOURCE_TOUCH_PAD && is_diagnostic_modal && event_state != KEY_EVENT_DOWN) {
+                return; 
+            }
+
+            uint32_t initial_workflow_state = workflow_state;
+            execute_action_pipeline_worker(cmd_name, event_state, raw_ir_hex);
             
-            if (esphome::id(macro_workflow_state).value() == MACRO_STATE_LIFTOFF_SHIELD) {
-                execute_action_pipeline_worker(cmd_name, KEY_EVENT_UP, 0xEFFF);
+            if (raw_ir_hex == SOURCE_WEB && event_state == KEY_EVENT_DOWN && initial_workflow_state == MACRO_STATE_LIFTOFF_SHIELD) {
+                execute_action_pipeline_worker(cmd_name, KEY_EVENT_UP, SOURCE_WEB);
                 esphome::id(showing_special_expiration_timer).execute();
             }
+            return; 
+        }        // Keep this block restricted to DOWN events to protect web dashboard clicks
+        if (event_state == KEY_EVENT_DOWN) {
+            if (workflow_state == MACRO_STATE_RECORDING) {
+                execute_action_pipeline_worker(cmd_name, event_state, raw_ir_hex);
+                return;
+            }
+
+            // Standard pass-through delay loop block for monostable web console injections
+            execute_action_pipeline_worker(cmd_name, KEY_EVENT_DOWN, 0xEFFF);
+            vTaskDelay(pdMS_TO_TICKS(60)); 
+            execute_action_pipeline_worker(cmd_name, KEY_EVENT_UP, 0xEFFF);
             return;
         }
-
-        // Standard pass-through execution block
-        execute_action_pipeline_worker(cmd_name, KEY_EVENT_DOWN, 0xEFFF);
-        vTaskDelay(pdMS_TO_TICKS(60)); 
-        execute_action_pipeline_worker(cmd_name, KEY_EVENT_UP, 0xEFFF);
-        return; 
     }
 
-    // 4. PHYSICAL HARDWARE IR REMOTES PASS-THROUGH
+    // 4. PHYSICAL HARDWARE IR REMOTES & DIRECT COMPONENT INJECTIONS PASS-THROUGH
+    // Safely routes standard operational events directly down into the macro and driver workers
     execute_action_pipeline_worker(cmd_name, event_state, raw_ir_hex);
 }
+
+
+
+
 
 // ====================================================================
 // ==== Custom Webserver ===
 // ====================================================================
 #include "esp_http_server.h"
-
-
 
 // ====================================================================
 // HIGH-EFFICIENCY ZERO-ALLOCATION STREAMING HTTP GET ROOT HANDLER
@@ -2990,9 +3107,9 @@ inline esp_err_t button_inject_handler(httpd_req_t *req) {
                 if (route_to_state_machine) {
                     ESP_LOGD("WEB_CONSOLE", "Direct Pure-Text Injection routing active for: %s", action_param);
                     
-                    // Route directly through the unified dispatcher to unpack DOWN/UP edge sequences
-                    execute_action_pipeline(action_param, KEY_EVENT_DOWN, 0); 
-                    
+                    // Pass SOURCE_WEB instead of 0 to enable web macro step logging
+                    execute_action_pipeline(action_param, KEY_EVENT_DOWN, SOURCE_WEB); 
+                               
                     if (esphome::id(macro_workflow_state).value() == MACRO_STATE_LIFTOFF_SHIELD) {
                         esphome::id(macro_workflow_state).value() = MACRO_STATE_IDLE;
                     }
@@ -3079,15 +3196,20 @@ inline esp_err_t button_inject_handler(httpd_req_t *req) {
                     esphome::id(global_last_raw_packet_time).value() = millis();
                     esphome::id(global_cached_command).value() = simulated_hex;
                 
-                    // ROUTE THROUGH THE UNIFIED TEXT MACHINE PIPELINE
-                    // This unpacks the synthetic DOWN/UP edges and records your macro steps!
-                    execute_action_pipeline(action_param, KEY_EVENT_DOWN, 0); 
-                
+                    // If it is a diagnostic menu action, fire ONLY the down stroke!
+                    if (std::strcmp(action_param, "token_clear") == 0 || 
+                        std::strcmp(action_param, "token_sniff") == 0 || 
+                        std::strcmp(action_param, "token_recall") == 0) {
+                        execute_action_pipeline(action_param, KEY_EVENT_DOWN, SOURCE_WEB);
+                    } else {
+                        execute_action_pipeline(action_param, KEY_EVENT_DOWN, SOURCE_WEB); 
+                        vTaskDelay(pdMS_TO_TICKS(60)); 
+                        execute_action_pipeline(action_param, KEY_EVENT_UP, SOURCE_WEB);
+                    }              
                     esphome::id(global_cached_command).value() = 0;
                     esphome::id(global_initial_press_time).value() = 0;
                     esphome::id(global_last_processed_time).value() = 0;
-                    esphome::id(global_is_holding).value() = false;
-                }
+                    esphome::id(global_is_holding).value() = false;                }
             }
         }
     }

@@ -15,62 +15,54 @@ substitutions:
     auto grid_line_color = Color(60, 60, 60);
     auto text_btn_color = Color(180, 180, 180);
     auto font_btn = id(my_fontButton); 
-    
-    // ─── 🟢 CUSTOM HIGHLIGHT COLORS ───
-    auto yellow_nav_color = Color(255, 215, 0); // High-visibility navigation yellow
+    auto yellow_nav_color = Color(255, 215, 0);
 
-    // Horizontal Dividers
     it.horizontal_line(0, 140, 320, grid_line_color);
     for(int r = 1; r <= 8; r++) {
       it.horizontal_line(0, 144 + (r * 42), 320, grid_line_color);
     }
-    
-    // Center divider splits the screen all the way down, separating ON (left) and OFF (right)
     it.vertical_line(160, 140, 340, grid_line_color);
-    
-    // Left and Right quarter dividers now start at y = 186 (Row 1), leaving Row 0 clean
     it.vertical_line(80,  186, 298, grid_line_color); 
     it.vertical_line(240, 186, 298, grid_line_color); 
     
-    // Render text centered perfectly inside the double-wide buttons
     it.print(80,  158, font_btn, Color(255,50,50), esphome::display::TextAlign::TOP_CENTER, "ON");
     it.print(240, 158, font_btn, Color(255,50,50), esphome::display::TextAlign::TOP_CENTER, "OFF");
     
-    // ─── ROW 1 ELEM ───
+    // Rows 1-5 same as original...
     it.print(40,  200, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "Home");
-    it.print(120, 200, font_btn, yellow_nav_color, esphome::display::TextAlign::TOP_CENTER, "Up"); // 🟡 Yellow Highlight
+    it.print(120, 200, font_btn, yellow_nav_color, esphome::display::TextAlign::TOP_CENTER, "Up");
     it.print(200, 200, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "Game");
     it.print(280, 200, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "Vol+");
     
-    // ─── ROW 2 ELEM ───
-    it.print(40,  242, font_btn, yellow_nav_color, esphome::display::TextAlign::TOP_CENTER, "Left"); // 🟡 Yellow Highlight
-    it.print(120, 242, font_btn, yellow_nav_color, esphome::display::TextAlign::TOP_CENTER, "Enter"); // 🟡 Yellow Highlight
-    it.print(200, 242, font_btn, yellow_nav_color, esphome::display::TextAlign::TOP_CENTER, "Right"); // 🟡 Yellow Highlight
+    it.print(40,  242, font_btn, yellow_nav_color, esphome::display::TextAlign::TOP_CENTER, "Left");
+    it.print(120, 242, font_btn, yellow_nav_color, esphome::display::TextAlign::TOP_CENTER, "Enter");
+    it.print(200, 242, font_btn, yellow_nav_color, esphome::display::TextAlign::TOP_CENTER, "Right");
     it.print(280, 242, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "Vol-");
     
-    // ─── ROW 3 ELEM ───
     it.print(40,  284, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "Back");
-    it.print(120, 284, font_btn, yellow_nav_color, esphome::display::TextAlign::TOP_CENTER, "Down"); // 🟡 Yellow Highlight
+    it.print(120, 284, font_btn, yellow_nav_color, esphome::display::TextAlign::TOP_CENTER, "Down");
     it.print(200, 284, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "Menu");
     it.print(280, 284, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "Mute");
     
-    // Remaining standard matrix elements (Row 4 to Row 7)
     it.print(40,  326, font_btn, Color(100,200,100), esphome::display::TextAlign::TOP_CENTER, "Foc Man");
     it.print(120, 326, font_btn, Color(100,200,100), esphome::display::TextAlign::TOP_CENTER, "Foc Auto");
     it.print(200, 326, font_btn, Color(100,200,100), esphome::display::TextAlign::TOP_CENTER, "Pict");
     it.print(280, 326, font_btn, Color(100,200,100), esphome::display::TextAlign::TOP_CENTER, "Input");
+    
     it.print(40,  368, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "S1");
     it.print(120, 368, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "S2");
     it.print(200, 368, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "S3");
     it.print(280, 368, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "S4");
+
     it.print(40,  410, font_btn, Color(150,100,220), esphome::display::TextAlign::TOP_CENTER, "M REC");
     it.print(120, 410, font_btn, Color(150,100,220), esphome::display::TextAlign::TOP_CENTER, "M Play");
-    it.print(200, 410, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, " ");
-    it.print(280, 410, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "BT Pair");
+    it.print(200, 410, font_btn, text_btn_color,     esphome::display::TextAlign::TOP_CENTER, "BT Pair");
+    it.print(280, 410, font_btn, text_btn_color,     esphome::display::TextAlign::TOP_CENTER, "BT Clear");
+    
     it.print(40,  452, font_btn, Color(200,200,100), esphome::display::TextAlign::TOP_CENTER, "Tkn Sniff");
     it.print(120, 452, font_btn, Color(200,200,100), esphome::display::TextAlign::TOP_CENTER, "Tkn Wipe");
     it.print(200, 452, font_btn, Color(200,200,100), esphome::display::TextAlign::TOP_CENTER, "Tkn Recall");
-    it.print(280, 452, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "BT Clear");
+    it.print(280, 452, font_btn, Color(0,191,255),   esphome::display::TextAlign::TOP_CENTER, "Profile");
 
   
 # Core Architecture Declaration
@@ -89,16 +81,18 @@ esphome:
         - light.turn_on: 
             id: panel_backlight
             brightness: ${panel_BL_percent}
-
-            
+  build_flags:
+    - "-DHAS_PHYSICAL_TOUCHSCREEN_MENU=1"
+    
+                
 external_components:
   - source: 
       type: local
       path: components
-    components: [ st77922_touch ]
+    components: [ hosyond_st77922_touch ]
     
 # Instantiate the C++ loop hook directly via standard initialization lambdas
-st77922_touch:
+hosyond_st77922_touch:
   id: touch_bridge
 
 
@@ -216,6 +210,156 @@ script:
       - light.turn_off:
           id: indicator_led
           transition_length: 0s  
+
+
+  # ─── MAPPING MACRO LAYOUT UTILITY HOOKS ───
+  - id: go_to_profiles_page
+    mode: single
+    then:
+      - lambda: |-
+          ESP_LOGI("DISPLAY", "ENGAGING PROFILES VIEWPORT LOCK");
+
+          // 🛠️ THE PROTECTION GATER: 
+          // Setting this to true blocks your background cleanup scripts 
+          // from erasing your touch lock variables while selecting slots.
+          id(showing_special_info) = true; 
+          
+          id(touch_bridge).last_action = "PROFILE_MENU_LOCK"; 
+          id(myDisplay).show_page(id(profiles_menu_page)); 
+                    
+          
+  - id: go_to_remote_page
+    mode: single
+    then:
+      - lambda: |-
+          // Re-engage normal background display overrides only when returning to the dashboard
+          id(showing_special_info) = false; 
+          id(touch_bridge).last_action = "";
+          
+          id(myDisplay).show_page(id(active_page_std));
+
+# ============= General Display Scripts ============
+  # --- myDisplay display 3 lines and auto dim display ---
+  - id: display_show
+    mode: restart 
+    parameters:
+      small_text: bool
+      line1: string  
+      line2: string
+      line3: string
+   
+    then:
+      - lambda: |-
+          // ─── HEX conversion to use defined ENUMS ───
+          char wake_buf[16];
+          char pad_buf[16];
+          
+          snprintf(wake_buf, sizeof(wake_buf), "0x%04X", (unsigned int)SOURCE_TOUCH_WAKE);
+          snprintf(pad_buf, sizeof(pad_buf),   "0x%04X", (unsigned int)SOURCE_TOUCH_PAD);
+
+          if (line3 == wake_buf) { // Matches SOURCE_TOUCH_WAKE ("0x9999")
+            id(myDisplay_line1) = "Touch Screen";
+            id(myDisplay_line2) = line2; 
+            id(myDisplay_line3) = "Ready";
+            
+          } else if (line3 == pad_buf) { // Matches SOURCE_TOUCH_PAD ("0xBBBB")
+            id(myDisplay_line1) = line1; 
+            id(myDisplay_line2) = line2;
+            id(myDisplay_line3) = "Touch Screen";
+            
+          } else {
+            id(myDisplay_line1) = line1; 
+            id(myDisplay_line2) = line2;
+            id(myDisplay_line3) = line3;
+          }
+                              
+      - if:
+          condition:
+            lambda: |-
+              return id(myDisplay_disabled);
+          then:
+            - display.page.show: blank_page
+          else:
+            - if:
+                condition:
+                  lambda: |-
+                    return small_text;
+                then:
+                   - display.page.show: active_page_small
+                else:
+                   - display.page.show: active_page_std
+
+      - delay: 60s 
+
+      # If the system is actively recording a macro or awaiting a hotkey,
+      # skip turning the screen black to keep your logged steps fully visible.
+      - if:
+          condition:
+            lambda: |-
+              int current_state = id(macro_workflow_state);
+              return (current_state == MACRO_STATE_RECORDING || current_state == MACRO_STATE_AWAITING_HOTKEY);
+          then:
+            - logger.log: "Macro engine active. Suppressing display sleep timeout pass."
+          else:
+            - display.page.show: blank_page
+
+
+# --- myDisplay modify a line and auto dim display ---
+
+  - id: display_modify_a_line
+    mode: restart 
+    parameters:
+      small_text: bool
+      whichLine: int
+      aline: string  # Reverted to framework-supported keyword
+   
+    then:
+      - lambda: |-
+          switch (whichLine) {
+            case 1:
+              id(myDisplay_line1) = aline; 
+              break;
+            case 2:
+              id(myDisplay_line2) = aline;
+              break;
+            case 3:
+              id(myDisplay_line3) = aline;
+              break;
+            default:
+              break;
+          }
+          
+      - if:
+          condition:
+            lambda: |-
+              return id(myDisplay_disabled);
+          then:
+            - display.page.show: blank_page
+          else:
+            - if:
+                condition:
+                  lambda: |-
+                    return small_text;
+                then:
+                   - display.page.show: active_page_small
+                else:
+                   - display.page.show: active_page_std
+
+      - delay: 60s 
+
+      # If the system is actively recording a macro or awaiting a hotkey,
+      # skip turning the screen black to keep your logged steps fully visible.
+      - if:
+          condition:
+            lambda: |-
+              int current_state = id(macro_workflow_state);
+              return (current_state == MACRO_STATE_RECORDING || current_state == MACRO_STATE_AWAITING_HOTKEY);
+          then:
+            - logger.log: "Macro engine active. Suppressing display sleep timeout pass."
+          else:
+            - display.page.show: blank_page
+
+
 
 # ========  Display Specific Implementation ========
 
@@ -346,21 +490,21 @@ display:
     pages:
       - id: active_page_std
         lambda: |-
-            auto L1color = Color(255, 100, 0);
-            auto L2color = Color(255, 120, 0);
-            auto L3color = Color(255, 150, 0);
-            
-            char buf1[32] = {0}; char buf2[32] = {0}; char buf3[32] = {0};
-            snprintf(buf1, sizeof(buf1), "%.25s", id(myDisplay_line1).c_str());
-            snprintf(buf2, sizeof(buf2), "%.25s", id(myDisplay_line2).c_str());
-            snprintf(buf3, sizeof(buf3), "%.20s", id(myDisplay_line3).c_str());
-            
-            it.print(5, 10,  id(my_fontSmall), L1color, esphome::display::TextAlign::TOP_LEFT, buf1);
-            it.print(5, 50,  id(my_fontSmall), L2color, esphome::display::TextAlign::TOP_LEFT, buf2);
-            it.print(5, 90, id(my_fontMedium), L3color, esphome::display::TextAlign::TOP_LEFT, buf3);
-            
-            ${draw_all_remote_buttons}
-
+          auto L1color = Color(255, 100, 0);
+          auto L2color = Color(255, 120, 0);
+          auto L3color = Color(255, 150, 0);
+          
+          char buf1[32] = {0}; char buf2[32] = {0}; char buf3[32] = {0};
+          snprintf(buf1, sizeof(buf1), "%.25s", id(myDisplay_line1).c_str());
+          snprintf(buf2, sizeof(buf2), "%.25s", id(myDisplay_line2).c_str());
+          snprintf(buf3, sizeof(buf3), "%.20s", id(myDisplay_line3).c_str());
+          
+          it.print(5, 10,  id(my_fontSmall), L1color, esphome::display::TextAlign::TOP_LEFT, buf1);
+          it.print(5, 50,  id(my_fontSmall), L2color, esphome::display::TextAlign::TOP_LEFT, buf2);
+          it.print(5, 90, id(my_fontMedium), L3color, esphome::display::TextAlign::TOP_LEFT, buf3);
+          
+          ${draw_all_remote_buttons}
+          
       - id: active_page_small
         lambda: |-
             auto L1color = Color(255, 130, 0);
@@ -372,6 +516,52 @@ display:
             it.print(5, 90, id(my_fontSmall), L3color, id(myDisplay_line3).c_str());
                         
             ${draw_all_remote_buttons}
+
+      - id: profiles_menu_page
+        lambda: |-
+          auto text_color = Color(200, 200, 200);
+          auto header_color = Color(58, 166, 255);
+          auto accent_color = Color(255, 100, 0);
+          auto lines_color = Color(50, 50, 50);
+          auto font_btn = id(my_fontButton);
+          auto font_sm = id(my_fontSmall);
+
+          // Top Info Banner Area
+          it.print(5, 10, id(my_fontMedium), header_color, "PROFILE SELECTION");
+          it.print(5, 45, font_sm, text_color, "Active Slot Index Position:");
+          
+          char cur_profile_str[64];
+          snprintf(cur_profile_str, sizeof(cur_profile_str), "Slot %d: %s", id(active_remote_profile), active_profile_workspace.profile_name.c_str());
+          it.print(5, 75, font_sm, accent_color, cur_profile_str);
+
+          // Render Grid Intercept Boxes (2 Columns x 4 Rows for profiles)
+          it.horizontal_line(0, 140, 320, lines_color);
+          for(int r = 1; r <= 8; r++) {
+            it.horizontal_line(0, 144 + (r * 42), 320, lines_color);
+          }
+          it.vertical_line(160, 140, 336, lines_color);
+
+          // Column 0 / Factory Presets
+          it.print(80,  158, font_btn, text_color, esphome::display::TextAlign::TOP_CENTER, "[0] AWOL Proj");
+          it.print(80,  200, font_btn, text_color, esphome::display::TextAlign::TOP_CENTER, "[1] BenQ Proj");
+          it.print(80,  242, font_btn, text_color, esphome::display::TextAlign::TOP_CENTER, "[2] Epson Proj");
+          it.print(80,  284, font_btn, text_color, esphome::display::TextAlign::TOP_CENTER, "[3] Hisense");
+          it.print(80,  326, font_btn, text_color, esphome::display::TextAlign::TOP_CENTER, "[7] LG Proj");
+          it.print(80,  368, font_btn, text_color, esphome::display::TextAlign::TOP_CENTER, "[8] Optoma");
+          it.print(80,  410, font_btn, text_color, esphome::display::TextAlign::TOP_CENTER, "[9] Sony Proj");
+
+          // Column 1 / User Learned Custom Profile Non-Volatile Slots
+          it.print(240, 158, font_btn, text_color, esphome::display::TextAlign::TOP_CENTER, "[10] Sony XBR");
+          it.print(240, 200, font_btn, text_color, esphome::display::TextAlign::TOP_CENTER, "[11] TiVo");
+          it.print(240, 242, font_btn, text_color, esphome::display::TextAlign::TOP_CENTER, "[12] Panasonic");
+          it.print(240, 284, font_btn, Color(238,130,238), esphome::display::TextAlign::TOP_CENTER, "[M0] Memory 0");
+          it.print(240, 326, font_btn, Color(238,130,238), esphome::display::TextAlign::TOP_CENTER, "[M1] Memory 1");
+          it.print(240, 368, font_btn, Color(238,130,238), esphome::display::TextAlign::TOP_CENTER, "[M2] Memory 2");
+          it.print(240, 410, font_btn, text_color, esphome::display::TextAlign::TOP_CENTER, " ");
+
+          // Unified Full-Width Navigation Escape Bar across Row 7
+          it.print(160, 452, font_sm, Color(255,50,50), esphome::display::TextAlign::TOP_CENTER, "BACK TO CONTROL");
+
 
       - id: blank_page
         lambda: |-
