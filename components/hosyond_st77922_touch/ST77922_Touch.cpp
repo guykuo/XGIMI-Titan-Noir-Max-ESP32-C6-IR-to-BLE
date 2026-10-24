@@ -122,7 +122,7 @@ bool ST77922_TOUCH::Get_Touch(void)
 						touch.y[i] = height - (((data[i*7+2]&0x3F)<<8) | data[i*7+3]);
 						break;
 					case 3:
-						touch.x[i] = width - ((data[i*7+2]&0x3F)<<8) | data[i*7+3];
+						touch.x[i] = (width - ((data[i*7+2]&0x3F)<<8)) | (data[i*7+3]);
 						touch.y[i] = ((data[i*7]&0x3F)<<8) | data[i*7+1];
 						break;
 					default:

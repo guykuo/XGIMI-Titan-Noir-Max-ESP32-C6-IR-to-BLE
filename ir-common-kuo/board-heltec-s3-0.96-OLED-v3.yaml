@@ -203,21 +203,6 @@ display:
     offset_y: 0
     rotation: 0
     update_interval: 0.1s
-
-    on_page_change:
-      - then:
-          - if:
-              condition:
-                # Check page positions by raw integer index (0, 1, 2...)
-                # Bypasses the const DisplayPage* pointer conversion entirely!
-                lambda: 'return id(myDisplay).get_active_page_index() == 2;' # Replace 2 with the actual index of your blank_page
-              then:
-                - light.turn_off:
-                    id: panel_backlight
-              else:
-                - light.turn_on:
-                    id: panel_backlight
-                    brightness: ${display_BL_percent}
     
     pages:
       - id: active_page_std
