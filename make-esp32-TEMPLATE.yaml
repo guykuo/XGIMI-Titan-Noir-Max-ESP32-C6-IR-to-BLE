@@ -47,9 +47,7 @@ packages:
   #board_pkg: !include ir-common-kuo/board-waveshare-c6-lcd-1.47.yaml       # 3 ample ram. good board with LCD. Diff solder.
   #board_pkg: !include ir-common-kuo/board-waveshare-s3-touch-lcd-2.8.yaml # 9 large LCD, no indicator LED
  
-  # ===== following boards are NOT recommendable. Included only for development purposes
-  #board_pkg: !include ir-common-kuo/board-m5stick-S3-grove-IR.yaml        #12 works ONLY WITH EXTERNAL grove IR sensor
-  #board_pkg: !include ir-common-kuo/board-m5stick-S3-internal_IR.yaml # incompatible, if using built-in IR sensor
+  # ===== following board(s) are NOT recommendable. Included only for development purposes
   #board_pkg: !include ir-common-kuo/board-waveshare-c5-lcd-1.47.yaml  # incompatible. Far too little heap space
 
 
