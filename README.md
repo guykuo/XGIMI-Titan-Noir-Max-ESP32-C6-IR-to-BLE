@@ -89,6 +89,8 @@ These "factory" IR profiles have known working IR code sets ...
 ## Supported ESP Boards
 ESP32 boards are defined in ir-common-kuo/ as board.yaml files. These board files contain board specific information used to create the translator firmware. Several board types are supported. You can also create your "board" file to support a new ESP32 board type or to customize GPIO assignments.
 
+<img width="1000" alt="eps32 boards supported" src="https://github.com/user-attachments/assets/7bf574df-021f-4093-97ef-e826bf1b9e32" />
+
 Supplied board files are listed in descending order of author preference for use as IR translator ...
 
 | | |
