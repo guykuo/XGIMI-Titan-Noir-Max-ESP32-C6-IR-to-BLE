@@ -44,7 +44,7 @@ packages:
   #board_pkg: !include ir-common-kuo/board-lafvintech-c6-lcd-1.47.yaml     # 2 low cost, LCD, RGB LED. Ample heap. EZ solder
   #board_pkg: !include ir-common-kuo/board-m5stack-pico-d4-atom-lite.yaml  # 5 No-Solder. Needs grove IR and i2c OLED display
   #board_pkg: !include ir-common-kuo/board-waveshare-s3-lcd-1.47B.yaml     # 4 requires IR sensor WITHOUT LED (VS1838B)
-  #board_pkg: !include ir-common-kuo/board-waveshare-c6-lcd-1.47.yaml       # 3 ample ram. good board with LCD. Diff solder.
+  #board_pkg: !include ir-common-kuo/board-waveshare-c6-lcd-1.47.yaml      # 3 ample ram. good board with LCD. Diff solder.
   #board_pkg: !include ir-common-kuo/board-waveshare-s3-touch-lcd-2.8.yaml # 9 large LCD, no indicator LED
  
   # ===== following board(s) are NOT recommendable. Included only for development purposes
@@ -56,7 +56,7 @@ packages:
 # ===========================================================================================================
 
   ir-hub-pkg:         !include ir-common-kuo/appkit/ir-hub.yaml
-  mrmachine-ble-pkg:  !include ir-common-kuo/appkit/mrmachine-ble-v1.0.0x.yaml # required, heavily modified mrmachine BLE package
+  mrmachine-ble-pkg:  !include ir-common-kuo/appkit/ble-mrmachine-avalones-kuo-2026-10-25-1112.yaml # required, heavily modified mrmachine BLE package
 
 logger:
   #level: DEBUG
@@ -96,7 +96,7 @@ esphome:
   comment: ESP32 with XGIMI BLE Translator
   project:
     name: xgimi.titan-noir-esp32-ir-kuo
-    version: 26.10.23.1414
+    version: 26.10.25.1120
     
   includes:
     - <sstream>
