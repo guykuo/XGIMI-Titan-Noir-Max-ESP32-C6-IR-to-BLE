@@ -96,7 +96,7 @@ esphome:
   comment: ESP32 with XGIMI BLE Translator
   project:
     name: xgimi.titan-noir-esp32-ir-kuo
-    version: 26.10.25.1120
+    version: 26.10.26.0300
     
   includes:
     - <sstream>
@@ -249,8 +249,8 @@ esp32:
   partitions: ir-common-kuo/appkit/partitions.csv
   framework:
     sdkconfig_options:
-      CONFIG_BT_BLE_EST_LINK_CONN_NUM: "1"
-      CONFIG_BT_ACL_CONNECTIONS: "1"
+      CONFIG_BT_BLE_EST_LINK_CONN_NUM: "2"
+      CONFIG_BT_ACL_CONNECTIONS: "2"
       
       # ====== NEW HIGH-UTILITY MEMORY RECLAIMS ======
       CONFIG_BT_ALLOCATION_FROM_SPIRAM_FIRST: "n"  # Forces internal ultra-fast RAM mapping
@@ -259,7 +259,7 @@ esp32:
       CONFIG_BT_BLE_SMP_ENABLE: "y"                # Keep this active for Xgimi handshake lines
       
       # ====== REMOVE ALL MULTI-DEVICE OVERHEAD ======
-      CONFIG_BT_BLE_MAX_ACT_PARAMS: "1"            # Drops background parallel device tracking down to 1
+      CONFIG_BT_BLE_MAX_ACT_PARAMS: "2"            # Drops background parallel device tracking down to 2
 
 # ============================================================
 api:
