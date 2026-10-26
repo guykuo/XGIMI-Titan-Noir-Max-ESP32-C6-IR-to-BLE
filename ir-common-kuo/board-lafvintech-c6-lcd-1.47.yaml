@@ -3,6 +3,8 @@
 # Overall, great balance of cost and features. Adequate heap space
 # Has LCD, multi-color LED, and adequate RAM and low cost.
 
+# Tip for easier soldering: pass leads for IR Sensor from TOP of PCB and soldering on bottom side of PCB. 
+
 # Lafvintech board may require physical reset after flashing.
 
 # ============= BEGIN Configuration Options KUO ==========

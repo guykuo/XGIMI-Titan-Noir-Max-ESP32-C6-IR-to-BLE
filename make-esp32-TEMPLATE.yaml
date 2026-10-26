@@ -35,17 +35,18 @@ substitutions:
 packages: 
   # 3 =======  ESP32 board, Uncomment one (and only one) to specify board ===================
                                                                            # Number is recommendation ranking
-  board_pkg: !include ir-common-kuo/board-esp32-c3-0.42-OLED.yaml         # 1 lowest cost good board w OLED. EZ solder
-  #board_pkg: !include ir-common-kuo/board-esp32-c6-wroom-1.yaml           # 7 ample RAM. Add 0.9 inch i2c OLED display
-  #board_pkg: !include ir-common-kuo/board-heltec-s3-0.96-OLED-v3.yaml     # 6 needs special cable for logging
-  #board_pkg: !include ir-common-kuo/board-hosyond-s3-lcd-3.5-touch.yaml   # 8 supports touchscreen control buttons
-  #board_pkg: !include ir-common-kuo/board-ideaspark-esp32-OLED.yaml       #10 USB-micro cable, ltd heap, noisy IR
-  #board_pkg: !include ir-common-kuo/board-ideaspark-esp32-lcd-1.14.yaml   #11 USB-c to USB-A cable to flash. Ltd heap
-  #board_pkg: !include ir-common-kuo/board-lafvintech-c6-lcd-1.47.yaml     # 2 low cost, LCD, RGB LED. Ample heap. EZ solder
-  #board_pkg: !include ir-common-kuo/board-m5stack-pico-d4-atom-lite.yaml  # 5 No-Solder. Needs grove IR and i2c OLED display
-  #board_pkg: !include ir-common-kuo/board-waveshare-s3-lcd-1.47B.yaml     # 4 requires IR sensor WITHOUT LED (VS1838B)
-  #board_pkg: !include ir-common-kuo/board-waveshare-c6-lcd-1.47.yaml      # 3 ample ram. good board with LCD. Diff solder.
-  #board_pkg: !include ir-common-kuo/board-waveshare-s3-touch-lcd-2.8.yaml # 9 large LCD, no indicator LED
+  board_pkg: !include ir-common-kuo/board-esp32-c3-0.42-OLED.yaml         # 1 Lowest cost good board w OLED. EZ solder
+  #board_pkg: !include ir-common-kuo/board-esp32-c6-wroom-1.yaml           # 8 Ample RAM. Add 0.9 inch i2c OLED display
+  #board_pkg: !include ir-common-kuo/board-heltec-s3-0.96-OLED-v3.yaml     # 7 Needs special cable for logging
+  #board_pkg: !include ir-common-kuo/board-hosyond-s3-lcd-3.5-touch.yaml   # 9 Supports touchscreen control buttons
+  #board_pkg: !include ir-common-kuo/board-ideaspark-esp32-OLED.yaml       #11 USB-micro cable, ltd heap, noisy IR
+  #board_pkg: !include ir-common-kuo/board-ideaspark-esp32-lcd-1.14.yaml   #12 USB-c to USB-A cable to flash. Ltd heap
+  #board_pkg: !include ir-common-kuo/board-lafvintech-c6-lcd-1.47.yaml     # 2 Low cost, LCD, RGB LED. Ample heap. OK solder
+  #board_pkg: !include ir-common-kuo/board-m5stack-S3-atom-lite.yaml # 5 No-Solder. Add grove IR and i2c OLED. Ample RAM
+  #board_pkg: !include ir-common-kuo/board-m5stack-pico-d4-atom-lite.yaml  # 6 No-Solder. Add grove IR and i2c OLED. Ltd RAM
+  #board_pkg: !include ir-common-kuo/board-waveshare-s3-lcd-1.47B.yaml     # 4 Requires IR sensor WITHOUT LED (VS1838B)
+  #board_pkg: !include ir-common-kuo/board-waveshare-c6-lcd-1.47.yaml      # 3 Ample ram. good board with LCD. OK solder.
+  #board_pkg: !include ir-common-kuo/board-waveshare-s3-touch-lcd-2.8.yaml #10 Large LCD, no indicator LED
  
   # ===== following board(s) are NOT recommendable. Included only for development purposes
   #board_pkg: !include ir-common-kuo/board-waveshare-c5-lcd-1.47.yaml  # incompatible. Far too little heap space
