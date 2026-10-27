@@ -93,30 +93,6 @@ remote_receiver:
         ESP_LOGD("IR_RECOGNIZER", "Detected Protocol: %s (Mark: %uus, Space: %uus, Pulses: %u)", 
          to_string(proto), (unsigned int)head_mark, (unsigned int)head_space, total_pulses);
 
-        // ============================================================
-        // UNIVERSAL PROTOCOL REPEAT INJECTION LAYER
-        // ============================================================
-        if (id(global_cached_command) != 0) {
-          uint8_t allowed = id(ir_receiver_allowed_protocol);
-          
-          // A: NEC / LG Repeat Detection (4 pulses, massive header mark)
-          if (total_pulses == 4 && head_mark >= 8400 && head_mark <= 9400) {
-            if (allowed == PROTO_NEC || allowed == PROTO_LG || allowed == 255) {
-              std::string p_str = (allowed == PROTO_LG) ? "LG" : "NEC";
-              id(general_IR_received_handler)->execute(p_str, id(learn_active_address), id(learned_best_command), 1);
-            }
-          }
-          // B: JVC Repeat Detection (Continuous 34-pulse sub-streams stripped of structural headers)
-          else if (total_pulses == 34 && (allowed == PROTO_JVC || allowed == 255)) {
-            id(general_IR_received_handler)->execute("JVC", id(learn_active_address), id(learned_best_command), 1);
-          }
-          // C: Panasonic Repeat Detection (Continuous 96 to 102-pulse arrays containing continuous hold metrics)
-          else if (total_pulses >= 96 && total_pulses <= 102 && (allowed == PROTO_PANASONIC || allowed == 255)) {
-            id(general_IR_received_handler)->execute("PANASONIC", id(learn_active_address), id(learned_best_command), 1);
-          }
-        }
-
-
 
   #====================================================================
   #=======           MULTI-PROTOCOL CONVERSION GATES            =======
@@ -1226,13 +1202,13 @@ script:
               if (is_system_key && delta_press < 450) {
                 ESP_LOGD("IR_HUB", "Debounce shield active: Absorbed duplicate system key frame burst.");
                 return; 
-              } else if (!is_system_key && delta_press < 50) {
+              } else if (!is_system_key && delta_press < 80) {
                 return;
               }
               
               // --- 3. REPEAT RUNNER SYSTEM SEQUENCES BEGIN HERE ---
               if (id(global_cached_command) == ir_command) {
-                if (now - id(global_last_processed_time) > 150) {
+                if (now - id(global_last_processed_time) > 200) { // how long before auto repeat
                   ESP_LOGD("IR_HUB", "Quiet gap detected (%ums). Splitting sequential clicks cleanly.", (unsigned int)(now - id(global_last_processed_time)));
                   id(ir_map_processor).execute(ir_command, KEY_EVENT_UP); 
                   id(global_cached_command) = 0;
