@@ -611,27 +611,17 @@ inline void fire_bluetooth_hid_action(const char* action_name, int event_state) 
         else if (resolved_type == HID_REPORT_SYSTEM_CONTROL) {
             // The custom press_system wrapper handles its own structural cleanups automatically
         }
-        // Step-by-step low-latency modifier roll-off
+        // Step-by-step low-latency modifier roll-off replaced with a direct global release frame
         else if (resolved_type == HID_REPORT_COMBO_INPUT) {
-            uint8_t modifiers = (true_hid_code >> 8) & 0xFF;
+            // Force an instant, zero-delay absolute release stroke out to the GATT stack pipeline
+            uint8_t clean_release[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+            esphome::id(xgimi_remote_controller).notify_keyboard_(clean_release);
 
-            // Step 1: Release only the target character key (0x40) 
-            // Keep the modifiers engaged while clearing the key register code
-            uint8_t mid_report[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-            mid_report[0] = modifiers; 
-            
-            // ⚡ Pushes your custom mid_report array straight to the Bluetooth stack!
-            esphome::id(xgimi_remote_controller).notify_keyboard_(mid_report); 
-
-            // Step 2: Micro-delay window to let the projector digest the key liftoff
-            vTaskDelay(pdMS_TO_TICKS(10)); 
-
-            // Step 3: Now cleanly release the remaining modifier layout masks entirely
+            // Clean up your internal driver tracking parameters instantly
             esphome::id(xgimi_remote_controller).release_held_keyboard_();
         }
     }
 }
-
 
 // ====================================================================
 // DYNAMIC PROFILE LOOKUP FOR PHYSICAL OVERRIDE ROUTES

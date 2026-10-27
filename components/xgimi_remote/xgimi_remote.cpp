@@ -151,23 +151,30 @@ void XgimiRemote::press_keyboard(uint8_t usage) {
 
 void XgimiRemote::hold_keyboard(uint8_t usage) {
   if (!this->connected_ || !this->authenticated_ || !this->is_keyboard_subscribed()) return;
-  if (this->held_keyboard_active_ && this->held_keyboard_usage_ == usage) return;
+  
+  // If it's a new key, dispatch the initial down report but keep the cyclic loop idle
+  if (!this->held_keyboard_active_ || this->held_keyboard_usage_ != usage) {
+    this->held_keyboard_usage_ = usage;
+    this->held_keyboard_last_tx_ = millis();
+    
+    uint8_t press[8] = {0x00, 0x00, usage, 0x00, 0x00, 0x00, 0x00, 0x00};
+    this->notify_keyboard_(press);
+    return; // Exit here. Do not set held_keyboard_active_ to true yet.
+  }
 
-  this->held_keyboard_usage_ = usage;
-  this->held_keyboard_last_tx_ = millis();
+  // If the same code arrives consecutively from the IR pipeline, it's a real long-press hold
   this->held_keyboard_active_ = true;
-
-  uint8_t press[8] = {0x00, 0x00, usage, 0x00, 0x00, 0x00, 0x00, 0x00};
-  this->notify_keyboard_(press);
 }
 
 void XgimiRemote::release_held_keyboard_() {
-  if (!this->held_keyboard_active_) return;
-  uint8_t release[8] = {};
-  this->notify_keyboard_(release);
-  ESP_LOGD(TAG, "Released held keyboard usage 0x%02X", this->held_keyboard_usage_);
+  // Clear the active loop flag immediately to halt the cyclic loop
   this->held_keyboard_active_ = false;
   this->held_keyboard_usage_ = 0;
+
+  // Enforce a hard physical release frame transmission out to the GATT stack
+  uint8_t release[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+  this->notify_keyboard_(release);
+  ESP_LOGD(TAG, "Released held keyboard state completely.");
 }
 
 void XgimiRemote::press_consumer(uint16_t usage) {
@@ -182,21 +189,27 @@ void XgimiRemote::hold_consumer(uint16_t usage) {
   if (!this->connected_ || !this->authenticated_ || !this->is_consumer_subscribed()) return;
   if (this->held_consumer_active_ && this->held_consumer_usage_ == usage) return;
 
-  this->held_consumer_usage_ = usage;
-  this->held_consumer_last_tx_ = millis();
-  this->held_consumer_active_ = true;
+  if (!this->held_consumer_active_ || this->held_consumer_usage_ != usage) {
+    this->held_consumer_usage_ = usage;
+    this->held_consumer_last_tx_ = millis();
+    
+    uint8_t press[6] = {static_cast<uint8_t>(usage & 0xFF), static_cast<uint8_t>((usage >> 8) & 0xFF), 0x00, 0x00, 0x00, 0x00};
+    this->notify_consumer_(press);
+    return; // Exit here. Do not set held_consumer_active_ to true yet.
+  }
 
-  uint8_t press[6] = {static_cast<uint8_t>(usage & 0xFF), static_cast<uint8_t>((usage >> 8) & 0xFF), 0x00, 0x00, 0x00, 0x00};
-  this->notify_consumer_(press);
+  this->held_consumer_active_ = true;
 }
 
 void XgimiRemote::release_held_consumer_() {
-  if (!this->held_consumer_active_) return;
-  uint8_t release[6] = {};
-  this->notify_consumer_(release);
-  ESP_LOGD(TAG, "Released held consumer usage 0x%04X", this->held_consumer_usage_);
+  // Clear the active loop flag immediately to halt the cyclic loop
   this->held_consumer_active_ = false;
   this->held_consumer_usage_ = 0;
+
+  // Enforce a hard physical release frame transmission out to the GATT stack
+  uint8_t release[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+  this->notify_consumer_(release);
+  ESP_LOGD(TAG, "Released held consumer state completely.");
 }
 
 void XgimiRemote::set_advertised_name_(const char *name) {
