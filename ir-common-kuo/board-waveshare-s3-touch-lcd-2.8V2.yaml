@@ -1,0 +1,473 @@
+# Waveshare S3 LCD 2.8 inch with touch
+#
+# Moderate size LCD display works but is smaller than desirable for
+# easy use of remote control touchscreen buttons. 
+#
+# Hoysond 3.5 inch board is better sized choice.
+#
+# Lacks a usable indicator LED, but instead has battery charge indicator LED
+#
+# ============= BEGIN Configuration Options KUO ==========
+
+substitutions:
+  pin_ir_receiver:   GPIO44 
+  pin_indicator_LED: GPIO43 
+  pin_action_btn: GPIO0 
+  pin_action_btn_pullup: false
+  wifi_tx_power: "15dB"
+  panel_BL_percent: "75%"
+  def_profile: "0"
+
+  # ─── NATIVE PORTRAIT REMOTE BLUEPRINT MACRO ───
+  draw_all_remote_buttons: |-
+    auto grid_line_color = Color(50, 50, 50);
+    auto text_btn_color = Color(160, 160, 160);
+    auto font_btn = id(my_fontButton); 
+    auto yellow_nav_color = Color(240, 200, 0);
+
+    // Render Symmetrical Portrait Partition Gridlines (240px wide x 224px high grid canvas)
+    it.horizontal_line(0, 96, 240, grid_line_color);
+    for(int r = 1; r <= 8; r++) {
+      it.horizontal_line(0, 96 + (r * 28), 240, grid_line_color);
+    }
+    it.vertical_line(120, 96, 224, grid_line_color);
+    it.vertical_line(60,  124, 196,  grid_line_color); 
+    it.vertical_line(180, 124, 196,  grid_line_color); 
+    
+    // Row 0 - System Power Switches (Shifted Y to 102)
+    it.print(60,  102,  font_btn, Color(255,50,50), esphome::display::TextAlign::TOP_CENTER, "ON");
+    it.print(180, 102,  font_btn, Color(255,50,50), esphome::display::TextAlign::TOP_CENTER, "OFF");
+    
+    // Row 1 - Navigation Grid Row 1 (Shifted Y to 130)
+    it.print(30,  130, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "Home");
+    it.print(90,  130, font_btn, yellow_nav_color, esphome::display::TextAlign::TOP_CENTER, "Up");
+    it.print(150, 130, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "Game");
+    it.print(210, 130, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "Vol+");
+    
+    // Row 2 - Navigation Grid Row 2 (Shifted Y to 158)
+    it.print(30,  158, font_btn, yellow_nav_color, esphome::display::TextAlign::TOP_CENTER, "Left");
+    it.print(90,  158, font_btn, yellow_nav_color, esphome::display::TextAlign::TOP_CENTER, "Enter");
+    it.print(150, 158, font_btn, yellow_nav_color, esphome::display::TextAlign::TOP_CENTER, "Right");
+    it.print(210, 158, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "Vol-");
+    
+    // Row 3 - Navigation Grid Row 3 (Shifted Y to 186)
+    it.print(30,  186, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "Back");
+    it.print(90,  186, font_btn, yellow_nav_color, esphome::display::TextAlign::TOP_CENTER, "Down");
+    it.print(150, 186, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "Menu");
+    it.print(210, 186, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "Mute");
+    
+    // Row 4 - Focus Mechanics (Shifted Y to 214)
+    it.print(30,  214, font_btn, Color(100,200,100), esphome::display::TextAlign::TOP_CENTER, "Foc Man");
+    it.print(90,  214, font_btn, Color(100,200,100), esphome::display::TextAlign::TOP_CENTER, "Foc Auto");
+    it.print(150, 214, font_btn, Color(100,200,100), esphome::display::TextAlign::TOP_CENTER, "Pict");
+    it.print(210, 214, font_btn, Color(100,200,100), esphome::display::TextAlign::TOP_CENTER, "Input");
+    
+    // Row 5 - Factory Application Hotkeys (Shifted Y to 242)
+    it.print(30,  242, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "S1");
+    it.print(90,  242, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "S2");
+    it.print(150, 242, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "S3");
+    it.print(210, 242, font_btn, text_btn_color, esphome::display::TextAlign::TOP_CENTER, "S4");
+
+    // Row 6 - Macro Control Triggers (Shifted Y to 270)
+    it.print(30,  270, font_btn, Color(150,100,220), esphome::display::TextAlign::TOP_CENTER, "M REC");
+    it.print(90,  270, font_btn, Color(150,100,220), esphome::display::TextAlign::TOP_CENTER, "M Play");
+    it.print(150, 270, font_btn, text_btn_color,     esphome::display::TextAlign::TOP_CENTER, "BT Pair");
+    it.print(210, 270, font_btn, text_btn_color,     esphome::display::TextAlign::TOP_CENTER, "BT Clear");
+    
+    // Row 7 - Diagnostic Modes & System Override Gateway Link (Shifted Y to 298)
+    it.print(30,  298, font_btn, Color(200,200,100), esphome::display::TextAlign::TOP_CENTER, "Tkn Sniff");
+    it.print(90,  298, font_btn, Color(200,200,100), esphome::display::TextAlign::TOP_CENTER, "Tkn Wipe");
+    it.print(150, 298, font_btn, Color(200,200,100), esphome::display::TextAlign::TOP_CENTER, "Tkn Recall");
+    it.print(210, 298, font_btn, Color(0,191,255),   esphome::display::TextAlign::TOP_CENTER, "Profile");
+
+# Core Architecture Declaration
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3 # variant needed to keep compiler tuned for the S3 chip core
+  framework:
+    type: esp-idf
+
+# ============= END Configuration Options KUO ==========
+
+esphome:
+  on_boot:
+    - priority: -50.0
+      then:
+        - light.turn_on: 
+            id: display_backlight
+            brightness: ${panel_BL_percent}
+  build_flags:
+    - "-DHAS_PHYSICAL_TOUCHSCREEN_MENU=1"
+    - "-DBOARD_WAVESHARE_S3_LCD28V2=1"
+    
+external_components:
+  - source: 
+      type: local
+      path: components
+    components: [ waveshare_cst3530_touch ]
+    
+waveshare_cst3530_touch:
+  id: touch_bridge
+  
+globals:
+  # ======= myDisplay display globals
+  - id: myDisplay_line1
+    type: std::string  
+    restore_value: no
+    initial_value: ''
+
+  - id: myDisplay_line2
+    restore_value: no
+    type: std::string  
+    initial_value: ''
+    
+  - id: myDisplay_line3
+    restore_value: no
+    type: std::string  
+    initial_value: ''
+              
+output:
+  - platform: ledc
+    id: backlight_pwm
+    pin: GPIO5   
+    frequency: 12000 Hz       # Keeps frequency high to narrow the transistor's gate threshold
+    channel: 0                
+    min_power: 0.001          # Scales the hardware floor mapping
+    max_power: 0.40           # Caps the hardware ceiling mapping
+          
+light:
+  - platform: esp32_rmt_led_strip # neopixel
+    id: indicator_led
+    pin: ${pin_indicator_LED}
+    chipset: WS2812
+    num_leds: 1
+    rgb_order: RGB
+    name: "Sniffer Indicator"
+    internal: true
+
+  - platform: monochromatic  
+    name: "Display Backlight"
+    id: display_backlight
+    output: backlight_pwm
+    default_transition_length: 0.5s
+    gamma_correct: 0          # Keeps response linear 
+    restore_mode: ALWAYS_ON     
+    internal: true
+
+script:
+  - id: flash_led_custom
+    parameters:
+      count: int         # Number of flashes
+      dwell: int         # duration of flash in msec
+      red: float         # Red value (0.0 to 1.0)
+      green: float       # Green value (0.0 to 1.0)
+      blue: float        # Blue value (0.0 to 1.0)
+    mode: queued
+    then:
+      - repeat:
+          count: !lambda "return count;"
+          then:
+            # --- TURN RGB LED ON WITH DYNAMIC COLOR ---
+            - light.turn_on:
+                id: indicator_led
+                red: !lambda "return red;"
+                green: !lambda "return green;"
+                blue: !lambda "return blue;"
+                brightness: 0.2
+                transition_length: 0s
+            - delay: !lambda "return dwell;"
+            # --- TURN RGB LED OFF ---
+            - light.turn_off:
+                id: indicator_led
+                transition_length: 0s
+            - delay: !lambda "return dwell;"
+            
+  - id: turn_led_on_custom
+    parameters:
+      red: float         # Red channel (0.0 to 1.0)
+      green: float       # Green channel (0.0 to 1.0)
+      blue: float        # Blue channel (0.0 to 1.0)
+      brightness: float  # Brightness (0.0 to 1.0)
+    mode: single
+    then:
+      - light.turn_on:
+          id: indicator_led
+          red: !lambda "return red;"
+          green: !lambda "return green;"
+          blue: !lambda "return blue;"
+          brightness: !lambda "return brightness;"
+          transition_length: 0s  
+          
+  - id: turn_led_off_custom
+    mode: single
+    then:
+      - light.turn_off:
+          id: indicator_led
+          transition_length: 0s  
+
+# ============ General Display Scripts =============
+# --- myDisplay display 3 lines and auto dim display ---
+  - id: display_show
+    mode: restart 
+    parameters:
+      small_text: bool
+      line1: string  
+      line2: string
+      line3: string
+   
+    then:
+      - lambda: |-
+          // ─── HEX conversion to use defined ENUMS ───
+          char wake_buf[16];
+          char pad_buf[16];
+          
+          snprintf(wake_buf, sizeof(wake_buf), "0x%04X", (unsigned int)SOURCE_TOUCH_WAKE);
+          snprintf(pad_buf, sizeof(pad_buf),   "0x%04X", (unsigned int)SOURCE_TOUCH_PAD);
+
+          if (line3 == wake_buf) { // Matches SOURCE_TOUCH_WAKE ("0x9999")
+            id(myDisplay_line1) = "Touch Screen";
+            id(myDisplay_line2) = line2; 
+            id(myDisplay_line3) = "Ready";
+            
+          } else if (line3 == pad_buf) { // Matches SOURCE_TOUCH_PAD ("0xBBBB")
+            id(myDisplay_line1) = line1; 
+            id(myDisplay_line2) = line2;
+            id(myDisplay_line3) = "Touch Screen";
+            
+          } else {
+            id(myDisplay_line1) = line1; 
+            id(myDisplay_line2) = line2;
+            id(myDisplay_line3) = line3;
+          }
+                              
+      - if:
+          condition:
+            lambda: |-
+              return id(myDisplay_disabled);
+          then:
+            - display.page.show: blank_page
+          else:
+            - if:
+                condition:
+                  lambda: |-
+                    return small_text;
+                then:
+                   - display.page.show: active_page_small
+                else:
+                   - display.page.show: active_page_std
+
+      - delay: 60s 
+
+      # If the system is actively recording a macro or awaiting a hotkey,
+      # skip turning the screen black to keep your logged steps fully visible.
+      - if:
+          condition:
+            lambda: |-
+              int current_state = id(macro_workflow_state);
+              return (current_state == MACRO_STATE_RECORDING || current_state == MACRO_STATE_AWAITING_HOTKEY);
+          then:
+            - logger.log: "Macro engine active. Suppressing display sleep timeout pass."
+          else:
+            - display.page.show: blank_page
+
+
+# --- myDisplay modify a line and auto dim display ---
+
+  - id: display_modify_a_line
+    mode: restart 
+    parameters:
+      small_text: bool
+      whichLine: int
+      aline: string  # Reverted to framework-supported keyword
+   
+    then:
+      - lambda: |-
+          switch (whichLine) {
+            case 1:
+              id(myDisplay_line1) = aline; 
+              break;
+            case 2:
+              id(myDisplay_line2) = aline;
+              break;
+            case 3:
+              id(myDisplay_line3) = aline;
+              break;
+            default:
+              break;
+          }
+          
+      - if:
+          condition:
+            lambda: |-
+              return id(myDisplay_disabled);
+          then:
+            - display.page.show: blank_page
+          else:
+            - if:
+                condition:
+                  lambda: |-
+                    return small_text;
+                then:
+                   - display.page.show: active_page_small
+                else:
+                   - display.page.show: active_page_std
+
+      - delay: 60s 
+
+      # If the system is actively recording a macro or awaiting a hotkey,
+      # skip turning the screen black to keep your logged steps fully visible.
+      - if:
+          condition:
+            lambda: |-
+              int current_state = id(macro_workflow_state);
+              return (current_state == MACRO_STATE_RECORDING || current_state == MACRO_STATE_AWAITING_HOTKEY);
+          then:
+            - logger.log: "Macro engine active. Suppressing display sleep timeout pass."
+          else:
+            - display.page.show: blank_page
+
+
+
+  # ─── MAPPING MACRO LAYOUT UTILITY HOOKS ───
+  - id: go_to_profiles_page
+    mode: single
+    then:
+      - lambda: |-
+          ESP_LOGI("DISPLAY", "ENGAGING PROFILES VIEWPORT LOCK");
+          id(touch_bridge).last_action = "PROFILE_MENU_LOCK"; 
+          id(myDisplay).show_page(id(profiles_menu_page)); 
+                    
+  - id: go_to_remote_page
+    mode: single
+    then:
+      - lambda: |-
+          id(touch_bridge).last_action = "";
+          id(myDisplay).show_page(id(active_page_std));
+
+# ========  Display Specific Implementation ========
+
+font:
+  - file: "gfonts://Roboto"
+    id: my_fontSmall
+    size: 16       
+  - file: "gfonts://Roboto"
+    id: my_fontMedium
+    size: 20
+  - file: "gfonts://Roboto"
+    id: my_fontLarge
+    size: 24
+  - file: "gfonts://Roboto"
+    id: my_fontButton
+    size: 11     
+    
+spi:
+  clk_pin: GPIO40
+  mosi_pin: GPIO45
+  miso_pin: GPIO46  # Required for the bus to compile properly
+  id: lcd_spi_bus
+
+# Master Display Component Configuration
+display:
+  - platform: mipi_spi
+    id: myDisplay
+    model: ST7789V
+    spi_id: lcd_spi_bus
+
+    cs_pin: GPIO42
+    dc_pin: GPIO41
+    reset_pin: GPIO39
+
+    rotation: 0
+    dimensions: 240X320
+    invert_colors: true
+    color_order: BGR    
+    data_rate: 80MHz    
+                    
+    update_interval: 0.25s
+ 
+    on_page_change:
+      - then:
+          - if:
+              condition:
+                lambda: 'return to == id(blank_page);'
+              then:
+                - light.turn_off:
+                    id: display_backlight
+
+              else:
+                - light.turn_on:
+                    id: display_backlight
+                    brightness: 100%
+
+    pages:
+      - id: active_page_std
+        lambda: |-
+            auto L1color = Color(255, 100, 0);
+            auto L2color = Color(255, 120, 0);
+            auto L3color = Color(255, 150, 0);
+
+            // Shifted Y positions upwards to guarantee text stays strictly within the top 96px zone
+            it.print(5, 5,   id(my_fontSmall), L1color, id(myDisplay_line1).c_str());
+            it.print(5, 32,  id(my_fontSmall), L2color, id(myDisplay_line2).c_str());
+            
+            // Scaled down from my_fontLarge to my_fontMedium to prevent row overlap bounds
+            it.print(5, 60, id(my_fontMedium), L3color,  id(myDisplay_line3).c_str());
+
+            // Embedded macro engine for full-canvas remote grids over text elements
+            ${draw_all_remote_buttons}
+
+      - id: active_page_small
+        lambda: |-
+            auto L1color = Color(255, 130, 0);
+            auto L2color = Color(255, 130, 0);
+            auto L3color = Color(255, 130, 0);
+            
+            // Tight alignment for the compact text view pass
+            it.print(5, 5,   id(my_fontSmall), L1color, id(myDisplay_line1).c_str());
+            it.print(5, 32,  id(my_fontSmall), L2color, id(myDisplay_line2).c_str());
+            it.print(5, 60,  id(my_fontSmall), L3color, id(myDisplay_line3).c_str());
+
+            // Embedded macro engine for full-canvas remote grids over text elements
+            ${draw_all_remote_buttons}
+
+      - id: profiles_menu_page
+        lambda: |-
+          auto text_color = Color(200, 200, 200);
+          auto header_color = Color(58, 166, 255);
+          auto lines_color = Color(50, 50, 50);
+          auto font_btn = id(my_fontButton);
+          auto font_sm = id(my_fontSmall);
+
+          it.print(5, 10, id(my_fontMedium), header_color, "PROFILE SELECTION");
+
+          // Render Grid Intercept Boxes (2 Columns x 4 Rows for profiles)
+          it.horizontal_line(0, 96, 240, lines_color);
+          for(int r = 1; r <= 8; r++) {
+            it.horizontal_line(0, 96 + (r * 28), 240, lines_color);
+          }
+          it.vertical_line(120, 96, 224, lines_color);
+
+          // Column 0 / Factory Presets (Shifted Y-positions to +6px baseline)
+          it.print(60,  102, font_btn, text_color, esphome::display::TextAlign::TOP_CENTER, " AWOL Proj");
+          it.print(60,  130, font_btn, text_color, esphome::display::TextAlign::TOP_CENTER, " BenQ Proj");
+          it.print(60,  158, font_btn, text_color, esphome::display::TextAlign::TOP_CENTER, " Epson Proj");
+          it.print(60,  186, font_btn, text_color, esphome::display::TextAlign::TOP_CENTER, " Hisense");
+          it.print(60,  214, font_btn, text_color, esphome::display::TextAlign::TOP_CENTER, " LG Proj");
+          it.print(60,  242, font_btn, text_color, esphome::display::TextAlign::TOP_CENTER, " Optoma");
+          it.print(60,  270, font_btn, text_color, esphome::display::TextAlign::TOP_CENTER, " Sony Proj");
+
+          // Column 1 / Custom NVRAM Slots (Shifted Y-positions to +6px baseline)
+          it.print(180, 102, font_btn, text_color, esphome::display::TextAlign::TOP_CENTER, " Sony XBR");
+          it.print(180, 130, font_btn, text_color, esphome::display::TextAlign::TOP_CENTER, " TiVo");
+          it.print(180, 158, font_btn, text_color, esphome::display::TextAlign::TOP_CENTER, " Panasonic");
+          it.print(180, 186, font_btn, Color(238,130,238), esphome::display::TextAlign::TOP_CENTER, "[M0] Memory 0");
+          it.print(180, 214, font_btn, Color(238,130,238), esphome::display::TextAlign::TOP_CENTER, "[M1] Memory 1");
+          it.print(180, 242, font_btn, Color(238,130,238), esphome::display::TextAlign::TOP_CENTER, "[M2] Memory 2");
+          it.print(180, 270, font_btn, text_color, esphome::display::TextAlign::TOP_CENTER, " ");
+
+          // Unified Full-Width Navigation Escape Bar across Row 7 (Shifted Y to 298)
+          it.print(120, 298, font_sm, Color(255,50,50), esphome::display::TextAlign::TOP_CENTER, "BACK TO CONTROL");
+
+      - id: blank_page
+        lambda: |-
+          // Leaving lambda completely blank turns all pixels off safely

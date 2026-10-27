@@ -83,6 +83,7 @@ esphome:
             brightness: ${panel_BL_percent}
   build_flags:
     - "-DHAS_PHYSICAL_TOUCHSCREEN_MENU=1"
+    - "-DBOARD_HOSYOND_S3_LCD35=1"
     
                 
 external_components:

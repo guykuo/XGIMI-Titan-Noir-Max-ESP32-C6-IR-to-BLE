@@ -41,13 +41,13 @@ packages:
   #board_pkg: !include ir-common-kuo/board-hosyond-s3-lcd-3.5-touch.yaml   # 9 Supports touchscreen control buttons
   #board_pkg: !include ir-common-kuo/board-ideaspark-esp32-OLED.yaml       #11 USB-micro cable, ltd heap, noisy IR
   #board_pkg: !include ir-common-kuo/board-ideaspark-esp32-lcd-1.14.yaml   #12 USB-c to USB-A cable to flash. Ltd heap
-  #board_pkg: !include ir-common-kuo/board-lafvintech-c6-lcd-1.47.yaml     # 2 Low cost, LCD, RGB LED. Ample heap. OK solder
+  #board_pkg: !include ir-common-kuo/board-lafvintech-c6-lcd-1.47.yaml     # 2 Low cost, LCD, RGB LED. Ample heap. EZ solder
   #board_pkg: !include ir-common-kuo/board-m5stack-S3-atom-lite.yaml # 5 No-Solder. Add grove IR and i2c OLED. Ample RAM
   #board_pkg: !include ir-common-kuo/board-m5stack-pico-d4-atom-lite.yaml  # 6 No-Solder. Add grove IR and i2c OLED. Ltd RAM
   #board_pkg: !include ir-common-kuo/board-waveshare-s3-lcd-1.47B.yaml     # 4 Requires IR sensor WITHOUT LED (VS1838B)
-  #board_pkg: !include ir-common-kuo/board-waveshare-c6-lcd-1.47.yaml      # 3 Ample ram. good board with LCD. OK solder.
-  #board_pkg: !include ir-common-kuo/board-waveshare-s3-touch-lcd-2.8.yaml #10 Large LCD, no indicator LED
- 
+  #board_pkg: !include ir-common-kuo/board-waveshare-c6-lcd-1.47.yaml      # 3 Ample ram. good board with LCD. EZ solder.
+  #board_pkg: !include ir-common-kuo/board-waveshare-s3-touch-lcd-2.8V2.yaml #10 Mid-size LCD, lacks indicator LED. Does touch.
+   
   # ===== following board(s) are NOT recommendable. Included only for development purposes
   #board_pkg: !include ir-common-kuo/board-waveshare-c5-lcd-1.47.yaml  # incompatible. Far too little heap space
 
@@ -71,7 +71,6 @@ external_components:
 
 
 wifi:
-#  networks: []
   reboot_timeout: 13h
   output_power: ${wifi_tx_power}
   # Crucial for stability on multi-node or mesh routers
@@ -97,7 +96,7 @@ esphome:
   comment: ESP32 with XGIMI BLE Translator
   project:
     name: xgimi.titan-noir-esp32-ir-kuo
-    version: 26.10.26.0300
+    version: 26.10.26.1745
     
   includes:
     - <sstream>
@@ -544,6 +543,7 @@ binary_sensor:
                                 line1: 'Setting'
                                 line2: 'Display'
                                 line3: 'Enabled'
+                            - display.page.show: active_page_std
                             - logger.log: "Display enabled via long hold."
                           else:
                             - script.execute: 

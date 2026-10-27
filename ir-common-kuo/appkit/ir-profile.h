@@ -1958,22 +1958,32 @@ inline void execute_action_pipeline(const std::string& cmd_name, int event_state
     #ifdef HAS_PHYSICAL_TOUCHSCREEN_MENU
     // ─── 🛠️ GATE A: DISPLAY VIEW MIGRATION INTERCEPTORS ───
     if (cmd_name == "go_to_profiles_page") {
-        esphome::id(showing_special_info).value() = true; // Shield text lines from automation updates
+        esphome::id(showing_special_info).value() = true;
         esphome::id(go_to_profiles_page).execute();
         return;
     }
     if (cmd_name == "go_to_remote_page") {
-        esphome::id(showing_special_info).value() = false; // Re-engage normal layout refreshes
-        
+        esphome::id(showing_special_info).value() = false;
+
+        // --- Execute member variable changes safely inside the known class scopes ---
+        #if defined(BOARD_WAVESHARE_S3_LCD28V2)
+        waveshare_cst3530_touch::WaveshareTouchBridge *bridge_ptr = &esphome::id(touch_bridge);
+        if (bridge_ptr != nullptr) {
+            bridge_ptr->last_action = "";
+        }
+
+        #elif defined(BOARD_HOSYOND_S3_LCD35)
         st77922_touch::ST77922TouchBridge *bridge_ptr = &esphome::id(touch_bridge);
         if (bridge_ptr != nullptr) {
-            bridge_ptr->last_action = ""; // Clear viewport lock out of context memory
+            bridge_ptr->last_action = "";
         }
+        #endif
         
         esphome::id(go_to_remote_page).execute();
         return;
     }
     #endif
+
 
     // ─── 🛠️ GATE B: PROTECTED PROFILE SELECTION INTERCEPTOR ───
     if (cmd_name.rfind("set_p_", 0) == 0) {
