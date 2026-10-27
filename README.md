@@ -99,14 +99,14 @@ Supplied board files are listed in descending order of author preference for use
 | board-lafvintech-c6-lcd-1.47.yaml  | Low cost, good board with LCD and neopixel. Ample heap space |
 | board-waveshare-c6-lcd-1.47.yaml | Good board with LCD and neopixel. Ample heap space |
 | board-waveshare-s3-lcd-1.47B.yaml  | Requires IR sensor WITHOUT LED (VS1838B) |
-| board-m5stack-pico-d4-atom-lite.yaml | No-Solder. Needs grove IR and i2c OLED display |
+| board-m5stack-S3-atom-lite.yaml | No-Solder. Ample RAM. Needs grove IR and i2c OLED display |
 | board-heltec-hiletgo-s3-0.96-OLED-v3.yaml | Needs special cable for logging |
 | board-esp32-c6-wroom-1.yaml        | Works very well but add 0.9 inch i2c OLED display |
+| board-m5stack-pico-d4-atom-lite.yaml | No-Solder. Barely adequate RAM. Needs grove IR and i2c OLED display |
 | board-hosyond-s3-lcd-3.5-touch.yaml | Large LCD screen. Supports touch button control |
 | board-waveshare-s3-touch-lcd-2.8.yaml |  Large LCD screen, lacks indicator LED |
 | board-ideaspark-esp32-classic-OLED.yaml | USB-micro cable needed, Limited heap, noisy IR |
 | board-ideaspark-esp32-classic-lcd-1.14.yaml | USB-c to USB-A cable to flash. Limited heap |
-| board-m5stick-S3-grove-IR.yaml | NOT RECOMMENDED. Works ONLY with EXTERNAL grove IR sensor |
 
 Look in the board file for actual GPIO pins for IR receiver and optional i2c display
   
