@@ -1,0 +1,287 @@
+# ============= BEGIN Configuration Options ==========
+# Fully optimized configuration file for the M5Stack AtomS3R.
+# Utilizes native framework commands to bypass deprecated custom components.
+
+substitutions:
+  pin_ir_receiver: GPIO1      # Grove IR sensor
+  pin_action_btn:  GPIO41     # Programmable button underneath LCD screen
+  pin_action_btn_pullup: true
+  wifi_tx_power: "15dB"       
+
+# Core Architecture Declaration
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3            # Explicit target layout for the ESP32-S3-PICO
+  framework:
+    type: esp-idf
+# ============= END Configuration Options ==========
+
+esphome:
+  on_boot:
+    - priority: 800.0
+      then:
+        - delay: 1.5s
+    - priority: -100
+      then:
+        # 1. Wake and enable the LP5562 chip (Register 0x00 -> Value 0x40)
+        - lambda: |-
+            uint8_t data_wake[] = {0x00, 0x40};
+            id(bus_internal).write(0x30, data_wake, 2);
+        - delay: 10ms
+        # 2. Configure White channel to standard direct PWM output mode (Register 0x08 -> Value 0x01)
+        - lambda: |-
+            uint8_t data_mode[] = {0x08, 0x01};
+            id(bus_internal).write(0x30, data_mode, 2);
+        # 3. Securely light up the screen backlight at a permanent, stable 50% baseline
+        - light.turn_on:
+            id: display_backlight
+            brightness: 0.5            
+
+psram:
+  mode: octal
+
+globals:
+  - id: myDisplay_line1
+    type: std::string
+    restore_value: no
+    initial_value: ''
+  - id: myDisplay_line2
+    type: std::string
+    restore_value: no
+    initial_value: ''
+  - id: myDisplay_line3
+    type: std::string
+    restore_value: no
+    initial_value: ''
+    
+  # Virtual LED state variables tracking raw color channel data for canvas emulation
+  - id: v_led_r
+    type: int
+    initial_value: '0'
+  - id: v_led_g
+    type: int
+    initial_value: '0'
+  - id: v_led_b
+    type: int
+    initial_value: '0'
+
+# System Inter-Chip Communication Lines
+i2c:
+  - id: bus_internal
+    sda: GPIO45               # System I2C Data bus
+    scl: GPIO0                # System I2C Clock bus
+    frequency: 100kHz         # Lowered clock speed for generic wire register stability
+
+# Native Template Output writing raw register updates over the core i2c component
+output:
+  - platform: template
+    id: backlight_pwm
+    type: float
+    write_action:
+      - lambda: |-
+          // Scale float state boundary inputs (0.0 to 1.0) into raw 8-bit byte values (0 to 255)
+          uint8_t pwm_byte = (uint8_t)(state * 255.0f);
+          uint8_t data_pwm[] = {0x0E, pwm_byte}; // Register 0x0E = Backlight (White)
+          id(bus_internal).write(0x30, data_pwm, 2);
+
+light:
+  - platform: monochromatic
+    name: "Display Backlight"
+    id: display_backlight
+    output: backlight_pwm
+    default_transition_length: 0s     # Instant steps optimize raw register writing
+    gamma_correct: 0
+    restore_mode: ALWAYS_OFF
+    internal: true
+
+#======================================================================
+script:
+  - id: flash_led_custom
+    parameters:
+      count: int         # Number of flashes
+      dwell: int         # Duration of flash state in msec
+      red: float         # Red color intensity (0.0 to 1.0)
+      green: float       # Green color intensity (0.0 to 1.0)
+      blue: float        # Blue color intensity (0.0 to 1.0)
+    mode: queued
+    then:
+      - repeat:
+          count: !lambda "return count;"
+          then:
+            # --- MAP VIRTUAL LED VARIABLES TO ACTIVE COLOR AND FORCE REFRESH ---
+            - lambda: |-
+                id(v_led_r) = (int)(red * 255.0f);
+                id(v_led_g) = (int)(green * 255.0f);
+                id(v_led_b) = (int)(blue * 255.0f);
+            - component.update: myDisplay
+            - delay: !lambda "return dwell;"
+  
+            # --- RESET VARIABLES TO BLACK AND FORCE REFRESH ---
+            - lambda: |-
+                id(v_led_r) = 0; id(v_led_g) = 0; id(v_led_b) = 0;
+            - component.update: myDisplay
+            - delay: !lambda "return dwell;"
+               
+  - id: turn_led_on_custom
+    parameters:
+      red: float         
+      green: float       
+      blue: float        
+      brightness: float  
+    mode: single
+    then:
+      - lambda: |-
+          id(v_led_r) = (int)(red * brightness * 255.0f);
+          id(v_led_g) = (int)(green * brightness * 255.0f);
+          id(v_led_b) = (int)(blue * brightness * 255.0f);
+
+  - id: turn_led_off_custom
+    mode: single
+    then:
+      - lambda: |-
+          id(v_led_r) = 0; id(v_led_g) = 0; id(v_led_b) = 0;
+      
+# ============ General Display Scripts =============
+  - id: display_show
+    mode: restart 
+    parameters:
+      small_text: bool
+      line1: std::string
+      line2: std::string
+      line3: std::string
+    then:
+      - lambda: |-
+          id(myDisplay_line1) = line1; 
+          id(myDisplay_line2) = line2;
+          id(myDisplay_line3) = line3;
+      - if:
+          condition:
+            lambda: |-
+              return id(myDisplay_disabled);
+          then:
+            - display.page.show: blank_page
+          else:
+            - if:
+                condition:
+                  lambda: |-
+                    return small_text;
+                then:
+                   - display.page.show: active_page_small
+                else:
+                   - display.page.show: active_page_std
+      - delay: 40s 
+      - display.page.show: blank_page
+
+  - id: display_modify_a_line
+    mode: restart 
+    parameters:
+      small_text: bool
+      whichLine: int
+      aline: std::string
+    then:
+      - lambda: |-
+          switch (whichLine) {
+            case 1: id(myDisplay_line1) = aline; break;
+            case 2: id(myDisplay_line2) = aline; break;
+            case 3: id(myDisplay_line3) = aline; break;
+            default: break;
+          }
+      - if:
+          condition:
+            lambda: |-
+              return id(myDisplay_disabled);
+          then:
+            - display.page.show: blank_page
+          else:
+            - if:
+                condition:
+                  lambda: |-
+                    return small_text;
+                then:
+                   - display.page.show: active_page_small
+                else:
+                   - display.page.show: active_page_std
+      - delay: 40s 
+      - display.page.show: blank_page
+
+# Font Scaled To Gracefully Fit Inside The Tight 128x128 Window Dimensions
+font:
+  - file: "gfonts://Roboto"
+    id: my_fontSmall
+    size: 12
+  - file: "gfonts://Roboto"
+    id: my_fontMedium
+    size: 14
+  - file: "gfonts://Roboto"
+    id: my_fontLarge
+    size: 16
+
+# Onboard high-precision SPI bus mapping
+spi:
+  clk_pin: GPIO15            
+  mosi_pin: GPIO21           
+
+# Hardware Screen Driver Interface Map (Verified Pins)
+display:
+  - platform: mipi_spi
+    id: myDisplay
+    model: ST7735             # Reverted back to your working original panel variant
+    rotation: 180               
+    cs_pin: GPIO14            
+    dc_pin: GPIO42            
+    reset_pin: GPIO48         
+    invert_colors: true
+    color_order: BGR
+    update_interval: 0.3s     # Snappy refreshing ensures visual responsiveness
+
+    dimensions:
+      width: 128
+      height: 128
+      offset_width: 2
+      offset_height: 1
+      pad_width: 2
+      pad_height: 3
+
+    on_page_change:
+      - then:
+          - if:
+              condition:
+                lambda: 'return to == id(blank_page);'
+              then:
+                - light.turn_off:
+                    id: display_backlight
+              else:
+                - light.turn_on:
+                    id: display_backlight
+                    brightness: 50%
+
+    pages:
+      - id: active_page_std
+        lambda: |-
+          auto L1color = Color(255, 100, 0);
+          auto L2color = Color(255, 120, 0);
+          auto L3color = Color(255, 150, 0);
+          it.print(4, 15,  id(my_fontSmall), L1color, id(myDisplay_line1).c_str());
+          it.print(4, 45,  id(my_fontSmall), L2color, id(myDisplay_line2).c_str());
+          it.print(4, 78,  id(my_fontLarge), L3color, id(myDisplay_line3).c_str());
+          
+          // DRAW EMULATED EMULATOR SQUARE (14x14 box drawn in bottom right quadrant)
+          auto indicator_color = Color(id(v_led_r), id(v_led_g), id(v_led_b));
+          it.filled_rectangle(110, 110, 14, 14, indicator_color);
+
+      - id: active_page_small
+        lambda: |-
+          auto L1color = Color(255, 130, 0);
+          auto L2color = Color(255, 130, 0);
+          auto L3color = Color(255, 130, 0);
+          it.print(4, 15,  id(my_fontMedium), L1color, id(myDisplay_line1).c_str());
+          it.print(4, 45,  id(my_fontMedium), L2color, id(myDisplay_line2).c_str());
+          it.print(4, 75,  id(my_fontMedium), L3color, id(myDisplay_line3).c_str());
+          
+          // DRAW EMULATED EMULATOR SQUARE (14x14 box drawn in bottom right quadrant)
+          auto indicator_color = Color(id(v_led_r), id(v_led_g), id(v_led_b));
+          it.filled_rectangle(110, 110, 14, 14, indicator_color);
+
+      - id: blank_page
+        lambda: |-
+          // Blank page – pixels off

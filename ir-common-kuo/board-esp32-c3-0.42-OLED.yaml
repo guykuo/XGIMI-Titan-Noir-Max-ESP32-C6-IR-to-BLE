@@ -1,67 +1,104 @@
-# ============= BEGIN Configuration Options KUO ==========
+# ============= BEGIN Configuration Options ==========
+# Fully optimized configuration file for the M5Stack AtomS3R.
+# Engineered specifically for compatibility under the esp-idf framework.
 
 substitutions:
-  pin_ir_receiver: GPIO1   # IR sensor. 
-  pin_indicator_LED: GPIO8 # LED indicator (both ESP32-C3 and C6)
-  pin_action_btn: GPIO9     # use boot button for actions. Both ESP32-c3 and ESP32-C6 use pin 9 for boot button. 
+  pin_ir_receiver: GPIO1      # Grove IR sensor
+  pin_action_btn: GPIO41      # Programmable button under screen
+  pin_indicator_LED: GPIO5    # dummy pin
   pin_action_btn_pullup: true
-  wifi_tx_power: "10dB"
-  
+  wifi_tx_power: "15dB"       
+
 # Core Architecture Declaration
 esp32:
-  board: esp32-c3-devkitm-1
+  board: esp32-s3-devkitc-1
+  variant: esp32s3            # Explicit target layout for the ESP32-S3-PICO
   framework:
     type: esp-idf
-    
-# i2c Display Pins
-i2c: 
-  sda: GPIO5
-  scl: GPIO6
-  frequency: 400kHz
-  scan: false # to prevent startup crashes during boot scans
-  id: bus_a
-  
-# ============= END Configuration Options KUO ==========
+# ============= END Configuration Options ==========
 
 esphome:
   on_boot:
-    # 800.0f runs BEFORE the display (400.0f) initializes, giving us structural control
     - priority: 800.0
       then:
-        - delay: 0.5s  # Delay to allow physical power lines time to stabilize
-          
+        - delay: 1.5s
+    # Native register sequence to safely power on the LP5562 chip under ESP-IDF
+    - priority: -100
+      then:
+        # 1. Wake and enable the LP5562 chip (Register 0x00 -> Value 0x40)
+        - lambda: |-
+            uint8_t data[] = {0x00, 0x40};
+            id(bus_internal).write(0x30, data, 2);
+        - delay: 10ms
+        # 2. Configure White channel to standard direct PWM output mode (Register 0x08 -> Value 0x01)
+        - lambda: |-
+            uint8_t data[] = {0x08, 0x01};
+            id(bus_internal).write(0x30, data, 2);
+        # 3. Securely light up the screen backlight
+        - light.turn_on:
+            id: display_backlight
+            brightness: 0.3
+
 globals:
-    # ======= myDisplay display globals
   - id: myDisplay_line1
-    type: std::string  
+    type: std::string
+    restore_value: no
+    initial_value: ''
+  - id: myDisplay_line2
+    type: std::string
+    restore_value: no
+    initial_value: ''
+  - id: myDisplay_line3
+    type: std::string
     restore_value: no
     initial_value: ''
 
-  - id: myDisplay_line2
-    restore_value: no
-    type: std::string  
-    initial_value: ''
-    
-  - id: myDisplay_line3
-    restore_value: no
-    type: std::string  
-    initial_value: ''
-    
+# System Inter-Chip Communication Lines
+i2c:
+  - id: bus_internal
+    sda: GPIO45               # System I2C Data bus
+    scl: GPIO0                # System I2C Clock bus
+    frequency: 100kHz         # Lowered clock speed for generic wire register stability
+
+# Native Template Output writing raw register updates over the core i2c component
+output:
+  - platform: template
+    id: backlight_pwm
+    type: float
+    write_action:
+      - lambda: |-
+          // Scale float state boundary inputs (0.0 to 1.0) into raw 8-bit byte values (0 to 255)
+          uint8_t pwm_byte = (uint8_t)(state * 255.0f);
+          
+          // Structure data as [Register, Value] array for bare-metal multi-framework write
+          uint8_t data[] = {0x0E, pwm_byte};
+          id(bus_internal).write(0x30, data, 2);
+
+light:
+  - platform: monochromatic
+    name: "Display Backlight"
+    id: display_backlight
+    output: backlight_pwm
+    default_transition_length: 0s     # Instant steps optimize raw register writing
+    gamma_correct: 0
+    restore_mode: ALWAYS_OFF
+    internal: true
+
 switch:
   - platform: gpio # indicator LED that lights up when sniffing
     pin:
       number: ${pin_indicator_LED}
       inverted: true
     id: indicator_led
-  
+
 script:
   - id: flash_led_custom
     parameters:
       count: int         # Number of flashes
       dwell: int         # duration of flash in msec
-      red: float         # Ignored on C3, kept for API matching
-      green: float       # Ignored on C3, kept for API matching
-      blue: float        # Ignored on C3, kept for API matching
+      red: float         # Ignored on C3/S3, kept for API matching
+      green: float       # Ignored on C3/S3, kept for API matching
+      blue: float        # Ignored on C3/S3, kept for API matching
     mode: queued
     then:
       - repeat:
@@ -77,10 +114,10 @@ script:
                
   - id: turn_led_on_custom
     parameters:
-      red: float         # Ignored on C3, kept for API matching
-      green: float       # Ignored on C3, kept for API matching
-      blue: float        # Ignored on C3, kept for API matching
-      brightness: float  # Ignored on C3, kept for API matching
+      red: float         # Ignored on C3/S3, kept for API matching
+      green: float       # Ignored on C3/S3, kept for API matching
+      blue: float        # Ignored on C3/S3, kept for API matching
+      brightness: float  # Ignored on C3/S3, kept for API matching
     mode: single
     then:
       - switch.turn_on: indicator_led
@@ -89,10 +126,8 @@ script:
     mode: single
     then:
       - switch.turn_off: indicator_led
-
-
+      
 # ============ General Display Scripts =============
-# --- myDisplay display 3 lines and auto dim display ---
   - id: display_show
     mode: restart 
     parameters:
@@ -100,7 +135,6 @@ script:
       line1: std::string
       line2: std::string
       line3: std::string
-   
     then:
       - lambda: |-
           id(myDisplay_line1) = line1; 
@@ -121,35 +155,23 @@ script:
                    - display.page.show: active_page_small
                 else:
                    - display.page.show: active_page_std
-
-      - delay: 40s #how long display remains on
+      - delay: 40s 
       - display.page.show: blank_page
 
-
-# --- myDisplay modify a line and auto dim display ---
   - id: display_modify_a_line
     mode: restart 
     parameters:
       small_text: bool
       whichLine: int
       aline: std::string
-   
     then:
       - lambda: |-
           switch (whichLine) {
-            case 1:
-              id(myDisplay_line1) = aline; 
-              break;
-            case 2:
-              id(myDisplay_line2) = aline;
-              break;
-            case 3:
-              id(myDisplay_line3) = aline;
-              break;
-            default:
-              break;
+            case 1: id(myDisplay_line1) = aline; break;
+            case 2: id(myDisplay_line2) = aline; break;
+            case 3: id(myDisplay_line3) = aline; break;
+            default: break;
           }
-          
       - if:
           condition:
             lambda: |-
@@ -165,52 +187,70 @@ script:
                    - display.page.show: active_page_small
                 else:
                    - display.page.show: active_page_std
-
-      - delay: 40s #how long display remains on
+      - delay: 40s 
       - display.page.show: blank_page
 
-
-# ========  Display Specific Implementation ========
-
+# Font Scaled To Gracefully Fit Inside The Tight 128x128 Window Dimensions
 font:
   - file: "gfonts://Roboto"
     id: my_fontSmall
-    size: 9
-
+    size: 16
   - file: "gfonts://Roboto"
     id: my_fontMedium
-    size: 10
-
+    size: 20
   - file: "gfonts://Roboto"
     id: my_fontLarge
-    size: 12
+    size: 24
 
-    
-# Built-in 72x40 SSD1306 OLED screen
+# Onboard high-precision SPI bus mapping
+spi:
+  clk_pin: GPIO15            
+  mosi_pin: GPIO21           
+
+# Hardware Screen Driver Interface Map (Verified Pins)
 display:
-  - platform: ssd1306_i2c
-    model: "SSD1306 72x40"
-    address: 0x3C
+  - platform: mipi_spi
     id: myDisplay
-    offset_x: 0
-    offset_y: 0
-    rotation: 0
+    model: ST7735             # Target chip specified for your board layout
+    rotation: 0               
+    cs_pin: GPIO14            
+    dc_pin: GPIO42            
+    reset_pin: GPIO48         
     update_interval: 0.1s
 
-    
+    on_page_change:
+      - then:
+          - if:
+              condition:
+                lambda: 'return to == id(blank_page);'
+              then:
+                - light.turn_off:
+                    id: display_backlight
+              else:
+                - light.turn_on:
+                    id: display_backlight
+                    brightness: 40%
+
+    # Y-axis intervals compressed to keep content from dropping off the 128px bounding box
     pages:
       - id: active_page_std
         lambda: |-
-          it.print(0, 0,  id(my_fontMedium), id(myDisplay_line1).c_str());
-          it.print(0, 11, id(my_fontLarge), id(myDisplay_line2).c_str());
-          it.print(0, 24, id(my_fontLarge), id(myDisplay_line3).c_str());
+          auto L1color = Color(255, 100, 0);
+          auto L2color = Color(255, 120, 0);
+          auto L3color = Color(255, 150, 0);
+          it.print(4, 15,  id(my_fontSmall), L1color, id(myDisplay_line1).c_str());
+          it.print(4, 50,  id(my_fontSmall), L2color, id(myDisplay_line2).c_str());
+          it.print(4, 85,  id(my_fontLarge), L3color, id(myDisplay_line3).c_str());
 
       - id: active_page_small
         lambda: |-
-          it.print(0, 0,  id(my_fontSmall), id(myDisplay_line1).c_str());
-          it.print(0, 12, id(my_fontSmall), id(myDisplay_line2).c_str());
-          it.print(0, 24, id(my_fontSmall), id(myDisplay_line3).c_str());
+          auto L1color = Color(255, 130, 0);
+          auto L2color = Color(255, 130, 0);
+          auto L3color = Color(255, 130, 0);
+          it.print(4, 15,  id(my_fontMedium), L1color, id(myDisplay_line1).c_str());
+          it.print(4, 55,  id(my_fontMedium), L2color, id(myDisplay_line2).c_str());
+          it.print(4, 95,  id(my_fontMedium), L3color, id(myDisplay_line3).c_str());
 
       - id: blank_page
         lambda: |-
-          // Leaving lambda completely blank turns all pixels off safely
+          // Blank page – pixels off
