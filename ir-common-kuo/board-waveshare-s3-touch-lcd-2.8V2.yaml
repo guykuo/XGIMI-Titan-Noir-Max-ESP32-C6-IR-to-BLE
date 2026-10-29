@@ -388,7 +388,7 @@ display:
     color_order: BGR    
     data_rate: 80MHz    
                     
-    update_interval: 0.1s #no faster than 0.2s or will crash after token sniff.
+    update_interval: 0.1s
  
     on_page_change:
       - then:
