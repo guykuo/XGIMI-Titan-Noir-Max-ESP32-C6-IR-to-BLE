@@ -125,7 +125,19 @@ globals:
     restore_value: no
     type: std::string  
     initial_value: ''
-              
+
+  # Virtual LED state variables tracking raw color channel data for canvas emulation
+  - id: v_led_r
+    type: int
+    initial_value: '0'
+  - id: v_led_g
+    type: int
+    initial_value: '0'
+  - id: v_led_b
+    type: int
+    initial_value: '0'
+
+
 output:
   - platform: ledc
     id: backlight_pwm
@@ -167,19 +179,16 @@ script:
       - repeat:
           count: !lambda "return count;"
           then:
-            # --- TURN RGB LED ON WITH DYNAMIC COLOR ---
-            - light.turn_on:
-                id: indicator_led
-                red: !lambda "return red;"
-                green: !lambda "return green;"
-                blue: !lambda "return blue;"
-                brightness: 0.2
-                transition_length: 0s
+            # --- MAP VIRTUAL LED VARIABLES TO ACTIVE COLOR AND FORCE REFRESH ---
+            - lambda: |-
+                id(v_led_r) = (int)(red * 255.0f);
+                id(v_led_g) = (int)(green * 255.0f);
+                id(v_led_b) = (int)(blue * 255.0f);
             - delay: !lambda "return dwell;"
-            # --- TURN RGB LED OFF ---
-            - light.turn_off:
-                id: indicator_led
-                transition_length: 0s
+  
+            # --- RESET VARIABLES TO BLACK AND FORCE REFRESH ---
+            - lambda: |-
+                id(v_led_r) = 0; id(v_led_g) = 0; id(v_led_b) = 0;
             - delay: !lambda "return dwell;"
             
   - id: turn_led_on_custom
@@ -190,20 +199,16 @@ script:
       brightness: float  # Brightness (0.0 to 1.0)
     mode: single
     then:
-      - light.turn_on:
-          id: indicator_led
-          red: !lambda "return red;"
-          green: !lambda "return green;"
-          blue: !lambda "return blue;"
-          brightness: !lambda "return brightness;"
-          transition_length: 0s  
+      - lambda: |-
+          id(v_led_r) = (int)(red * brightness * 255.0f);
+          id(v_led_g) = (int)(green * brightness * 255.0f);
+          id(v_led_b) = (int)(blue * brightness * 255.0f);
           
   - id: turn_led_off_custom
     mode: single
     then:
-      - light.turn_off:
-          id: indicator_led
-          transition_length: 0s  
+      - lambda: |-
+          id(v_led_r) = 0; id(v_led_g) = 0; id(v_led_b) = 0;
 
 # ============ General Display Scripts =============
 # --- myDisplay display 3 lines and auto dim display ---
@@ -383,7 +388,7 @@ display:
     color_order: BGR    
     data_rate: 80MHz    
                     
-    update_interval: 0.25s
+    update_interval: 0.1s #no faster than 0.2s or will crash after token sniff.
  
     on_page_change:
       - then:
@@ -397,7 +402,7 @@ display:
               else:
                 - light.turn_on:
                     id: display_backlight
-                    brightness: 100%
+                    brightness: 70%
 
     pages:
       - id: active_page_std
@@ -406,12 +411,14 @@ display:
             auto L2color = Color(255, 120, 0);
             auto L3color = Color(255, 150, 0);
 
-            // Shifted Y positions upwards to guarantee text stays strictly within the top 96px zone
-            it.print(5, 5,   id(my_fontSmall), L1color, id(myDisplay_line1).c_str());
-            it.print(5, 32,  id(my_fontSmall), L2color, id(myDisplay_line2).c_str());
-            
-            // Scaled down from my_fontLarge to my_fontMedium to prevent row overlap bounds
-            it.print(5, 60, id(my_fontMedium), L3color,  id(myDisplay_line3).c_str());
+            // Text Zone
+            it.print(5, 15,   id(my_fontSmall), L1color, id(myDisplay_line1).c_str());
+            it.print(5, 42,  id(my_fontSmall), L2color, id(myDisplay_line2).c_str());
+            it.print(5, 70, id(my_fontMedium), L3color,  id(myDisplay_line3).c_str());
+
+            // DRAW EMULATED RGB BOX (16x16 box in the upper right text region)
+            auto indicator_color = Color(id(v_led_r), id(v_led_g), id(v_led_b));
+            it.filled_rectangle(224, 0, 16, 16, indicator_color);
 
             // Embedded macro engine for full-canvas remote grids over text elements
             ${draw_all_remote_buttons}
@@ -422,10 +429,14 @@ display:
             auto L2color = Color(255, 130, 0);
             auto L3color = Color(255, 130, 0);
             
-            // Tight alignment for the compact text view pass
-            it.print(5, 5,   id(my_fontSmall), L1color, id(myDisplay_line1).c_str());
-            it.print(5, 32,  id(my_fontSmall), L2color, id(myDisplay_line2).c_str());
-            it.print(5, 60,  id(my_fontSmall), L3color, id(myDisplay_line3).c_str());
+            // Text Zone
+            it.print(5, 15,   id(my_fontSmall), L1color, id(myDisplay_line1).c_str());
+            it.print(5, 42,  id(my_fontSmall), L2color, id(myDisplay_line2).c_str());
+            it.print(5, 70,  id(my_fontSmall), L3color, id(myDisplay_line3).c_str());
+
+            // DRAW EMULATED RGB BOX (16x16 box in the upper right text region)
+            auto indicator_color = Color(id(v_led_r), id(v_led_g), id(v_led_b));
+            it.filled_rectangle(224, 0, 16, 16, indicator_color);
 
             // Embedded macro engine for full-canvas remote grids over text elements
             ${draw_all_remote_buttons}
@@ -439,6 +450,10 @@ display:
           auto font_sm = id(my_fontSmall);
 
           it.print(5, 10, id(my_fontMedium), header_color, "PROFILE SELECTION");
+
+          // === DRAW EMULATED RGB BOX (Matches upper-right corner of other pages) ===
+          auto indicator_color = Color(id(v_led_r), id(v_led_g), id(v_led_b));
+          it.filled_rectangle(224, 0, 16, 16, indicator_color);
 
           // Render Grid Intercept Boxes (2 Columns x 4 Rows for profiles)
           it.horizontal_line(0, 96, 240, lines_color);

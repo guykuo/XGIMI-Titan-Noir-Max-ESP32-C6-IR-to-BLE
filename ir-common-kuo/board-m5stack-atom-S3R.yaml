@@ -113,13 +113,11 @@ script:
                 id(v_led_r) = (int)(red * 255.0f);
                 id(v_led_g) = (int)(green * 255.0f);
                 id(v_led_b) = (int)(blue * 255.0f);
-            - component.update: myDisplay
             - delay: !lambda "return dwell;"
   
             # --- RESET VARIABLES TO BLACK AND FORCE REFRESH ---
             - lambda: |-
                 id(v_led_r) = 0; id(v_led_g) = 0; id(v_led_b) = 0;
-            - component.update: myDisplay
             - delay: !lambda "return dwell;"
                
   - id: turn_led_on_custom
@@ -232,7 +230,7 @@ display:
     reset_pin: GPIO48         
     invert_colors: true
     color_order: BGR
-    update_interval: 0.3s     # Snappy refreshing ensures visual responsiveness
+    update_interval: 0.1s     # Snappy refreshing ensures visual responsiveness
 
     dimensions:
       width: 128
